@@ -4,6 +4,7 @@
 // ============================================================================
 
 import React, { useState, useMemo } from 'react';
+import { useData } from '../../store';
 
 // Types for analytics data
 interface GrowRecord {
@@ -40,26 +41,14 @@ interface StrainPerformance {
   color: string;
 }
 
-// Sample data
-const sampleGrows: GrowRecord[] = [
-  { id: 'g1', strain: 'B+', substrate: 'CVG', spawnType: 'Oat Groats', startDate: new Date('2024-09-01'), endDate: new Date('2024-10-15'), status: 'completed', totalYield: 600, flushCount: 3, drySubstrateWeight: 450, cost: 25, location: 'Fruiting Chamber' },
-  { id: 'g2', strain: 'B+', substrate: 'Manure', spawnType: 'Rye', startDate: new Date('2024-09-15'), endDate: new Date('2024-11-01'), status: 'completed', totalYield: 565, flushCount: 2, drySubstrateWeight: 500, cost: 30, location: 'Fruiting Chamber' },
-  { id: 'g3', strain: 'Penis Envy', substrate: 'CVG', spawnType: 'Rye', startDate: new Date('2024-10-01'), endDate: new Date('2024-11-20'), status: 'completed', totalYield: 243, flushCount: 2, drySubstrateWeight: 300, cost: 22, location: 'Fruiting Chamber' },
-  { id: 'g4', strain: 'JMF', substrate: 'CVG', spawnType: 'Oat Groats', startDate: new Date('2024-10-15'), endDate: new Date('2024-12-01'), status: 'completed', totalYield: 210, flushCount: 1, drySubstrateWeight: 400, cost: 24, location: 'Fruiting Chamber' },
-  { id: 'g5', strain: 'Blue Oyster', substrate: 'Masters Mix', spawnType: 'Wheat', startDate: new Date('2024-10-20'), endDate: new Date('2024-11-25'), status: 'completed', totalYield: 900, flushCount: 2, drySubstrateWeight: 600, cost: 18, location: 'Fruiting Chamber' },
-  { id: 'g6', strain: 'B+', substrate: 'CVG', spawnType: 'Oat Groats', startDate: new Date('2024-11-01'), status: 'contaminated', totalYield: 0, flushCount: 0, drySubstrateWeight: 450, cost: 25, location: 'Incubator' },
-  { id: 'g7', strain: 'Penis Envy', substrate: 'CVG', spawnType: 'Rye', startDate: new Date('2024-11-10'), status: 'active', totalYield: 0, flushCount: 0, drySubstrateWeight: 350, cost: 26, location: 'Incubator' },
-  { id: 'g8', strain: 'Enoki', substrate: 'Sawdust', spawnType: 'Wheat', startDate: new Date('2024-11-15'), endDate: new Date('2024-12-10'), status: 'completed', totalYield: 180, flushCount: 1, drySubstrateWeight: 400, cost: 15, location: 'Fruiting Chamber' },
-  { id: 'g9', strain: 'B+', substrate: 'CVG', spawnType: 'Popcorn', startDate: new Date('2024-11-20'), status: 'active', totalYield: 0, flushCount: 0, drySubstrateWeight: 500, cost: 28, location: 'Fruiting Chamber' },
-  { id: 'g10', strain: 'Blue Oyster', substrate: 'Straw', spawnType: 'Wheat', startDate: new Date('2024-12-01'), status: 'active', totalYield: 0, flushCount: 0, drySubstrateWeight: 800, cost: 12, location: 'Incubator' },
-];
-
-const strainColors: Record<string, string> = {
-  'B+': '#10b981',
-  'Penis Envy': '#8b5cf6',
-  'JMF': '#f59e0b',
-  'Blue Oyster': '#3b82f6',
-  'Enoki': '#ec4899',
+// Dynamic strain colors (generated from strain names)
+const generateStrainColor = (strainName: string): string => {
+  const colors = ['#10b981', '#8b5cf6', '#f59e0b', '#3b82f6', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
+  let hash = 0;
+  for (let i = 0; i < strainName.length; i++) {
+    hash = strainName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
 };
 
 // Icons
@@ -346,9 +335,47 @@ const RankingChart: React.FC<{
 };
 
 export const AnalyticsDashboard: React.FC = () => {
-  const [grows] = useState<GrowRecord[]>(sampleGrows);
+  const { state, getStrain, getSubstrateType, getLocation } = useData();
   const [timeRange, setTimeRange] = useState<'30d' | '90d' | '1y' | 'all'>('90d');
   const [selectedStrain, setSelectedStrain] = useState<string | 'all'>('all');
+
+  // Convert real grows to GrowRecord format
+  const grows = useMemo(() => {
+    return state.grows.map(g => {
+      const strain = getStrain(g.strainId);
+      const substrate = getSubstrateType(g.substrateTypeId);
+      const location = getLocation(g.locationId || '');
+      
+      // Map grow status to analytics status
+      const statusMap: Record<string, 'active' | 'completed' | 'contaminated' | 'aborted'> = {
+        'active': 'active',
+        'paused': 'active',
+        'completed': 'completed',
+        'failed': 'contaminated',
+      };
+      
+      // Map grow stage for contaminated/aborted
+      let status = statusMap[g.status] || 'active';
+      if (g.currentStage === 'contaminated') status = 'contaminated';
+      if (g.currentStage === 'aborted') status = 'aborted';
+      if (g.currentStage === 'completed') status = 'completed';
+
+      return {
+        id: g.id,
+        strain: strain?.name || 'Unknown',
+        substrate: substrate?.name || 'Unknown',
+        spawnType: g.spawnType || 'Unknown',
+        startDate: new Date(g.spawnedAt),
+        endDate: g.completedAt ? new Date(g.completedAt) : undefined,
+        status,
+        totalYield: g.totalYield || 0,
+        flushCount: g.flushes?.length || 0,
+        drySubstrateWeight: g.substrateWeight || 0,
+        cost: g.estimatedCost || 0,
+        location: location?.name || 'Unknown',
+      } as GrowRecord;
+    });
+  }, [state.grows, getStrain, getSubstrateType, getLocation]);
 
   // Calculate analytics
   const analytics = useMemo(() => {
@@ -406,7 +433,7 @@ export const AnalyticsDashboard: React.FC = () => {
         growCount: strainGrows.length,
         successRate: 100, // All these are completed
         avgDaysToHarvest: Math.round(avgDays),
-        color: strainColors[strain] || '#6b7280',
+        color: generateStrainColor(strain),
       };
     }).sort((a, b) => b.avgBE - a.avgBE);
 

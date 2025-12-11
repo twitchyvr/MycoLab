@@ -4,6 +4,7 @@
 // ============================================================================
 
 import React, { useState, useMemo } from 'react';
+import { useData } from '../../store';
 
 // Types
 type ContaminationType = 
@@ -227,102 +228,6 @@ const causeConfig: Record<SuspectedCause, { label: string; icon: string }> = {
   unknown: { label: 'Unknown', icon: '❓' },
 };
 
-// Sample data
-const sampleEvents: ContaminationEvent[] = [
-  {
-    id: 'c1',
-    itemId: 'GS-005',
-    itemLabel: 'GS-005',
-    strainName: 'B+',
-    type: 'trichoderma',
-    stage: 'grain_spawn',
-    daysSinceInoculation: 8,
-    suspectedCause: 'sterilization_failure',
-    notes: 'Green patches appeared on day 8. PC was only 75 minutes.',
-    dateDetected: new Date('2024-11-15'),
-    grainType: 'Oat Groats',
-    pcTime: 75,
-    pcPsi: 15,
-    season: 'fall',
-    locationName: 'Incubator'
-  },
-  {
-    id: 'c2',
-    itemId: 'AG-004',
-    itemLabel: 'AG-004',
-    strainName: 'Blue Oyster',
-    type: 'bacterial',
-    stage: 'agar',
-    daysSinceInoculation: 2,
-    suspectedCause: 'inoculation_technique',
-    notes: 'Slimy spots near inoculation point. SAB technique may have been compromised.',
-    dateDetected: new Date('2024-12-05'),
-    season: 'winter',
-    locationName: 'Main Fridge'
-  },
-  {
-    id: 'c3',
-    itemId: 'BK-003',
-    itemLabel: 'BK-003',
-    strainName: 'Penis Envy',
-    type: 'trichoderma',
-    stage: 'bulk_colonization',
-    daysSinceInoculation: 12,
-    suspectedCause: 'environmental',
-    notes: 'Trich appeared after opening lid to check progress.',
-    dateDetected: new Date('2024-12-01'),
-    substrateType: 'CVG',
-    season: 'winter',
-    locationName: 'Incubator'
-  },
-  {
-    id: 'c4',
-    itemId: 'GS-008',
-    itemLabel: 'GS-008',
-    strainName: 'JMF',
-    type: 'wet_spot',
-    stage: 'grain_spawn',
-    daysSinceInoculation: 3,
-    suspectedCause: 'substrate_issue',
-    notes: 'Grain was too wet after soak. Some kernels burst during prep.',
-    dateDetected: new Date('2024-11-28'),
-    grainType: 'Popcorn',
-    pcTime: 90,
-    pcPsi: 15,
-    season: 'fall',
-    locationName: 'Incubator'
-  },
-  {
-    id: 'c5',
-    itemId: 'LC-005',
-    itemLabel: 'LC-005',
-    strainName: 'B+',
-    type: 'bacterial',
-    stage: 'liquid_culture',
-    daysSinceInoculation: 5,
-    suspectedCause: 'contaminated_source',
-    notes: 'LC cloudy with no mycelium growth. Source syringe may have been old.',
-    dateDetected: new Date('2024-11-20'),
-    season: 'fall',
-    locationName: 'Main Fridge'
-  },
-  {
-    id: 'c6',
-    itemId: 'BK-005',
-    itemLabel: 'BK-005',
-    strainName: 'Blue Oyster',
-    type: 'cobweb',
-    stage: 'fruiting',
-    daysSinceInoculation: 18,
-    suspectedCause: 'environmental',
-    notes: 'Cobweb appeared after increasing humidity. FAE was insufficient.',
-    dateDetected: new Date('2024-12-08'),
-    substrateType: 'Masters Mix',
-    season: 'winter',
-    locationName: 'Fruiting Chamber'
-  },
-];
-
 // Icons
 const Icons = {
   Plus: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
@@ -336,12 +241,73 @@ const Icons = {
 };
 
 export const ContaminationAnalysis: React.FC = () => {
-  const [events] = useState<ContaminationEvent[]>(sampleEvents);
+  const { state, getStrain, getLocation } = useData();
   const [activeTab, setActiveTab] = useState<'log' | 'analysis' | 'knowledge'>('log');
   const [showLogForm, setShowLogForm] = useState(false);
   const [selectedContamType, setSelectedContamType] = useState<ContaminationType | null>(null);
   const [filterType, setFilterType] = useState<ContaminationType | 'all'>('all');
   const [filterStage, setFilterStage] = useState<ContaminationStage | 'all'>('all');
+
+  // Derive contamination events from actual contaminated cultures and grows
+  const events = useMemo(() => {
+    const contaminationEvents: ContaminationEvent[] = [];
+
+    // Get contamination events from cultures with contaminated status
+    state.cultures.filter(c => c.status === 'contaminated').forEach(culture => {
+      const strain = getStrain(culture.strainId);
+      const location = getLocation(culture.locationId || '');
+      
+      // Map culture type to contamination stage
+      const stageMap: Record<string, ContaminationStage> = {
+        'agar': 'agar',
+        'slant': 'agar',
+        'liquid_culture': 'liquid_culture',
+        'spore_syringe': 'liquid_culture',
+        'spawn': 'grain_spawn',
+      };
+
+      contaminationEvents.push({
+        id: `culture-${culture.id}`,
+        itemId: culture.id,
+        itemLabel: culture.label,
+        strainName: strain?.name || 'Unknown',
+        type: 'unknown', // Would need to be tracked in culture data
+        stage: stageMap[culture.type] || 'agar',
+        daysSinceInoculation: culture.createdAt 
+          ? Math.floor((Date.now() - new Date(culture.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+          : 0,
+        suspectedCause: 'unknown',
+        notes: culture.notes,
+        dateDetected: new Date(culture.updatedAt || culture.createdAt),
+        locationName: location?.name,
+      });
+    });
+
+    // Get contamination events from grows with contaminated stage
+    state.grows.filter(g => g.currentStage === 'contaminated').forEach(grow => {
+      const strain = getStrain(grow.strainId);
+      const location = getLocation(grow.locationId || '');
+      
+      contaminationEvents.push({
+        id: `grow-${grow.id}`,
+        itemId: grow.id,
+        itemLabel: grow.name,
+        strainName: strain?.name || 'Unknown',
+        type: 'unknown',
+        stage: 'bulk_colonization',
+        daysSinceInoculation: grow.spawnedAt 
+          ? Math.floor((Date.now() - new Date(grow.spawnedAt).getTime()) / (1000 * 60 * 60 * 24))
+          : 0,
+        suspectedCause: 'unknown',
+        notes: grow.notes,
+        dateDetected: new Date(grow.createdAt),
+        substrateType: grow.substrateTypeId,
+        locationName: location?.name,
+      });
+    });
+
+    return contaminationEvents;
+  }, [state.cultures, state.grows, getStrain, getLocation]);
 
   // Analysis calculations
   const analysis = useMemo(() => {
@@ -829,9 +795,23 @@ export const ContaminationAnalysis: React.FC = () => {
                 <label className="block text-sm text-zinc-400 mb-2">Item</label>
                 <select className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white">
                   <option>Select item...</option>
-                  <option>GS-002 - B+ Grain Spawn</option>
-                  <option>AG-003 - PE Agar</option>
-                  <option>BK-001 - B+ Monotub</option>
+                  {/* Cultures */}
+                  {state.cultures.filter(c => c.status !== 'contaminated').map(c => {
+                    const strain = getStrain(c.strainId);
+                    return (
+                      <option key={c.id} value={c.id}>{c.label} - {strain?.name || 'Unknown'}</option>
+                    );
+                  })}
+                  {/* Grows */}
+                  {state.grows.filter(g => g.currentStage !== 'contaminated').map(g => {
+                    const strain = getStrain(g.strainId);
+                    return (
+                      <option key={g.id} value={g.id}>{g.name} - {strain?.name || 'Unknown'}</option>
+                    );
+                  })}
+                  {state.cultures.length === 0 && state.grows.length === 0 && (
+                    <option disabled>No items available - add cultures or grows first</option>
+                  )}
                 </select>
               </div>
               

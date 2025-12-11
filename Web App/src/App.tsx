@@ -263,9 +263,11 @@ interface SidebarProps {
   onNavigate: (page: Page) => void;
   isOpen: boolean;
   onClose: () => void;
+  cultureCount: number;
+  activeGrowCount: number;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onClose, cultureCount, activeGrowCount }) => {
   const handleNavigate = (page: Page) => {
     onNavigate(page);
     onClose(); // Close sidebar on mobile after navigation
@@ -336,11 +338,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onCl
             <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Quick Stats</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className="text-lg font-semibold text-white">12</p>
+                <p className="text-lg font-semibold text-white">{cultureCount}</p>
                 <p className="text-xs text-zinc-500">Cultures</p>
               </div>
               <div>
-                <p className="text-lg font-semibold text-emerald-400">3</p>
+                <p className="text-lg font-semibold text-emerald-400">{activeGrowCount}</p>
                 <p className="text-xs text-zinc-500">Active Grows</p>
               </div>
             </div>
@@ -803,36 +805,80 @@ const App: React.FC = () => {
   return (
     <DataProvider>
       <AppContext.Provider value={contextValue}>
-        {showSetup && (
-          <SetupWizard 
-            onComplete={() => setShowSetup(false)} 
-            onSkip={() => {
-              localStorage.setItem('mycolab-setup-complete', 'true');
-              setShowSetup(false);
-            }} 
-          />
-        )}
-        <div className="h-screen flex bg-zinc-950 text-white overflow-hidden">
-          <Sidebar 
-            currentPage={currentPage} 
-            onNavigate={setCurrentPage} 
-            isOpen={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
-          />
-          <main className="flex-1 flex flex-col min-w-0 overflow-hidden lg:ml-0">
-            <Header 
-              {...pageConfig[currentPage]} 
-              currentPage={currentPage} 
-              onNavigate={setCurrentPage}
-              onMenuClick={() => setSidebarOpen(true)}
-            />
-            <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-              {renderPage()}
-            </div>
-          </main>
-        </div>
+        <AppContent 
+          showSetup={showSetup}
+          setShowSetup={setShowSetup}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          renderPage={renderPage}
+          pageConfig={pageConfig}
+        />
       </AppContext.Provider>
     </DataProvider>
+  );
+};
+
+// Inner component that can access useData
+const AppContent: React.FC<{
+  showSetup: boolean;
+  setShowSetup: (v: boolean) => void;
+  currentPage: Page;
+  setCurrentPage: (page: Page) => void;
+  sidebarOpen: boolean;
+  setSidebarOpen: (v: boolean) => void;
+  renderPage: () => React.ReactNode;
+  pageConfig: Record<string, { title: string; subtitle?: string; newAction?: { label: string; page: Page } }>;
+}> = ({
+  showSetup,
+  setShowSetup,
+  currentPage,
+  setCurrentPage,
+  sidebarOpen,
+  setSidebarOpen,
+  renderPage,
+  pageConfig,
+}) => {
+  const { state } = useData();
+  
+  // Calculate real stats from actual data
+  const cultureCount = state.cultures.length;
+  const activeGrowCount = state.grows.filter(g => g.status === 'active').length;
+
+  return (
+    <>
+      {showSetup && (
+        <SetupWizard 
+          onComplete={() => setShowSetup(false)} 
+          onSkip={() => {
+            localStorage.setItem('mycolab-setup-complete', 'true');
+            setShowSetup(false);
+          }} 
+        />
+      )}
+      <div className="h-screen flex bg-zinc-950 text-white overflow-hidden">
+        <Sidebar 
+          currentPage={currentPage} 
+          onNavigate={setCurrentPage} 
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          cultureCount={cultureCount}
+          activeGrowCount={activeGrowCount}
+        />
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden lg:ml-0">
+          <Header 
+            {...pageConfig[currentPage]} 
+            currentPage={currentPage} 
+            onNavigate={setCurrentPage}
+            onMenuClick={() => setSidebarOpen(true)}
+          />
+          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
+            {renderPage()}
+          </div>
+        </main>
+      </div>
+    </>
   );
 };
 

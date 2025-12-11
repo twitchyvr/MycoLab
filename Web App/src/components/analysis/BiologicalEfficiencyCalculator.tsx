@@ -4,6 +4,7 @@
 // ============================================================================
 
 import React, { useState, useMemo } from 'react';
+import { useData } from '../../store';
 
 interface HarvestRecord {
   id: string;
@@ -27,29 +28,6 @@ interface BEResult {
   ratingColor: string;
 }
 
-// Sample historical data
-const sampleRecords: HarvestRecord[] = [
-  // B+ Monotub - multiple flushes
-  { id: 'h1', growId: 'BK-001', growLabel: 'BK-001', strainName: 'B+', flushNumber: 1, freshWeight: 285, dryWeight: 28, drySubstrateWeight: 450, harvestDate: new Date('2024-11-20'), substrateType: 'CVG', spawnType: 'Oat Groats' },
-  { id: 'h2', growId: 'BK-001', growLabel: 'BK-001', strainName: 'B+', flushNumber: 2, freshWeight: 195, dryWeight: 19, drySubstrateWeight: 450, harvestDate: new Date('2024-11-28'), substrateType: 'CVG', spawnType: 'Oat Groats' },
-  { id: 'h3', growId: 'BK-001', growLabel: 'BK-001', strainName: 'B+', flushNumber: 3, freshWeight: 120, dryWeight: 12, drySubstrateWeight: 450, harvestDate: new Date('2024-12-05'), substrateType: 'CVG', spawnType: 'Oat Groats' },
-  
-  // PE Shoebox
-  { id: 'h4', growId: 'BK-002', growLabel: 'BK-002', strainName: 'Penis Envy', flushNumber: 1, freshWeight: 145, dryWeight: 15, drySubstrateWeight: 300, harvestDate: new Date('2024-12-01'), substrateType: 'CVG', spawnType: 'Rye' },
-  { id: 'h5', growId: 'BK-002', growLabel: 'BK-002', strainName: 'Penis Envy', flushNumber: 2, freshWeight: 98, dryWeight: 10, drySubstrateWeight: 300, harvestDate: new Date('2024-12-08'), substrateType: 'CVG', spawnType: 'Rye' },
-  
-  // Blue Oyster Bucket
-  { id: 'h6', growId: 'BK-003', growLabel: 'BK-003', strainName: 'Blue Oyster', flushNumber: 1, freshWeight: 520, drySubstrateWeight: 600, harvestDate: new Date('2024-11-25'), substrateType: 'Masters Mix', spawnType: 'Wheat' },
-  { id: 'h7', growId: 'BK-003', growLabel: 'BK-003', strainName: 'Blue Oyster', flushNumber: 2, freshWeight: 380, drySubstrateWeight: 600, harvestDate: new Date('2024-12-02'), substrateType: 'Masters Mix', spawnType: 'Wheat' },
-  
-  // JMF Tub
-  { id: 'h8', growId: 'BK-004', growLabel: 'BK-004', strainName: 'JMF', flushNumber: 1, freshWeight: 210, dryWeight: 21, drySubstrateWeight: 400, harvestDate: new Date('2024-12-03'), substrateType: 'CVG', spawnType: 'Oat Groats' },
-  
-  // Another B+ for comparison
-  { id: 'h9', growId: 'BK-005', growLabel: 'BK-005', strainName: 'B+', flushNumber: 1, freshWeight: 320, dryWeight: 32, drySubstrateWeight: 500, harvestDate: new Date('2024-11-15'), substrateType: 'Manure', spawnType: 'Rye' },
-  { id: 'h10', growId: 'BK-005', growLabel: 'BK-005', strainName: 'B+', flushNumber: 2, freshWeight: 245, dryWeight: 24, drySubstrateWeight: 500, harvestDate: new Date('2024-11-23'), substrateType: 'Manure', spawnType: 'Rye' },
-];
-
 // BE Rating thresholds (fresh weight basis)
 const getBERating = (be: number): { rating: BEResult['rating']; color: string; label: string } => {
   if (be < 50) return { rating: 'poor', color: 'text-red-400', label: 'Poor' };
@@ -71,7 +49,7 @@ const Icons = {
 };
 
 export const BiologicalEfficiencyCalculator: React.FC = () => {
-  const [records] = useState<HarvestRecord[]>(sampleRecords);
+  const { state, getStrain, getSubstrateType } = useData();
   const [activeTab, setActiveTab] = useState<'calculator' | 'history' | 'compare'>('calculator');
   
   // Calculator inputs
@@ -79,6 +57,36 @@ export const BiologicalEfficiencyCalculator: React.FC = () => {
   const [dryWeight, setDryWeight] = useState<string>('');
   const [substrateWeight, setSubstrateWeight] = useState<string>('');
   const [calculatedBE, setCalculatedBE] = useState<BEResult | null>(null);
+
+  // Derive harvest records from real grow data with flushes
+  const records = useMemo(() => {
+    const harvestRecords: HarvestRecord[] = [];
+    
+    state.grows.forEach(grow => {
+      if (!grow.flushes || grow.flushes.length === 0) return;
+      
+      const strain = getStrain(grow.strainId);
+      const substrate = getSubstrateType(grow.substrateTypeId);
+      
+      grow.flushes.forEach((flush, index) => {
+        harvestRecords.push({
+          id: `${grow.id}-flush-${index}`,
+          growId: grow.id,
+          growLabel: grow.name,
+          strainName: strain?.name || 'Unknown',
+          flushNumber: index + 1,
+          freshWeight: flush.wetWeight || 0,
+          dryWeight: flush.dryWeight,
+          drySubstrateWeight: grow.substrateWeight || 0,
+          harvestDate: new Date(flush.harvestDate),
+          substrateType: substrate?.name || 'Unknown',
+          spawnType: grow.spawnType || 'Unknown',
+        });
+      });
+    });
+    
+    return harvestRecords;
+  }, [state.grows, getStrain, getSubstrateType]);
 
   // Calculate BE
   const calculateBE = () => {
