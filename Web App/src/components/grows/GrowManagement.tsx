@@ -115,6 +115,8 @@ export const GrowManagement: React.FC = () => {
     addContainerType,
     addSubstrateType,
     addGrainType,
+    addCulture,
+    generateCultureLabel,
   } = useData();
 
   const grows = state.grows;
@@ -273,6 +275,28 @@ export const GrowManagement: React.FC = () => {
     setNewGrow(prev => ({ ...prev, grainTypeId: newGrain.id }));
   };
 
+  const handleAddCulture = async (name: string) => {
+    // Create a new culture - use the selected strain if available, otherwise use first active strain
+    const strainId = newGrow.strainId || (activeStrains[0]?.id ?? '');
+    if (!strainId) return;
+
+    const label = generateCultureLabel('liquid_culture');
+    const newCulture = await addCulture({
+      type: 'liquid_culture',
+      label: name || label,
+      strainId,
+      status: 'ready',
+      locationId: newGrow.locationId || (activeLocations[0]?.id ?? ''),
+      vesselId: '',
+      generation: 1,
+      healthRating: 5,
+      cost: 0,
+      volumeMl: 100,
+      notes: 'Created from grow form',
+    });
+    setNewGrow(prev => ({ ...prev, sourceCultureId: newCulture.id }));
+  };
+
   const [newObservation, setNewObservation] = useState({
     type: 'general' as GrowObservation['type'],
     title: '',
@@ -356,9 +380,18 @@ export const GrowManagement: React.FC = () => {
   const usedStrainIds = useMemo(() => [...new Set(grows.map(g => g.strainId))], [grows]);
 
   // Ready cultures for source selection
-  const readyCultures = useMemo(() => 
+  const readyCultures = useMemo(() =>
     cultures.filter(c => ['active', 'ready'].includes(c.status)),
     [cultures]
+  );
+
+  // Ready cultures formatted for SelectWithAdd
+  const readyCultureOptions = useMemo(() =>
+    readyCultures.map(c => ({
+      id: c.id,
+      name: `${c.label} - ${getStrain(c.strainId)?.name || 'Unknown'}`,
+    })),
+    [readyCultures, getStrain]
   );
 
   // Create grow handler
@@ -912,7 +945,11 @@ export const GrowManagement: React.FC = () => {
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-white">New Grow</h3>
-              <button onClick={() => setShowCreateModal(false)} className="text-zinc-400 hover:text-white">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="text-zinc-400 hover:text-white"
+                title="Close (draft will be saved)"
+              >
                 <Icons.X />
               </button>
             </div>
@@ -940,17 +977,15 @@ export const GrowManagement: React.FC = () => {
                   addLabel="Add New Strain"
                   onAdd={handleAddStrain}
                 />
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Source Culture</label>
-                  <select
-                    value={newGrow.sourceCultureId}
-                    onChange={e => setNewGrow(prev => ({ ...prev, sourceCultureId: e.target.value }))}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                  >
-                    <option value="">None</option>
-                    {readyCultures.map(c => <option key={c.id} value={c.id}>{c.label} - {getStrain(c.strainId)?.name}</option>)}
-                  </select>
-                </div>
+                <SelectWithAdd
+                  label="Source Culture"
+                  value={newGrow.sourceCultureId}
+                  onChange={value => setNewGrow(prev => ({ ...prev, sourceCultureId: value }))}
+                  options={readyCultureOptions}
+                  placeholder="None"
+                  addLabel="Add New Culture"
+                  onAdd={handleAddCulture}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1061,17 +1096,30 @@ export const GrowManagement: React.FC = () => {
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  clearDraft();
+                  setNewGrow(defaultFormState);
+                }}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
               >
                 Cancel
+              </button>
+              <button
+                onClick={() => {
+                  // Draft is already auto-saved, just close the modal
+                  setShowCreateModal(false);
+                }}
+                className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 rounded-lg font-medium"
+              >
+                Save Draft
               </button>
               <button
                 onClick={handleCreateGrow}
                 disabled={!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerTypeId || !newGrow.locationId}
                 className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
               >
-                Create
+                Create Grow
               </button>
             </div>
           </div>

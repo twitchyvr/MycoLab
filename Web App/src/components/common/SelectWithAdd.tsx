@@ -21,7 +21,7 @@ interface SelectWithAddProps {
   className?: string;
   // For inline add
   addLabel?: string;
-  onAdd?: (name: string) => void;
+  onAdd?: (name: string) => void | Promise<void>;
   addFields?: {
     name: string;
     label: string;
@@ -29,7 +29,7 @@ interface SelectWithAddProps {
     options?: { value: string; label: string }[];
     required?: boolean;
   }[];
-  onAddComplete?: (data: Record<string, string>) => void;
+  onAddComplete?: (data: Record<string, string>) => void | Promise<void>;
 }
 
 const Icons = {
@@ -55,19 +55,31 @@ export const SelectWithAdd: React.FC<SelectWithAddProps> = ({
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItemName, setNewItemName] = useState('');
   const [addFormData, setAddFormData] = useState<Record<string, string>>({});
+  const [isAdding, setIsAdding] = useState(false);
 
-  const handleQuickAdd = () => {
-    if (!newItemName.trim()) return;
+  const handleQuickAdd = async () => {
+    if (!newItemName.trim() || isAdding) return;
     if (onAdd) {
-      onAdd(newItemName.trim());
+      setIsAdding(true);
+      try {
+        await onAdd(newItemName.trim());
+      } finally {
+        setIsAdding(false);
+      }
     }
     setNewItemName('');
     setShowAddForm(false);
   };
 
-  const handleFullAdd = () => {
+  const handleFullAdd = async () => {
+    if (isAdding) return;
     if (onAddComplete && addFormData.name?.trim()) {
-      onAddComplete(addFormData);
+      setIsAdding(true);
+      try {
+        await onAddComplete(addFormData);
+      } finally {
+        setIsAdding(false);
+      }
     }
     setAddFormData({});
     setShowAddForm(false);
@@ -143,10 +155,17 @@ export const SelectWithAdd: React.FC<SelectWithAddProps> = ({
               />
               <button
                 onClick={handleQuickAdd}
-                disabled={!newItemName.trim()}
+                disabled={!newItemName.trim() || isAdding}
                 className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 text-white rounded text-sm font-medium"
               >
-                <Icons.Check />
+                {isAdding ? (
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <Icons.Check />
+                )}
               </button>
             </div>
           )}
@@ -182,10 +201,20 @@ export const SelectWithAdd: React.FC<SelectWithAddProps> = ({
               ))}
               <button
                 onClick={handleFullAdd}
-                disabled={!addFormData.name?.trim()}
-                className="w-full mt-2 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 text-white rounded text-sm font-medium"
+                disabled={!addFormData.name?.trim() || isAdding}
+                className="w-full mt-2 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 text-white rounded text-sm font-medium flex items-center justify-center gap-2"
               >
-                Add
+                {isAdding ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Adding...
+                  </>
+                ) : (
+                  'Add'
+                )}
               </button>
             </div>
           )}
