@@ -5,23 +5,12 @@
 
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 
-// Get credentials from environment variables or localStorage
-const getCredentials = () => {
-  // Try environment variables first (supports multiple key names)
-  let url = import.meta.env.VITE_SUPABASE_URL || '';
-  let key = import.meta.env.VITE_SUPABASE_ANON_KEY || 
-            import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || '';
-  
-  // Fall back to localStorage (set via Settings page)
-  if (!url || !key) {
-    url = localStorage.getItem('mycolab-supabase-url') || '';
-    key = localStorage.getItem('mycolab-supabase-key') || '';
-  }
-  
-  return { url, key };
-};
-
-const { url: supabaseUrl, key: supabaseAnonKey } = getCredentials();
+// Get credentials from environment variables ONLY
+// Security: Database credentials should never be configurable from the client side
+// These must be set at build time via environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ||
+                        import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || '';
 
 // Check if Supabase is configured
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
@@ -38,21 +27,8 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
     })
   : null;
 
-// Re-initialize client (called after settings change)
-export const reinitializeSupabase = () => {
-  const { url, key } = getCredentials();
-  if (url && key) {
-    return createClient(url, key, {
-      auth: {
-        persistSession: true,
-        storageKey: 'mycolab-auth',
-        autoRefreshToken: true,
-        detectSessionInUrl: false,
-      }
-    });
-  }
-  return null;
-};
+// Note: Client reinitialization removed for security
+// Database credentials are now set only via environment variables at build time
 
 // ============================================================================
 // ANONYMOUS AUTHENTICATION

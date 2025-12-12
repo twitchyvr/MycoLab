@@ -671,10 +671,9 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [state, setState] = useState<AppState>(initialState);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showSetup, setShowSetup] = useState(() => {
-    // Show setup wizard on first run
-    return !localStorage.getItem('mycolab-setup-complete');
-  });
+  // Never show setup wizard - users don't need to configure database credentials
+  // The app works in offline mode by default, cloud sync can be enabled in Settings
+  const [showSetup, setShowSetup] = useState(false);
 
   // Load state from localStorage on mount
   useEffect(() => {
