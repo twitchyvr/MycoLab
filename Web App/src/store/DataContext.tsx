@@ -11,6 +11,14 @@ import {
   InventoryCategory, InventoryItem, Culture, Grow, Recipe, AppSettings,
   CultureObservation, CultureTransfer, GrowObservation, Flush, GrowStage
 } from './types';
+import { 
+  supabase, 
+  ensureSession, 
+  getCurrentUserId,
+  getLocalSettings, 
+  saveLocalSettings,
+  LocalSettings 
+} from '../lib/supabase';
 
 // ============================================================================
 // EMPTY INITIAL STATE (no sample data)
@@ -685,14 +693,23 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   // Initialize Supabase client and load data
   useEffect(() => {
-    const client = getSupabaseClient();
-    if (client) {
-      setSupabase(client);
-      loadDataFromSupabase(client);
-    } else {
-      setIsLoading(false);
-      setIsConnected(false);
-    }
+    const init = async () => {
+      // Load settings first (from localStorage, then try database)
+      const settings = await loadSettings();
+      setState(prev => ({ ...prev, settings }));
+      
+      // Then initialize Supabase client and load data
+      const client = getSupabaseClient();
+      if (client) {
+        setSupabase(client);
+        loadDataFromSupabase(client);
+      } else {
+        setIsLoading(false);
+        setIsConnected(false);
+      }
+    };
+    
+    init();
   }, [loadDataFromSupabase]);
 
   // Refresh data function
@@ -1572,61 +1589,163 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // ============================================================================
 
   const updateSettings = useCallback(async (updates: Partial<AppSettings>) => {
-    // Update local state immediately for responsiveness
-    setState(prev => ({
-      ...prev,
-      settings: { 
-        ...prev.settings, 
-        ...updates,
-        notifications: updates.notifications 
-          ? { ...prev.settings.notifications, ...updates.notifications }
-          : prev.settings.notifications
-      }
-    }));
-
-    // Persist to database
-    if (supabase) {
-      try {
-        // Transform to database format (flatten nested notifications)
-        const dbUpdates: Record<string, any> = {};
-        if (updates.defaultUnits !== undefined) dbUpdates.default_units = updates.defaultUnits;
-        if (updates.defaultCurrency !== undefined) dbUpdates.default_currency = updates.defaultCurrency;
-        if (updates.altitude !== undefined) dbUpdates.altitude = updates.altitude;
-        if (updates.timezone !== undefined) dbUpdates.timezone = updates.timezone;
-        if (updates.notifications) {
-          if (updates.notifications.enabled !== undefined) dbUpdates.notifications_enabled = updates.notifications.enabled;
-          if (updates.notifications.harvestReminders !== undefined) dbUpdates.harvest_reminders = updates.notifications.harvestReminders;
-          if (updates.notifications.lowStockAlerts !== undefined) dbUpdates.low_stock_alerts = updates.notifications.lowStockAlerts;
-          if (updates.notifications.contaminationAlerts !== undefined) dbUpdates.contamination_alerts = updates.notifications.contaminationAlerts;
-        }
-        dbUpdates.updated_at = new Date().toISOString();
-
-        // Check if a settings row already exists
-        const { data: existing } = await supabase
-          .from('user_settings')
-          .select('id')
-          .limit(1)
-          .single();
-        
-        if (existing) {
-          // Update existing row
-          await supabase
-            .from('user_settings')
-            .update(dbUpdates)
-            .eq('id', existing.id);
-        } else {
-          // Insert new row
-          await supabase
-            .from('user_settings')
-            .insert(dbUpdates);
-        }
-        
-        console.log('Settings saved to database');
-      } catch (err) {
-        console.error('Failed to save settings to database:', err);
-      }
+  // Update local state immediately for responsiveness
+  setState(prev => ({
+    ...prev,
+    settings: { 
+      ...prev.settings, 
+      ...updates,
+      notifications: updates.notifications 
+        ? { ...prev.settings.notifications, ...updates.notifications }
+        : prev.settings.notifications
     }
-  }, [supabase]);
+  }));
+
+  // Always save to localStorage as a fallback
+  const localUpdates: Partial<LocalSettings> = {};
+  if (updates.defaultUnits !== undefined) localUpdates.defaultUnits = updates.defaultUnits;
+  if (updates.defaultCurrency !== undefined) localUpdates.defaultCurrency = updates.defaultCurrency;
+  if (updates.altitude !== undefined) localUpdates.altitude = updates.altitude;
+  if (updates.timezone !== undefined) localUpdates.timezone = updates.timezone;
+  if (updates.notifications) localUpdates.notifications = updates.notifications;
+  saveLocalSettings(localUpdates);
+  
+  console.log('Settings saved to localStorage');
+
+  // Try to persist to database if Supabase is configured
+  if (supabase) {
+    try {
+      // Ensure we have a session (creates anonymous user if needed)
+      const session = await ensureSession();
+      const userId = session?.user?.id;
+      
+      if (!userId) {
+        console.warn('No user session available, using localStorage only');
+        return;
+      }
+      
+      // Transform to database format (flatten nested notifications)
+      const dbUpdates: Record<string, any> = {};
+      if (updates.defaultUnits !== undefined) dbUpdates.default_units = updates.defaultUnits;
+      if (updates.defaultCurrency !== undefined) dbUpdates.default_currency = updates.defaultCurrency;
+      if (updates.altitude !== undefined) dbUpdates.altitude = updates.altitude;
+      if (updates.timezone !== undefined) dbUpdates.timezone = updates.timezone;
+      if (updates.notifications) {
+        if (updates.notifications.enabled !== undefined) dbUpdates.notifications_enabled = updates.notifications.enabled;
+        if (updates.notifications.harvestReminders !== undefined) dbUpdates.harvest_reminders = updates.notifications.harvestReminders;
+        if (updates.notifications.lowStockAlerts !== undefined) dbUpdates.low_stock_alerts = updates.notifications.lowStockAlerts;
+        if (updates.notifications.contaminationAlerts !== undefined) dbUpdates.contamination_alerts = updates.notifications.contaminationAlerts;
+      }
+      dbUpdates.updated_at = new Date().toISOString();
+
+      // Check if a settings row already exists for this user
+      const { data: existing, error: selectError } = await supabase
+        .from('user_settings')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (selectError) {
+        console.error('Error checking existing settings:', selectError);
+        return;
+      }
+      
+      if (existing) {
+        // Update existing row
+        const { error: updateError } = await supabase
+          .from('user_settings')
+          .update(dbUpdates)
+          .eq('id', existing.id);
+          
+        if (updateError) {
+          console.error('Error updating settings:', updateError);
+        } else {
+          console.log('Settings updated in database');
+        }
+      } else {
+        // Insert new row with user_id
+        const { error: insertError } = await supabase
+          .from('user_settings')
+          .insert({
+            user_id: userId,
+            ...dbUpdates
+          });
+          
+        if (insertError) {
+          console.error('Error inserting settings:', insertError);
+        } else {
+          console.log('Settings created in database');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save settings to database:', err);
+      // Settings are already saved to localStorage, so user won't lose data
+    }
+  }
+}, [supabase]);
+
+// ============================================================================
+// UPDATED loadSettings FUNCTION
+// Load settings from database or localStorage on app initialization
+// ============================================================================
+
+const loadSettings = async (): Promise<AppSettings> => {
+  // Start with localStorage settings as default
+  const localSettings = getLocalSettings();
+  
+  const defaultAppSettings: AppSettings = {
+    defaultUnits: localSettings.defaultUnits,
+    defaultCurrency: localSettings.defaultCurrency,
+    altitude: localSettings.altitude,
+    timezone: localSettings.timezone,
+    notifications: localSettings.notifications,
+  };
+
+  // Try to load from database if Supabase is configured
+  if (supabase) {
+    try {
+      const session = await ensureSession();
+      const userId = session?.user?.id;
+      
+      if (userId) {
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error loading settings from database:', error);
+          return defaultAppSettings;
+        }
+        
+        if (data) {
+          console.log('Settings loaded from database');
+          return {
+            defaultUnits: data.default_units as 'metric' | 'imperial',
+            defaultCurrency: data.default_currency,
+            altitude: data.altitude,
+            timezone: data.timezone,
+            notifications: {
+              enabled: data.notifications_enabled,
+              harvestReminders: data.harvest_reminders,
+              lowStockAlerts: data.low_stock_alerts,
+              contaminationAlerts: data.contamination_alerts,
+            },
+          };
+        } else {
+          // No settings in database yet, use localStorage and sync to DB
+          console.log('No database settings found, using localStorage');
+          // Optionally sync localStorage to database here
+        }
+      }
+    } catch (err) {
+      console.error('Error loading settings:', err);
+    }
+  }
+  
+  return defaultAppSettings;
+};
 
   // ============================================================================
   // CONTEXT VALUE
