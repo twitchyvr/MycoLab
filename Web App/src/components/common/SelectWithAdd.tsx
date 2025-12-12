@@ -56,33 +56,52 @@ export const SelectWithAdd: React.FC<SelectWithAddProps> = ({
   const [newItemName, setNewItemName] = useState('');
   const [addFormData, setAddFormData] = useState<Record<string, string>>({});
   const [isAdding, setIsAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const handleQuickAdd = async () => {
     if (!newItemName.trim() || isAdding) return;
+    setAddError(null);
     if (onAdd) {
       setIsAdding(true);
       try {
         await onAdd(newItemName.trim());
+        // Only close form and reset on success
+        setNewItemName('');
+        setShowAddForm(false);
+      } catch (error) {
+        console.error('Error adding new item:', error);
+        setAddError('Failed to add item. Please try again.');
+        // Keep form open so user can retry
       } finally {
         setIsAdding(false);
       }
+    } else {
+      setNewItemName('');
+      setShowAddForm(false);
     }
-    setNewItemName('');
-    setShowAddForm(false);
   };
 
   const handleFullAdd = async () => {
     if (isAdding) return;
+    setAddError(null);
     if (onAddComplete && addFormData.name?.trim()) {
       setIsAdding(true);
       try {
         await onAddComplete(addFormData);
+        // Only close form and reset on success
+        setAddFormData({});
+        setShowAddForm(false);
+      } catch (error) {
+        console.error('Error adding new item:', error);
+        setAddError('Failed to add item. Please try again.');
+        // Keep form open so user can retry
       } finally {
         setIsAdding(false);
       }
+    } else {
+      setAddFormData({});
+      setShowAddForm(false);
     }
-    setAddFormData({});
-    setShowAddForm(false);
   };
 
   const hasAddCapability = onAdd || onAddComplete;
@@ -128,6 +147,7 @@ export const SelectWithAdd: React.FC<SelectWithAddProps> = ({
                 setShowAddForm(false);
                 setNewItemName('');
                 setAddFormData({});
+                setAddError(null);
               }}
               className="text-zinc-400 hover:text-white"
             >
@@ -135,13 +155,23 @@ export const SelectWithAdd: React.FC<SelectWithAddProps> = ({
             </button>
           </div>
 
+          {/* Error message */}
+          {addError && (
+            <div className="mb-3 px-3 py-2 bg-red-950/50 border border-red-800 rounded text-red-400 text-xs">
+              {addError}
+            </div>
+          )}
+
           {/* Simple add (just name) */}
           {onAdd && !addFields && (
             <div className="flex gap-2">
               <input
                 type="text"
                 value={newItemName}
-                onChange={e => setNewItemName(e.target.value)}
+                onChange={e => {
+                  setNewItemName(e.target.value);
+                  if (addError) setAddError(null);
+                }}
                 placeholder="Name..."
                 autoFocus
                 className="flex-1 bg-zinc-700 border border-zinc-600 rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-emerald-500"
@@ -150,6 +180,7 @@ export const SelectWithAdd: React.FC<SelectWithAddProps> = ({
                   if (e.key === 'Escape') {
                     setShowAddForm(false);
                     setNewItemName('');
+                    setAddError(null);
                   }
                 }}
               />
@@ -182,13 +213,19 @@ export const SelectWithAdd: React.FC<SelectWithAddProps> = ({
                     <input
                       type="text"
                       value={addFormData[field.name] || ''}
-                      onChange={e => setAddFormData(prev => ({ ...prev, [field.name]: e.target.value }))}
+                      onChange={e => {
+                        setAddFormData(prev => ({ ...prev, [field.name]: e.target.value }));
+                        if (addError) setAddError(null);
+                      }}
                       className="w-full bg-zinc-700 border border-zinc-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-emerald-500"
                     />
                   ) : (
                     <select
                       value={addFormData[field.name] || ''}
-                      onChange={e => setAddFormData(prev => ({ ...prev, [field.name]: e.target.value }))}
+                      onChange={e => {
+                        setAddFormData(prev => ({ ...prev, [field.name]: e.target.value }));
+                        if (addError) setAddError(null);
+                      }}
                       className="w-full bg-zinc-700 border border-zinc-600 rounded px-2 py-1 text-white text-sm"
                     >
                       <option value="">Select...</option>
