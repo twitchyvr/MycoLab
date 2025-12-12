@@ -31,12 +31,46 @@ export interface Strain {
   isActive: boolean;
 }
 
+// Location type lookup (customizable dropdown)
+export interface LocationType {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  notes?: string;
+  isActive: boolean;
+}
+
+// Location classification lookup (customizable dropdown)
+export interface LocationClassification {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  notes?: string;
+  isActive: boolean;
+}
+
 export interface Location {
   id: string;
   name: string;
-  type: 'incubation' | 'fruiting' | 'storage' | 'lab' | 'other';
+  // Legacy type field (for backwards compatibility) - will be migrated to typeId
+  type?: 'incubation' | 'fruiting' | 'storage' | 'lab' | 'other';
+  // New customizable type reference
+  typeId?: string;
+  // New classification
+  classificationId?: string;
   tempRange?: { min: number; max: number };
   humidityRange?: { min: number; max: number };
+  // New fields for enhanced location tracking
+  hasPower?: boolean;
+  powerUsage?: string; // e.g., "120V", "240V", "None"
+  hasAirCirculation?: boolean;
+  size?: string; // e.g., "Small", "Medium", "Large" or dimensions
+  // Procurement tracking
+  supplierId?: string;
+  cost?: number;
+  procurementDate?: Date;
   notes?: string;
   isActive: boolean;
 }
@@ -447,6 +481,8 @@ export interface DataStoreState {
   species: Species[];
   strains: Strain[];
   locations: Location[];
+  locationTypes: LocationType[];
+  locationClassifications: LocationClassification[];
   vessels: Vessel[];
   containerTypes: ContainerType[];
   substrateTypes: SubstrateType[];
@@ -478,6 +514,8 @@ export interface LookupHelpers {
   getSpecies: (id: string) => Species | undefined;
   getStrain: (id: string) => Strain | undefined;
   getLocation: (id: string) => Location | undefined;
+  getLocationType: (id: string) => LocationType | undefined;
+  getLocationClassification: (id: string) => LocationClassification | undefined;
   getVessel: (id: string) => Vessel | undefined;
   getContainerType: (id: string) => ContainerType | undefined;
   getSubstrateType: (id: string) => SubstrateType | undefined;
@@ -496,6 +534,8 @@ export interface LookupHelpers {
   activeSpecies: Species[];
   activeStrains: Strain[];
   activeLocations: Location[];
+  activeLocationTypes: LocationType[];
+  activeLocationClassifications: LocationClassification[];
   activeVessels: Vessel[];
   activeContainerTypes: ContainerType[];
   activeSubstrateTypes: SubstrateType[];
