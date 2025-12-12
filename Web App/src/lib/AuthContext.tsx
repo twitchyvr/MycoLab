@@ -11,12 +11,25 @@ import { supabase, isSupabaseConfigured, ensureSession, isAnonymousUser } from '
 // TYPES
 // ============================================================================
 
+export interface UserProfile {
+  id: string;
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  is_admin: boolean;
+  is_active: boolean;
+  subscription_tier: 'free' | 'basic' | 'pro' | 'enterprise';
+  subscription_status: 'active' | 'cancelled' | 'expired' | 'trial';
+}
+
 export interface AuthState {
   user: User | null;
   session: Session | null;
+  profile: UserProfile | null;
   isLoading: boolean;
   isAnonymous: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
 }
 
 export interface AuthContextValue extends AuthState {
@@ -50,15 +63,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Auth state
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnonymous, setIsAnonymous] = useState(true);
-  
+
   // UI state
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup' | 'reset'>('login');
 
   // Derived state
   const isAuthenticated = !!user && !isAnonymous;
+  const isAdmin = profile?.is_admin ?? false;
+
+  // Fetch user profile from database
+  const fetchProfile = async (userId: string) => {
+    if (!supabase) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        // Profile might not exist yet for new users - that's ok
+        if (error.code !== 'PGRST116') {
+          console.error('Error fetching profile:', error);
+        }
+        return null;
+      }
+
+      return data as UserProfile;
+    } catch (err) {
+      console.error('Profile fetch error:', err);
+      return null;
+    }
+  };
 
   // ============================================================================
   // INITIALIZATION
@@ -75,11 +116,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         // Try to get existing session
         const { data: { session: existingSession } } = await supabase!.auth.getSession();
-        
+
         if (existingSession) {
           setSession(existingSession);
           setUser(existingSession.user);
           setIsAnonymous(existingSession.user.is_anonymous ?? false);
+
+          // Fetch profile for authenticated users
+          if (!existingSession.user.is_anonymous) {
+            const userProfile = await fetchProfile(existingSession.user.id);
+            setProfile(userProfile);
+          }
         } else {
           // No session - create anonymous session for data persistence
           const anonSession = await ensureSession();
@@ -102,14 +149,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data: { subscription } } = supabase!.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log('Auth state change:', event);
-        
+
         setSession(newSession);
         setUser(newSession?.user ?? null);
-        
+
         if (newSession?.user) {
           setIsAnonymous(newSession.user.is_anonymous ?? false);
+
+          // Fetch profile for authenticated users
+          if (!newSession.user.is_anonymous) {
+            const userProfile = await fetchProfile(newSession.user.id);
+            setProfile(userProfile);
+          } else {
+            setProfile(null);
+          }
         } else {
           setIsAnonymous(true);
+          setProfile(null);
         }
 
         // Close modal on successful auth
@@ -277,10 +333,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // State
     user,
     session,
+    profile,
     isLoading,
     isAnonymous,
     isAuthenticated,
-    
+    isAdmin,
+
     // Actions
     signUp,
     signIn,
@@ -289,7 +347,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     resetPassword,
     updatePassword,
     upgradeAnonymousAccount,
-    
+
     // UI state
     showAuthModal,
     setShowAuthModal,

@@ -84,13 +84,10 @@ const emptyState: DataStoreState = {
 // SUPABASE CLIENT HELPER
 // ============================================================================
 
+// Use the centralized supabase client from lib/supabase.ts
+// Security: No longer reading credentials from localStorage
 const getSupabaseClient = (): SupabaseClient | null => {
-  const url = localStorage.getItem('mycolab-supabase-url');
-  const key = localStorage.getItem('mycolab-supabase-key');
-  if (url && key) {
-    return createClient(url, key);
-  }
-  return null;
+  return supabase;
 };
 
 // ============================================================================

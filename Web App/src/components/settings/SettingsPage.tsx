@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../store';
+import { useAuth } from '../../lib/AuthContext';
 import type { Species, Strain, Location, Vessel, ContainerType, SubstrateType, Supplier, InventoryCategory, AppSettings } from '../../store/types';
 import { createClient } from '@supabase/supabase-js';
 
@@ -81,19 +82,24 @@ export const SettingsPage: React.FC = () => {
     addInventoryCategory, updateInventoryCategory, deleteInventoryCategory,
   } = useData();
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>('database');
+  const { isAdmin } = useAuth();
+
+  // Filter tabs based on admin status - non-admins can't see database config
+  const availableTabs = isAdmin
+    ? (Object.keys(tabConfig) as SettingsTab[])
+    : (Object.keys(tabConfig) as SettingsTab[]).filter(tab => tab !== 'database');
+
+  const [activeTab, setActiveTab] = useState<SettingsTab>(isAdmin ? 'database' : 'preferences');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Database state
-  const [dbUrl, setDbUrl] = useState(() => localStorage.getItem('mycolab-supabase-url') || '');
-  const [dbKey, setDbKey] = useState(() => localStorage.getItem('mycolab-supabase-key') || '');
-  const [dbTesting, setDbTesting] = useState(false);
+  // Database state (read-only status display for admins)
   const [tableStatuses, setTableStatuses] = useState<TableStatus[]>([]);
   const [schemaCopied, setSchemaCopied] = useState(false);
+  const [dbTesting, setDbTesting] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<any>({});
@@ -126,24 +132,22 @@ export const SettingsPage: React.FC = () => {
 
   const [writeTestResult, setWriteTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const testConnection = async () => {
-    if (!dbUrl || !dbKey) {
-      setError('Please enter both URL and API key');
-      return;
-    }
+  // Check database tables status (for admin monitoring)
+  const checkTableStatus = async () => {
+    if (!isConnected) return;
 
     setDbTesting(true);
-    setError(null);
     setTableStatuses([]);
-    setWriteTestResult(null);
 
     try {
-      const client = createClient(dbUrl, dbKey);
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) return;
+
       const statuses: TableStatus[] = [];
 
       for (const tableName of ALL_TABLES) {
         try {
-          const { count, error: selectError } = await client
+          const { count, error: selectError } = await supabase
             .from(tableName)
             .select('*', { count: 'exact', head: true });
 
@@ -172,85 +176,11 @@ export const SettingsPage: React.FC = () => {
       }
 
       setTableStatuses(statuses);
-
-      const existingTables = statuses.filter(s => s.exists);
-      const missingTables = statuses.filter(s => !s.exists);
-
-      if (existingTables.length === 0) {
-        setError('Connected but no tables found. Please run the schema SQL in Supabase SQL Editor.');
-      } else {
-        localStorage.setItem('mycolab-supabase-url', dbUrl);
-        localStorage.setItem('mycolab-supabase-key', dbKey);
-        localStorage.setItem('mycolab-last-sync', new Date().toISOString());
-        
-        if (missingTables.length > 0) {
-          setSuccess(`Connected! Found ${existingTables.length} tables. ${missingTables.length} tables missing.`);
-        } else {
-          setSuccess(`Connected! All ${existingTables.length} tables found.`);
-        }
-        await refreshData();
-      }
     } catch (err: any) {
-      setError(`Connection failed: ${err.message}`);
+      setError(`Status check failed: ${err.message}`);
     } finally {
       setDbTesting(false);
     }
-  };
-
-  // Test actual write permissions
-  const testWritePermissions = async () => {
-    if (!dbUrl || !dbKey) {
-      setError('Connect to database first');
-      return;
-    }
-
-    setWriteTestResult(null);
-    
-    try {
-      const client = createClient(dbUrl, dbKey);
-      
-      // Try to insert a test record into strains
-      const testName = `__test_${Date.now()}`;
-      const { data, error: insertError } = await client
-        .from('strains')
-        .insert({ name: testName, species: 'Test Species' })
-        .select()
-        .single();
-
-      if (insertError) {
-        setWriteTestResult({ 
-          success: false, 
-          message: `Write failed: ${insertError.message}. Make sure you've run the RLS policies from the schema SQL.` 
-        });
-        return;
-      }
-
-      // Clean up - delete the test record
-      if (data?.id) {
-        await client.from('strains').delete().eq('id', data.id);
-      }
-
-      setWriteTestResult({ 
-        success: true, 
-        message: 'Write permissions confirmed! Database is ready for use.' 
-      });
-      
-    } catch (err: any) {
-      setWriteTestResult({ 
-        success: false, 
-        message: `Write test error: ${err.message}` 
-      });
-    }
-  };
-
-  const clearCredentials = () => {
-    localStorage.removeItem('mycolab-supabase-url');
-    localStorage.removeItem('mycolab-supabase-key');
-    localStorage.removeItem('mycolab-last-sync');
-    setDbUrl('');
-    setDbKey('');
-    setTableStatuses([]);
-    setSuccess('Credentials cleared');
   };
 
   const copySchema = async () => {
@@ -533,89 +463,54 @@ export const SettingsPage: React.FC = () => {
 
   const renderDatabaseTab = () => (
     <div className="space-y-6">
-      {/* Connection Configuration */}
-      <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-        <div className="flex items-center gap-4 mb-4">
-          {isConnected ? (
-            <>
-              <div className="w-12 h-12 rounded-xl bg-emerald-950/50 border border-emerald-700 flex items-center justify-center text-emerald-400">
-                <Icons.Cloud />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-emerald-400">Connected to Supabase</h3>
-                <p className="text-sm text-zinc-500">Last sync: {localStorage.getItem('mycolab-last-sync') ? new Date(localStorage.getItem('mycolab-last-sync')!).toLocaleString() : 'Never'}</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-500">
-                <Icons.CloudOff />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-zinc-400">Not Connected</h3>
-                <p className="text-sm text-zinc-500">Configure your Supabase credentials below</p>
-              </div>
-            </>
-          )}
+      {/* Admin Notice */}
+      <div className="bg-amber-950/30 border border-amber-800 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <Icons.AlertCircle />
+          <div>
+            <p className="text-sm font-medium text-amber-300">Admin Only Section</p>
+            <p className="text-sm text-zinc-400 mt-1">
+              Database credentials are configured via environment variables at build time for security.
+              This section shows connection status and database health.
+            </p>
+          </div>
         </div>
+      </div>
 
-        <div className="grid gap-4">
-          <div>
-            <label className="block text-sm text-zinc-400 mb-2">Supabase Project URL</label>
-            <input
-              type="text"
-              value={dbUrl}
-              onChange={e => setDbUrl(e.target.value)}
-              placeholder="https://your-project.supabase.co"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-zinc-400 mb-2">API Key (anon/public)</label>
-            <input
-              type="password"
-              value={dbKey}
-              onChange={e => setDbKey(e.target.value)}
-              placeholder="Your Supabase anon key"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono text-sm placeholder-zinc-500"
-            />
-            <p className="text-xs text-zinc-500 mt-1">Found in Supabase → Settings → API → Project API keys → anon public</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={testConnection}
-              disabled={dbTesting || !dbUrl || !dbKey}
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium flex items-center gap-2"
-            >
-              {dbTesting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Testing...
-                </>
-              ) : (
-                <>
-                  <Icons.Refresh />
-                  Test & Connect
-                </>
-              )}
-            </button>
-            {dbUrl && (
-              <button
-                onClick={clearCredentials}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700"
-              >
-                Clear Credentials
-              </button>
+      {/* Connection Status */}
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            {isConnected ? (
+              <>
+                <div className="w-12 h-12 rounded-xl bg-emerald-950/50 border border-emerald-700 flex items-center justify-center text-emerald-400">
+                  <Icons.Cloud />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-emerald-400">Connected to Supabase</h3>
+                  <p className="text-sm text-zinc-500">Database is online and healthy</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-xl bg-red-950/50 border border-red-700 flex items-center justify-center text-red-400">
+                  <Icons.CloudOff />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-red-400">Not Connected</h3>
+                  <p className="text-sm text-zinc-500">Check environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY</p>
+                </div>
+              </>
             )}
-            <button
-              onClick={() => refreshData()}
-              disabled={!isConnected}
-              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white rounded-lg border border-zinc-700 flex items-center gap-2"
-            >
-              <Icons.Refresh />
-              Refresh Data
-            </button>
           </div>
+          <button
+            onClick={() => refreshData()}
+            disabled={!isConnected}
+            className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white rounded-lg border border-zinc-700 flex items-center gap-2"
+          >
+            <Icons.Refresh />
+            Refresh Data
+          </button>
         </div>
       </div>
 
@@ -653,26 +548,25 @@ export const SettingsPage: React.FC = () => {
             ))}
           </div>
           
-          {/* Write Test Section */}
+          {/* Check Status Button */}
           <div className="mt-4 pt-4 border-t border-zinc-800">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={testWritePermissions}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium flex items-center gap-2"
-              >
-                <Icons.Edit />
-                Test Write Permissions
-              </button>
-              {writeTestResult && (
-                <div className={`flex items-center gap-2 ${writeTestResult.success ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {writeTestResult.success ? <Icons.CheckCircle /> : <Icons.XCircle />}
-                  <span className="text-sm">{writeTestResult.message}</span>
-                </div>
+            <button
+              onClick={checkTableStatus}
+              disabled={dbTesting}
+              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white rounded-lg border border-zinc-700 flex items-center gap-2"
+            >
+              {dbTesting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Checking...
+                </>
+              ) : (
+                <>
+                  <Icons.Refresh />
+                  Refresh Table Status
+                </>
               )}
-            </div>
-            <p className="text-xs text-zinc-500 mt-2">
-              This will insert and delete a test record to verify write access. If it fails, you need to run the RLS policies from the schema SQL.
-            </p>
+            </button>
           </div>
         </div>
       )}
@@ -1270,7 +1164,7 @@ export const SettingsPage: React.FC = () => {
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-zinc-800 pb-4">
-        {(Object.keys(tabConfig) as SettingsTab[]).map(tab => (
+        {availableTabs.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}

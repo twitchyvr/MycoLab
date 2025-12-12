@@ -390,6 +390,37 @@ CREATE TABLE IF NOT EXISTS user_settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- User profiles (for role management - admin vs customer)
+CREATE TABLE IF NOT EXISTS user_profiles (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE NOT NULL,
+  email TEXT,
+  display_name TEXT,
+  is_admin BOOLEAN DEFAULT false,
+  is_active BOOLEAN DEFAULT true,
+  subscription_tier TEXT DEFAULT 'free' CHECK (subscription_tier IN ('free', 'basic', 'pro', 'enterprise')),
+  subscription_status TEXT DEFAULT 'active' CHECK (subscription_status IN ('active', 'cancelled', 'expired', 'trial')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Function to automatically create user profile on signup
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.user_profiles (user_id, email)
+  VALUES (NEW.id, NEW.email)
+  ON CONFLICT (user_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to create profile on user signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
 -- ============================================================================
 -- SCHEMA MIGRATIONS (Add columns that may be missing from older schemas)
 -- ============================================================================
@@ -477,239 +508,263 @@ ALTER TABLE recipe_categories ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- ROW LEVEL SECURITY POLICIES
--- Users can see: shared items (user_id IS NULL) + their own items (user_id = current user)
--- Users can only modify their own items (not shared defaults)
+-- SECURITY MODEL:
+-- - Users can only see and modify their own data (user_id = auth.uid())
+-- - Admins can see and modify all data
+-- - Lookup tables (species, strains, etc.) allow shared defaults (user_id IS NULL)
 -- ============================================================================
 
--- Species policies (shared + personal)
+-- Helper function to check if current user is admin
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM user_profiles
+    WHERE user_id = auth.uid() AND is_admin = true
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- User profiles policies (users can only see their own, admins see all)
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "user_profiles_select" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_insert" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_update" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_delete" ON user_profiles;
+CREATE POLICY "user_profiles_select" ON user_profiles FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "user_profiles_insert" ON user_profiles FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "user_profiles_update" ON user_profiles FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "user_profiles_delete" ON user_profiles FOR DELETE USING (is_admin());
+
+-- Species policies (shared defaults + user's own)
 DROP POLICY IF EXISTS "anon_species_select" ON species;
 DROP POLICY IF EXISTS "anon_species_insert" ON species;
 DROP POLICY IF EXISTS "anon_species_update" ON species;
 DROP POLICY IF EXISTS "anon_species_delete" ON species;
-CREATE POLICY "anon_species_select" ON species FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
-CREATE POLICY "anon_species_insert" ON species FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_species_update" ON species FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "anon_species_delete" ON species FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "species_select" ON species FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "species_insert" ON species FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "species_update" ON species FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "species_delete" ON species FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Strains policies (shared + personal)
+-- Strains policies (shared defaults + user's own)
 DROP POLICY IF EXISTS "anon_strains_select" ON strains;
 DROP POLICY IF EXISTS "anon_strains_insert" ON strains;
 DROP POLICY IF EXISTS "anon_strains_update" ON strains;
 DROP POLICY IF EXISTS "anon_strains_delete" ON strains;
-CREATE POLICY "anon_strains_select" ON strains FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
-CREATE POLICY "anon_strains_insert" ON strains FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_strains_update" ON strains FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "anon_strains_delete" ON strains FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "strains_select" ON strains FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "strains_insert" ON strains FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "strains_update" ON strains FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "strains_delete" ON strains FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Locations policies (shared + personal)
+-- Locations policies (user's own only)
 DROP POLICY IF EXISTS "anon_locations_select" ON locations;
 DROP POLICY IF EXISTS "anon_locations_insert" ON locations;
 DROP POLICY IF EXISTS "anon_locations_update" ON locations;
 DROP POLICY IF EXISTS "anon_locations_delete" ON locations;
-CREATE POLICY "anon_locations_select" ON locations FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
-CREATE POLICY "anon_locations_insert" ON locations FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_locations_update" ON locations FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "anon_locations_delete" ON locations FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "locations_select" ON locations FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "locations_insert" ON locations FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "locations_update" ON locations FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "locations_delete" ON locations FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Vessels policies (shared + personal)
+-- Vessels policies (shared defaults + user's own)
 DROP POLICY IF EXISTS "anon_vessels_select" ON vessels;
 DROP POLICY IF EXISTS "anon_vessels_insert" ON vessels;
 DROP POLICY IF EXISTS "anon_vessels_update" ON vessels;
 DROP POLICY IF EXISTS "anon_vessels_delete" ON vessels;
-CREATE POLICY "anon_vessels_select" ON vessels FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
-CREATE POLICY "anon_vessels_insert" ON vessels FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_vessels_update" ON vessels FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "anon_vessels_delete" ON vessels FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "vessels_select" ON vessels FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "vessels_insert" ON vessels FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "vessels_update" ON vessels FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "vessels_delete" ON vessels FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Container types policies (shared + personal)
+-- Container types policies (shared defaults + user's own)
 DROP POLICY IF EXISTS "anon_container_types_select" ON container_types;
 DROP POLICY IF EXISTS "anon_container_types_insert" ON container_types;
 DROP POLICY IF EXISTS "anon_container_types_update" ON container_types;
 DROP POLICY IF EXISTS "anon_container_types_delete" ON container_types;
-CREATE POLICY "anon_container_types_select" ON container_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
-CREATE POLICY "anon_container_types_insert" ON container_types FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_container_types_update" ON container_types FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "anon_container_types_delete" ON container_types FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "container_types_select" ON container_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "container_types_insert" ON container_types FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "container_types_update" ON container_types FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "container_types_delete" ON container_types FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Substrate types policies (shared + personal)
+-- Substrate types policies (shared defaults + user's own)
 DROP POLICY IF EXISTS "anon_substrate_types_select" ON substrate_types;
 DROP POLICY IF EXISTS "anon_substrate_types_insert" ON substrate_types;
 DROP POLICY IF EXISTS "anon_substrate_types_update" ON substrate_types;
 DROP POLICY IF EXISTS "anon_substrate_types_delete" ON substrate_types;
-CREATE POLICY "anon_substrate_types_select" ON substrate_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
-CREATE POLICY "anon_substrate_types_insert" ON substrate_types FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_substrate_types_update" ON substrate_types FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "anon_substrate_types_delete" ON substrate_types FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "substrate_types_select" ON substrate_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "substrate_types_insert" ON substrate_types FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "substrate_types_update" ON substrate_types FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "substrate_types_delete" ON substrate_types FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Suppliers policies (shared + personal)
+-- Suppliers policies (user's own only)
 DROP POLICY IF EXISTS "anon_suppliers_select" ON suppliers;
 DROP POLICY IF EXISTS "anon_suppliers_insert" ON suppliers;
 DROP POLICY IF EXISTS "anon_suppliers_update" ON suppliers;
 DROP POLICY IF EXISTS "anon_suppliers_delete" ON suppliers;
-CREATE POLICY "anon_suppliers_select" ON suppliers FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
-CREATE POLICY "anon_suppliers_insert" ON suppliers FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_suppliers_update" ON suppliers FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "anon_suppliers_delete" ON suppliers FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "suppliers_select" ON suppliers FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "suppliers_insert" ON suppliers FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "suppliers_update" ON suppliers FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "suppliers_delete" ON suppliers FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Inventory categories policies (shared + personal)
+-- Inventory categories policies (shared defaults + user's own)
 DROP POLICY IF EXISTS "anon_inventory_categories_select" ON inventory_categories;
 DROP POLICY IF EXISTS "anon_inventory_categories_insert" ON inventory_categories;
 DROP POLICY IF EXISTS "anon_inventory_categories_update" ON inventory_categories;
 DROP POLICY IF EXISTS "anon_inventory_categories_delete" ON inventory_categories;
-CREATE POLICY "anon_inventory_categories_select" ON inventory_categories FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
-CREATE POLICY "anon_inventory_categories_insert" ON inventory_categories FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_inventory_categories_update" ON inventory_categories FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "anon_inventory_categories_delete" ON inventory_categories FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "inventory_categories_select" ON inventory_categories FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_categories_insert" ON inventory_categories FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "inventory_categories_update" ON inventory_categories FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_categories_delete" ON inventory_categories FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Recipe categories policies (shared + personal)
+-- Recipe categories policies (shared defaults + user's own)
 DROP POLICY IF EXISTS "anon_recipe_categories_select" ON recipe_categories;
 DROP POLICY IF EXISTS "anon_recipe_categories_insert" ON recipe_categories;
 DROP POLICY IF EXISTS "anon_recipe_categories_update" ON recipe_categories;
 DROP POLICY IF EXISTS "anon_recipe_categories_delete" ON recipe_categories;
-CREATE POLICY "anon_recipe_categories_select" ON recipe_categories FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
-CREATE POLICY "anon_recipe_categories_insert" ON recipe_categories FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_recipe_categories_update" ON recipe_categories FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "anon_recipe_categories_delete" ON recipe_categories FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "recipe_categories_select" ON recipe_categories FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipe_categories_insert" ON recipe_categories FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "recipe_categories_update" ON recipe_categories FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipe_categories_delete" ON recipe_categories FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Inventory items policies
+-- Inventory items policies (user's own only - private data)
 DROP POLICY IF EXISTS "anon_inventory_items_select" ON inventory_items;
 DROP POLICY IF EXISTS "anon_inventory_items_insert" ON inventory_items;
 DROP POLICY IF EXISTS "anon_inventory_items_update" ON inventory_items;
 DROP POLICY IF EXISTS "anon_inventory_items_delete" ON inventory_items;
-CREATE POLICY "anon_inventory_items_select" ON inventory_items FOR SELECT USING (true);
-CREATE POLICY "anon_inventory_items_insert" ON inventory_items FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_inventory_items_update" ON inventory_items FOR UPDATE USING (true);
-CREATE POLICY "anon_inventory_items_delete" ON inventory_items FOR DELETE USING (true);
+CREATE POLICY "inventory_items_select" ON inventory_items FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_items_insert" ON inventory_items FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "inventory_items_update" ON inventory_items FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_items_delete" ON inventory_items FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Cultures policies
+-- Cultures policies (user's own only - private data)
 DROP POLICY IF EXISTS "anon_cultures_select" ON cultures;
 DROP POLICY IF EXISTS "anon_cultures_insert" ON cultures;
 DROP POLICY IF EXISTS "anon_cultures_update" ON cultures;
 DROP POLICY IF EXISTS "anon_cultures_delete" ON cultures;
-CREATE POLICY "anon_cultures_select" ON cultures FOR SELECT USING (true);
-CREATE POLICY "anon_cultures_insert" ON cultures FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_cultures_update" ON cultures FOR UPDATE USING (true);
-CREATE POLICY "anon_cultures_delete" ON cultures FOR DELETE USING (true);
+CREATE POLICY "cultures_select" ON cultures FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "cultures_insert" ON cultures FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "cultures_update" ON cultures FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "cultures_delete" ON cultures FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Culture observations policies
+-- Culture observations policies (user's own only)
 DROP POLICY IF EXISTS "anon_culture_observations_select" ON culture_observations;
 DROP POLICY IF EXISTS "anon_culture_observations_insert" ON culture_observations;
 DROP POLICY IF EXISTS "anon_culture_observations_update" ON culture_observations;
 DROP POLICY IF EXISTS "anon_culture_observations_delete" ON culture_observations;
-CREATE POLICY "anon_culture_observations_select" ON culture_observations FOR SELECT USING (true);
-CREATE POLICY "anon_culture_observations_insert" ON culture_observations FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_culture_observations_update" ON culture_observations FOR UPDATE USING (true);
-CREATE POLICY "anon_culture_observations_delete" ON culture_observations FOR DELETE USING (true);
+CREATE POLICY "culture_observations_select" ON culture_observations FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "culture_observations_insert" ON culture_observations FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "culture_observations_update" ON culture_observations FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "culture_observations_delete" ON culture_observations FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Culture transfers policies
+-- Culture transfers policies (user's own only)
 DROP POLICY IF EXISTS "anon_culture_transfers_select" ON culture_transfers;
 DROP POLICY IF EXISTS "anon_culture_transfers_insert" ON culture_transfers;
 DROP POLICY IF EXISTS "anon_culture_transfers_update" ON culture_transfers;
 DROP POLICY IF EXISTS "anon_culture_transfers_delete" ON culture_transfers;
-CREATE POLICY "anon_culture_transfers_select" ON culture_transfers FOR SELECT USING (true);
-CREATE POLICY "anon_culture_transfers_insert" ON culture_transfers FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_culture_transfers_update" ON culture_transfers FOR UPDATE USING (true);
-CREATE POLICY "anon_culture_transfers_delete" ON culture_transfers FOR DELETE USING (true);
+CREATE POLICY "culture_transfers_select" ON culture_transfers FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "culture_transfers_insert" ON culture_transfers FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "culture_transfers_update" ON culture_transfers FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "culture_transfers_delete" ON culture_transfers FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Grows policies
+-- Grows policies (user's own only - private data)
 DROP POLICY IF EXISTS "anon_grows_select" ON grows;
 DROP POLICY IF EXISTS "anon_grows_insert" ON grows;
 DROP POLICY IF EXISTS "anon_grows_update" ON grows;
 DROP POLICY IF EXISTS "anon_grows_delete" ON grows;
-CREATE POLICY "anon_grows_select" ON grows FOR SELECT USING (true);
-CREATE POLICY "anon_grows_insert" ON grows FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_grows_update" ON grows FOR UPDATE USING (true);
-CREATE POLICY "anon_grows_delete" ON grows FOR DELETE USING (true);
+CREATE POLICY "grows_select" ON grows FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grows_insert" ON grows FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "grows_update" ON grows FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grows_delete" ON grows FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Grow observations policies
+-- Grow observations policies (user's own only)
 DROP POLICY IF EXISTS "anon_grow_observations_select" ON grow_observations;
 DROP POLICY IF EXISTS "anon_grow_observations_insert" ON grow_observations;
 DROP POLICY IF EXISTS "anon_grow_observations_update" ON grow_observations;
 DROP POLICY IF EXISTS "anon_grow_observations_delete" ON grow_observations;
-CREATE POLICY "anon_grow_observations_select" ON grow_observations FOR SELECT USING (true);
-CREATE POLICY "anon_grow_observations_insert" ON grow_observations FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_grow_observations_update" ON grow_observations FOR UPDATE USING (true);
-CREATE POLICY "anon_grow_observations_delete" ON grow_observations FOR DELETE USING (true);
+CREATE POLICY "grow_observations_select" ON grow_observations FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grow_observations_insert" ON grow_observations FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "grow_observations_update" ON grow_observations FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grow_observations_delete" ON grow_observations FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Flushes policies
+-- Flushes policies (user's own only)
 DROP POLICY IF EXISTS "anon_flushes_select" ON flushes;
 DROP POLICY IF EXISTS "anon_flushes_insert" ON flushes;
 DROP POLICY IF EXISTS "anon_flushes_update" ON flushes;
 DROP POLICY IF EXISTS "anon_flushes_delete" ON flushes;
-CREATE POLICY "anon_flushes_select" ON flushes FOR SELECT USING (true);
-CREATE POLICY "anon_flushes_insert" ON flushes FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_flushes_update" ON flushes FOR UPDATE USING (true);
-CREATE POLICY "anon_flushes_delete" ON flushes FOR DELETE USING (true);
+CREATE POLICY "flushes_select" ON flushes FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "flushes_insert" ON flushes FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "flushes_update" ON flushes FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "flushes_delete" ON flushes FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Recipes policies
+-- Recipes policies (user's own only - private data)
 DROP POLICY IF EXISTS "anon_recipes_select" ON recipes;
 DROP POLICY IF EXISTS "anon_recipes_insert" ON recipes;
 DROP POLICY IF EXISTS "anon_recipes_update" ON recipes;
 DROP POLICY IF EXISTS "anon_recipes_delete" ON recipes;
-CREATE POLICY "anon_recipes_select" ON recipes FOR SELECT USING (true);
-CREATE POLICY "anon_recipes_insert" ON recipes FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_recipes_update" ON recipes FOR UPDATE USING (true);
-CREATE POLICY "anon_recipes_delete" ON recipes FOR DELETE USING (true);
+CREATE POLICY "recipes_select" ON recipes FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipes_insert" ON recipes FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "recipes_update" ON recipes FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipes_delete" ON recipes FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Recipe ingredients policies
+-- Recipe ingredients policies (user's own only)
 DROP POLICY IF EXISTS "anon_recipe_ingredients_select" ON recipe_ingredients;
 DROP POLICY IF EXISTS "anon_recipe_ingredients_insert" ON recipe_ingredients;
 DROP POLICY IF EXISTS "anon_recipe_ingredients_update" ON recipe_ingredients;
 DROP POLICY IF EXISTS "anon_recipe_ingredients_delete" ON recipe_ingredients;
-CREATE POLICY "anon_recipe_ingredients_select" ON recipe_ingredients FOR SELECT USING (true);
-CREATE POLICY "anon_recipe_ingredients_insert" ON recipe_ingredients FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_recipe_ingredients_update" ON recipe_ingredients FOR UPDATE USING (true);
-CREATE POLICY "anon_recipe_ingredients_delete" ON recipe_ingredients FOR DELETE USING (true);
+CREATE POLICY "recipe_ingredients_select" ON recipe_ingredients FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipe_ingredients_insert" ON recipe_ingredients FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "recipe_ingredients_update" ON recipe_ingredients FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipe_ingredients_delete" ON recipe_ingredients FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- User settings policies
+-- User settings policies (user's own only)
 DROP POLICY IF EXISTS "anon_user_settings_select" ON user_settings;
 DROP POLICY IF EXISTS "anon_user_settings_insert" ON user_settings;
 DROP POLICY IF EXISTS "anon_user_settings_update" ON user_settings;
 DROP POLICY IF EXISTS "anon_user_settings_delete" ON user_settings;
-CREATE POLICY "anon_user_settings_select" ON user_settings FOR SELECT USING (true);
-CREATE POLICY "anon_user_settings_insert" ON user_settings FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_user_settings_update" ON user_settings FOR UPDATE USING (true);
-CREATE POLICY "anon_user_settings_delete" ON user_settings FOR DELETE USING (true);
+CREATE POLICY "user_settings_select" ON user_settings FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "user_settings_insert" ON user_settings FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "user_settings_update" ON user_settings FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "user_settings_delete" ON user_settings FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Grain types policies (shared + personal)
+-- Grain types policies (shared defaults + user's own)
 DROP POLICY IF EXISTS "anon_grain_types_select" ON grain_types;
 DROP POLICY IF EXISTS "anon_grain_types_insert" ON grain_types;
 DROP POLICY IF EXISTS "anon_grain_types_update" ON grain_types;
 DROP POLICY IF EXISTS "anon_grain_types_delete" ON grain_types;
-CREATE POLICY "anon_grain_types_select" ON grain_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
-CREATE POLICY "anon_grain_types_insert" ON grain_types FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_grain_types_update" ON grain_types FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "anon_grain_types_delete" ON grain_types FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "grain_types_select" ON grain_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "grain_types_insert" ON grain_types FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "grain_types_update" ON grain_types FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grain_types_delete" ON grain_types FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Purchase orders policies
+-- Purchase orders policies (user's own only - private data)
 DROP POLICY IF EXISTS "anon_purchase_orders_select" ON purchase_orders;
 DROP POLICY IF EXISTS "anon_purchase_orders_insert" ON purchase_orders;
 DROP POLICY IF EXISTS "anon_purchase_orders_update" ON purchase_orders;
 DROP POLICY IF EXISTS "anon_purchase_orders_delete" ON purchase_orders;
-CREATE POLICY "anon_purchase_orders_select" ON purchase_orders FOR SELECT USING (true);
-CREATE POLICY "anon_purchase_orders_insert" ON purchase_orders FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_purchase_orders_update" ON purchase_orders FOR UPDATE USING (true);
-CREATE POLICY "anon_purchase_orders_delete" ON purchase_orders FOR DELETE USING (true);
+CREATE POLICY "purchase_orders_select" ON purchase_orders FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "purchase_orders_insert" ON purchase_orders FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "purchase_orders_update" ON purchase_orders FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "purchase_orders_delete" ON purchase_orders FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Inventory lots policies
+-- Inventory lots policies (user's own only)
 DROP POLICY IF EXISTS "anon_inventory_lots_select" ON inventory_lots;
 DROP POLICY IF EXISTS "anon_inventory_lots_insert" ON inventory_lots;
 DROP POLICY IF EXISTS "anon_inventory_lots_update" ON inventory_lots;
 DROP POLICY IF EXISTS "anon_inventory_lots_delete" ON inventory_lots;
-CREATE POLICY "anon_inventory_lots_select" ON inventory_lots FOR SELECT USING (true);
-CREATE POLICY "anon_inventory_lots_insert" ON inventory_lots FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_inventory_lots_update" ON inventory_lots FOR UPDATE USING (true);
-CREATE POLICY "anon_inventory_lots_delete" ON inventory_lots FOR DELETE USING (true);
+CREATE POLICY "inventory_lots_select" ON inventory_lots FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_lots_insert" ON inventory_lots FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "inventory_lots_update" ON inventory_lots FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_lots_delete" ON inventory_lots FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Inventory usages policies
+-- Inventory usages policies (user's own only)
 DROP POLICY IF EXISTS "anon_inventory_usages_select" ON inventory_usages;
 DROP POLICY IF EXISTS "anon_inventory_usages_insert" ON inventory_usages;
 DROP POLICY IF EXISTS "anon_inventory_usages_update" ON inventory_usages;
 DROP POLICY IF EXISTS "anon_inventory_usages_delete" ON inventory_usages;
-CREATE POLICY "anon_inventory_usages_select" ON inventory_usages FOR SELECT USING (true);
-CREATE POLICY "anon_inventory_usages_insert" ON inventory_usages FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_inventory_usages_update" ON inventory_usages FOR UPDATE USING (true);
-CREATE POLICY "anon_inventory_usages_delete" ON inventory_usages FOR DELETE USING (true);
+CREATE POLICY "inventory_usages_select" ON inventory_usages FOR SELECT USING (used_by = auth.uid() OR is_admin());
+CREATE POLICY "inventory_usages_insert" ON inventory_usages FOR INSERT WITH CHECK (used_by = auth.uid());
+CREATE POLICY "inventory_usages_update" ON inventory_usages FOR UPDATE USING (used_by = auth.uid() OR is_admin());
+CREATE POLICY "inventory_usages_delete" ON inventory_usages FOR DELETE USING (used_by = auth.uid() OR is_admin());
 
 -- ============================================================================
 -- TRIGGERS (using CREATE OR REPLACE for idempotency)
