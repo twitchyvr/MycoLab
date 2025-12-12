@@ -50,8 +50,16 @@ interface TurnstileCaptchaProps {
   siteKey?: string;
 }
 
-// Default site key from environment or fallback
-const DEFAULT_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAACGJVpzyaGRejFuL';
+// Cloudflare Turnstile test keys (for development)
+// See: https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+const TURNSTILE_TEST_KEYS = {
+  ALWAYS_PASSES: '1x00000000000000000000AA',
+  ALWAYS_FAILS: '2x00000000000000000000AB',
+  INTERACTIVE: '3x00000000000000000000FF',
+};
+
+// Default site key from environment, or use test key for development
+const DEFAULT_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || TURNSTILE_TEST_KEYS.ALWAYS_PASSES;
 
 // ============================================================================
 // COMPONENT
