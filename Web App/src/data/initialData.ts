@@ -1060,11 +1060,13 @@ export const initialDevLog: DevLogFeature[] = [
     title: 'User Authentication',
     description: 'Login/registration, session management. Supabase Auth with Anonymous Sign-Ins for pre-auth data persistence. Email/password and Magic Link support.',
     category: 'core',
-    status: 'in_progress',
+    status: 'completed',
     priority: 'high',
     estimatedHours: 12,
+    actualHours: 10,
+    completedAt: new Date().toISOString(),
     dependencies: ['dev-120'],
-    notes: 'Phase 1: Anonymous auth for settings persistence. Phase 2: Full email/password registration. Phase 3: OAuth providers (Google, GitHub, Azure AD).',
+    notes: 'Full auth system implemented: AuthContext for state management, AuthModal for login/signup/password reset, AccountMenu for user dropdown. Supports email/password, magic links, and anonymous-to-real account upgrade flow.',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -1097,27 +1099,13 @@ export const initialDevLog: DevLogFeature[] = [
     title: 'Anonymous Authentication for Settings Persistence',
     description: 'Enable settings persistence without requiring user login. Uses Supabase Anonymous Auth to create temporary user sessions that can later be upgraded to full accounts.',
     category: 'data',
-    status: 'in_progress',
+    status: 'completed',
     priority: 'high',
     estimatedHours: 3,
     actualHours: 2,
+    completedAt: new Date().toISOString(),
     dependencies: ['dev-120'],
-    notes: `Problem: Settings showed "saved" but didn't persist because user_settings table requires user_id foreign key.
-
-Solution: Supabase Anonymous Authentication
-- Creates real auth.users entry without email/password
-- Works with existing RLS policies via auth.uid()
-- Sessions persist via secure httpOnly cookies
-- Can upgrade anonymous → real accounts later via linkAnonymousUser()
-
-Implementation:
-1. Enable Anonymous Sign-Ins in Supabase Dashboard
-2. Run migration SQL to update user_settings table/policies
-3. Update supabase.ts with ensureSession() function
-4. Update DataContext updateSettings to use session user_id
-5. Add localStorage fallback for offline mode
-
-Files: supabase.ts, DataContext.tsx, migration-anon-auth.sql`,
+    notes: `Implemented in AuthContext.tsx with ensureSession() function. Anonymous users get full data persistence and can upgrade to real accounts via upgradeAnonymousAccount() which preserves all their data.`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },

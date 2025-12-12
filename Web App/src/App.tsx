@@ -4,6 +4,8 @@
 
 import React, { useState, createContext, useContext, useEffect } from 'react';
 import { DataProvider, useData } from './store';
+import { AuthProvider } from './lib/AuthContext';
+import { AuthModal, AccountMenu } from './components/auth';
 import DevLogPage from './components/devlog/DevLogPage';
 import type { 
   AppState, 
@@ -414,6 +416,8 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
             <span className="hidden sm:inline">{newAction.label}</span>
           </button>
         )}
+        {/* Account Menu */}
+        <AccountMenu />
       </div>
     </header>
   );
@@ -803,20 +807,23 @@ const App: React.FC = () => {
   };
 
   return (
-    <DataProvider>
-      <AppContext.Provider value={contextValue}>
-        <AppContent 
-          showSetup={showSetup}
-          setShowSetup={setShowSetup}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          renderPage={renderPage}
-          pageConfig={pageConfig}
-        />
-      </AppContext.Provider>
-    </DataProvider>
+    <AuthProvider>
+      <DataProvider>
+        <AppContext.Provider value={contextValue}>
+          <AuthModal />
+          <AppContent 
+            showSetup={showSetup}
+            setShowSetup={setShowSetup}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            renderPage={renderPage}
+            pageConfig={pageConfig}
+          />
+        </AppContext.Provider>
+      </DataProvider>
+    </AuthProvider>
   );
 };
 
