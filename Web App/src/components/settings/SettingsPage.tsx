@@ -6,14 +6,15 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../store';
 import { useAuth } from '../../lib/AuthContext';
-import type { Species, Strain, Location, Vessel, ContainerType, SubstrateType, Supplier, InventoryCategory, AppSettings } from '../../store/types';
+import type { Species, Strain, Location, LocationType, LocationClassification, Vessel, ContainerType, SubstrateType, Supplier, InventoryCategory, AppSettings } from '../../store/types';
 import { createClient } from '@supabase/supabase-js';
+import { SelectWithAdd } from '../common/SelectWithAdd';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-type SettingsTab = 'database' | 'species' | 'strains' | 'locations' | 'vessels' | 'containers' | 'substrates' | 'suppliers' | 'categories' | 'preferences';
+type SettingsTab = 'database' | 'species' | 'strains' | 'locations' | 'locationTypes' | 'locationClassifications' | 'vessels' | 'containers' | 'substrates' | 'suppliers' | 'categories' | 'preferences';
 
 interface TableStatus {
   name: string;
@@ -47,6 +48,8 @@ const tabConfig: Record<SettingsTab, { label: string; icon: string }> = {
   species: { label: 'Species', icon: '🧬' },
   strains: { label: 'Strains', icon: '🍄' },
   locations: { label: 'Locations', icon: '📍' },
+  locationTypes: { label: 'Loc Types', icon: '🏷️' },
+  locationClassifications: { label: 'Loc Classes', icon: '📂' },
   vessels: { label: 'Vessels', icon: '🧪' },
   containers: { label: 'Containers', icon: '📦' },
   substrates: { label: 'Substrates', icon: '🌱' },
@@ -75,11 +78,16 @@ export const SettingsPage: React.FC = () => {
     addSpecies, updateSpecies, deleteSpecies,
     addStrain, updateStrain, deleteStrain,
     addLocation, updateLocation, deleteLocation,
+    addLocationType, updateLocationType, deleteLocationType,
+    addLocationClassification, updateLocationClassification, deleteLocationClassification,
     addSupplier, updateSupplier, deleteSupplier,
     addVessel, updateVessel, deleteVessel,
     addContainerType, updateContainerType, deleteContainerType,
     addSubstrateType, updateSubstrateType, deleteSubstrateType,
     addInventoryCategory, updateInventoryCategory, deleteInventoryCategory,
+    activeLocationTypes,
+    activeLocationClassifications,
+    activeSuppliers,
   } = useData();
 
   const { isAdmin } = useAuth();
@@ -218,7 +226,27 @@ export const SettingsPage: React.FC = () => {
       case 'strains':
         return { name: '', species: '', difficulty: 'intermediate', colonizationDaysMin: 14, colonizationDaysMax: 21, fruitingDaysMin: 7, fruitingDaysMax: 14, notes: '' };
       case 'locations':
-        return { name: '', type: 'storage', tempMin: '', tempMax: '', humidityMin: '', humidityMax: '', notes: '' };
+        return {
+          name: '',
+          typeId: '',
+          classificationId: '',
+          tempMin: '',
+          tempMax: '',
+          humidityMin: '',
+          humidityMax: '',
+          hasPower: false,
+          powerUsage: '',
+          hasAirCirculation: false,
+          size: '',
+          supplierId: '',
+          cost: '',
+          procurementDate: '',
+          notes: ''
+        };
+      case 'locationTypes':
+        return { name: '', code: '', description: '', notes: '' };
+      case 'locationClassifications':
+        return { name: '', code: '', description: '', notes: '' };
       case 'vessels':
         return { name: '', type: 'jar', volumeMl: '', isReusable: true, notes: '' };
       case 'containers':
@@ -250,7 +278,27 @@ export const SettingsPage: React.FC = () => {
           notes: item.notes || '',
         };
       case 'locations':
-        return { name: item.name || '', type: item.type || 'storage', tempMin: item.tempRange?.min ?? '', tempMax: item.tempRange?.max ?? '', humidityMin: item.humidityRange?.min ?? '', humidityMax: item.humidityRange?.max ?? '', notes: item.notes || '' };
+        return {
+          name: item.name || '',
+          typeId: item.typeId || '',
+          classificationId: item.classificationId || '',
+          tempMin: item.tempRange?.min ?? '',
+          tempMax: item.tempRange?.max ?? '',
+          humidityMin: item.humidityRange?.min ?? '',
+          humidityMax: item.humidityRange?.max ?? '',
+          hasPower: item.hasPower ?? false,
+          powerUsage: item.powerUsage || '',
+          hasAirCirculation: item.hasAirCirculation ?? false,
+          size: item.size || '',
+          supplierId: item.supplierId || '',
+          cost: item.cost ?? '',
+          procurementDate: item.procurementDate ? new Date(item.procurementDate).toISOString().split('T')[0] : '',
+          notes: item.notes || ''
+        };
+      case 'locationTypes':
+        return { name: item.name || '', code: item.code || '', description: item.description || '', notes: item.notes || '' };
+      case 'locationClassifications':
+        return { name: item.name || '', code: item.code || '', description: item.description || '', notes: item.notes || '' };
       case 'vessels':
         return { name: item.name || '', type: item.type || 'jar', volumeMl: item.volumeMl || '', isReusable: item.isReusable ?? true, notes: item.notes || '' };
       case 'containers':
@@ -320,9 +368,17 @@ export const SettingsPage: React.FC = () => {
         case 'locations':
           const locationData = {
             name: formData.name.trim(),
-            type: formData.type as Location['type'],
+            typeId: formData.typeId || undefined,
+            classificationId: formData.classificationId || undefined,
             tempRange: formData.tempMin !== '' && formData.tempMax !== '' ? { min: Number(formData.tempMin), max: Number(formData.tempMax) } : undefined,
             humidityRange: formData.humidityMin !== '' && formData.humidityMax !== '' ? { min: Number(formData.humidityMin), max: Number(formData.humidityMax) } : undefined,
+            hasPower: formData.hasPower ?? false,
+            powerUsage: formData.powerUsage?.trim() || undefined,
+            hasAirCirculation: formData.hasAirCirculation ?? false,
+            size: formData.size?.trim() || undefined,
+            supplierId: formData.supplierId || undefined,
+            cost: formData.cost !== '' ? Number(formData.cost) : undefined,
+            procurementDate: formData.procurementDate ? new Date(formData.procurementDate) : undefined,
             notes: formData.notes?.trim() || undefined,
             isActive: true,
           };
@@ -332,6 +388,40 @@ export const SettingsPage: React.FC = () => {
           } else {
             await addLocation(locationData);
             setSuccess('Location added');
+          }
+          break;
+
+        case 'locationTypes':
+          const locationTypeData = {
+            name: formData.name.trim(),
+            code: formData.code?.trim() || formData.name.toLowerCase().replace(/\s+/g, '_'),
+            description: formData.description?.trim() || undefined,
+            notes: formData.notes?.trim() || undefined,
+            isActive: true,
+          };
+          if (editingItem) {
+            await updateLocationType(editingItem.id, locationTypeData);
+            setSuccess('Location type updated');
+          } else {
+            await addLocationType(locationTypeData);
+            setSuccess('Location type added');
+          }
+          break;
+
+        case 'locationClassifications':
+          const locationClassData = {
+            name: formData.name.trim(),
+            code: formData.code?.trim() || formData.name.toLowerCase().replace(/\s+/g, '_'),
+            description: formData.description?.trim() || undefined,
+            notes: formData.notes?.trim() || undefined,
+            isActive: true,
+          };
+          if (editingItem) {
+            await updateLocationClassification(editingItem.id, locationClassData);
+            setSuccess('Location classification updated');
+          } else {
+            await addLocationClassification(locationClassData);
+            setSuccess('Location classification added');
           }
           break;
 
@@ -445,6 +535,8 @@ export const SettingsPage: React.FC = () => {
         case 'species': await deleteSpecies(id); break;
         case 'strains': await deleteStrain(id); break;
         case 'locations': await deleteLocation(id); break;
+        case 'locationTypes': await deleteLocationType(id); break;
+        case 'locationClassifications': await deleteLocationClassification(id); break;
         case 'suppliers': await deleteSupplier(id); break;
         case 'vessels': deleteVessel(id); break;
         case 'containers': deleteContainerType(id); break;
@@ -726,16 +818,57 @@ export const SettingsPage: React.FC = () => {
         return (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <p className="text-zinc-400">Lab areas and growing spaces</p>
+              <p className="text-zinc-400">Lab areas and growing spaces with procurement tracking</p>
               <button onClick={() => openAddModal('locations')} className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium flex items-center gap-2">
                 <Icons.Plus /> Add Location
               </button>
             </div>
             {renderDataTable(state.locations, [
               { key: 'name', label: 'Name' },
-              { key: 'type', label: 'Type', render: (item) => <span className="capitalize">{item.type}</span> },
-              { key: 'tempRange', label: 'Temp Range', render: (item) => item.tempRange ? `${item.tempRange.min}-${item.tempRange.max}°C` : '-' },
-              { key: 'humidityRange', label: 'Humidity', render: (item) => item.humidityRange ? `${item.humidityRange.min}-${item.humidityRange.max}%` : '-' },
+              { key: 'typeId', label: 'Type', render: (item) => {
+                const locType = state.locationTypes.find(lt => lt.id === item.typeId);
+                return <span className="capitalize">{locType?.name || item.type || '-'}</span>;
+              }},
+              { key: 'classificationId', label: 'Class', render: (item) => {
+                const locClass = state.locationClassifications.find(lc => lc.id === item.classificationId);
+                return <span className="capitalize">{locClass?.name || '-'}</span>;
+              }},
+              { key: 'tempRange', label: 'Temp', render: (item) => item.tempRange ? `${item.tempRange.min}-${item.tempRange.max}°C` : '-' },
+              { key: 'hasPower', label: 'Power', render: (item) => item.hasPower ? <span className="text-emerald-400">✓</span> : <span className="text-zinc-500">✗</span> },
+            ])}
+          </div>
+        );
+
+      case 'locationTypes':
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <p className="text-zinc-400">Customizable location types (incubation, fruiting, storage, etc.)</p>
+              <button onClick={() => openAddModal('locationTypes')} className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                <Icons.Plus /> Add Type
+              </button>
+            </div>
+            {renderDataTable(state.locationTypes, [
+              { key: 'name', label: 'Name' },
+              { key: 'code', label: 'Code' },
+              { key: 'description', label: 'Description' },
+            ])}
+          </div>
+        );
+
+      case 'locationClassifications':
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <p className="text-zinc-400">Customizable location classifications (indoor, greenhouse, etc.)</p>
+              <button onClick={() => openAddModal('locationClassifications')} className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                <Icons.Plus /> Add Classification
+              </button>
+            </div>
+            {renderDataTable(state.locationClassifications, [
+              { key: 'name', label: 'Name' },
+              { key: 'code', label: 'Code' },
+              { key: 'description', label: 'Description' },
             ])}
           </div>
         );
@@ -951,15 +1084,31 @@ export const SettingsPage: React.FC = () => {
                 <label className="block text-sm text-zinc-400 mb-1">Name *</label>
                 <input type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" autoFocus />
               </div>
-              <div>
-                <label className="block text-sm text-zinc-400 mb-1">Type</label>
-                <select value={formData.type || 'storage'} onChange={e => setFormData({ ...formData, type: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white">
-                  <option value="incubation">Incubation</option>
-                  <option value="fruiting">Fruiting</option>
-                  <option value="storage">Storage</option>
-                  <option value="lab">Lab</option>
-                  <option value="other">Other</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <SelectWithAdd
+                  value={formData.typeId || ''}
+                  onChange={(value) => setFormData({ ...formData, typeId: value })}
+                  options={activeLocationTypes}
+                  label="Type"
+                  placeholder="Select type..."
+                  addLabel="Add Location Type"
+                  onAdd={async (name) => {
+                    const newType = await addLocationType({ name, code: name.toLowerCase().replace(/\s+/g, '_'), isActive: true });
+                    setFormData({ ...formData, typeId: newType.id });
+                  }}
+                />
+                <SelectWithAdd
+                  value={formData.classificationId || ''}
+                  onChange={(value) => setFormData({ ...formData, classificationId: value })}
+                  options={activeLocationClassifications}
+                  label="Classification"
+                  placeholder="Select classification..."
+                  addLabel="Add Classification"
+                  onAdd={async (name) => {
+                    const newClass = await addLocationClassification({ name, code: name.toLowerCase().replace(/\s+/g, '_'), isActive: true });
+                    setFormData({ ...formData, classificationId: newClass.id });
+                  }}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -970,6 +1119,111 @@ export const SettingsPage: React.FC = () => {
                   <label className="block text-sm text-zinc-400 mb-1">Temp Max (°C)</label>
                   <input type="number" value={formData.tempMax ?? ''} onChange={e => setFormData({ ...formData, tempMax: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-1">Humidity Min (%)</label>
+                  <input type="number" value={formData.humidityMin ?? ''} onChange={e => setFormData({ ...formData, humidityMin: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-1">Humidity Max (%)</label>
+                  <input type="number" value={formData.humidityMax ?? ''} onChange={e => setFormData({ ...formData, humidityMax: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="hasPower" checked={formData.hasPower ?? false} onChange={e => setFormData({ ...formData, hasPower: e.target.checked })} className="w-4 h-4 rounded" />
+                  <label htmlFor="hasPower" className="text-sm text-zinc-400">Has Power</label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="hasAirCirculation" checked={formData.hasAirCirculation ?? false} onChange={e => setFormData({ ...formData, hasAirCirculation: e.target.checked })} className="w-4 h-4 rounded" />
+                  <label htmlFor="hasAirCirculation" className="text-sm text-zinc-400">Air Circulation</label>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-1">Power Usage</label>
+                  <input type="text" value={formData.powerUsage || ''} onChange={e => setFormData({ ...formData, powerUsage: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" placeholder="e.g., 120V, 240V" />
+                </div>
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-1">Size</label>
+                  <input type="text" value={formData.size || ''} onChange={e => setFormData({ ...formData, size: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" placeholder="e.g., Small, 4x4ft" />
+                </div>
+              </div>
+              <div className="border-t border-zinc-700 pt-4 mt-4">
+                <h4 className="text-sm font-medium text-zinc-300 mb-3">Procurement Details</h4>
+                <div className="space-y-4">
+                  <SelectWithAdd
+                    value={formData.supplierId || ''}
+                    onChange={(value) => setFormData({ ...formData, supplierId: value })}
+                    options={activeSuppliers}
+                    label="Supplier/Source"
+                    placeholder="Select supplier..."
+                    addLabel="Add Supplier"
+                    onAdd={async (name) => {
+                      const newSupplier = await addSupplier({ name, isActive: true });
+                      setFormData({ ...formData, supplierId: newSupplier.id });
+                    }}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-zinc-400 mb-1">Cost</label>
+                      <input type="number" step="0.01" value={formData.cost ?? ''} onChange={e => setFormData({ ...formData, cost: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" placeholder="0.00" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-zinc-400 mb-1">Procurement Date</label>
+                      <input type="date" value={formData.procurementDate || ''} onChange={e => setFormData({ ...formData, procurementDate: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Notes</label>
+                <textarea value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} rows={2} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white resize-none" />
+              </div>
+            </div>
+          );
+
+        case 'locationTypes':
+          return (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Name *</label>
+                <input type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" autoFocus placeholder="e.g., Incubation Chamber" />
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Code</label>
+                <input type="text" value={formData.code || ''} onChange={e => setFormData({ ...formData, code: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono" placeholder="e.g., incubation_chamber" />
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Description</label>
+                <textarea value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={2} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white resize-none" />
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Notes</label>
+                <textarea value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} rows={2} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white resize-none" />
+              </div>
+            </div>
+          );
+
+        case 'locationClassifications':
+          return (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Name *</label>
+                <input type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" autoFocus placeholder="e.g., Greenhouse" />
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Code</label>
+                <input type="text" value={formData.code || ''} onChange={e => setFormData({ ...formData, code: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono" placeholder="e.g., greenhouse" />
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Description</label>
+                <textarea value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={2} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white resize-none" />
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Notes</label>
+                <textarea value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} rows={2} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white resize-none" />
               </div>
             </div>
           );
