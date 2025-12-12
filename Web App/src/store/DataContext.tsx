@@ -7,7 +7,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
   DataStoreState, LookupHelpers,
-  Species, Strain, Location, Vessel, ContainerType, SubstrateType, Supplier,
+  Species, Strain, Location, LocationType, LocationClassification, Vessel, ContainerType, SubstrateType, Supplier,
   InventoryCategory, InventoryItem, InventoryLot, InventoryUsage, PurchaseOrder, PurchaseOrderItem,
   Culture, Grow, Recipe, AppSettings,
   CultureObservation, CultureTransfer, GrowObservation, Flush, GrowStage,
@@ -48,10 +48,36 @@ const defaultGrainTypes: GrainType[] = [
   { id: 'default-sorghum', name: 'Sorghum', code: 'sorghum', isActive: true },
 ];
 
+// Default location types (built-in, customizable by user)
+const defaultLocationTypes: LocationType[] = [
+  { id: 'default-incubation', name: 'Incubation', code: 'incubation', description: 'Warm, dark area for colonization', isActive: true },
+  { id: 'default-fruiting', name: 'Fruiting', code: 'fruiting', description: 'Humid environment with FAE for pinning and growth', isActive: true },
+  { id: 'default-storage', name: 'Storage', code: 'storage', description: 'General storage area', isActive: true },
+  { id: 'default-lab', name: 'Lab', code: 'lab', description: 'Clean lab area for sterile work', isActive: true },
+  { id: 'default-cold-storage', name: 'Cold Storage', code: 'cold_storage', description: 'Refrigerated storage for cultures and supplies', isActive: true },
+  { id: 'default-drying', name: 'Drying', code: 'drying', description: 'Area for drying harvested mushrooms', isActive: true },
+  { id: 'default-other', name: 'Other', code: 'other', description: 'Other location type', isActive: true },
+];
+
+// Default location classifications (built-in, customizable by user)
+const defaultLocationClassifications: LocationClassification[] = [
+  { id: 'default-clean-room', name: 'Clean Room', code: 'clean_room', description: 'Sterile/clean environment', isActive: true },
+  { id: 'default-greenhouse', name: 'Greenhouse', code: 'greenhouse', description: 'Greenhouse or grow tent', isActive: true },
+  { id: 'default-indoor', name: 'Indoor', code: 'indoor', description: 'Indoor room or closet', isActive: true },
+  { id: 'default-outdoor', name: 'Outdoor', code: 'outdoor', description: 'Outdoor growing area', isActive: true },
+  { id: 'default-basement', name: 'Basement', code: 'basement', description: 'Basement or cellar', isActive: true },
+  { id: 'default-garage', name: 'Garage', code: 'garage', description: 'Garage or workshop', isActive: true },
+  { id: 'default-shed', name: 'Shed', code: 'shed', description: 'Outdoor shed or outbuilding', isActive: true },
+  { id: 'default-tent', name: 'Grow Tent', code: 'grow_tent', description: 'Enclosed grow tent', isActive: true },
+  { id: 'default-chamber', name: 'Fruiting Chamber', code: 'fruiting_chamber', description: 'Dedicated fruiting chamber (SGFC, monotub, etc.)', isActive: true },
+];
+
 const emptyState: DataStoreState = {
   species: [],
   strains: [],
   locations: [],
+  locationTypes: [...defaultLocationTypes],
+  locationClassifications: [...defaultLocationClassifications],
   vessels: [],
   containerTypes: [],
   substrateTypes: [],
@@ -136,13 +162,62 @@ const transformStrainToDb = (strain: Partial<Strain>, userId?: string | null) =>
   ...(userId && { user_id: userId }),
 });
 
+// Transform LocationType from DB format
+const transformLocationTypeFromDb = (row: any): LocationType => ({
+  id: row.id,
+  name: row.name,
+  code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
+  description: row.description,
+  notes: row.notes,
+  isActive: row.is_active ?? true,
+});
+
+// Transform LocationType to DB format
+const transformLocationTypeToDb = (lt: Partial<LocationType>, userId?: string | null) => ({
+  name: lt.name,
+  code: lt.code,
+  description: lt.description,
+  notes: lt.notes,
+  is_active: lt.isActive,
+  ...(userId && { user_id: userId }),
+});
+
+// Transform LocationClassification from DB format
+const transformLocationClassificationFromDb = (row: any): LocationClassification => ({
+  id: row.id,
+  name: row.name,
+  code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
+  description: row.description,
+  notes: row.notes,
+  isActive: row.is_active ?? true,
+});
+
+// Transform LocationClassification to DB format
+const transformLocationClassificationToDb = (lc: Partial<LocationClassification>, userId?: string | null) => ({
+  name: lc.name,
+  code: lc.code,
+  description: lc.description,
+  notes: lc.notes,
+  is_active: lc.isActive,
+  ...(userId && { user_id: userId }),
+});
+
 // Transform Location from DB format
 const transformLocationFromDb = (row: any): Location => ({
   id: row.id,
   name: row.name,
-  type: row.type || 'storage',
+  type: row.type || undefined,
+  typeId: row.type_id,
+  classificationId: row.classification_id,
   tempRange: row.temp_min || row.temp_max ? { min: row.temp_min, max: row.temp_max } : undefined,
   humidityRange: row.humidity_min || row.humidity_max ? { min: row.humidity_min, max: row.humidity_max } : undefined,
+  hasPower: row.has_power,
+  powerUsage: row.power_usage,
+  hasAirCirculation: row.has_air_circulation,
+  size: row.size,
+  supplierId: row.supplier_id,
+  cost: row.cost ? parseFloat(row.cost) : undefined,
+  procurementDate: row.procurement_date ? new Date(row.procurement_date) : undefined,
   notes: row.notes,
   isActive: row.is_active ?? true,
 });
@@ -151,10 +226,19 @@ const transformLocationFromDb = (row: any): Location => ({
 const transformLocationToDb = (location: Partial<Location>, userId?: string | null) => ({
   name: location.name,
   type: location.type,
+  type_id: location.typeId,
+  classification_id: location.classificationId,
   temp_min: location.tempRange?.min,
   temp_max: location.tempRange?.max,
   humidity_min: location.humidityRange?.min,
   humidity_max: location.humidityRange?.max,
+  has_power: location.hasPower,
+  power_usage: location.powerUsage,
+  has_air_circulation: location.hasAirCirculation,
+  size: location.size,
+  supplier_id: location.supplierId,
+  cost: location.cost,
+  procurement_date: location.procurementDate?.toISOString(),
   notes: location.notes,
   is_active: location.isActive,
   ...(userId && { user_id: userId }),
@@ -609,7 +693,17 @@ interface DataContextValue extends LookupHelpers {
   addLocation: (location: Omit<Location, 'id'>) => Promise<Location>;
   updateLocation: (id: string, updates: Partial<Location>) => Promise<void>;
   deleteLocation: (id: string) => Promise<void>;
-  
+
+  // Location Type CRUD
+  addLocationType: (locationType: Omit<LocationType, 'id'>) => Promise<LocationType>;
+  updateLocationType: (id: string, updates: Partial<LocationType>) => Promise<void>;
+  deleteLocationType: (id: string) => Promise<void>;
+
+  // Location Classification CRUD
+  addLocationClassification: (classification: Omit<LocationClassification, 'id'>) => Promise<LocationClassification>;
+  updateLocationClassification: (id: string, updates: Partial<LocationClassification>) => Promise<void>;
+  deleteLocationClassification: (id: string) => Promise<void>;
+
   // Vessel CRUD
   addVessel: (vessel: Omit<Vessel, 'id'>) => Promise<Vessel>;
   updateVessel: (id: string, updates: Partial<Vessel>) => Promise<void>;
@@ -947,6 +1041,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const getSpecies = useCallback((id: string) => state.species.find(s => s.id === id), [state.species]);
   const getStrain = useCallback((id: string) => state.strains.find(s => s.id === id), [state.strains]);
   const getLocation = useCallback((id: string) => state.locations.find(l => l.id === id), [state.locations]);
+  const getLocationType = useCallback((id: string) => state.locationTypes.find(lt => lt.id === id), [state.locationTypes]);
+  const getLocationClassification = useCallback((id: string) => state.locationClassifications.find(lc => lc.id === id), [state.locationClassifications]);
   const getVessel = useCallback((id: string) => state.vessels.find(v => v.id === id), [state.vessels]);
   const getContainerType = useCallback((id: string) => state.containerTypes.find(c => c.id === id), [state.containerTypes]);
   const getSubstrateType = useCallback((id: string) => state.substrateTypes.find(s => s.id === id), [state.substrateTypes]);
@@ -965,6 +1061,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const activeSpecies = useMemo(() => state.species.filter(s => s.isActive), [state.species]);
   const activeStrains = useMemo(() => state.strains.filter(s => s.isActive), [state.strains]);
   const activeLocations = useMemo(() => state.locations.filter(l => l.isActive), [state.locations]);
+  const activeLocationTypes = useMemo(() => state.locationTypes.filter(lt => lt.isActive), [state.locationTypes]);
+  const activeLocationClassifications = useMemo(() => state.locationClassifications.filter(lc => lc.isActive), [state.locationClassifications]);
   const activeVessels = useMemo(() => state.vessels.filter(v => v.isActive), [state.vessels]);
   const activeContainerTypes = useMemo(() => state.containerTypes.filter(c => c.isActive), [state.containerTypes]);
   const activeSubstrateTypes = useMemo(() => state.substrateTypes.filter(s => s.isActive), [state.substrateTypes]);
@@ -1162,13 +1260,127 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .from('locations')
         .update({ is_active: false })
         .eq('id', id);
-      
+
       if (error) throw error;
     }
-    
+
     setState(prev => ({
       ...prev,
       locations: prev.locations.map(l => l.id === id ? { ...l, isActive: false } : l)
+    }));
+  }, [supabase]);
+
+  // ============================================================================
+  // LOCATION TYPE CRUD
+  // ============================================================================
+
+  const addLocationType = useCallback(async (locationType: Omit<LocationType, 'id'>): Promise<LocationType> => {
+    if (supabase) {
+      const userId = await getCurrentUserId();
+      const { data, error } = await supabase
+        .from('location_types')
+        .insert(transformLocationTypeToDb(locationType, userId))
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newType = transformLocationTypeFromDb(data);
+      setState(prev => ({ ...prev, locationTypes: [...prev.locationTypes, newType] }));
+      return newType;
+    }
+
+    const newType = { ...locationType, id: generateId('loctype') } as LocationType;
+    setState(prev => ({ ...prev, locationTypes: [...prev.locationTypes, newType] }));
+    return newType;
+  }, [supabase, generateId]);
+
+  const updateLocationType = useCallback(async (id: string, updates: Partial<LocationType>) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('location_types')
+        .update(transformLocationTypeToDb(updates))
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+
+    setState(prev => ({
+      ...prev,
+      locationTypes: prev.locationTypes.map(lt => lt.id === id ? { ...lt, ...updates } : lt)
+    }));
+  }, [supabase]);
+
+  const deleteLocationType = useCallback(async (id: string) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('location_types')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+
+    setState(prev => ({
+      ...prev,
+      locationTypes: prev.locationTypes.map(lt => lt.id === id ? { ...lt, isActive: false } : lt)
+    }));
+  }, [supabase]);
+
+  // ============================================================================
+  // LOCATION CLASSIFICATION CRUD
+  // ============================================================================
+
+  const addLocationClassification = useCallback(async (classification: Omit<LocationClassification, 'id'>): Promise<LocationClassification> => {
+    if (supabase) {
+      const userId = await getCurrentUserId();
+      const { data, error } = await supabase
+        .from('location_classifications')
+        .insert(transformLocationClassificationToDb(classification, userId))
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newClass = transformLocationClassificationFromDb(data);
+      setState(prev => ({ ...prev, locationClassifications: [...prev.locationClassifications, newClass] }));
+      return newClass;
+    }
+
+    const newClass = { ...classification, id: generateId('locclass') } as LocationClassification;
+    setState(prev => ({ ...prev, locationClassifications: [...prev.locationClassifications, newClass] }));
+    return newClass;
+  }, [supabase, generateId]);
+
+  const updateLocationClassification = useCallback(async (id: string, updates: Partial<LocationClassification>) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('location_classifications')
+        .update(transformLocationClassificationToDb(updates))
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+
+    setState(prev => ({
+      ...prev,
+      locationClassifications: prev.locationClassifications.map(lc => lc.id === id ? { ...lc, ...updates } : lc)
+    }));
+  }, [supabase]);
+
+  const deleteLocationClassification = useCallback(async (id: string) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('location_classifications')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+
+    setState(prev => ({
+      ...prev,
+      locationClassifications: prev.locationClassifications.map(lc => lc.id === id ? { ...lc, isActive: false } : lc)
     }));
   }, [supabase]);
 
@@ -2295,10 +2507,10 @@ const loadSettings = async (): Promise<AppSettings> => {
     error,
 
     // Lookup helpers
-    getSpecies, getStrain, getLocation, getVessel, getContainerType, getSubstrateType,
+    getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getVessel, getContainerType, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
     getInventoryLot, getPurchaseOrder, getCulture, getGrow, getRecipe,
-    activeSpecies, activeStrains, activeLocations, activeVessels, activeContainerTypes,
+    activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeVessels, activeContainerTypes,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes,
 
@@ -2306,6 +2518,8 @@ const loadSettings = async (): Promise<AppSettings> => {
     addSpecies, updateSpecies, deleteSpecies,
     addStrain, updateStrain, deleteStrain,
     addLocation, updateLocation, deleteLocation,
+    addLocationType, updateLocationType, deleteLocationType,
+    addLocationClassification, updateLocationClassification, deleteLocationClassification,
     addVessel, updateVessel, deleteVessel,
     addContainerType, updateContainerType, deleteContainerType,
     addSubstrateType, updateSubstrateType, deleteSubstrateType,
@@ -2326,15 +2540,17 @@ const loadSettings = async (): Promise<AppSettings> => {
     refreshData,
   }), [
     state, isLoading, isConnected, error,
-    getSpecies, getStrain, getLocation, getVessel, getContainerType, getSubstrateType,
+    getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getVessel, getContainerType, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
     getInventoryLot, getPurchaseOrder, getCulture, getGrow, getRecipe,
-    activeSpecies, activeStrains, activeLocations, activeVessels, activeContainerTypes,
+    activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeVessels, activeContainerTypes,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes,
     addSpecies, updateSpecies, deleteSpecies,
     addStrain, updateStrain, deleteStrain,
     addLocation, updateLocation, deleteLocation,
+    addLocationType, updateLocationType, deleteLocationType,
+    addLocationClassification, updateLocationClassification, deleteLocationClassification,
     addVessel, updateVessel, deleteVessel,
     addContainerType, updateContainerType, deleteContainerType,
     addSubstrateType, updateSubstrateType, deleteSubstrateType,

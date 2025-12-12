@@ -44,21 +44,88 @@ CREATE TABLE IF NOT EXISTS strains (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- Locations
-CREATE TABLE IF NOT EXISTS locations (
+-- Location Types (customizable location type lookup)
+CREATE TABLE IF NOT EXISTS location_types (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
-  type TEXT CHECK (type IN ('incubation', 'fruiting', 'storage', 'lab', 'other')) DEFAULT 'lab',
-  temp_min INTEGER,
-  temp_max INTEGER,
-  humidity_min INTEGER,
-  humidity_max INTEGER,
+  code TEXT,
+  description TEXT,
   notes TEXT,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
+
+-- Location Classifications (customizable location classification lookup)
+CREATE TABLE IF NOT EXISTS location_classifications (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name TEXT NOT NULL,
+  code TEXT,
+  description TEXT,
+  notes TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Locations (with enhanced fields for procurement tracking)
+CREATE TABLE IF NOT EXISTS locations (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT CHECK (type IN ('incubation', 'fruiting', 'storage', 'lab', 'other')) DEFAULT 'lab',
+  type_id UUID REFERENCES location_types(id),
+  classification_id UUID REFERENCES location_classifications(id),
+  temp_min INTEGER,
+  temp_max INTEGER,
+  humidity_min INTEGER,
+  humidity_max INTEGER,
+  has_power BOOLEAN DEFAULT false,
+  power_usage TEXT,
+  has_air_circulation BOOLEAN DEFAULT false,
+  size TEXT,
+  supplier_id UUID REFERENCES suppliers(id),
+  cost DECIMAL(10,2),
+  procurement_date DATE,
+  notes TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Add columns to existing locations table if they don't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'type_id') THEN
+    ALTER TABLE locations ADD COLUMN type_id UUID REFERENCES location_types(id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'classification_id') THEN
+    ALTER TABLE locations ADD COLUMN classification_id UUID REFERENCES location_classifications(id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'has_power') THEN
+    ALTER TABLE locations ADD COLUMN has_power BOOLEAN DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'power_usage') THEN
+    ALTER TABLE locations ADD COLUMN power_usage TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'has_air_circulation') THEN
+    ALTER TABLE locations ADD COLUMN has_air_circulation BOOLEAN DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'size') THEN
+    ALTER TABLE locations ADD COLUMN size TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'supplier_id') THEN
+    ALTER TABLE locations ADD COLUMN supplier_id UUID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'cost') THEN
+    ALTER TABLE locations ADD COLUMN cost DECIMAL(10,2);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'procurement_date') THEN
+    ALTER TABLE locations ADD COLUMN procurement_date DATE;
+  END IF;
+END $$;
 
 -- Vessels (culture containers)
 CREATE TABLE IF NOT EXISTS vessels (
@@ -545,6 +612,8 @@ END $$;
 -- Enable RLS on all tables
 ALTER TABLE species ENABLE ROW LEVEL SECURITY;
 ALTER TABLE strains ENABLE ROW LEVEL SECURITY;
+ALTER TABLE location_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE location_classifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vessels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE container_types ENABLE ROW LEVEL SECURITY;
@@ -857,6 +926,18 @@ CREATE POLICY "strains_select" ON strains FOR SELECT USING (user_id IS NULL OR u
 CREATE POLICY "strains_insert" ON strains FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "strains_update" ON strains FOR UPDATE USING (user_id = auth.uid() OR is_admin());
 CREATE POLICY "strains_delete" ON strains FOR DELETE USING (user_id = auth.uid() OR is_admin());
+
+-- Location Types policies (shared defaults + user's own)
+CREATE POLICY "location_types_select" ON location_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "location_types_insert" ON location_types FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "location_types_update" ON location_types FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "location_types_delete" ON location_types FOR DELETE USING (user_id = auth.uid() OR is_admin());
+
+-- Location Classifications policies (shared defaults + user's own)
+CREATE POLICY "location_classifications_select" ON location_classifications FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "location_classifications_insert" ON location_classifications FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "location_classifications_update" ON location_classifications FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "location_classifications_delete" ON location_classifications FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
 -- Locations policies (user's own only)
 CREATE POLICY "locations_select" ON locations FOR SELECT USING (user_id = auth.uid() OR is_admin());

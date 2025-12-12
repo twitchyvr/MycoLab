@@ -1181,6 +1181,8 @@ export const initialDataState: DataStoreState = {
   species: [],
   strains: initialStrains,
   locations: initialLocations,
+  locationTypes: [],
+  locationClassifications: [],
   vessels: initialVessels,
   containerTypes: initialContainerTypes,
   substrateTypes: initialSubstrateTypes,
