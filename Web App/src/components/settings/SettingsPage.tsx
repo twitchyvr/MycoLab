@@ -433,9 +433,9 @@ export const SettingsPage: React.FC = () => {
             isActive: true,
           };
           if (editingItem) {
-            updateVessel(editingItem.id, vesselData);
+            await updateVessel(editingItem.id, vesselData);
           } else {
-            addVessel(vesselData);
+            await addVessel(vesselData);
           }
           setSuccess('Vessel saved');
           break;
@@ -449,9 +449,9 @@ export const SettingsPage: React.FC = () => {
             isActive: true,
           };
           if (editingItem) {
-            updateContainerType(editingItem.id, containerData);
+            await updateContainerType(editingItem.id, containerData);
           } else {
-            addContainerType(containerData);
+            await addContainerType(containerData);
           }
           setSuccess('Container saved');
           break;
@@ -467,9 +467,9 @@ export const SettingsPage: React.FC = () => {
             isActive: true,
           };
           if (editingItem) {
-            updateSubstrateType(editingItem.id, substrateData);
+            await updateSubstrateType(editingItem.id, substrateData);
           } else {
-            addSubstrateType(substrateData);
+            await addSubstrateType(substrateData);
           }
           setSuccess('Substrate saved');
           break;
@@ -482,9 +482,9 @@ export const SettingsPage: React.FC = () => {
             isActive: true,
           };
           if (editingItem) {
-            updateInventoryCategory(editingItem.id, categoryData);
+            await updateInventoryCategory(editingItem.id, categoryData);
           } else {
-            addInventoryCategory(categoryData);
+            await addInventoryCategory(categoryData);
           }
           setSuccess('Category saved');
           break;

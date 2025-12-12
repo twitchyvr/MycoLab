@@ -231,8 +231,8 @@ export const GrowManagement: React.FC = () => {
     setNewGrow(prev => ({ ...prev, strainId: newStrain.id }));
   };
 
-  const handleAddSubstrate = (name: string) => {
-    const newSub = addSubstrateType({
+  const handleAddSubstrate = async (name: string) => {
+    const newSub = await addSubstrateType({
       name,
       code: name.toLowerCase().replace(/\s+/g, '-'),
       category: 'bulk',
@@ -242,8 +242,8 @@ export const GrowManagement: React.FC = () => {
     setNewGrow(prev => ({ ...prev, substrateTypeId: newSub.id }));
   };
 
-  const handleAddContainer = (name: string) => {
-    const newContainer = addContainerType({
+  const handleAddContainer = async (name: string) => {
+    const newContainer = await addContainerType({
       name,
       category: 'tub',
       isActive: true,

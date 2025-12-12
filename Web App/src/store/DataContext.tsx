@@ -124,6 +124,92 @@ const transformLocationToDb = (location: Partial<Location>) => ({
   is_active: location.isActive,
 });
 
+// Transform Vessel from DB format
+const transformVesselFromDb = (row: any): Vessel => ({
+  id: row.id,
+  name: row.name,
+  type: row.type || 'jar',
+  volumeMl: row.volume_ml,
+  isReusable: row.is_reusable ?? true,
+  notes: row.notes,
+  isActive: row.is_active ?? true,
+});
+
+// Transform Vessel to DB format
+const transformVesselToDb = (vessel: Partial<Vessel>) => ({
+  name: vessel.name,
+  type: vessel.type,
+  volume_ml: vessel.volumeMl,
+  is_reusable: vessel.isReusable,
+  notes: vessel.notes,
+  is_active: vessel.isActive,
+});
+
+// Transform ContainerType from DB format
+const transformContainerTypeFromDb = (row: any): ContainerType => ({
+  id: row.id,
+  name: row.name,
+  category: row.category || 'tub',
+  volumeL: row.volume_l ? parseFloat(row.volume_l) : undefined,
+  notes: row.notes,
+  isActive: row.is_active ?? true,
+});
+
+// Transform ContainerType to DB format
+const transformContainerTypeToDb = (ct: Partial<ContainerType>) => ({
+  name: ct.name,
+  category: ct.category,
+  volume_l: ct.volumeL,
+  notes: ct.notes,
+  is_active: ct.isActive,
+});
+
+// Transform SubstrateType from DB format
+const transformSubstrateTypeFromDb = (row: any): SubstrateType => ({
+  id: row.id,
+  name: row.name,
+  code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
+  category: row.category || 'bulk',
+  spawnRateRange: {
+    min: row.spawn_rate_min || 10,
+    optimal: row.spawn_rate_optimal || 20,
+    max: row.spawn_rate_max || 30,
+  },
+  fieldCapacity: row.field_capacity,
+  notes: row.notes,
+  isActive: row.is_active ?? true,
+});
+
+// Transform SubstrateType to DB format
+const transformSubstrateTypeToDb = (st: Partial<SubstrateType>) => ({
+  name: st.name,
+  code: st.code,
+  category: st.category,
+  spawn_rate_min: st.spawnRateRange?.min,
+  spawn_rate_optimal: st.spawnRateRange?.optimal,
+  spawn_rate_max: st.spawnRateRange?.max,
+  field_capacity: st.fieldCapacity,
+  notes: st.notes,
+  is_active: st.isActive,
+});
+
+// Transform InventoryCategory from DB format
+const transformInventoryCategoryFromDb = (row: any): InventoryCategory => ({
+  id: row.id,
+  name: row.name,
+  color: row.color || '#6b7280',
+  icon: row.icon,
+  isActive: row.is_active ?? true,
+});
+
+// Transform InventoryCategory to DB format
+const transformInventoryCategoryToDb = (cat: Partial<InventoryCategory>) => ({
+  name: cat.name,
+  color: cat.color,
+  icon: cat.icon,
+  is_active: cat.isActive,
+});
+
 // Transform Culture from DB format
 const transformCultureFromDb = (row: any): Culture => ({
   id: row.id,
@@ -350,19 +436,19 @@ interface DataContextValue extends LookupHelpers {
   deleteLocation: (id: string) => Promise<void>;
   
   // Vessel CRUD
-  addVessel: (vessel: Omit<Vessel, 'id'>) => Vessel;
-  updateVessel: (id: string, updates: Partial<Vessel>) => void;
-  deleteVessel: (id: string) => void;
+  addVessel: (vessel: Omit<Vessel, 'id'>) => Promise<Vessel>;
+  updateVessel: (id: string, updates: Partial<Vessel>) => Promise<void>;
+  deleteVessel: (id: string) => Promise<void>;
   
   // Container Type CRUD
-  addContainerType: (containerType: Omit<ContainerType, 'id'>) => ContainerType;
-  updateContainerType: (id: string, updates: Partial<ContainerType>) => void;
-  deleteContainerType: (id: string) => void;
+  addContainerType: (containerType: Omit<ContainerType, 'id'>) => Promise<ContainerType>;
+  updateContainerType: (id: string, updates: Partial<ContainerType>) => Promise<void>;
+  deleteContainerType: (id: string) => Promise<void>;
   
   // Substrate Type CRUD
-  addSubstrateType: (substrateType: Omit<SubstrateType, 'id'>) => SubstrateType;
-  updateSubstrateType: (id: string, updates: Partial<SubstrateType>) => void;
-  deleteSubstrateType: (id: string) => void;
+  addSubstrateType: (substrateType: Omit<SubstrateType, 'id'>) => Promise<SubstrateType>;
+  updateSubstrateType: (id: string, updates: Partial<SubstrateType>) => Promise<void>;
+  deleteSubstrateType: (id: string) => Promise<void>;
   
   // Supplier CRUD
   addSupplier: (supplier: Omit<Supplier, 'id'>) => Promise<Supplier>;
@@ -370,9 +456,9 @@ interface DataContextValue extends LookupHelpers {
   deleteSupplier: (id: string) => Promise<void>;
   
   // Inventory Category CRUD
-  addInventoryCategory: (category: Omit<InventoryCategory, 'id'>) => InventoryCategory;
-  updateInventoryCategory: (id: string, updates: Partial<InventoryCategory>) => void;
-  deleteInventoryCategory: (id: string) => void;
+  addInventoryCategory: (category: Omit<InventoryCategory, 'id'>) => Promise<InventoryCategory>;
+  updateInventoryCategory: (id: string, updates: Partial<InventoryCategory>) => Promise<void>;
+  deleteInventoryCategory: (id: string) => Promise<void>;
   
   // Inventory Item CRUD
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>) => InventoryItem;
@@ -471,6 +557,34 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .order('name');
       if (suppliersError) throw suppliersError;
       
+      // Load vessels
+      const { data: vesselsData, error: vesselsError } = await client
+        .from('vessels')
+        .select('*')
+        .order('name');
+      if (vesselsError) console.warn('Vessels table error:', vesselsError);
+      
+      // Load container types
+      const { data: containerTypesData, error: containerTypesError } = await client
+        .from('container_types')
+        .select('*')
+        .order('name');
+      if (containerTypesError) console.warn('Container types error:', containerTypesError);
+      
+      // Load substrate types
+      const { data: substrateTypesData, error: substrateTypesError } = await client
+        .from('substrate_types')
+        .select('*')
+        .order('name');
+      if (substrateTypesError) console.warn('Substrate types error:', substrateTypesError);
+      
+      // Load inventory categories
+      const { data: inventoryCategoriesData, error: inventoryCategoriesError } = await client
+        .from('inventory_categories')
+        .select('*')
+        .order('name');
+      if (inventoryCategoriesError) console.warn('Inventory categories error:', inventoryCategoriesError);
+      
       // Load cultures
       const { data: culturesData, error: culturesError } = await client
         .from('cultures')
@@ -499,6 +613,28 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .order('name');
       if (recipesError) throw recipesError;
 
+      // Load user settings
+      const { data: settingsData, error: settingsError } = await client
+        .from('user_settings')
+        .select('*')
+        .limit(1)
+        .single();
+      // Settings may not exist yet, so don't throw error
+      
+      // Transform settings - use nested notifications structure
+      const loadedSettings: AppSettings = settingsData ? {
+        defaultUnits: settingsData.default_units || 'metric',
+        defaultCurrency: settingsData.default_currency || 'USD',
+        altitude: settingsData.altitude || 0,
+        timezone: settingsData.timezone || 'America/Chicago',
+        notifications: {
+          enabled: settingsData.notifications_enabled ?? true,
+          harvestReminders: settingsData.harvest_reminders ?? true,
+          lowStockAlerts: settingsData.low_stock_alerts ?? true,
+          contaminationAlerts: settingsData.contamination_alerts ?? true,
+        },
+      } : state.settings;
+
       // Transform species data
       const species = (speciesData || []).map((row: any): Species => ({
         id: row.id,
@@ -525,9 +661,14 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         strains: (strainsData || []).map(transformStrainFromDb),
         locations: (locationsData || []).map(transformLocationFromDb),
         suppliers: (suppliersData || []).map(transformSupplierFromDb),
+        vessels: (vesselsData || []).map(transformVesselFromDb),
+        containerTypes: (containerTypesData || []).map(transformContainerTypeFromDb),
+        substrateTypes: (substrateTypesData || []).map(transformSubstrateTypeFromDb),
+        inventoryCategories: (inventoryCategoriesData || []).map(transformInventoryCategoryFromDb),
         cultures: (culturesData || []).map(transformCultureFromDb),
         grows: growsWithFlushes,
         recipes: (recipesData || []).map(transformRecipeFromDb),
+        settings: loadedSettings,
       }));
       
       setIsConnected(true);
@@ -1207,88 +1348,189 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, []);
 
   // ============================================================================
-  // LOCAL-ONLY CRUD (Vessels, ContainerTypes, SubstrateTypes, Inventory)
+  // CRUD: Vessels, ContainerTypes, SubstrateTypes, Inventory - NOW WITH DATABASE
   // ============================================================================
 
-  const addVessel = useCallback((vessel: Omit<Vessel, 'id'>): Vessel => {
+  const addVessel = useCallback(async (vessel: Omit<Vessel, 'id'>): Promise<Vessel> => {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('vessels')
+        .insert(transformVesselToDb(vessel))
+        .select()
+        .single();
+      if (error) throw error;
+      const newVessel = transformVesselFromDb(data);
+      setState(prev => ({ ...prev, vessels: [...prev.vessels, newVessel] }));
+      return newVessel;
+    }
+    // Fallback for offline
     const newVessel = { ...vessel, id: generateId('vessel') } as Vessel;
     setState(prev => ({ ...prev, vessels: [...prev.vessels, newVessel] }));
     return newVessel;
-  }, [generateId]);
+  }, [supabase, generateId]);
 
-  const updateVessel = useCallback((id: string, updates: Partial<Vessel>) => {
+  const updateVessel = useCallback(async (id: string, updates: Partial<Vessel>) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('vessels')
+        .update(transformVesselToDb(updates))
+        .eq('id', id);
+      if (error) throw error;
+    }
     setState(prev => ({
       ...prev,
       vessels: prev.vessels.map(v => v.id === id ? { ...v, ...updates } : v)
     }));
-  }, []);
+  }, [supabase]);
 
-  const deleteVessel = useCallback((id: string) => {
+  const deleteVessel = useCallback(async (id: string) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('vessels')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+    }
     setState(prev => ({
       ...prev,
       vessels: prev.vessels.map(v => v.id === id ? { ...v, isActive: false } : v)
     }));
-  }, []);
+  }, [supabase]);
 
-  const addContainerType = useCallback((containerType: Omit<ContainerType, 'id'>): ContainerType => {
+  const addContainerType = useCallback(async (containerType: Omit<ContainerType, 'id'>): Promise<ContainerType> => {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('container_types')
+        .insert(transformContainerTypeToDb(containerType))
+        .select()
+        .single();
+      if (error) throw error;
+      const newCT = transformContainerTypeFromDb(data);
+      setState(prev => ({ ...prev, containerTypes: [...prev.containerTypes, newCT] }));
+      return newCT;
+    }
     const newCT = { ...containerType, id: generateId('ct') } as ContainerType;
     setState(prev => ({ ...prev, containerTypes: [...prev.containerTypes, newCT] }));
     return newCT;
-  }, [generateId]);
+  }, [supabase, generateId]);
 
-  const updateContainerType = useCallback((id: string, updates: Partial<ContainerType>) => {
+  const updateContainerType = useCallback(async (id: string, updates: Partial<ContainerType>) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('container_types')
+        .update(transformContainerTypeToDb(updates))
+        .eq('id', id);
+      if (error) throw error;
+    }
     setState(prev => ({
       ...prev,
       containerTypes: prev.containerTypes.map(c => c.id === id ? { ...c, ...updates } : c)
     }));
-  }, []);
+  }, [supabase]);
 
-  const deleteContainerType = useCallback((id: string) => {
+  const deleteContainerType = useCallback(async (id: string) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('container_types')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+    }
     setState(prev => ({
       ...prev,
       containerTypes: prev.containerTypes.map(c => c.id === id ? { ...c, isActive: false } : c)
     }));
-  }, []);
+  }, [supabase]);
 
-  const addSubstrateType = useCallback((substrateType: Omit<SubstrateType, 'id'>): SubstrateType => {
+  const addSubstrateType = useCallback(async (substrateType: Omit<SubstrateType, 'id'>): Promise<SubstrateType> => {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('substrate_types')
+        .insert(transformSubstrateTypeToDb(substrateType))
+        .select()
+        .single();
+      if (error) throw error;
+      const newST = transformSubstrateTypeFromDb(data);
+      setState(prev => ({ ...prev, substrateTypes: [...prev.substrateTypes, newST] }));
+      return newST;
+    }
     const newST = { ...substrateType, id: generateId('st') } as SubstrateType;
     setState(prev => ({ ...prev, substrateTypes: [...prev.substrateTypes, newST] }));
     return newST;
-  }, [generateId]);
+  }, [supabase, generateId]);
 
-  const updateSubstrateType = useCallback((id: string, updates: Partial<SubstrateType>) => {
+  const updateSubstrateType = useCallback(async (id: string, updates: Partial<SubstrateType>) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('substrate_types')
+        .update(transformSubstrateTypeToDb(updates))
+        .eq('id', id);
+      if (error) throw error;
+    }
     setState(prev => ({
       ...prev,
       substrateTypes: prev.substrateTypes.map(s => s.id === id ? { ...s, ...updates } : s)
     }));
-  }, []);
+  }, [supabase]);
 
-  const deleteSubstrateType = useCallback((id: string) => {
+  const deleteSubstrateType = useCallback(async (id: string) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('substrate_types')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+    }
     setState(prev => ({
       ...prev,
       substrateTypes: prev.substrateTypes.map(s => s.id === id ? { ...s, isActive: false } : s)
     }));
-  }, []);
+  }, [supabase]);
 
-  const addInventoryCategory = useCallback((category: Omit<InventoryCategory, 'id'>): InventoryCategory => {
+  const addInventoryCategory = useCallback(async (category: Omit<InventoryCategory, 'id'>): Promise<InventoryCategory> => {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('inventory_categories')
+        .insert(transformInventoryCategoryToDb(category))
+        .select()
+        .single();
+      if (error) throw error;
+      const newCat = transformInventoryCategoryFromDb(data);
+      setState(prev => ({ ...prev, inventoryCategories: [...prev.inventoryCategories, newCat] }));
+      return newCat;
+    }
     const newCat = { ...category, id: generateId('cat') } as InventoryCategory;
     setState(prev => ({ ...prev, inventoryCategories: [...prev.inventoryCategories, newCat] }));
     return newCat;
-  }, [generateId]);
+  }, [supabase, generateId]);
 
-  const updateInventoryCategory = useCallback((id: string, updates: Partial<InventoryCategory>) => {
+  const updateInventoryCategory = useCallback(async (id: string, updates: Partial<InventoryCategory>) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('inventory_categories')
+        .update(transformInventoryCategoryToDb(updates))
+        .eq('id', id);
+      if (error) throw error;
+    }
     setState(prev => ({
       ...prev,
       inventoryCategories: prev.inventoryCategories.map(c => c.id === id ? { ...c, ...updates } : c)
     }));
-  }, []);
+  }, [supabase]);
 
-  const deleteInventoryCategory = useCallback((id: string) => {
+  const deleteInventoryCategory = useCallback(async (id: string) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('inventory_categories')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+    }
     setState(prev => ({
       ...prev,
       inventoryCategories: prev.inventoryCategories.map(c => c.id === id ? { ...c, isActive: false } : c)
     }));
-  }, []);
+  }, [supabase]);
 
   const addInventoryItem = useCallback((item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>): InventoryItem => {
     const now = new Date();
@@ -1329,12 +1571,62 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // SETTINGS
   // ============================================================================
 
-  const updateSettings = useCallback((updates: Partial<AppSettings>) => {
+  const updateSettings = useCallback(async (updates: Partial<AppSettings>) => {
+    // Update local state immediately for responsiveness
     setState(prev => ({
       ...prev,
-      settings: { ...prev.settings, ...updates }
+      settings: { 
+        ...prev.settings, 
+        ...updates,
+        notifications: updates.notifications 
+          ? { ...prev.settings.notifications, ...updates.notifications }
+          : prev.settings.notifications
+      }
     }));
-  }, []);
+
+    // Persist to database
+    if (supabase) {
+      try {
+        // Transform to database format (flatten nested notifications)
+        const dbUpdates: Record<string, any> = {};
+        if (updates.defaultUnits !== undefined) dbUpdates.default_units = updates.defaultUnits;
+        if (updates.defaultCurrency !== undefined) dbUpdates.default_currency = updates.defaultCurrency;
+        if (updates.altitude !== undefined) dbUpdates.altitude = updates.altitude;
+        if (updates.timezone !== undefined) dbUpdates.timezone = updates.timezone;
+        if (updates.notifications) {
+          if (updates.notifications.enabled !== undefined) dbUpdates.notifications_enabled = updates.notifications.enabled;
+          if (updates.notifications.harvestReminders !== undefined) dbUpdates.harvest_reminders = updates.notifications.harvestReminders;
+          if (updates.notifications.lowStockAlerts !== undefined) dbUpdates.low_stock_alerts = updates.notifications.lowStockAlerts;
+          if (updates.notifications.contaminationAlerts !== undefined) dbUpdates.contamination_alerts = updates.notifications.contaminationAlerts;
+        }
+        dbUpdates.updated_at = new Date().toISOString();
+
+        // Check if a settings row already exists
+        const { data: existing } = await supabase
+          .from('user_settings')
+          .select('id')
+          .limit(1)
+          .single();
+        
+        if (existing) {
+          // Update existing row
+          await supabase
+            .from('user_settings')
+            .update(dbUpdates)
+            .eq('id', existing.id);
+        } else {
+          // Insert new row
+          await supabase
+            .from('user_settings')
+            .insert(dbUpdates);
+        }
+        
+        console.log('Settings saved to database');
+      } catch (err) {
+        console.error('Failed to save settings to database:', err);
+      }
+    }
+  }, [supabase]);
 
   // ============================================================================
   // CONTEXT VALUE
