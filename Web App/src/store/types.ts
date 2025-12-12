@@ -253,7 +253,21 @@ export interface Grow {
 // RECIPE TYPES
 // ============================================================================
 
-export type RecipeCategory = 'agar' | 'liquid_culture' | 'grain_spawn' | 'bulk_substrate' | 'casing' | 'other';
+// Default category codes (can be extended with custom categories)
+export type DefaultRecipeCategory = 'agar' | 'liquid_culture' | 'grain_spawn' | 'bulk_substrate' | 'casing' | 'other';
+
+// RecipeCategory now allows custom category codes as strings
+export type RecipeCategory = DefaultRecipeCategory | string;
+
+// Recipe category lookup item for custom categories
+export interface RecipeCategoryItem {
+  id: string;
+  name: string;
+  code: string;
+  icon: string;
+  color: string;
+  isActive: boolean;
+}
 
 export interface RecipeIngredient {
   id: string;
@@ -315,13 +329,14 @@ export interface DataStoreState {
   substrateTypes: SubstrateType[];
   suppliers: Supplier[];
   inventoryCategories: InventoryCategory[];
-  
+  recipeCategories: RecipeCategoryItem[];
+
   // Core entities
   inventoryItems: InventoryItem[];
   cultures: Culture[];
   grows: Grow[];
   recipes: Recipe[];
-  
+
   // Settings
   settings: AppSettings;
 }
@@ -341,11 +356,12 @@ export interface LookupHelpers {
   getSubstrateType: (id: string) => SubstrateType | undefined;
   getSupplier: (id: string) => Supplier | undefined;
   getInventoryCategory: (id: string) => InventoryCategory | undefined;
+  getRecipeCategory: (code: string) => RecipeCategoryItem | undefined;
   getInventoryItem: (id: string) => InventoryItem | undefined;
   getCulture: (id: string) => Culture | undefined;
   getGrow: (id: string) => Grow | undefined;
   getRecipe: (id: string) => Recipe | undefined;
-  
+
   // Filtered lists (active only)
   activeSpecies: Species[];
   activeStrains: Strain[];
@@ -355,6 +371,7 @@ export interface LookupHelpers {
   activeSubstrateTypes: SubstrateType[];
   activeSuppliers: Supplier[];
   activeInventoryCategories: InventoryCategory[];
+  activeRecipeCategories: RecipeCategoryItem[];
   activeInventoryItems: InventoryItem[];
   activeRecipes: Recipe[];
 }
