@@ -812,12 +812,14 @@ export const StockManagement: React.FC = () => {
 
             <div className="flex gap-3 mt-6">
               <button
+                type="button"
                 onClick={() => setShowAddLotModal(false)}
                 className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleAddLot}
                 disabled={!newLot.inventoryItemId || !newLot.quantity}
                 className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
@@ -895,6 +897,7 @@ export const StockManagement: React.FC = () => {
                         ${(item.totalCost || 0).toFixed(2)}
                       </span>
                       <button
+                        type="button"
                         onClick={() => removeOrderItem(index)}
                         className="p-1 text-red-400 hover:text-red-300"
                       >
@@ -1024,12 +1027,14 @@ export const StockManagement: React.FC = () => {
 
             <div className="flex gap-3 mt-6">
               <button
+                type="button"
                 onClick={() => setShowAddOrderModal(false)}
                 className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleAddOrder}
                 disabled={!newOrder.supplierId || newOrder.items.length === 0}
                 className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
