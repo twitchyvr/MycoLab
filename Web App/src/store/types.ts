@@ -82,6 +82,15 @@ export interface Supplier {
   isActive: boolean;
 }
 
+// Grain type for spawn (customizable dropdown)
+export interface GrainType {
+  id: string;
+  name: string;
+  code: string;
+  notes?: string;
+  isActive: boolean;
+}
+
 export interface InventoryCategory {
   id: string;
   name: string;
@@ -112,6 +121,120 @@ export interface InventoryItem {
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
+}
+
+// ============================================================================
+// INVENTORY LOT TYPES - Track individual units/containers
+// ============================================================================
+
+export type LotStatus = 'available' | 'low' | 'empty' | 'expired' | 'reserved';
+
+export interface InventoryLot {
+  id: string;
+  inventoryItemId: string;  // Parent item (e.g., "Light Malt Extract")
+  quantity: number;         // Current quantity (e.g., 3.42)
+  originalQuantity: number; // Starting quantity (e.g., 5.0)
+  unit: string;             // Unit of measure (e.g., "lb", "g", "ml")
+  status: LotStatus;
+
+  // Purchase info
+  purchaseOrderId?: string;
+  supplierId?: string;
+  purchaseDate?: Date;
+  purchaseCost?: number;
+
+  // Tracking
+  locationId?: string;
+  expirationDate?: Date;
+  lotNumber?: string;       // Manufacturer lot number
+
+  // Photos
+  images?: string[];
+
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isActive: boolean;
+}
+
+// ============================================================================
+// PURCHASE ORDER TYPES
+// ============================================================================
+
+export type OrderStatus = 'draft' | 'pending' | 'ordered' | 'shipped' | 'partial' | 'received' | 'cancelled';
+export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'refunded';
+
+export interface PurchaseOrderItem {
+  id: string;
+  inventoryItemId?: string;   // Link to existing inventory item
+  name: string;               // Item name (for new items or display)
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  totalCost: number;
+  quantityReceived: number;   // How much actually received
+  notes?: string;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  orderNumber: string;        // User-friendly order number
+  supplierId: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+
+  // Items
+  items: PurchaseOrderItem[];
+
+  // Costs
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  total: number;
+
+  // Dates
+  orderDate: Date;
+  expectedDate?: Date;
+  receivedDate?: Date;
+
+  // Tracking
+  trackingNumber?: string;
+  trackingUrl?: string;
+  orderUrl?: string;          // Link to online order
+
+  // Documents
+  receiptImage?: string;      // Receipt photo/screenshot
+  invoiceImage?: string;
+  images?: string[];          // Additional photos
+
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isActive: boolean;
+}
+
+// ============================================================================
+// INVENTORY USAGE TYPES - Track what's used from which lot
+// ============================================================================
+
+export type UsageType = 'recipe' | 'grow' | 'culture' | 'waste' | 'adjustment' | 'other';
+
+export interface InventoryUsage {
+  id: string;
+  lotId: string;              // Which lot the usage came from
+  inventoryItemId: string;    // The parent inventory item
+  quantity: number;           // Amount used
+  unit: string;
+  usageType: UsageType;
+
+  // What it was used for
+  referenceType?: 'recipe' | 'grow' | 'culture';
+  referenceId?: string;       // ID of the recipe/grow/culture
+  referenceName?: string;     // Name for display
+
+  usedAt: Date;
+  usedBy?: string;            // User who logged the usage
+  notes?: string;
 }
 
 // ============================================================================
@@ -330,9 +453,13 @@ export interface DataStoreState {
   suppliers: Supplier[];
   inventoryCategories: InventoryCategory[];
   recipeCategories: RecipeCategoryItem[];
+  grainTypes: GrainType[];
 
   // Core entities
   inventoryItems: InventoryItem[];
+  inventoryLots: InventoryLot[];
+  inventoryUsages: InventoryUsage[];
+  purchaseOrders: PurchaseOrder[];
   cultures: Culture[];
   grows: Grow[];
   recipes: Recipe[];
@@ -357,7 +484,10 @@ export interface LookupHelpers {
   getSupplier: (id: string) => Supplier | undefined;
   getInventoryCategory: (id: string) => InventoryCategory | undefined;
   getRecipeCategory: (code: string) => RecipeCategoryItem | undefined;
+  getGrainType: (id: string) => GrainType | undefined;
   getInventoryItem: (id: string) => InventoryItem | undefined;
+  getInventoryLot: (id: string) => InventoryLot | undefined;
+  getPurchaseOrder: (id: string) => PurchaseOrder | undefined;
   getCulture: (id: string) => Culture | undefined;
   getGrow: (id: string) => Grow | undefined;
   getRecipe: (id: string) => Recipe | undefined;
@@ -372,6 +502,9 @@ export interface LookupHelpers {
   activeSuppliers: Supplier[];
   activeInventoryCategories: InventoryCategory[];
   activeRecipeCategories: RecipeCategoryItem[];
+  activeGrainTypes: GrainType[];
   activeInventoryItems: InventoryItem[];
+  activeInventoryLots: InventoryLot[];
+  activePurchaseOrders: PurchaseOrder[];
   activeRecipes: Recipe[];
 }

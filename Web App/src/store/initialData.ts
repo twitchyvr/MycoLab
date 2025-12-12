@@ -1166,6 +1166,17 @@ const initialRecipeCategories = [
   { id: 'default-other', name: 'Other', code: 'other', icon: '📦', color: 'text-zinc-400 bg-zinc-800', isActive: true },
 ];
 
+const initialGrainTypes = [
+  { id: 'default-oat', name: 'Oat Groats', code: 'oat_groats', isActive: true },
+  { id: 'default-rye', name: 'Rye Berries', code: 'rye_berries', isActive: true },
+  { id: 'default-wheat', name: 'Wheat Berries', code: 'wheat', isActive: true },
+  { id: 'default-millet', name: 'Millet', code: 'millet', isActive: true },
+  { id: 'default-popcorn', name: 'Popcorn', code: 'popcorn', isActive: true },
+  { id: 'default-brf', name: 'Brown Rice Flour (BRF)', code: 'brf', isActive: true },
+  { id: 'default-wbs', name: 'Wild Bird Seed', code: 'wbs', isActive: true },
+  { id: 'default-sorghum', name: 'Sorghum', code: 'sorghum', isActive: true },
+];
+
 export const initialDataState: DataStoreState = {
   species: [],
   strains: initialStrains,
@@ -1176,7 +1187,11 @@ export const initialDataState: DataStoreState = {
   suppliers: initialSuppliers,
   inventoryCategories: initialInventoryCategories,
   recipeCategories: initialRecipeCategories,
+  grainTypes: initialGrainTypes,
   inventoryItems: initialInventoryItems,
+  inventoryLots: [],
+  inventoryUsages: [],
+  purchaseOrders: [],
   cultures: initialCultures,
   grows: initialGrows,
   recipes: initialRecipes,

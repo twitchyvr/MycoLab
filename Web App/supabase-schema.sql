@@ -143,6 +143,86 @@ CREATE TABLE IF NOT EXISTS recipe_categories (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
+-- Grain types (for spawn type dropdown)
+CREATE TABLE IF NOT EXISTS grain_types (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL,
+  notes TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Purchase orders
+CREATE TABLE IF NOT EXISTS purchase_orders (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  order_number TEXT NOT NULL,
+  supplier_id UUID REFERENCES suppliers(id),
+  status TEXT CHECK (status IN ('draft', 'pending', 'ordered', 'shipped', 'partial', 'received', 'cancelled')) DEFAULT 'draft',
+  payment_status TEXT CHECK (payment_status IN ('unpaid', 'paid', 'partial', 'refunded')) DEFAULT 'unpaid',
+  items JSONB DEFAULT '[]',
+  subtotal DECIMAL DEFAULT 0,
+  shipping DECIMAL DEFAULT 0,
+  tax DECIMAL DEFAULT 0,
+  total DECIMAL DEFAULT 0,
+  order_date DATE DEFAULT CURRENT_DATE,
+  expected_date DATE,
+  received_date DATE,
+  tracking_number TEXT,
+  tracking_url TEXT,
+  order_url TEXT,
+  receipt_image TEXT,
+  invoice_image TEXT,
+  images TEXT[],
+  notes TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Inventory lots (individual stock units)
+CREATE TABLE IF NOT EXISTS inventory_lots (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  inventory_item_id UUID REFERENCES inventory_items(id),
+  quantity DECIMAL DEFAULT 0,
+  original_quantity DECIMAL DEFAULT 0,
+  unit TEXT DEFAULT 'g',
+  status TEXT CHECK (status IN ('available', 'low', 'empty', 'expired', 'reserved')) DEFAULT 'available',
+  purchase_order_id UUID REFERENCES purchase_orders(id),
+  supplier_id UUID REFERENCES suppliers(id),
+  purchase_date DATE,
+  purchase_cost DECIMAL,
+  location_id UUID REFERENCES locations(id),
+  expiration_date DATE,
+  lot_number TEXT,
+  images TEXT[],
+  notes TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Inventory usage (track what's used from which lot)
+CREATE TABLE IF NOT EXISTS inventory_usages (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  lot_id UUID REFERENCES inventory_lots(id),
+  inventory_item_id UUID REFERENCES inventory_items(id),
+  quantity DECIMAL NOT NULL,
+  unit TEXT DEFAULT 'g',
+  usage_type TEXT CHECK (usage_type IN ('recipe', 'grow', 'culture', 'waste', 'adjustment', 'other')) DEFAULT 'other',
+  reference_type TEXT CHECK (reference_type IN ('recipe', 'grow', 'culture')),
+  reference_id UUID,
+  reference_name TEXT,
+  used_at TIMESTAMPTZ DEFAULT NOW(),
+  used_by UUID REFERENCES auth.users(id),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================================================
 -- CORE DATA TABLES
 -- ============================================================================
@@ -591,6 +671,46 @@ CREATE POLICY "anon_user_settings_insert" ON user_settings FOR INSERT WITH CHECK
 CREATE POLICY "anon_user_settings_update" ON user_settings FOR UPDATE USING (true);
 CREATE POLICY "anon_user_settings_delete" ON user_settings FOR DELETE USING (true);
 
+-- Grain types policies (shared + personal)
+DROP POLICY IF EXISTS "anon_grain_types_select" ON grain_types;
+DROP POLICY IF EXISTS "anon_grain_types_insert" ON grain_types;
+DROP POLICY IF EXISTS "anon_grain_types_update" ON grain_types;
+DROP POLICY IF EXISTS "anon_grain_types_delete" ON grain_types;
+CREATE POLICY "anon_grain_types_select" ON grain_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
+CREATE POLICY "anon_grain_types_insert" ON grain_types FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_grain_types_update" ON grain_types FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "anon_grain_types_delete" ON grain_types FOR DELETE USING (user_id = auth.uid());
+
+-- Purchase orders policies
+DROP POLICY IF EXISTS "anon_purchase_orders_select" ON purchase_orders;
+DROP POLICY IF EXISTS "anon_purchase_orders_insert" ON purchase_orders;
+DROP POLICY IF EXISTS "anon_purchase_orders_update" ON purchase_orders;
+DROP POLICY IF EXISTS "anon_purchase_orders_delete" ON purchase_orders;
+CREATE POLICY "anon_purchase_orders_select" ON purchase_orders FOR SELECT USING (true);
+CREATE POLICY "anon_purchase_orders_insert" ON purchase_orders FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_purchase_orders_update" ON purchase_orders FOR UPDATE USING (true);
+CREATE POLICY "anon_purchase_orders_delete" ON purchase_orders FOR DELETE USING (true);
+
+-- Inventory lots policies
+DROP POLICY IF EXISTS "anon_inventory_lots_select" ON inventory_lots;
+DROP POLICY IF EXISTS "anon_inventory_lots_insert" ON inventory_lots;
+DROP POLICY IF EXISTS "anon_inventory_lots_update" ON inventory_lots;
+DROP POLICY IF EXISTS "anon_inventory_lots_delete" ON inventory_lots;
+CREATE POLICY "anon_inventory_lots_select" ON inventory_lots FOR SELECT USING (true);
+CREATE POLICY "anon_inventory_lots_insert" ON inventory_lots FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_inventory_lots_update" ON inventory_lots FOR UPDATE USING (true);
+CREATE POLICY "anon_inventory_lots_delete" ON inventory_lots FOR DELETE USING (true);
+
+-- Inventory usages policies
+DROP POLICY IF EXISTS "anon_inventory_usages_select" ON inventory_usages;
+DROP POLICY IF EXISTS "anon_inventory_usages_insert" ON inventory_usages;
+DROP POLICY IF EXISTS "anon_inventory_usages_update" ON inventory_usages;
+DROP POLICY IF EXISTS "anon_inventory_usages_delete" ON inventory_usages;
+CREATE POLICY "anon_inventory_usages_select" ON inventory_usages FOR SELECT USING (true);
+CREATE POLICY "anon_inventory_usages_insert" ON inventory_usages FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_inventory_usages_update" ON inventory_usages FOR UPDATE USING (true);
+CREATE POLICY "anon_inventory_usages_delete" ON inventory_usages FOR DELETE USING (true);
+
 -- ============================================================================
 -- TRIGGERS (using CREATE OR REPLACE for idempotency)
 -- ============================================================================
@@ -618,6 +738,9 @@ DROP TRIGGER IF EXISTS update_cultures_updated_at ON cultures;
 DROP TRIGGER IF EXISTS update_grows_updated_at ON grows;
 DROP TRIGGER IF EXISTS update_recipes_updated_at ON recipes;
 DROP TRIGGER IF EXISTS update_user_settings_updated_at ON user_settings;
+DROP TRIGGER IF EXISTS update_grain_types_updated_at ON grain_types;
+DROP TRIGGER IF EXISTS update_purchase_orders_updated_at ON purchase_orders;
+DROP TRIGGER IF EXISTS update_inventory_lots_updated_at ON inventory_lots;
 
 CREATE TRIGGER update_species_updated_at BEFORE UPDATE ON species FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_strains_updated_at BEFORE UPDATE ON strains FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -632,6 +755,9 @@ CREATE TRIGGER update_cultures_updated_at BEFORE UPDATE ON cultures FOR EACH ROW
 CREATE TRIGGER update_grows_updated_at BEFORE UPDATE ON grows FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_recipes_updated_at BEFORE UPDATE ON recipes FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_user_settings_updated_at BEFORE UPDATE ON user_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_grain_types_updated_at BEFORE UPDATE ON grain_types FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_purchase_orders_updated_at BEFORE UPDATE ON purchase_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_inventory_lots_updated_at BEFORE UPDATE ON inventory_lots FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ============================================================================
 -- INDEXES (wrapped in DO blocks for safety)
