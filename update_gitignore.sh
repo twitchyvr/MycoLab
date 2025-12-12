@@ -1,3 +1,5 @@
+# 1. Write the new .gitignore file
+cat <<EOT > .gitignore
 # --- Dependencies ---
 node_modules/
 .pnp
@@ -53,3 +55,18 @@ temp_data/
 
 # --- Testing ---
 coverage/
+EOT
+
+# 2. Clear the git cache (removes .DS_Store from index)
+echo "🧹 Clearing Git cache..."
+git rm -r --cached .
+
+# 3. Re-add files (respecting the new .gitignore)
+echo "📝 Re-staging files..."
+git add .
+
+# 4. Commit the changes
+echo "💾 Committing changes..."
+git commit -m "chore: update gitignore and remove .DS_Store"
+
+echo "✅ Done! Your repo is clean."
