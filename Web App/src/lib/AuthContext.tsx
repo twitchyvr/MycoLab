@@ -216,11 +216,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       lastError = error;
 
+      // Log detailed error for debugging
+      console.error('[Auth] Sign up error:', {
+        status: error.status,
+        message: error.message,
+        name: error.name,
+        code: (error as any).code,
+      });
+
       // Only retry on transient errors (not captcha failures)
       const isRetryable = error.status === 504 ||
                          error.name === 'AuthRetryableFetchError' ||
                          error.message?.includes('Gateway Timeout');
-      const isCaptchaError = error.message?.toLowerCase().includes('captcha');
+      const isCaptchaError = error.message?.toLowerCase().includes('captcha') ||
+                            (error as any).code === 'captcha_failed' ||
+                            error.status === 400;
       if (!isRetryable || isCaptchaError) {
         break;
       }
@@ -228,12 +238,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Improve error messages for common issues
     let message = lastError?.message || 'An error occurred';
+    const errorCode = (lastError as any)?.code;
+
     if (lastError?.status === 504 || lastError?.name === 'AuthRetryableFetchError') {
       message = 'Server is temporarily unavailable. Please try again in a moment.';
     } else if (lastError?.status === 406) {
       message = 'Request not acceptable. Please check your Supabase configuration.';
-    } else if (lastError?.message?.toLowerCase().includes('captcha')) {
-      message = 'Captcha verification failed. Please try again.';
+    } else if (lastError?.message?.toLowerCase().includes('captcha') || errorCode === 'captcha_failed') {
+      message = 'Captcha verification failed. This may be a server configuration issue. Please try again or contact support.';
+    } else if (lastError?.status === 400 && !lastError?.message?.includes('already registered')) {
+      // Generic 400 error might be captcha-related
+      console.warn('[Auth] 400 error - possibly captcha verification failed on server. Check Supabase Turnstile secret key configuration.');
+      message = 'Sign up failed. This may be due to captcha verification. Please try again.';
     }
     return { error: { ...lastError, message } as AuthError };
   }, []);
@@ -269,11 +285,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       lastError = error;
 
+      // Log detailed error for debugging
+      console.error('[Auth] Sign in error:', {
+        status: error.status,
+        message: error.message,
+        name: error.name,
+        code: (error as any).code,
+      });
+
       // Only retry on transient errors (not auth failures like wrong password or captcha errors)
       const isRetryable = error.status === 504 ||
                          error.name === 'AuthRetryableFetchError' ||
                          error.message?.includes('Gateway Timeout');
-      const isCaptchaError = error.message?.toLowerCase().includes('captcha');
+      const isCaptchaError = error.message?.toLowerCase().includes('captcha') ||
+                            (error as any).code === 'captcha_failed' ||
+                            error.status === 400;
       if (!isRetryable || isCaptchaError) {
         break;
       }
@@ -281,14 +307,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Improve error messages for common issues
     let message = lastError?.message || 'An error occurred';
+    const errorCode = (lastError as any)?.code;
+
     if (lastError?.status === 504 || lastError?.name === 'AuthRetryableFetchError') {
       message = 'Server is temporarily unavailable. Please try again in a moment.';
     } else if (lastError?.status === 406) {
       message = 'Request not acceptable. Please check your Supabase configuration.';
     } else if (lastError?.message?.includes('Invalid login credentials')) {
       message = 'Invalid email or password. Please check your credentials.';
-    } else if (lastError?.message?.toLowerCase().includes('captcha')) {
-      message = 'Captcha verification failed. Please try again.';
+    } else if (lastError?.message?.toLowerCase().includes('captcha') || errorCode === 'captcha_failed') {
+      message = 'Captcha verification failed. This may be a server configuration issue. Please try again or contact support.';
+    } else if (lastError?.status === 400 && !lastError?.message?.includes('Invalid login')) {
+      // Generic 400 error might be captcha-related
+      console.warn('[Auth] 400 error - possibly captcha verification failed on server. Check Supabase Turnstile secret key configuration.');
+      message = 'Authentication failed. This may be due to captcha verification. Please try again.';
     }
     return { error: { ...lastError, message } as AuthError };
   }, []);

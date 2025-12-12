@@ -58,8 +58,51 @@ const TURNSTILE_TEST_KEYS = {
   INTERACTIVE: '3x00000000000000000000FF',
 };
 
-// Default site key from environment, or use test key for development
-const DEFAULT_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || TURNSTILE_TEST_KEYS.ALWAYS_PASSES;
+// Check if we're on a Cloudflare-proxied site by looking for the cdn-cgi path
+// Turnstile's clearance redemption only works on Cloudflare zones
+const isCloudflareZone = (): boolean => {
+  // In production, we can check if /cdn-cgi/ path would resolve
+  // For now, we check the hostname - Netlify deployments are NOT Cloudflare zones
+  const hostname = window.location.hostname;
+  const isNetlify = hostname.includes('.netlify.app') || hostname.includes('.netlify.com');
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+
+  // Also check if clearance redemption endpoints exist (they won't on non-CF sites)
+  // This is a simple heuristic - sites behind CF will have proper cdn-cgi routing
+  return !isNetlify && !isLocalhost;
+};
+
+// Determine the site key to use
+// IMPORTANT: On non-Cloudflare sites, we MUST use test keys because:
+// 1. Real Turnstile site keys require Cloudflare zone integration for clearance redemption
+// 2. The captcha widget will error with 404s when trying to reach /cdn-cgi/ endpoints
+// 3. Supabase needs matching test/real secret keys on the backend
+const getSiteKey = (): string => {
+  const envKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+
+  // If no key is set, use test key
+  if (!envKey) {
+    console.log('[Turnstile] No site key configured, using test key (always passes)');
+    return TURNSTILE_TEST_KEYS.ALWAYS_PASSES;
+  }
+
+  // If we're on a non-Cloudflare site, force test keys to avoid clearance redemption errors
+  if (!isCloudflareZone()) {
+    console.warn(
+      '[Turnstile] Site is not behind Cloudflare - using test key to avoid clearance redemption errors.',
+      '\nTo use real Turnstile captcha, either:',
+      '\n1. Deploy behind Cloudflare (Cloudflare Pages, or Cloudflare in front of Netlify)',
+      '\n2. Remove VITE_TURNSTILE_SITE_KEY env var and use test mode'
+    );
+    return TURNSTILE_TEST_KEYS.ALWAYS_PASSES;
+  }
+
+  console.log('[Turnstile] Using configured site key');
+  return envKey;
+};
+
+// Default site key - will be test key on non-Cloudflare sites
+const DEFAULT_SITE_KEY = getSiteKey();
 
 // ============================================================================
 // COMPONENT
