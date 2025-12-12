@@ -3,9 +3,10 @@
 // Login, Signup, and Password Reset Modal Component
 // ============================================================================
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../lib/AuthContext';
 import { isSupabaseConfigured } from '../../lib/supabase';
+import { TurnstileCaptcha } from './TurnstileCaptcha';
 
 // ============================================================================
 // ICONS
@@ -106,6 +107,11 @@ export const AuthModal: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  // Captcha state
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaError, setCaptchaError] = useState(false);
+  const captchaKeyRef = useRef(0);
+
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +119,28 @@ export const AuthModal: React.FC = () => {
 
   // Track if we're in the middle of an auth attempt
   const authInProgressRef = useRef(false);
+
+  // Captcha handlers
+  const handleCaptchaVerify = useCallback((token: string) => {
+    setCaptchaToken(token);
+    setCaptchaError(false);
+  }, []);
+
+  const handleCaptchaError = useCallback(() => {
+    setCaptchaToken(null);
+    setCaptchaError(true);
+  }, []);
+
+  const handleCaptchaExpire = useCallback(() => {
+    setCaptchaToken(null);
+  }, []);
+
+  // Reset captcha by changing key (forces remount)
+  const resetCaptcha = useCallback(() => {
+    captchaKeyRef.current += 1;
+    setCaptchaToken(null);
+    setCaptchaError(false);
+  }, []);
 
   // Clear loading state and close modal when user becomes authenticated
   useEffect(() => {
@@ -141,6 +169,7 @@ export const AuthModal: React.FC = () => {
     setSuccess(null);
     setPassword('');
     setConfirmPassword('');
+    resetCaptcha();
   };
 
   // Helper to extract error message
@@ -163,18 +192,26 @@ export const AuthModal: React.FC = () => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+
+    // Check for captcha token
+    if (!captchaToken) {
+      setError('Please complete the captcha verification');
+      return;
+    }
+
     setIsLoading(true);
     authInProgressRef.current = true;
 
     try {
       if (authModalMode === 'login') {
         const { error } = await withTimeout(
-          signIn(email, password),
+          signIn(email, password, captchaToken),
           AUTH_TIMEOUT_MS,
           'Sign in timed out. Please check your connection and try again.'
         );
         if (error) {
           setError(getErrorMessage(error));
+          resetCaptcha(); // Reset captcha on error
         }
       } else if (authModalMode === 'signup') {
         // Validate passwords match
@@ -196,7 +233,7 @@ export const AuthModal: React.FC = () => {
         // If user is anonymous, try to upgrade their account
         if (isAnonymous) {
           const { error: upgradeError } = await withTimeout(
-            upgradeAnonymousAccount(email, password),
+            upgradeAnonymousAccount(email, password, captchaToken),
             AUTH_TIMEOUT_MS,
             'Account upgrade timed out. Please try again.'
           );
@@ -206,7 +243,7 @@ export const AuthModal: React.FC = () => {
             console.log('Upgrade failed, trying regular signup. Error:', upgradeError);
 
             const { error: signUpError } = await withTimeout(
-              signUp(email, password),
+              signUp(email, password, captchaToken),
               AUTH_TIMEOUT_MS,
               'Sign up timed out. Please try again.'
             );
@@ -220,6 +257,7 @@ export const AuthModal: React.FC = () => {
               } else {
                 setError(msg || 'Failed to create account. Please check your Supabase configuration.');
               }
+              resetCaptcha(); // Reset captcha on error
             } else {
               setSuccess('Account created! Check your email to confirm your address. Note: You may need to re-enter any data from your guest session.');
             }
@@ -228,30 +266,33 @@ export const AuthModal: React.FC = () => {
           }
         } else {
           const { error } = await withTimeout(
-            signUp(email, password),
+            signUp(email, password, captchaToken),
             AUTH_TIMEOUT_MS,
             'Sign up timed out. Please try again.'
           );
           if (error) {
             setError(getErrorMessage(error));
+            resetCaptcha(); // Reset captcha on error
           } else {
             setSuccess('Account created! Check your email to confirm your address.');
           }
         }
       } else if (authModalMode === 'reset') {
         const { error } = await withTimeout(
-          resetPassword(email),
+          resetPassword(email, captchaToken),
           AUTH_TIMEOUT_MS,
           'Password reset request timed out. Please try again.'
         );
         if (error) {
           setError(getErrorMessage(error));
+          resetCaptcha(); // Reset captcha on error
         } else {
           setSuccess('Password reset email sent! Check your inbox.');
         }
       }
     } catch (err: any) {
       setError(getErrorMessage(err));
+      resetCaptcha(); // Reset captcha on error
     } finally {
       setIsLoading(false);
       authInProgressRef.current = false;
@@ -265,6 +306,12 @@ export const AuthModal: React.FC = () => {
       return;
     }
 
+    // Check for captcha token
+    if (!captchaToken) {
+      setError('Please complete the captcha verification');
+      return;
+    }
+
     setError(null);
     setSuccess(null);
     setIsLoading(true);
@@ -272,17 +319,19 @@ export const AuthModal: React.FC = () => {
 
     try {
       const { error } = await withTimeout(
-        signInWithMagicLink(email),
+        signInWithMagicLink(email, captchaToken),
         AUTH_TIMEOUT_MS,
         'Magic link request timed out. Please try again.'
       );
       if (error) {
         setError(error.message);
+        resetCaptcha(); // Reset captcha on error
       } else {
         setSuccess('Magic link sent! Check your email to sign in.');
       }
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');
+      resetCaptcha(); // Reset captcha on error
     } finally {
       setIsLoading(false);
       authInProgressRef.current = false;
@@ -474,10 +523,27 @@ export const AuthModal: React.FC = () => {
             </div>
           )}
 
+          {/* Captcha Widget */}
+          {isSupabaseConfigured && (
+            <div className="py-2">
+              <TurnstileCaptcha
+                key={captchaKeyRef.current}
+                onVerify={handleCaptchaVerify}
+                onError={handleCaptchaError}
+                onExpire={handleCaptchaExpire}
+              />
+              {captchaError && (
+                <p className="text-sm text-red-400 text-center mt-2">
+                  Captcha failed to load. Please refresh and try again.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading || !isSupabaseConfigured}
+            disabled={isLoading || !isSupabaseConfigured || !captchaToken}
             className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
           >
             {isLoading ? (
@@ -509,7 +575,7 @@ export const AuthModal: React.FC = () => {
               <button
                 type="button"
                 onClick={handleMagicLink}
-                disabled={isLoading || !isSupabaseConfigured}
+                disabled={isLoading || !isSupabaseConfigured || !captchaToken}
                 className="w-full py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-zinc-700"
               >
                 <Icons.Mail />

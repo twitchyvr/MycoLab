@@ -33,14 +33,14 @@ export interface AuthState {
 }
 
 export interface AuthContextValue extends AuthState {
-  // Auth actions
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signInWithMagicLink: (email: string) => Promise<{ error: AuthError | null }>;
+  // Auth actions (captchaToken is optional for backward compatibility)
+  signUp: (email: string, password: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
+  signInWithMagicLink: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  resetPassword: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
-  upgradeAnonymousAccount: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  upgradeAnonymousAccount: (email: string, password: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   
   // UI state
   showAuthModal: boolean;
@@ -184,7 +184,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // AUTH ACTIONS
   // ============================================================================
 
-  const signUp = useCallback(async (email: string, password: string) => {
+  const signUp = useCallback(async (email: string, password: string, captchaToken?: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
 
     // Retry configuration for transient failures
@@ -206,6 +206,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         password,
         options: {
           emailRedirectTo: window.location.origin,
+          captchaToken,
         },
       });
 
@@ -215,11 +216,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       lastError = error;
 
-      // Only retry on transient errors
+      // Only retry on transient errors (not captcha failures)
       const isRetryable = error.status === 504 ||
                          error.name === 'AuthRetryableFetchError' ||
                          error.message?.includes('Gateway Timeout');
-      if (!isRetryable) {
+      const isCaptchaError = error.message?.toLowerCase().includes('captcha');
+      if (!isRetryable || isCaptchaError) {
         break;
       }
     }
@@ -230,11 +232,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       message = 'Server is temporarily unavailable. Please try again in a moment.';
     } else if (lastError?.status === 406) {
       message = 'Request not acceptable. Please check your Supabase configuration.';
+    } else if (lastError?.message?.toLowerCase().includes('captcha')) {
+      message = 'Captcha verification failed. Please try again.';
     }
     return { error: { ...lastError, message } as AuthError };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string, captchaToken?: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
 
     // Retry configuration for transient failures
@@ -254,6 +258,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          captchaToken,
+        },
       });
 
       if (!error) {
@@ -262,11 +269,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       lastError = error;
 
-      // Only retry on transient errors (not auth failures like wrong password)
+      // Only retry on transient errors (not auth failures like wrong password or captcha errors)
       const isRetryable = error.status === 504 ||
                          error.name === 'AuthRetryableFetchError' ||
                          error.message?.includes('Gateway Timeout');
-      if (!isRetryable) {
+      const isCaptchaError = error.message?.toLowerCase().includes('captcha');
+      if (!isRetryable || isCaptchaError) {
         break;
       }
     }
@@ -279,20 +287,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       message = 'Request not acceptable. Please check your Supabase configuration.';
     } else if (lastError?.message?.includes('Invalid login credentials')) {
       message = 'Invalid email or password. Please check your credentials.';
+    } else if (lastError?.message?.toLowerCase().includes('captcha')) {
+      message = 'Captcha verification failed. Please try again.';
     }
     return { error: { ...lastError, message } as AuthError };
   }, []);
 
-  const signInWithMagicLink = useCallback(async (email: string) => {
+  const signInWithMagicLink = useCallback(async (email: string, captchaToken?: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
-    
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: window.location.origin,
+        captchaToken,
       },
     });
-    
+
+    if (error?.message?.toLowerCase().includes('captcha')) {
+      return { error: { ...error, message: 'Captcha verification failed. Please try again.' } as AuthError };
+    }
+
     return { error };
   }, []);
 
@@ -310,13 +325,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  const resetPassword = useCallback(async (email: string) => {
+  const resetPassword = useCallback(async (email: string, captchaToken?: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
-    
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
+      captchaToken,
     });
-    
+
+    if (error?.message?.toLowerCase().includes('captcha')) {
+      return { error: { ...error, message: 'Captcha verification failed. Please try again.' } as AuthError };
+    }
+
     return { error };
   }, []);
 
@@ -330,7 +350,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return { error };
   }, []);
 
-  const upgradeAnonymousAccount = useCallback(async (email: string, password: string) => {
+  const upgradeAnonymousAccount = useCallback(async (email: string, password: string, captchaToken?: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
 
     // Check if current user is anonymous
@@ -348,6 +368,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const attemptUpgrade = async (attempt: number): Promise<{ data: any; error: any }> => {
       try {
         console.log(`Upgrade attempt ${attempt + 1}/${MAX_RETRIES + 1}`);
+        // Note: updateUser doesn't support captchaToken directly in options
+        // The captcha should have been verified on a previous sign-in/sign-up attempt
         const result = await supabase!.auth.updateUser({
           email,
           password,
@@ -355,7 +377,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return result;
       } catch (err: any) {
         // Network errors or timeouts - these are retryable
-        if (attempt < MAX_RETRIES && (
+        const isCaptchaError = err.message?.toLowerCase().includes('captcha');
+        if (!isCaptchaError && attempt < MAX_RETRIES && (
           err.name === 'AuthRetryableFetchError' ||
           err.message?.includes('fetch') ||
           err.message?.includes('network') ||
@@ -375,10 +398,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { data, error } = await attemptUpgrade(0);
 
       if (error) {
-        // Check if this is a retryable error
-        const isRetryable = error.status === 504 ||
+        // Check if this is a retryable error (but not captcha errors)
+        const isCaptchaError = error.message?.toLowerCase().includes('captcha');
+        const isRetryable = !isCaptchaError && (
+                           error.status === 504 ||
                            error.name === 'AuthRetryableFetchError' ||
-                           error.message?.includes('Gateway Timeout');
+                           error.message?.includes('Gateway Timeout'));
 
         if (isRetryable) {
           // Try again with exponential backoff
@@ -416,6 +441,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           message = 'Server is temporarily unavailable. Please wait a moment and try again.';
         } else if (error.status === 406) {
           message = 'Request not acceptable. Please check your Supabase configuration.';
+        } else if (error.message?.toLowerCase().includes('captcha')) {
+          message = 'Captcha verification failed. Please try again.';
         }
         return { error: { ...error, message } as AuthError };
       }
@@ -427,7 +454,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { error: null };
     } catch (err: any) {
       console.error('Upgrade anonymous account exception:', err);
-      return { error: { message: err.message || 'Failed to create account' } as AuthError };
+      let message = err.message || 'Failed to create account';
+      if (err.message?.toLowerCase().includes('captcha')) {
+        message = 'Captcha verification failed. Please try again.';
+      }
+      return { error: { message } as AuthError };
     }
   }, []);
 
