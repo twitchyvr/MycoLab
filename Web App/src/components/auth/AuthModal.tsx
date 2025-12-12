@@ -107,6 +107,21 @@ export const AuthModal: React.FC = () => {
     setConfirmPassword('');
   };
 
+  // Helper to extract error message
+  const getErrorMessage = (error: any): string => {
+    if (!error) return 'An unknown error occurred';
+    if (typeof error === 'string') return error;
+    if (error.message) return error.message;
+    if (error.error_description) return error.error_description;
+    if (error.msg) return error.msg;
+    // Try to stringify if it's an object
+    try {
+      const str = JSON.stringify(error);
+      if (str !== '{}') return str;
+    } catch {}
+    return 'An error occurred. Please try again.';
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +133,7 @@ export const AuthModal: React.FC = () => {
       if (authModalMode === 'login') {
         const { error } = await signIn(email, password);
         if (error) {
-          setError(error.message);
+          setError(getErrorMessage(error));
         }
       } else if (authModalMode === 'signup') {
         // Validate passwords match
@@ -135,18 +150,35 @@ export const AuthModal: React.FC = () => {
           return;
         }
 
-        // If user is anonymous, upgrade their account
+        // If user is anonymous, try to upgrade their account
         if (isAnonymous) {
-          const { error } = await upgradeAnonymousAccount(email, password);
-          if (error) {
-            setError(error.message);
+          const { error: upgradeError } = await upgradeAnonymousAccount(email, password);
+          if (upgradeError) {
+            // If upgrade fails, try regular signup as fallback
+            // Note: This won't preserve the anonymous user's data
+            console.log('Upgrade failed, trying regular signup. Error:', upgradeError);
+            
+            const { error: signUpError } = await signUp(email, password);
+            if (signUpError) {
+              // Check for common issues
+              const msg = getErrorMessage(signUpError);
+              if (msg.includes('already registered') || msg.includes('email_exists')) {
+                setError('This email is already registered. Try signing in instead.');
+              } else if (msg.includes('rate limit')) {
+                setError('Too many attempts. Please wait a few minutes and try again.');
+              } else {
+                setError(msg || 'Failed to create account. Please check your Supabase configuration.');
+              }
+            } else {
+              setSuccess('Account created! Check your email to confirm your address. Note: You may need to re-enter any data from your guest session.');
+            }
           } else {
-            setSuccess('Account created! Check your email to confirm your address.');
+            setSuccess('Account created! Your data has been preserved. Check your email to confirm your address.');
           }
         } else {
           const { error } = await signUp(email, password);
           if (error) {
-            setError(error.message);
+            setError(getErrorMessage(error));
           } else {
             setSuccess('Account created! Check your email to confirm your address.');
           }
@@ -154,13 +186,13 @@ export const AuthModal: React.FC = () => {
       } else if (authModalMode === 'reset') {
         const { error } = await resetPassword(email);
         if (error) {
-          setError(error.message);
+          setError(getErrorMessage(error));
         } else {
           setSuccess('Password reset email sent! Check your inbox.');
         }
       }
     } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred');
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -284,6 +316,7 @@ export const AuthModal: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
+                autoComplete="email"
                 className="w-full pl-11 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-colors"
               />
             </div>
@@ -306,6 +339,7 @@ export const AuthModal: React.FC = () => {
                   placeholder="••••••••"
                   required
                   minLength={6}
+                  autoComplete={authModalMode === 'signup' ? 'new-password' : 'current-password'}
                   className="w-full pl-11 pr-12 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-colors"
                 />
                 <button
@@ -336,6 +370,7 @@ export const AuthModal: React.FC = () => {
                   placeholder="••••••••"
                   required
                   minLength={6}
+                  autoComplete="new-password"
                   className="w-full pl-11 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-colors"
                 />
               </div>

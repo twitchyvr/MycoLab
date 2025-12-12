@@ -1620,7 +1620,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       const userId = session?.user?.id;
       
       if (!userId) {
-        console.warn('No user session available, using localStorage only');
+        // This is expected for anonymous sessions, don't log as warning
         return;
       }
       
@@ -1646,7 +1646,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .maybeSingle();
       
       if (selectError) {
-        console.error('Error checking existing settings:', selectError);
+        // Only log schema errors once to avoid spam
+        if (selectError.code === 'PGRST116' || selectError.message?.includes('does not exist')) {
+          console.warn('user_settings table not found. Run supabase-schema.sql to create it.');
+        }
         return;
       }
       
@@ -1658,9 +1661,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           .eq('id', existing.id);
           
         if (updateError) {
-          console.error('Error updating settings:', updateError);
+          // Silently fail - localStorage already has the data
+          console.debug('Settings DB update failed (localStorage backup active):', updateError.message);
         } else {
-          console.log('Settings updated in database');
+          console.log('Settings synced to database');
         }
       } else {
         // Insert new row with user_id
@@ -1672,14 +1676,15 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           });
           
         if (insertError) {
-          console.error('Error inserting settings:', insertError);
+          // Silently fail - localStorage already has the data
+          console.debug('Settings DB insert failed (localStorage backup active):', insertError.message);
         } else {
           console.log('Settings created in database');
         }
       }
     } catch (err) {
-      console.error('Failed to save settings to database:', err);
-      // Settings are already saved to localStorage, so user won't lose data
+      // Silently fail - settings are in localStorage
+      console.debug('Settings database sync failed:', err);
     }
   }
 }, [supabase]);

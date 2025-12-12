@@ -209,17 +209,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { error: new Error('Current user is not anonymous') as AuthError };
     }
     
-    // Update anonymous user with email/password (this preserves their data)
-    const { error } = await supabase.auth.updateUser({
-      email,
-      password,
-    });
-    
-    if (!error) {
-      setIsAnonymous(false);
+    try {
+      // Update anonymous user with email/password (this preserves their data)
+      const { data, error } = await supabase.auth.updateUser({
+        email,
+        password,
+      });
+      
+      if (error) {
+        console.error('Upgrade anonymous account error:', error);
+        // Provide more helpful error messages
+        let message = error.message;
+        if (error.message?.includes('email_exists') || error.message?.includes('already registered')) {
+          message = 'This email is already registered. Try signing in instead.';
+        } else if (error.message?.includes('weak_password')) {
+          message = 'Password is too weak. Please use a stronger password.';
+        } else if (error.status === 422) {
+          message = 'Unable to create account. The email may already be in use.';
+        }
+        return { error: { ...error, message } as AuthError };
+      }
+      
+      if (data?.user) {
+        setIsAnonymous(false);
+      }
+      
+      return { error: null };
+    } catch (err: any) {
+      console.error('Upgrade anonymous account exception:', err);
+      return { error: { message: err.message || 'Failed to create account' } as AuthError };
     }
-    
-    return { error };
   }, []);
 
   // ============================================================================
