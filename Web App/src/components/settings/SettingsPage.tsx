@@ -15,7 +15,7 @@ import { SelectWithAdd } from '../common/SelectWithAdd';
 // ============================================================================
 
 
-type SettingsTab = 'database' | 'species' | 'strains' | 'locations' | 'locationTypes' | 'locationClassifications' | 'vessels' | 'containers' | 'substrates' | 'suppliers' | 'categories' | 'preferences';
+type SettingsTab = 'admin' | 'database' | 'species' | 'strains' | 'locations' | 'locationTypes' | 'locationClassifications' | 'vessels' | 'containers' | 'substrates' | 'suppliers' | 'categories' | 'preferences';
 
 interface AdminUser {
   id: string;
