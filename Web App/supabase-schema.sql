@@ -557,10 +557,13 @@ DROP POLICY IF EXISTS "anon_species_select" ON species;
 DROP POLICY IF EXISTS "anon_species_insert" ON species;
 DROP POLICY IF EXISTS "anon_species_update" ON species;
 DROP POLICY IF EXISTS "anon_species_delete" ON species;
+-- ADD THESE LINES:
+DROP POLICY IF EXISTS "species_select" ON species;
+DROP POLICY IF EXISTS "species_insert" ON species;
+DROP POLICY IF EXISTS "species_update" ON species;
+DROP POLICY IF EXISTS "species_delete" ON species;
+
 CREATE POLICY "species_select" ON species FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "species_insert" ON species FOR INSERT WITH CHECK (user_id = auth.uid());
-CREATE POLICY "species_update" ON species FOR UPDATE USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "species_delete" ON species FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
 -- Strains policies (shared defaults + user's own)
 DROP POLICY IF EXISTS "anon_strains_select" ON strains;
