@@ -466,15 +466,24 @@ export const GrowManagement: React.FC = () => {
           <h2 className="text-2xl font-bold text-white">Grow Tracker</h2>
           <p className="text-zinc-400 text-sm">Track your cultivation projects from spawn to harvest</p>
         </div>
-        {hasDraft && !showCreateModal && (
+        <div className="flex items-center gap-3">
+          {hasDraft && !showCreateModal && (
+            <button
+              onClick={loadDraft}
+              className="flex items-center gap-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 rounded-lg text-sm font-medium transition-colors"
+            >
+              <span>📝</span>
+              Continue Draft
+            </button>
+          )}
           <button
-            onClick={loadDraft}
-            className="flex items-center gap-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 rounded-lg text-sm font-medium transition-colors"
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors"
           >
-            <span>📝</span>
-            Continue Draft
+            <Icons.Plus />
+            New Grow
           </button>
-        )}
+        </div>
       </div>
 
       {/* Stats */}
