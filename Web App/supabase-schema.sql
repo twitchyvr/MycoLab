@@ -471,19 +471,6 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Admin audit log for tracking admin actions
-CREATE TABLE IF NOT EXISTS admin_audit_log (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  admin_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  admin_email TEXT,
-  action TEXT NOT NULL,
-  target_type TEXT NOT NULL,
-  target_id TEXT,
-  target_email TEXT,
-  details JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 -- Function to automatically create user profile on signup
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
@@ -636,7 +623,6 @@ ALTER TABLE purchase_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_lots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_usages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE admin_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- ROW LEVEL SECURITY POLICIES
@@ -666,10 +652,6 @@ DROP POLICY IF EXISTS "user_profiles_select" ON user_profiles;
 DROP POLICY IF EXISTS "user_profiles_insert" ON user_profiles;
 DROP POLICY IF EXISTS "user_profiles_update" ON user_profiles;
 DROP POLICY IF EXISTS "user_profiles_delete" ON user_profiles;
-
--- Admin audit log
-DROP POLICY IF EXISTS "admin_audit_log_select" ON admin_audit_log;
-DROP POLICY IF EXISTS "admin_audit_log_insert" ON admin_audit_log;
 
 -- Species
 DROP POLICY IF EXISTS "anon_species_select" ON species;
@@ -910,10 +892,6 @@ CREATE POLICY "user_profiles_select" ON user_profiles FOR SELECT USING (user_id 
 CREATE POLICY "user_profiles_insert" ON user_profiles FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "user_profiles_update" ON user_profiles FOR UPDATE USING (user_id = auth.uid() OR is_admin());
 CREATE POLICY "user_profiles_delete" ON user_profiles FOR DELETE USING (is_admin());
-
--- Admin audit log policies (admin only)
-CREATE POLICY "admin_audit_log_select" ON admin_audit_log FOR SELECT USING (is_admin());
-CREATE POLICY "admin_audit_log_insert" ON admin_audit_log FOR INSERT WITH CHECK (is_admin());
 
 -- Species policies (shared defaults + user's own)
 CREATE POLICY "species_select" ON species FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
