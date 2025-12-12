@@ -130,7 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signUp = useCallback(async (email: string, password: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -138,18 +138,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         emailRedirectTo: window.location.origin,
       },
     });
-    
+
+    // Improve error messages for common issues
+    if (error) {
+      let message = error.message;
+      if (error.status === 504 || error.name === 'AuthRetryableFetchError') {
+        message = 'Server is temporarily unavailable. Please try again in a moment.';
+      } else if (error.status === 406) {
+        message = 'Request not acceptable. Please check your Supabase configuration.';
+      }
+      return { error: { ...error, message } as AuthError };
+    }
+
     return { error };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
-    
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    
+
+    // Improve error messages for common issues
+    if (error) {
+      let message = error.message;
+      if (error.status === 504 || error.name === 'AuthRetryableFetchError') {
+        message = 'Server is temporarily unavailable. Please try again in a moment.';
+      } else if (error.status === 406) {
+        message = 'Request not acceptable. Please check your Supabase configuration.';
+      } else if (error.message?.includes('Invalid login credentials')) {
+        message = 'Invalid email or password. Please check your credentials.';
+      }
+      return { error: { ...error, message } as AuthError };
+    }
+
     return { error };
   }, []);
 
@@ -226,6 +250,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           message = 'Password is too weak. Please use a stronger password.';
         } else if (error.status === 422) {
           message = 'Unable to create account. The email may already be in use.';
+        } else if (error.status === 504 || error.name === 'AuthRetryableFetchError') {
+          message = 'Server is temporarily unavailable. Please try again in a moment.';
+        } else if (error.status === 406) {
+          message = 'Request not acceptable. Please check your Supabase configuration.';
         }
         return { error: { ...error, message } as AuthError };
       }

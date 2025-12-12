@@ -621,13 +621,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .order('name');
       if (recipesError) throw recipesError;
 
-      // Load user settings
-      const { data: settingsData, error: settingsError } = await client
-        .from('user_settings')
-        .select('*')
-        .limit(1)
-        .single();
-      // Settings may not exist yet, so don't throw error
+      // Load user settings - get current user ID first
+      const currentUserId = await getCurrentUserId();
+      let settingsData = null;
+      if (currentUserId) {
+        const { data, error: settingsError } = await client
+          .from('user_settings')
+          .select('*')
+          .eq('user_id', currentUserId)
+          .maybeSingle();
+        // Settings may not exist yet, so just log and continue
+        if (settingsError) {
+          console.debug('User settings fetch:', settingsError.message);
+        }
+        settingsData = data;
+      }
       
       // Transform settings - use nested notifications structure
       const loadedSettings: AppSettings = settingsData ? {
