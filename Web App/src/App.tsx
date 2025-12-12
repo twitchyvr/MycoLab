@@ -408,9 +408,20 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
           {/* No hardcoded notification dot - will be dynamic when notifications are implemented */}
         </button>
         {newAction && (
-          <button 
+          <button
             className="flex items-center gap-2 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
-            onClick={() => onNavigate(newAction.page)}
+            onClick={() => {
+              if (currentPage === newAction.page) {
+                // Already on the page, just dispatch the create event
+                window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: newAction.page } }));
+              } else {
+                // Navigate to page first, then dispatch event after a short delay
+                onNavigate(newAction.page);
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: newAction.page } }));
+                }, 100);
+              }
+            }}
           >
             <Icons.Plus />
             <span className="hidden sm:inline">{newAction.label}</span>
@@ -495,8 +506,13 @@ const DashboardPage: React.FC<{ onNavigate: (page: Page) => void }> = ({ onNavig
             {recentGrows.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-zinc-500 mb-3">No grows yet</p>
-                <button 
-                  onClick={() => onNavigate('grows')}
+                <button
+                  onClick={() => {
+                    onNavigate('grows');
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'grows' } }));
+                    }, 100);
+                  }}
                   className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm"
                 >
                   Start Your First Grow
@@ -591,7 +607,15 @@ const DashboardPage: React.FC<{ onNavigate: (page: Page) => void }> = ({ onNavig
             </div>
             <p className="text-sm text-white">New Culture</p>
           </button>
-          <button onClick={() => onNavigate('grows')} className="p-4 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-lg text-center transition-colors">
+          <button
+            onClick={() => {
+              onNavigate('grows');
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'grows' } }));
+              }, 100);
+            }}
+            className="p-4 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-lg text-center transition-colors"
+          >
             <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-emerald-950/50 border border-emerald-800 flex items-center justify-center">
               <Icons.Grow />
             </div>
