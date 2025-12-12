@@ -9,7 +9,8 @@ import {
   DataStoreState, LookupHelpers,
   Species, Strain, Location, Vessel, ContainerType, SubstrateType, Supplier,
   InventoryCategory, InventoryItem, Culture, Grow, Recipe, AppSettings,
-  CultureObservation, CultureTransfer, GrowObservation, Flush, GrowStage
+  CultureObservation, CultureTransfer, GrowObservation, Flush, GrowStage,
+  RecipeCategoryItem
 } from './types';
 import { 
   supabase, 
@@ -24,6 +25,16 @@ import {
 // EMPTY INITIAL STATE (no sample data)
 // ============================================================================
 
+// Default recipe categories (built-in, shown for all users)
+const defaultRecipeCategories: RecipeCategoryItem[] = [
+  { id: 'default-agar', name: 'Agar Media', code: 'agar', icon: '🧫', color: 'text-purple-400 bg-purple-950/50', isActive: true },
+  { id: 'default-lc', name: 'Liquid Culture', code: 'liquid_culture', icon: '💧', color: 'text-blue-400 bg-blue-950/50', isActive: true },
+  { id: 'default-grain', name: 'Grain Spawn', code: 'grain_spawn', icon: '🌾', color: 'text-amber-400 bg-amber-950/50', isActive: true },
+  { id: 'default-bulk', name: 'Bulk Substrate', code: 'bulk_substrate', icon: '🪵', color: 'text-emerald-400 bg-emerald-950/50', isActive: true },
+  { id: 'default-casing', name: 'Casing Layer', code: 'casing', icon: '🧱', color: 'text-orange-400 bg-orange-950/50', isActive: true },
+  { id: 'default-other', name: 'Other', code: 'other', icon: '📦', color: 'text-zinc-400 bg-zinc-800', isActive: true },
+];
+
 const emptyState: DataStoreState = {
   species: [],
   strains: [],
@@ -33,6 +44,7 @@ const emptyState: DataStoreState = {
   substrateTypes: [],
   suppliers: [],
   inventoryCategories: [],
+  recipeCategories: [...defaultRecipeCategories],
   inventoryItems: [],
   cultures: [],
   grows: [],
@@ -95,7 +107,7 @@ const transformStrainFromDb = (row: any): Strain => ({
 });
 
 // Transform Strain to DB format
-const transformStrainToDb = (strain: Partial<Strain>) => ({
+const transformStrainToDb = (strain: Partial<Strain>, userId?: string | null) => ({
   name: strain.name,
   species: strain.species,
   difficulty: strain.difficulty,
@@ -107,6 +119,7 @@ const transformStrainToDb = (strain: Partial<Strain>) => ({
   optimal_temp_fruiting: strain.optimalTempFruiting?.min,
   notes: strain.notes,
   is_active: strain.isActive,
+  ...(userId && { user_id: userId }),
 });
 
 // Transform Location from DB format
@@ -121,7 +134,7 @@ const transformLocationFromDb = (row: any): Location => ({
 });
 
 // Transform Location to DB format
-const transformLocationToDb = (location: Partial<Location>) => ({
+const transformLocationToDb = (location: Partial<Location>, userId?: string | null) => ({
   name: location.name,
   type: location.type,
   temp_min: location.tempRange?.min,
@@ -130,6 +143,7 @@ const transformLocationToDb = (location: Partial<Location>) => ({
   humidity_max: location.humidityRange?.max,
   notes: location.notes,
   is_active: location.isActive,
+  ...(userId && { user_id: userId }),
 });
 
 // Transform Vessel from DB format
@@ -144,13 +158,14 @@ const transformVesselFromDb = (row: any): Vessel => ({
 });
 
 // Transform Vessel to DB format
-const transformVesselToDb = (vessel: Partial<Vessel>) => ({
+const transformVesselToDb = (vessel: Partial<Vessel>, userId?: string | null) => ({
   name: vessel.name,
   type: vessel.type,
   volume_ml: vessel.volumeMl,
   is_reusable: vessel.isReusable,
   notes: vessel.notes,
   is_active: vessel.isActive,
+  ...(userId && { user_id: userId }),
 });
 
 // Transform ContainerType from DB format
@@ -164,12 +179,13 @@ const transformContainerTypeFromDb = (row: any): ContainerType => ({
 });
 
 // Transform ContainerType to DB format
-const transformContainerTypeToDb = (ct: Partial<ContainerType>) => ({
+const transformContainerTypeToDb = (ct: Partial<ContainerType>, userId?: string | null) => ({
   name: ct.name,
   category: ct.category,
   volume_l: ct.volumeL,
   notes: ct.notes,
   is_active: ct.isActive,
+  ...(userId && { user_id: userId }),
 });
 
 // Transform SubstrateType from DB format
@@ -189,7 +205,7 @@ const transformSubstrateTypeFromDb = (row: any): SubstrateType => ({
 });
 
 // Transform SubstrateType to DB format
-const transformSubstrateTypeToDb = (st: Partial<SubstrateType>) => ({
+const transformSubstrateTypeToDb = (st: Partial<SubstrateType>, userId?: string | null) => ({
   name: st.name,
   code: st.code,
   category: st.category,
@@ -199,6 +215,7 @@ const transformSubstrateTypeToDb = (st: Partial<SubstrateType>) => ({
   field_capacity: st.fieldCapacity,
   notes: st.notes,
   is_active: st.isActive,
+  ...(userId && { user_id: userId }),
 });
 
 // Transform InventoryCategory from DB format
@@ -211,11 +228,32 @@ const transformInventoryCategoryFromDb = (row: any): InventoryCategory => ({
 });
 
 // Transform InventoryCategory to DB format
-const transformInventoryCategoryToDb = (cat: Partial<InventoryCategory>) => ({
+const transformInventoryCategoryToDb = (cat: Partial<InventoryCategory>, userId?: string | null) => ({
   name: cat.name,
   color: cat.color,
   icon: cat.icon,
   is_active: cat.isActive,
+  ...(userId && { user_id: userId }),
+});
+
+// Transform RecipeCategoryItem from DB format
+const transformRecipeCategoryFromDb = (row: any): RecipeCategoryItem => ({
+  id: row.id,
+  name: row.name,
+  code: row.code,
+  icon: row.icon || '📦',
+  color: row.color || 'text-zinc-400 bg-zinc-800',
+  isActive: row.is_active ?? true,
+});
+
+// Transform RecipeCategoryItem to DB format
+const transformRecipeCategoryToDb = (cat: Partial<RecipeCategoryItem>, userId?: string | null) => ({
+  name: cat.name,
+  code: cat.code,
+  icon: cat.icon,
+  color: cat.color,
+  is_active: cat.isActive,
+  ...(userId && { user_id: userId }),
 });
 
 // Transform Culture from DB format
@@ -385,13 +423,14 @@ const transformSupplierFromDb = (row: any): Supplier => ({
 });
 
 // Transform Supplier to DB format
-const transformSupplierToDb = (supplier: Partial<Supplier>) => ({
+const transformSupplierToDb = (supplier: Partial<Supplier>, userId?: string | null) => ({
   name: supplier.name,
   website: supplier.website,
   contact_email: supplier.email,
   phone: supplier.phone,
   notes: supplier.notes,
   is_active: supplier.isActive,
+  ...(userId && { user_id: userId }),
 });
 
 // Transform Flush from DB format
@@ -467,7 +506,12 @@ interface DataContextValue extends LookupHelpers {
   addInventoryCategory: (category: Omit<InventoryCategory, 'id'>) => Promise<InventoryCategory>;
   updateInventoryCategory: (id: string, updates: Partial<InventoryCategory>) => Promise<void>;
   deleteInventoryCategory: (id: string) => Promise<void>;
-  
+
+  // Recipe Category CRUD
+  addRecipeCategory: (category: Omit<RecipeCategoryItem, 'id'>) => Promise<RecipeCategoryItem>;
+  updateRecipeCategory: (id: string, updates: Partial<RecipeCategoryItem>) => Promise<void>;
+  deleteRecipeCategory: (id: string) => Promise<void>;
+
   // Inventory Item CRUD
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>) => InventoryItem;
   updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => void;
@@ -592,7 +636,14 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .select('*')
         .order('name');
       if (inventoryCategoriesError) console.warn('Inventory categories error:', inventoryCategoriesError);
-      
+
+      // Load custom recipe categories (personal items from database)
+      const { data: recipeCategoriesData, error: recipeCategoriesError } = await client
+        .from('recipe_categories')
+        .select('*')
+        .order('name');
+      if (recipeCategoriesError) console.warn('Recipe categories error:', recipeCategoriesError);
+
       // Load cultures
       const { data: culturesData, error: culturesError } = await client
         .from('cultures')
@@ -671,6 +722,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         return grow;
       });
 
+      // Merge default recipe categories with custom ones from database
+      const customRecipeCategories = (recipeCategoriesData || []).map(transformRecipeCategoryFromDb);
+      const allRecipeCategories = [...defaultRecipeCategories, ...customRecipeCategories];
+
       setState(prev => ({
         ...prev,
         species,
@@ -681,6 +736,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         containerTypes: (containerTypesData || []).map(transformContainerTypeFromDb),
         substrateTypes: (substrateTypesData || []).map(transformSubstrateTypeFromDb),
         inventoryCategories: (inventoryCategoriesData || []).map(transformInventoryCategoryFromDb),
+        recipeCategories: allRecipeCategories,
         cultures: (culturesData || []).map(transformCultureFromDb),
         grows: growsWithFlushes,
         recipes: (recipesData || []).map(transformRecipeFromDb),
@@ -749,6 +805,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const getSubstrateType = useCallback((id: string) => state.substrateTypes.find(s => s.id === id), [state.substrateTypes]);
   const getSupplier = useCallback((id: string) => state.suppliers.find(s => s.id === id), [state.suppliers]);
   const getInventoryCategory = useCallback((id: string) => state.inventoryCategories.find(c => c.id === id), [state.inventoryCategories]);
+  const getRecipeCategory = useCallback((code: string) => state.recipeCategories.find(c => c.code === code), [state.recipeCategories]);
   const getInventoryItem = useCallback((id: string) => state.inventoryItems.find(i => i.id === id), [state.inventoryItems]);
   const getCulture = useCallback((id: string) => state.cultures.find(c => c.id === id), [state.cultures]);
   const getGrow = useCallback((id: string) => state.grows.find(g => g.id === id), [state.grows]);
@@ -763,6 +820,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const activeSubstrateTypes = useMemo(() => state.substrateTypes.filter(s => s.isActive), [state.substrateTypes]);
   const activeSuppliers = useMemo(() => state.suppliers.filter(s => s.isActive), [state.suppliers]);
   const activeInventoryCategories = useMemo(() => state.inventoryCategories.filter(c => c.isActive), [state.inventoryCategories]);
+  const activeRecipeCategories = useMemo(() => state.recipeCategories.filter(c => c.isActive), [state.recipeCategories]);
   const activeInventoryItems = useMemo(() => state.inventoryItems.filter(i => i.isActive), [state.inventoryItems]);
   const activeRecipes = useMemo(() => state.recipes.filter(r => r.isActive), [state.recipes]);
 
@@ -772,6 +830,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addSpecies = useCallback(async (species: Omit<Species, 'id'>): Promise<Species> => {
     if (supabase) {
+      // Get current user ID to save as personal item
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('species')
         .insert({
@@ -780,12 +840,13 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           category: species.category,
           notes: species.notes,
           is_active: species.isActive ?? true,
+          ...(userId && { user_id: userId }),
         })
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       const newSpecies: Species = {
         id: data.id,
         name: data.name,
@@ -797,7 +858,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       setState(prev => ({ ...prev, species: [...prev.species, newSpecies] }));
       return newSpecies;
     }
-    
+
     const newSpecies = { ...species, id: generateId('species') } as Species;
     setState(prev => ({ ...prev, species: [...prev.species, newSpecies] }));
     return newSpecies;
@@ -847,19 +908,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addStrain = useCallback(async (strain: Omit<Strain, 'id'>): Promise<Strain> => {
     if (supabase) {
+      // Get current user ID to save as personal item
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('strains')
-        .insert(transformStrainToDb(strain))
+        .insert(transformStrainToDb(strain, userId))
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       const newStrain = transformStrainFromDb(data);
       setState(prev => ({ ...prev, strains: [...prev.strains, newStrain] }));
       return newStrain;
     }
-    
+
     // Fallback for offline mode
     const newStrain = { ...strain, id: generateId('strain') } as Strain;
     setState(prev => ({ ...prev, strains: [...prev.strains, newStrain] }));
@@ -904,19 +967,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addLocation = useCallback(async (location: Omit<Location, 'id'>): Promise<Location> => {
     if (supabase) {
+      // Get current user ID to save as personal item
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('locations')
-        .insert(transformLocationToDb(location))
+        .insert(transformLocationToDb(location, userId))
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       const newLocation = transformLocationFromDb(data);
       setState(prev => ({ ...prev, locations: [...prev.locations, newLocation] }));
       return newLocation;
     }
-    
+
     const newLocation = { ...location, id: generateId('loc') } as Location;
     setState(prev => ({ ...prev, locations: [...prev.locations, newLocation] }));
     return newLocation;
@@ -960,19 +1025,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addSupplier = useCallback(async (supplier: Omit<Supplier, 'id'>): Promise<Supplier> => {
     if (supabase) {
+      // Get current user ID to save as personal item
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('suppliers')
-        .insert(transformSupplierToDb(supplier))
+        .insert(transformSupplierToDb(supplier, userId))
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       const newSupplier = transformSupplierFromDb(data);
       setState(prev => ({ ...prev, suppliers: [...prev.suppliers, newSupplier] }));
       return newSupplier;
     }
-    
+
     const newSupplier = { ...supplier, id: generateId('supp') } as Supplier;
     setState(prev => ({ ...prev, suppliers: [...prev.suppliers, newSupplier] }));
     return newSupplier;
@@ -1378,9 +1445,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addVessel = useCallback(async (vessel: Omit<Vessel, 'id'>): Promise<Vessel> => {
     if (supabase) {
+      // Get current user ID to save as personal item
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('vessels')
-        .insert(transformVesselToDb(vessel))
+        .insert(transformVesselToDb(vessel, userId))
         .select()
         .single();
       if (error) throw error;
@@ -1424,9 +1493,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addContainerType = useCallback(async (containerType: Omit<ContainerType, 'id'>): Promise<ContainerType> => {
     if (supabase) {
+      // Get current user ID to save as personal item
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('container_types')
-        .insert(transformContainerTypeToDb(containerType))
+        .insert(transformContainerTypeToDb(containerType, userId))
         .select()
         .single();
       if (error) throw error;
@@ -1469,9 +1540,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addSubstrateType = useCallback(async (substrateType: Omit<SubstrateType, 'id'>): Promise<SubstrateType> => {
     if (supabase) {
+      // Get current user ID to save as personal item
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('substrate_types')
-        .insert(transformSubstrateTypeToDb(substrateType))
+        .insert(transformSubstrateTypeToDb(substrateType, userId))
         .select()
         .single();
       if (error) throw error;
@@ -1514,9 +1587,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addInventoryCategory = useCallback(async (category: Omit<InventoryCategory, 'id'>): Promise<InventoryCategory> => {
     if (supabase) {
+      // Get current user ID to save as personal item
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('inventory_categories')
-        .insert(transformInventoryCategoryToDb(category))
+        .insert(transformInventoryCategoryToDb(category, userId))
         .select()
         .single();
       if (error) throw error;
@@ -1554,6 +1629,61 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     setState(prev => ({
       ...prev,
       inventoryCategories: prev.inventoryCategories.map(c => c.id === id ? { ...c, isActive: false } : c)
+    }));
+  }, [supabase]);
+
+  // ============================================================================
+  // RECIPE CATEGORY CRUD
+  // ============================================================================
+
+  const addRecipeCategory = useCallback(async (category: Omit<RecipeCategoryItem, 'id'>): Promise<RecipeCategoryItem> => {
+    if (supabase) {
+      // Get current user ID to save as personal item
+      const userId = await getCurrentUserId();
+      const { data, error } = await supabase
+        .from('recipe_categories')
+        .insert(transformRecipeCategoryToDb(category, userId))
+        .select()
+        .single();
+      if (error) throw error;
+      const newCat = transformRecipeCategoryFromDb(data);
+      setState(prev => ({ ...prev, recipeCategories: [...prev.recipeCategories, newCat] }));
+      return newCat;
+    }
+    const newCat = { ...category, id: generateId('rcat') } as RecipeCategoryItem;
+    setState(prev => ({ ...prev, recipeCategories: [...prev.recipeCategories, newCat] }));
+    return newCat;
+  }, [supabase, generateId]);
+
+  const updateRecipeCategory = useCallback(async (id: string, updates: Partial<RecipeCategoryItem>) => {
+    // Don't allow updating default categories
+    if (id.startsWith('default-')) return;
+    if (supabase) {
+      const { error } = await supabase
+        .from('recipe_categories')
+        .update(transformRecipeCategoryToDb(updates))
+        .eq('id', id);
+      if (error) throw error;
+    }
+    setState(prev => ({
+      ...prev,
+      recipeCategories: prev.recipeCategories.map(c => c.id === id ? { ...c, ...updates } : c)
+    }));
+  }, [supabase]);
+
+  const deleteRecipeCategory = useCallback(async (id: string) => {
+    // Don't allow deleting default categories
+    if (id.startsWith('default-')) return;
+    if (supabase) {
+      const { error } = await supabase
+        .from('recipe_categories')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+    }
+    setState(prev => ({
+      ...prev,
+      recipeCategories: prev.recipeCategories.map(c => c.id === id ? { ...c, isActive: false } : c)
     }));
   }, [supabase]);
 
@@ -1769,14 +1899,14 @@ const loadSettings = async (): Promise<AppSettings> => {
     isLoading,
     isConnected,
     error,
-    
+
     // Lookup helpers
     getSpecies, getStrain, getLocation, getVessel, getContainerType, getSubstrateType,
-    getSupplier, getInventoryCategory, getInventoryItem, getCulture, getGrow, getRecipe,
+    getSupplier, getInventoryCategory, getRecipeCategory, getInventoryItem, getCulture, getGrow, getRecipe,
     activeSpecies, activeStrains, activeLocations, activeVessels, activeContainerTypes,
-    activeSubstrateTypes, activeSuppliers, activeInventoryCategories,
+    activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeInventoryItems, activeRecipes,
-    
+
     // CRUD operations
     addSpecies, updateSpecies, deleteSpecies,
     addStrain, updateStrain, deleteStrain,
@@ -1786,6 +1916,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addSubstrateType, updateSubstrateType, deleteSubstrateType,
     addSupplier, updateSupplier, deleteSupplier,
     addInventoryCategory, updateInventoryCategory, deleteInventoryCategory,
+    addRecipeCategory, updateRecipeCategory, deleteRecipeCategory,
     addInventoryItem, updateInventoryItem, deleteInventoryItem, adjustInventoryQuantity,
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
     getCultureLineage, generateCultureLabel,
@@ -1798,9 +1929,9 @@ const loadSettings = async (): Promise<AppSettings> => {
   }), [
     state, isLoading, isConnected, error,
     getSpecies, getStrain, getLocation, getVessel, getContainerType, getSubstrateType,
-    getSupplier, getInventoryCategory, getInventoryItem, getCulture, getGrow, getRecipe,
+    getSupplier, getInventoryCategory, getRecipeCategory, getInventoryItem, getCulture, getGrow, getRecipe,
     activeSpecies, activeStrains, activeLocations, activeVessels, activeContainerTypes,
-    activeSubstrateTypes, activeSuppliers, activeInventoryCategories,
+    activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeInventoryItems, activeRecipes,
     addSpecies, updateSpecies, deleteSpecies,
     addStrain, updateStrain, deleteStrain,
@@ -1810,6 +1941,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addSubstrateType, updateSubstrateType, deleteSubstrateType,
     addSupplier, updateSupplier, deleteSupplier,
     addInventoryCategory, updateInventoryCategory, deleteInventoryCategory,
+    addRecipeCategory, updateRecipeCategory, deleteRecipeCategory,
     addInventoryItem, updateInventoryItem, deleteInventoryItem, adjustInventoryQuantity,
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
     getCultureLineage, generateCultureLabel,

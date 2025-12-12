@@ -1156,6 +1156,16 @@ export const initialSettings: AppSettings = {
 // COMBINED INITIAL STATE
 // ============================================================================
 
+// Default recipe categories
+const initialRecipeCategories = [
+  { id: 'default-agar', name: 'Agar Media', code: 'agar', icon: '🧫', color: 'text-purple-400 bg-purple-950/50', isActive: true },
+  { id: 'default-lc', name: 'Liquid Culture', code: 'liquid_culture', icon: '💧', color: 'text-blue-400 bg-blue-950/50', isActive: true },
+  { id: 'default-grain', name: 'Grain Spawn', code: 'grain_spawn', icon: '🌾', color: 'text-amber-400 bg-amber-950/50', isActive: true },
+  { id: 'default-bulk', name: 'Bulk Substrate', code: 'bulk_substrate', icon: '🪵', color: 'text-emerald-400 bg-emerald-950/50', isActive: true },
+  { id: 'default-casing', name: 'Casing Layer', code: 'casing', icon: '🧱', color: 'text-orange-400 bg-orange-950/50', isActive: true },
+  { id: 'default-other', name: 'Other', code: 'other', icon: '📦', color: 'text-zinc-400 bg-zinc-800', isActive: true },
+];
+
 export const initialDataState: DataStoreState = {
   species: [],
   strains: initialStrains,
@@ -1165,6 +1175,7 @@ export const initialDataState: DataStoreState = {
   substrateTypes: initialSubstrateTypes,
   suppliers: initialSuppliers,
   inventoryCategories: initialInventoryCategories,
+  recipeCategories: initialRecipeCategories,
   inventoryItems: initialInventoryItems,
   cultures: initialCultures,
   grows: initialGrows,

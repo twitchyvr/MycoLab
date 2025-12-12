@@ -130,6 +130,19 @@ CREATE TABLE IF NOT EXISTS inventory_categories (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
+-- Recipe categories (for custom recipe categories)
+CREATE TABLE IF NOT EXISTS recipe_categories (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL,
+  icon TEXT DEFAULT '📦',
+  color TEXT DEFAULT 'text-zinc-400 bg-zinc-800',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
 -- ============================================================================
 -- CORE DATA TABLES
 -- ============================================================================
@@ -380,91 +393,103 @@ ALTER TABLE flushes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_ingredients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recipe_categories ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
--- OPTION A: ANONYMOUS ACCESS (for testing/single-user without auth)
--- Drop existing policies first, then create new ones
+-- ROW LEVEL SECURITY POLICIES
+-- Users can see: shared items (user_id IS NULL) + their own items (user_id = current user)
+-- Users can only modify their own items (not shared defaults)
 -- ============================================================================
 
--- Species policies
+-- Species policies (shared + personal)
 DROP POLICY IF EXISTS "anon_species_select" ON species;
 DROP POLICY IF EXISTS "anon_species_insert" ON species;
 DROP POLICY IF EXISTS "anon_species_update" ON species;
 DROP POLICY IF EXISTS "anon_species_delete" ON species;
-CREATE POLICY "anon_species_select" ON species FOR SELECT USING (true);
+CREATE POLICY "anon_species_select" ON species FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
 CREATE POLICY "anon_species_insert" ON species FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_species_update" ON species FOR UPDATE USING (true);
-CREATE POLICY "anon_species_delete" ON species FOR DELETE USING (true);
+CREATE POLICY "anon_species_update" ON species FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "anon_species_delete" ON species FOR DELETE USING (user_id = auth.uid());
 
--- Strains policies
+-- Strains policies (shared + personal)
 DROP POLICY IF EXISTS "anon_strains_select" ON strains;
 DROP POLICY IF EXISTS "anon_strains_insert" ON strains;
 DROP POLICY IF EXISTS "anon_strains_update" ON strains;
 DROP POLICY IF EXISTS "anon_strains_delete" ON strains;
-CREATE POLICY "anon_strains_select" ON strains FOR SELECT USING (true);
+CREATE POLICY "anon_strains_select" ON strains FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
 CREATE POLICY "anon_strains_insert" ON strains FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_strains_update" ON strains FOR UPDATE USING (true);
-CREATE POLICY "anon_strains_delete" ON strains FOR DELETE USING (true);
+CREATE POLICY "anon_strains_update" ON strains FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "anon_strains_delete" ON strains FOR DELETE USING (user_id = auth.uid());
 
--- Locations policies
+-- Locations policies (shared + personal)
 DROP POLICY IF EXISTS "anon_locations_select" ON locations;
 DROP POLICY IF EXISTS "anon_locations_insert" ON locations;
 DROP POLICY IF EXISTS "anon_locations_update" ON locations;
 DROP POLICY IF EXISTS "anon_locations_delete" ON locations;
-CREATE POLICY "anon_locations_select" ON locations FOR SELECT USING (true);
+CREATE POLICY "anon_locations_select" ON locations FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
 CREATE POLICY "anon_locations_insert" ON locations FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_locations_update" ON locations FOR UPDATE USING (true);
-CREATE POLICY "anon_locations_delete" ON locations FOR DELETE USING (true);
+CREATE POLICY "anon_locations_update" ON locations FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "anon_locations_delete" ON locations FOR DELETE USING (user_id = auth.uid());
 
--- Vessels policies
+-- Vessels policies (shared + personal)
 DROP POLICY IF EXISTS "anon_vessels_select" ON vessels;
 DROP POLICY IF EXISTS "anon_vessels_insert" ON vessels;
 DROP POLICY IF EXISTS "anon_vessels_update" ON vessels;
 DROP POLICY IF EXISTS "anon_vessels_delete" ON vessels;
-CREATE POLICY "anon_vessels_select" ON vessels FOR SELECT USING (true);
+CREATE POLICY "anon_vessels_select" ON vessels FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
 CREATE POLICY "anon_vessels_insert" ON vessels FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_vessels_update" ON vessels FOR UPDATE USING (true);
-CREATE POLICY "anon_vessels_delete" ON vessels FOR DELETE USING (true);
+CREATE POLICY "anon_vessels_update" ON vessels FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "anon_vessels_delete" ON vessels FOR DELETE USING (user_id = auth.uid());
 
--- Container types policies
+-- Container types policies (shared + personal)
 DROP POLICY IF EXISTS "anon_container_types_select" ON container_types;
 DROP POLICY IF EXISTS "anon_container_types_insert" ON container_types;
 DROP POLICY IF EXISTS "anon_container_types_update" ON container_types;
 DROP POLICY IF EXISTS "anon_container_types_delete" ON container_types;
-CREATE POLICY "anon_container_types_select" ON container_types FOR SELECT USING (true);
+CREATE POLICY "anon_container_types_select" ON container_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
 CREATE POLICY "anon_container_types_insert" ON container_types FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_container_types_update" ON container_types FOR UPDATE USING (true);
-CREATE POLICY "anon_container_types_delete" ON container_types FOR DELETE USING (true);
+CREATE POLICY "anon_container_types_update" ON container_types FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "anon_container_types_delete" ON container_types FOR DELETE USING (user_id = auth.uid());
 
--- Substrate types policies
+-- Substrate types policies (shared + personal)
 DROP POLICY IF EXISTS "anon_substrate_types_select" ON substrate_types;
 DROP POLICY IF EXISTS "anon_substrate_types_insert" ON substrate_types;
 DROP POLICY IF EXISTS "anon_substrate_types_update" ON substrate_types;
 DROP POLICY IF EXISTS "anon_substrate_types_delete" ON substrate_types;
-CREATE POLICY "anon_substrate_types_select" ON substrate_types FOR SELECT USING (true);
+CREATE POLICY "anon_substrate_types_select" ON substrate_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
 CREATE POLICY "anon_substrate_types_insert" ON substrate_types FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_substrate_types_update" ON substrate_types FOR UPDATE USING (true);
-CREATE POLICY "anon_substrate_types_delete" ON substrate_types FOR DELETE USING (true);
+CREATE POLICY "anon_substrate_types_update" ON substrate_types FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "anon_substrate_types_delete" ON substrate_types FOR DELETE USING (user_id = auth.uid());
 
--- Suppliers policies
+-- Suppliers policies (shared + personal)
 DROP POLICY IF EXISTS "anon_suppliers_select" ON suppliers;
 DROP POLICY IF EXISTS "anon_suppliers_insert" ON suppliers;
 DROP POLICY IF EXISTS "anon_suppliers_update" ON suppliers;
 DROP POLICY IF EXISTS "anon_suppliers_delete" ON suppliers;
-CREATE POLICY "anon_suppliers_select" ON suppliers FOR SELECT USING (true);
+CREATE POLICY "anon_suppliers_select" ON suppliers FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
 CREATE POLICY "anon_suppliers_insert" ON suppliers FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_suppliers_update" ON suppliers FOR UPDATE USING (true);
-CREATE POLICY "anon_suppliers_delete" ON suppliers FOR DELETE USING (true);
+CREATE POLICY "anon_suppliers_update" ON suppliers FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "anon_suppliers_delete" ON suppliers FOR DELETE USING (user_id = auth.uid());
 
--- Inventory categories policies
+-- Inventory categories policies (shared + personal)
 DROP POLICY IF EXISTS "anon_inventory_categories_select" ON inventory_categories;
 DROP POLICY IF EXISTS "anon_inventory_categories_insert" ON inventory_categories;
 DROP POLICY IF EXISTS "anon_inventory_categories_update" ON inventory_categories;
 DROP POLICY IF EXISTS "anon_inventory_categories_delete" ON inventory_categories;
-CREATE POLICY "anon_inventory_categories_select" ON inventory_categories FOR SELECT USING (true);
+CREATE POLICY "anon_inventory_categories_select" ON inventory_categories FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
 CREATE POLICY "anon_inventory_categories_insert" ON inventory_categories FOR INSERT WITH CHECK (true);
-CREATE POLICY "anon_inventory_categories_update" ON inventory_categories FOR UPDATE USING (true);
-CREATE POLICY "anon_inventory_categories_delete" ON inventory_categories FOR DELETE USING (true);
+CREATE POLICY "anon_inventory_categories_update" ON inventory_categories FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "anon_inventory_categories_delete" ON inventory_categories FOR DELETE USING (user_id = auth.uid());
+
+-- Recipe categories policies (shared + personal)
+DROP POLICY IF EXISTS "anon_recipe_categories_select" ON recipe_categories;
+DROP POLICY IF EXISTS "anon_recipe_categories_insert" ON recipe_categories;
+DROP POLICY IF EXISTS "anon_recipe_categories_update" ON recipe_categories;
+DROP POLICY IF EXISTS "anon_recipe_categories_delete" ON recipe_categories;
+CREATE POLICY "anon_recipe_categories_select" ON recipe_categories FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
+CREATE POLICY "anon_recipe_categories_insert" ON recipe_categories FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_recipe_categories_update" ON recipe_categories FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "anon_recipe_categories_delete" ON recipe_categories FOR DELETE USING (user_id = auth.uid());
 
 -- Inventory items policies
 DROP POLICY IF EXISTS "anon_inventory_items_select" ON inventory_items;

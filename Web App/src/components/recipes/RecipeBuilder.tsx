@@ -5,17 +5,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
-import type { Recipe, RecipeCategory, RecipeIngredient } from '../../store/types';
-
-// Category configurations
-const categoryConfig: Record<RecipeCategory, { label: string; icon: string; color: string }> = {
-  agar: { label: 'Agar Media', icon: '🧫', color: 'text-purple-400 bg-purple-950/50' },
-  liquid_culture: { label: 'Liquid Culture', icon: '💧', color: 'text-blue-400 bg-blue-950/50' },
-  grain_spawn: { label: 'Grain Spawn', icon: '🌾', color: 'text-amber-400 bg-amber-950/50' },
-  bulk_substrate: { label: 'Bulk Substrate', icon: '🪵', color: 'text-emerald-400 bg-emerald-950/50' },
-  casing: { label: 'Casing Layer', icon: '🧱', color: 'text-orange-400 bg-orange-950/50' },
-  other: { label: 'Other', icon: '📦', color: 'text-zinc-400 bg-zinc-800' },
-};
+import type { Recipe, RecipeCategory, RecipeIngredient, RecipeCategoryItem } from '../../store/types';
+import { SelectWithAdd } from '../common/SelectWithAdd';
 
 // Icons
 const Icons = {
@@ -32,15 +23,28 @@ export const RecipeBuilder: React.FC = () => {
   const {
     state,
     activeInventoryItems,
+    activeRecipeCategories,
     getInventoryItem,
+    getRecipeCategory,
     addRecipe,
     updateRecipe,
     deleteRecipe,
     scaleRecipe,
+    addRecipeCategory,
     generateId,
   } = useData();
 
   const recipes = state.recipes.filter(r => r.isActive);
+
+  // Helper to get category config by code
+  const getCategoryConfig = (code: string) => {
+    const cat = getRecipeCategory(code);
+    if (cat) {
+      return { label: cat.name, icon: cat.icon, color: cat.color };
+    }
+    // Fallback for unknown categories
+    return { label: code, icon: '📦', color: 'text-zinc-400 bg-zinc-800' };
+  };
 
   // UI State
   const [searchQuery, setSearchQuery] = useState('');
@@ -114,10 +118,19 @@ export const RecipeBuilder: React.FC = () => {
 
   // Stats
   const stats = useMemo(() => {
-    const byCategory: Record<RecipeCategory, number> = { agar: 0, liquid_culture: 0, grain_spawn: 0, bulk_substrate: 0, casing: 0, other: 0 };
-    recipes.forEach(r => byCategory[r.category]++);
+    const byCategory: Record<string, number> = {};
+    // Initialize counts for all active categories
+    activeRecipeCategories.forEach(cat => { byCategory[cat.code] = 0; });
+    // Count recipes by category
+    recipes.forEach(r => {
+      if (byCategory[r.category] !== undefined) {
+        byCategory[r.category]++;
+      } else {
+        byCategory[r.category] = 1;
+      }
+    });
     return { total: recipes.length, byCategory };
-  }, [recipes]);
+  }, [recipes, activeRecipeCategories]);
 
   // Calculate cost
   const getRecipeCost = (recipe: Recipe): number => {
@@ -281,12 +294,12 @@ export const RecipeBuilder: React.FC = () => {
           <p className="text-xs text-zinc-500">Total</p>
           <p className="text-2xl font-bold text-white">{stats.total}</p>
         </div>
-        {Object.entries(categoryConfig).map(([key, config]) => (
-          <div key={key} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+        {activeRecipeCategories.map(cat => (
+          <div key={cat.code} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
             <p className="text-xs text-zinc-500 flex items-center gap-1">
-              <span>{config.icon}</span> {config.label.split(' ')[0]}
+              <span>{cat.icon}</span> {cat.name.split(' ')[0]}
             </p>
-            <p className="text-2xl font-bold text-white">{stats.byCategory[key as RecipeCategory]}</p>
+            <p className="text-2xl font-bold text-white">{stats.byCategory[cat.code] || 0}</p>
           </div>
         ))}
       </div>
@@ -309,8 +322,8 @@ export const RecipeBuilder: React.FC = () => {
           className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
         >
           <option value="all">All Categories</option>
-          {Object.entries(categoryConfig).map(([key, config]) => (
-            <option key={key} value={key}>{config.icon} {config.label}</option>
+          {activeRecipeCategories.map(cat => (
+            <option key={cat.code} value={cat.code}>{cat.icon} {cat.name}</option>
           ))}
         </select>
       </div>
@@ -321,7 +334,7 @@ export const RecipeBuilder: React.FC = () => {
         <div className="flex-1">
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredRecipes.map(recipe => {
-              const config = categoryConfig[recipe.category];
+              const config = getCategoryConfig(recipe.category);
               const cost = getRecipeCost(recipe);
               return (
                 <div
@@ -379,11 +392,11 @@ export const RecipeBuilder: React.FC = () => {
           <div className="w-96 bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 h-fit sticky top-6 max-h-[calc(100vh-200px)] overflow-y-auto">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <span className="text-3xl">{categoryConfig[selectedRecipe.category].icon}</span>
+                <span className="text-3xl">{getCategoryConfig(selectedRecipe.category).icon}</span>
                 <div>
                   <h3 className="text-lg font-bold text-white">{selectedRecipe.name}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded ${categoryConfig[selectedRecipe.category].color}`}>
-                    {categoryConfig[selectedRecipe.category].label}
+                  <span className={`text-xs px-2 py-0.5 rounded ${getCategoryConfig(selectedRecipe.category).color}`}>
+                    {getCategoryConfig(selectedRecipe.category).label}
                   </span>
                 </div>
               </div>
@@ -509,9 +522,31 @@ export const RecipeBuilder: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Category</label>
-                  <select value={formData.category} onChange={e => setFormData(prev => ({ ...prev, category: e.target.value as RecipeCategory }))} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white">
-                    {Object.entries(categoryConfig).map(([key, config]) => <option key={key} value={key}>{config.icon} {config.label}</option>)}
-                  </select>
+                  <SelectWithAdd
+                    value={formData.category}
+                    onChange={(val) => setFormData(prev => ({ ...prev, category: val as RecipeCategory }))}
+                    options={activeRecipeCategories.map(cat => ({
+                      id: cat.code,
+                      name: `${cat.icon} ${cat.name}`,
+                    }))}
+                    placeholder="Select category..."
+                    addLabel="Add New Category"
+                    addFields={[
+                      { name: 'name', label: 'Category Name', type: 'text', required: true },
+                      { name: 'icon', label: 'Icon (emoji)', type: 'text', required: false },
+                    ]}
+                    onAddComplete={async (data) => {
+                      const code = data.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                      await addRecipeCategory({
+                        name: data.name,
+                        code,
+                        icon: data.icon || '📦',
+                        color: 'text-zinc-400 bg-zinc-800',
+                        isActive: true,
+                      });
+                      setFormData(prev => ({ ...prev, category: code }));
+                    }}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Yield</label>
