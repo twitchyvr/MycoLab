@@ -421,6 +421,34 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
+-- Function to update user profile when anonymous user is upgraded to permanent
+-- This handles the case where an anonymous user adds email/password to their account
+CREATE OR REPLACE FUNCTION handle_user_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Update the user_profiles email when user email changes (anonymous upgrade)
+  IF OLD.email IS DISTINCT FROM NEW.email THEN
+    UPDATE public.user_profiles
+    SET email = NEW.email, updated_at = NOW()
+    WHERE user_id = NEW.id;
+
+    -- If no profile exists yet, create one
+    IF NOT FOUND THEN
+      INSERT INTO public.user_profiles (user_id, email)
+      VALUES (NEW.id, NEW.email)
+      ON CONFLICT (user_id) DO UPDATE SET email = NEW.email, updated_at = NOW();
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to update profile when user is updated (e.g., anonymous to permanent)
+DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
+CREATE TRIGGER on_auth_user_updated
+  AFTER UPDATE ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_user_update();
+
 -- ============================================================================
 -- SCHEMA MIGRATIONS (Add columns that may be missing from older schemas)
 -- ============================================================================
@@ -1045,8 +1073,8 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 2)
-ON CONFLICT (id) DO UPDATE SET version = 2, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 3)
+ON CONFLICT (id) DO UPDATE SET version = 3, updated_at = NOW();
 
 -- ============================================================================
 -- SUCCESS MESSAGE

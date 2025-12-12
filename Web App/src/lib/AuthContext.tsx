@@ -187,50 +187,100 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signUp = useCallback(async (email: string, password: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
-    });
+    // Retry configuration for transient failures
+    const MAX_RETRIES = 3;
+    const INITIAL_DELAY_MS = 1000;
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Improve error messages for common issues
-    if (error) {
-      let message = error.message;
-      if (error.status === 504 || error.name === 'AuthRetryableFetchError') {
-        message = 'Server is temporarily unavailable. Please try again in a moment.';
-      } else if (error.status === 406) {
-        message = 'Request not acceptable. Please check your Supabase configuration.';
+    let lastError: any = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`Retrying signup after ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES + 1})`);
+        await delay(delayMs);
       }
-      return { error: { ...error, message } as AuthError };
+
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
+      });
+
+      if (!error) {
+        return { error: null };
+      }
+
+      lastError = error;
+
+      // Only retry on transient errors
+      const isRetryable = error.status === 504 ||
+                         error.name === 'AuthRetryableFetchError' ||
+                         error.message?.includes('Gateway Timeout');
+      if (!isRetryable) {
+        break;
+      }
     }
 
-    return { error };
+    // Improve error messages for common issues
+    let message = lastError?.message || 'An error occurred';
+    if (lastError?.status === 504 || lastError?.name === 'AuthRetryableFetchError') {
+      message = 'Server is temporarily unavailable. Please try again in a moment.';
+    } else if (lastError?.status === 406) {
+      message = 'Request not acceptable. Please check your Supabase configuration.';
+    }
+    return { error: { ...lastError, message } as AuthError };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // Retry configuration for transient failures
+    const MAX_RETRIES = 3;
+    const INITIAL_DELAY_MS = 1000;
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Improve error messages for common issues
-    if (error) {
-      let message = error.message;
-      if (error.status === 504 || error.name === 'AuthRetryableFetchError') {
-        message = 'Server is temporarily unavailable. Please try again in a moment.';
-      } else if (error.status === 406) {
-        message = 'Request not acceptable. Please check your Supabase configuration.';
-      } else if (error.message?.includes('Invalid login credentials')) {
-        message = 'Invalid email or password. Please check your credentials.';
+    let lastError: any = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`Retrying signin after ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES + 1})`);
+        await delay(delayMs);
       }
-      return { error: { ...error, message } as AuthError };
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (!error) {
+        return { error: null };
+      }
+
+      lastError = error;
+
+      // Only retry on transient errors (not auth failures like wrong password)
+      const isRetryable = error.status === 504 ||
+                         error.name === 'AuthRetryableFetchError' ||
+                         error.message?.includes('Gateway Timeout');
+      if (!isRetryable) {
+        break;
+      }
     }
 
-    return { error };
+    // Improve error messages for common issues
+    let message = lastError?.message || 'An error occurred';
+    if (lastError?.status === 504 || lastError?.name === 'AuthRetryableFetchError') {
+      message = 'Server is temporarily unavailable. Please try again in a moment.';
+    } else if (lastError?.status === 406) {
+      message = 'Request not acceptable. Please check your Supabase configuration.';
+    } else if (lastError?.message?.includes('Invalid login credentials')) {
+      message = 'Invalid email or password. Please check your credentials.';
+    }
+    return { error: { ...lastError, message } as AuthError };
   }, []);
 
   const signInWithMagicLink = useCallback(async (email: string) => {
@@ -282,21 +332,77 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const upgradeAnonymousAccount = useCallback(async (email: string, password: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
-    
+
     // Check if current user is anonymous
     const isAnon = await isAnonymousUser();
     if (!isAnon) {
       return { error: new Error('Current user is not anonymous') as AuthError };
     }
-    
+
+    // Retry configuration for handling transient failures (504s, network issues)
+    const MAX_RETRIES = 3;
+    const INITIAL_DELAY_MS = 1000;
+
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const attemptUpgrade = async (attempt: number): Promise<{ data: any; error: any }> => {
+      try {
+        console.log(`Upgrade attempt ${attempt + 1}/${MAX_RETRIES + 1}`);
+        const result = await supabase!.auth.updateUser({
+          email,
+          password,
+        });
+        return result;
+      } catch (err: any) {
+        // Network errors or timeouts - these are retryable
+        if (attempt < MAX_RETRIES && (
+          err.name === 'AuthRetryableFetchError' ||
+          err.message?.includes('fetch') ||
+          err.message?.includes('network') ||
+          err.message?.includes('timeout')
+        )) {
+          const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt);
+          console.log(`Retrying in ${delayMs}ms...`);
+          await delay(delayMs);
+          return attemptUpgrade(attempt + 1);
+        }
+        throw err;
+      }
+    };
+
     try {
       // Update anonymous user with email/password (this preserves their data)
-      const { data, error } = await supabase.auth.updateUser({
-        email,
-        password,
-      });
-      
+      const { data, error } = await attemptUpgrade(0);
+
       if (error) {
+        // Check if this is a retryable error
+        const isRetryable = error.status === 504 ||
+                           error.name === 'AuthRetryableFetchError' ||
+                           error.message?.includes('Gateway Timeout');
+
+        if (isRetryable) {
+          // Try again with exponential backoff
+          for (let retry = 0; retry < MAX_RETRIES; retry++) {
+            const delayMs = INITIAL_DELAY_MS * Math.pow(2, retry);
+            console.log(`Retrying upgrade after ${delayMs}ms (attempt ${retry + 2}/${MAX_RETRIES + 1})`);
+            await delay(delayMs);
+
+            const retryResult = await supabase.auth.updateUser({ email, password });
+            if (!retryResult.error) {
+              if (retryResult.data?.user) {
+                setIsAnonymous(false);
+              }
+              return { error: null };
+            }
+
+            // If non-retryable error, break out
+            if (retryResult.error.status !== 504 &&
+                retryResult.error.name !== 'AuthRetryableFetchError') {
+              break;
+            }
+          }
+        }
+
         console.error('Upgrade anonymous account error:', error);
         // Provide more helpful error messages
         let message = error.message;
@@ -307,17 +413,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } else if (error.status === 422) {
           message = 'Unable to create account. The email may already be in use.';
         } else if (error.status === 504 || error.name === 'AuthRetryableFetchError') {
-          message = 'Server is temporarily unavailable. Please try again in a moment.';
+          message = 'Server is temporarily unavailable. Please wait a moment and try again.';
         } else if (error.status === 406) {
           message = 'Request not acceptable. Please check your Supabase configuration.';
         }
         return { error: { ...error, message } as AuthError };
       }
-      
+
       if (data?.user) {
         setIsAnonymous(false);
       }
-      
+
       return { error: null };
     } catch (err: any) {
       console.error('Upgrade anonymous account exception:', err);
