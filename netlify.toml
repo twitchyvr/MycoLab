@@ -9,8 +9,9 @@
 
   # Disable Netlify's change detection - always build on merge
   # This fixes false "no content change" cancellations with subdirectory bases
-  ignore = "false"
-  
+  # ignore = "true"
+  ignore = "exit 1"
+
   # Publish directory (relative to base)
   publish = "dist"
 
