@@ -1058,12 +1058,13 @@ export const initialDevLog: DevLogFeature[] = [
   {
     id: 'dev-122',
     title: 'User Authentication',
-    description: 'Login/registration, session management. Azure AD or Auth0 integration option.',
+    description: 'Login/registration, session management. Supabase Auth with Anonymous Sign-Ins for pre-auth data persistence. Email/password and Magic Link support.',
     category: 'core',
-    status: 'backlog',
+    status: 'in_progress',
     priority: 'high',
     estimatedHours: 12,
-    dependencies: ['dev-121'],
+    dependencies: ['dev-120'],
+    notes: 'Phase 1: Anonymous auth for settings persistence. Phase 2: Full email/password registration. Phase 3: OAuth providers (Google, GitHub, Azure AD).',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -1088,6 +1089,108 @@ export const initialDevLog: DevLogFeature[] = [
     priority: 'critical',
     estimatedHours: 12,
     dependencies: ['dev-121', 'dev-122'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'dev-125',
+    title: 'Anonymous Authentication for Settings Persistence',
+    description: 'Enable settings persistence without requiring user login. Uses Supabase Anonymous Auth to create temporary user sessions that can later be upgraded to full accounts.',
+    category: 'data',
+    status: 'in_progress',
+    priority: 'high',
+    estimatedHours: 3,
+    actualHours: 2,
+    dependencies: ['dev-120'],
+    notes: `Problem: Settings showed "saved" but didn't persist because user_settings table requires user_id foreign key.
+
+Solution: Supabase Anonymous Authentication
+- Creates real auth.users entry without email/password
+- Works with existing RLS policies via auth.uid()
+- Sessions persist via secure httpOnly cookies
+- Can upgrade anonymous → real accounts later via linkAnonymousUser()
+
+Implementation:
+1. Enable Anonymous Sign-Ins in Supabase Dashboard
+2. Run migration SQL to update user_settings table/policies
+3. Update supabase.ts with ensureSession() function
+4. Update DataContext updateSettings to use session user_id
+5. Add localStorage fallback for offline mode
+
+Files: supabase.ts, DataContext.tsx, migration-anon-auth.sql`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'dev-126',
+    title: 'Supabase Auth Email Templates',
+    description: 'Custom branded email templates for all Supabase authentication flows. Dark theme matching MycoLab UI with emerald accents.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 2,
+    actualHours: 1,
+    dependencies: ['dev-122'],
+    completedAt: new Date().toISOString(),
+    notes: `6 branded HTML email templates created:
+- Confirm Signup ({{ .ConfirmationURL }}, {{ .Email }})
+- Invite User ({{ .ConfirmationURL }}, {{ .Email }})
+- Magic Link ({{ .ConfirmationURL }}, {{ .Email }})
+- Change Email Address ({{ .ConfirmationURL }}, {{ .Email }}, {{ .NewEmail }})
+- Reauthentication ({{ .Token }}, {{ .Email }}) - code display style
+- Reset Password ({{ .ConfirmationURL }}, {{ .Email }})
+
+All templates use consistent MycoLab branding:
+- Dark zinc background (#18181b, #27272a)
+- Emerald green accents (#10b981)
+- Mushroom emoji logo
+- Responsive table-based layout for email client compatibility`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'dev-127',
+    title: 'CAPTCHA Bot Protection (Cloudflare Turnstile)',
+    description: 'Bot protection for auth flows using Cloudflare Turnstile. Invisible challenge that only escalates when suspicious activity detected.',
+    category: 'integration',
+    status: 'planned',
+    priority: 'medium',
+    estimatedHours: 1,
+    dependencies: ['dev-122'],
+    notes: `Cloudflare Turnstile selected over hCaptcha:
+- Free unlimited usage (no tiers)
+- Invisible/frictionless UX (no image puzzles)
+- Fast verification (~2-3 seconds)
+- Privacy-focused, GDPR compliant
+- Native Supabase integration
+
+Setup:
+1. Cloudflare Dashboard → Turnstile → Create widget
+2. Get Site Key + Secret Key
+3. Supabase → Authentication → Attack Protection → Enable CAPTCHA
+4. Select Turnstile, paste keys`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'dev-128',
+    title: 'Microsoft 365 SMTP Configuration',
+    description: 'Custom SMTP setup using Microsoft 365/Azure tenant for branded email delivery from mycolab@theautomationguru.com.',
+    category: 'integration',
+    status: 'planned',
+    priority: 'medium',
+    estimatedHours: 1,
+    dependencies: ['dev-126'],
+    notes: `SMTP Settings for M365:
+- Host: smtp.office365.com
+- Port: 587 (STARTTLS)
+- Username: mycolab@theautomationguru.com
+- Password: App Password (if MFA) or account password (with SMTP AUTH enabled)
+
+Prerequisites:
+- Enable "Authenticated SMTP" in M365 Admin Center for the mailbox
+- Or create App Password if MFA is enabled
+- Sender email must match SMTP username exactly`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
