@@ -68,6 +68,19 @@ MycoLab/
 │           └── index.ts       # Comprehensive type system
 ```
 
+## !!! Mandatory Directive
+
+When assisting with this project, always operate with the following context in mind:
+
+1. **Always refer to the roadmap in DevLogPage** for planned features and priorities, add features that we have added or are working on if they are not already in the list, and avoid suggesting features that are already planned or in progress.
+1. **Main code is in `Web App/` directory** - Always work relative to this path
+2. **Two type files exist** - `store/types.ts` (runtime) and `types/index.ts` (extended)
+3. **Context-based state** - Use `useData()` hook for all data operations
+4. **Dark theme** - UI uses zinc/emerald color scheme
+5. **Offline-first** - Don't assume Supabase is connected
+6. **Idempotent schema** - SQL migrations are safe to re-run
+7. **No testing yet** - Be careful with refactoring without tests
+
 ## Development Commands
 
 All commands should be run from the `Web App/` directory:
