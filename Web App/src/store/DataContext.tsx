@@ -11,6 +11,7 @@ import {
   InventoryCategory, InventoryItem, Culture, Grow, Recipe, AppSettings,
   CultureObservation, CultureTransfer, GrowObservation, Flush, GrowStage
 } from './types';
+import { ensureSession, onAuthStateChange, isSupabaseConfigured } from '../lib/supabase';
 
 // ============================================================================
 // EMPTY INITIAL STATE (no sample data)
@@ -685,14 +686,57 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   // Initialize Supabase client and load data
   useEffect(() => {
-    const client = getSupabaseClient();
-    if (client) {
-      setSupabase(client);
-      loadDataFromSupabase(client);
-    } else {
-      setIsLoading(false);
-      setIsConnected(false);
-    }
+    const initializeData = async () => {
+      const client = getSupabaseClient();
+      if (client) {
+        setSupabase(client);
+
+        // Ensure we have a session (creates anonymous if needed)
+        if (isSupabaseConfigured) {
+          await ensureSession();
+        }
+
+        await loadDataFromSupabase(client);
+      } else {
+        setIsLoading(false);
+        setIsConnected(false);
+      }
+    };
+
+    initializeData();
+  }, [loadDataFromSupabase]);
+
+  // Listen for auth state changes to reload data when user changes
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const { data: { subscription } } = onAuthStateChange(async (event, session) => {
+      console.log('DataContext: Auth event:', event, session?.user?.id);
+
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+        // Reload data for the new/updated user
+        const client = getSupabaseClient();
+        if (client) {
+          setSupabase(client);
+          await loadDataFromSupabase(client);
+        }
+      }
+
+      if (event === 'SIGNED_OUT') {
+        // Clear state to empty and reload (will get new anonymous user's data)
+        setState(emptyState);
+        const client = getSupabaseClient();
+        if (client) {
+          // After sign out, ensureSession creates new anonymous session
+          await ensureSession();
+          await loadDataFromSupabase(client);
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [loadDataFromSupabase]);
 
   // Refresh data function

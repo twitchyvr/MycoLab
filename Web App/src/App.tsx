@@ -4,6 +4,8 @@
 
 import React, { useState, createContext, useContext, useEffect } from 'react';
 import { DataProvider, useData } from './store';
+import { AuthProvider } from './store/AuthContext';
+import { UserMenu } from './components/auth';
 import DevLogPage from './components/devlog/DevLogPage';
 import type { 
   AppState, 
@@ -376,12 +378,12 @@ const newButtonConfig: Partial<Record<Page, { label: string; page: Page }>> = {
 
 const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigate, onMenuClick }) => {
   const newAction = newButtonConfig[currentPage];
-  
+
   return (
     <header className="h-14 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/30 flex-shrink-0">
       <div className="flex items-center gap-3 min-w-0">
         {/* Mobile menu button */}
-        <button 
+        <button
           onClick={onMenuClick}
           className="lg:hidden p-2 -ml-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
         >
@@ -397,8 +399,10 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
+        {/* User Menu / Auth Status */}
+        <UserMenu />
         {/* Notification Bell - only show dot when there are actual notifications */}
-        <button 
+        <button
           className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors relative"
           title="Notifications coming soon"
         >
@@ -406,7 +410,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
           {/* No hardcoded notification dot - will be dynamic when notifications are implemented */}
         </button>
         {newAction && (
-          <button 
+          <button
             className="flex items-center gap-2 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
             onClick={() => onNavigate(newAction.page)}
           >
@@ -804,18 +808,20 @@ const App: React.FC = () => {
 
   return (
     <DataProvider>
-      <AppContext.Provider value={contextValue}>
-        <AppContent 
-          showSetup={showSetup}
-          setShowSetup={setShowSetup}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          renderPage={renderPage}
-          pageConfig={pageConfig}
-        />
-      </AppContext.Provider>
+      <AuthProvider>
+        <AppContext.Provider value={contextValue}>
+          <AppContent
+            showSetup={showSetup}
+            setShowSetup={setShowSetup}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            renderPage={renderPage}
+            pageConfig={pageConfig}
+          />
+        </AppContext.Provider>
+      </AuthProvider>
     </DataProvider>
   );
 };

@@ -206,3 +206,129 @@ export const getCurrentUserId = async () => {
   const { data: { user } } = await supabase.auth.getUser();
   return user?.id || null;
 };
+
+// ============================================================================
+// AUTHENTICATION HELPERS
+// ============================================================================
+
+import type { User, Session, AuthError } from '@supabase/supabase-js';
+
+export interface AuthResult {
+  user?: User | null;
+  session?: Session | null;
+  error?: AuthError | Error | null;
+}
+
+/**
+ * Ensure a session exists - creates anonymous session if none exists
+ */
+export const ensureSession = async (): Promise<Session | null> => {
+  if (!supabase) return null;
+
+  // Check for existing session first
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (session) {
+    return session;
+  }
+
+  // No session - create anonymous user
+  const { data, error } = await supabase.auth.signInAnonymously();
+
+  if (error) {
+    console.error('Failed to create anonymous session:', error);
+    return null;
+  }
+
+  console.log('Created anonymous session:', data.user?.id);
+  return data.session;
+};
+
+/**
+ * Get current user info
+ */
+export const getCurrentUser = async (): Promise<User | null> => {
+  if (!supabase) return null;
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+};
+
+/**
+ * Check if current user is anonymous
+ */
+export const isAnonymousUser = async (): Promise<boolean> => {
+  const user = await getCurrentUser();
+  return user?.is_anonymous ?? false;
+};
+
+/**
+ * Sign in with email/password (for existing users)
+ */
+export const signInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
+  if (!supabase) return { error: new Error('Supabase not configured') };
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  return { user: data?.user, session: data?.session, error };
+};
+
+/**
+ * Link email to current anonymous account, or sign up new user
+ * When an anonymous user adds email/password, their user_id is preserved
+ */
+export const linkEmailToAnonymousAccount = async (email: string, password: string): Promise<AuthResult> => {
+  if (!supabase) return { error: new Error('Supabase not configured') };
+
+  const { data: currentSession } = await supabase.auth.getSession();
+  const wasAnonymous = currentSession?.session?.user?.is_anonymous;
+
+  if (wasAnonymous) {
+    // Link email to current anonymous user - this preserves the user ID!
+    const { data, error } = await supabase.auth.updateUser({
+      email,
+      password,
+    });
+
+    if (error) {
+      console.error('Failed to link email to anonymous account:', error);
+      // Fall back to regular signup if linking fails
+      return await signUpWithEmail(email, password);
+    }
+
+    console.log('Successfully linked email to anonymous account:', data.user?.id);
+    return { user: data.user, session: currentSession?.session, error: null };
+  }
+
+  // Not anonymous - do regular signup
+  return await signUpWithEmail(email, password);
+};
+
+/**
+ * Sign up new user with email/password
+ */
+export const signUpWithEmail = async (email: string, password: string): Promise<AuthResult> => {
+  if (!supabase) return { error: new Error('Supabase not configured') };
+
+  const { data, error } = await supabase.auth.signUp({ email, password });
+
+  return { user: data?.user, session: data?.session, error };
+};
+
+/**
+ * Sign out current user
+ */
+export const signOut = async (): Promise<{ error: AuthError | null }> => {
+  if (!supabase) return { error: null };
+
+  const { error } = await supabase.auth.signOut();
+  return { error };
+};
+
+/**
+ * Get auth state change subscription
+ */
+export const onAuthStateChange = (callback: (event: string, session: Session | null) => void) => {
+  if (!supabase) return { data: { subscription: { unsubscribe: () => {} } } };
+
+  return supabase.auth.onAuthStateChange(callback);
+};
