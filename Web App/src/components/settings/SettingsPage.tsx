@@ -13,7 +13,32 @@ import { createClient } from '@supabase/supabase-js';
 // TYPES
 // ============================================================================
 
-type SettingsTab = 'database' | 'species' | 'strains' | 'locations' | 'vessels' | 'containers' | 'substrates' | 'suppliers' | 'categories' | 'preferences';
+type SettingsTab = 'admin' | 'database' | 'species' | 'strains' | 'locations' | 'vessels' | 'containers' | 'substrates' | 'suppliers' | 'categories' | 'preferences';
+
+interface AdminUser {
+  id: string;
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  is_admin: boolean;
+  is_active: boolean;
+  subscription_tier: string;
+  subscription_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AuditLogEntry {
+  id: string;
+  admin_user_id: string;
+  admin_email: string | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  target_email: string | null;
+  details: any;
+  created_at: string;
+}
 
 interface TableStatus {
   name: string;
@@ -43,6 +68,7 @@ const Icons = {
 
 // Tab configuration
 const tabConfig: Record<SettingsTab, { label: string; icon: string }> = {
+  admin: { label: 'Admin', icon: '🛡️' },
   database: { label: 'Database', icon: '☁️' },
   species: { label: 'Species', icon: '🧬' },
   strains: { label: 'Strains', icon: '🍄' },
@@ -84,12 +110,13 @@ export const SettingsPage: React.FC = () => {
 
   const { isAdmin } = useAuth();
 
-  // Filter tabs based on admin status - non-admins can't see database config
+  // Filter tabs based on admin status - non-admins can't see admin or database tabs
+  const adminOnlyTabs: SettingsTab[] = ['admin', 'database'];
   const availableTabs = isAdmin
     ? (Object.keys(tabConfig) as SettingsTab[])
-    : (Object.keys(tabConfig) as SettingsTab[]).filter(tab => tab !== 'database');
+    : (Object.keys(tabConfig) as SettingsTab[]).filter(tab => !adminOnlyTabs.includes(tab));
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>(isAdmin ? 'database' : 'preferences');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(isAdmin ? 'admin' : 'preferences');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [saving, setSaving] = useState(false);
@@ -100,6 +127,15 @@ export const SettingsPage: React.FC = () => {
   const [tableStatuses, setTableStatuses] = useState<TableStatus[]>([]);
   const [schemaCopied, setSchemaCopied] = useState(false);
   const [dbTesting, setDbTesting] = useState(false);
+
+  // Admin panel state
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingAuditLog, setLoadingAuditLog] = useState(false);
+  const [adminSubTab, setAdminSubTab] = useState<'users' | 'audit'>('users');
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<any>({});
@@ -194,6 +230,179 @@ export const SettingsPage: React.FC = () => {
       setError('Could not copy schema. Please download the file manually.');
     }
   };
+
+  // ============================================================================
+  // ADMIN FUNCTIONS
+  // ============================================================================
+
+  // Fetch all users (admin only)
+  const fetchUsers = async () => {
+    if (!isConnected || !isAdmin) return;
+
+    setLoadingUsers(true);
+    try {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) return;
+
+      const { data, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (fetchError) {
+        setError(`Failed to fetch users: ${fetchError.message}`);
+        return;
+      }
+
+      setAdminUsers(data || []);
+    } catch (err: any) {
+      setError(`Failed to fetch users: ${err.message}`);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Fetch audit log (admin only)
+  const fetchAuditLog = async () => {
+    if (!isConnected || !isAdmin) return;
+
+    setLoadingAuditLog(true);
+    try {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) return;
+
+      const { data, error: fetchError } = await supabase
+        .from('admin_audit_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (fetchError) {
+        // Table might not exist yet - that's ok
+        if (!fetchError.message.includes('does not exist')) {
+          console.error('Audit log fetch error:', fetchError);
+        }
+        return;
+      }
+
+      setAuditLog(data || []);
+    } catch (err: any) {
+      console.error('Audit log fetch error:', err);
+    } finally {
+      setLoadingAuditLog(false);
+    }
+  };
+
+  // Log admin action
+  const logAdminAction = async (action: string, targetType: string, targetId: string | null, targetEmail: string | null, details?: any) => {
+    if (!isConnected || !isAdmin) return;
+
+    try {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) return;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase.from('admin_audit_log').insert({
+        admin_user_id: user.id,
+        admin_email: user.email,
+        action,
+        target_type: targetType,
+        target_id: targetId,
+        target_email: targetEmail,
+        details: details || null,
+      });
+    } catch (err) {
+      console.error('Failed to log admin action:', err);
+    }
+  };
+
+  // Update user profile (admin only)
+  const updateUserProfile = async (userId: string, updates: Partial<AdminUser>) => {
+    if (!isConnected || !isAdmin) return;
+
+    setSaving(true);
+    try {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) return;
+
+      const targetUser = adminUsers.find(u => u.id === userId);
+
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({
+          display_name: updates.display_name,
+          is_admin: updates.is_admin,
+          is_active: updates.is_active,
+          subscription_tier: updates.subscription_tier,
+          subscription_status: updates.subscription_status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (updateError) {
+        setError(`Failed to update user: ${updateError.message}`);
+        return;
+      }
+
+      // Log the action
+      await logAdminAction(
+        'update_user',
+        'user_profile',
+        userId,
+        targetUser?.email || null,
+        { changes: updates }
+      );
+
+      setSuccess('User updated successfully');
+      setShowUserModal(false);
+      setEditingUser(null);
+      await fetchUsers();
+    } catch (err: any) {
+      setError(`Failed to update user: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Toggle admin status
+  const toggleAdminStatus = async (user: AdminUser) => {
+    const newStatus = !user.is_admin;
+    if (!newStatus && adminUsers.filter(u => u.is_admin).length <= 1) {
+      setError('Cannot remove admin status from the last admin user');
+      return;
+    }
+
+    await updateUserProfile(user.id, { is_admin: newStatus });
+    await logAdminAction(
+      newStatus ? 'grant_admin' : 'revoke_admin',
+      'user_profile',
+      user.id,
+      user.email,
+      { new_status: newStatus }
+    );
+  };
+
+  // Toggle active status
+  const toggleActiveStatus = async (user: AdminUser) => {
+    await updateUserProfile(user.id, { is_active: !user.is_active });
+    await logAdminAction(
+      user.is_active ? 'deactivate_user' : 'activate_user',
+      'user_profile',
+      user.id,
+      user.email,
+      { new_status: !user.is_active }
+    );
+  };
+
+  // Load admin data when tab becomes active
+  useEffect(() => {
+    if (activeTab === 'admin' && isAdmin && isConnected) {
+      fetchUsers();
+      fetchAuditLog();
+    }
+  }, [activeTab, isAdmin, isConnected]);
 
   // ============================================================================
   // CRUD HELPERS
@@ -458,6 +667,378 @@ export const SettingsPage: React.FC = () => {
   };
 
   // ============================================================================
+  // RENDER ADMIN TAB
+  // ============================================================================
+
+  const renderAdminTab = () => (
+    <div className="space-y-6">
+      {/* Admin Notice */}
+      <div className="bg-purple-950/30 border border-purple-800 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <span className="text-purple-400 text-xl">🛡️</span>
+          <div>
+            <p className="text-sm font-medium text-purple-300">Admin Panel</p>
+            <p className="text-sm text-zinc-400 mt-1">
+              Manage user accounts, permissions, and view audit logs. Changes here affect all users.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-tabs */}
+      <div className="flex gap-2 border-b border-zinc-800 pb-3">
+        <button
+          onClick={() => setAdminSubTab('users')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            adminSubTab === 'users'
+              ? 'bg-purple-500 text-white'
+              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+          }`}
+        >
+          Users ({adminUsers.length})
+        </button>
+        <button
+          onClick={() => setAdminSubTab('audit')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            adminSubTab === 'audit'
+              ? 'bg-purple-500 text-white'
+              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+          }`}
+        >
+          Audit Log ({auditLog.length})
+        </button>
+      </div>
+
+      {adminSubTab === 'users' ? (
+        <div className="space-y-4">
+          {/* Users Header */}
+          <div className="flex items-center justify-between">
+            <p className="text-zinc-400">Manage user accounts and permissions</p>
+            <button
+              onClick={fetchUsers}
+              disabled={loadingUsers}
+              className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm flex items-center gap-2"
+            >
+              <Icons.Refresh />
+              {loadingUsers ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+
+          {/* Users Table */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-zinc-800">
+                    <th className="text-left p-4 text-sm font-medium text-zinc-400">User</th>
+                    <th className="text-left p-4 text-sm font-medium text-zinc-400">Status</th>
+                    <th className="text-left p-4 text-sm font-medium text-zinc-400">Role</th>
+                    <th className="text-left p-4 text-sm font-medium text-zinc-400">Subscription</th>
+                    <th className="text-left p-4 text-sm font-medium text-zinc-400">Joined</th>
+                    <th className="text-right p-4 text-sm font-medium text-zinc-400 w-32">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800">
+                  {loadingUsers ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-zinc-500">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin"></div>
+                          Loading users...
+                        </div>
+                      </td>
+                    </tr>
+                  ) : adminUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-zinc-500">
+                        No users found. Users will appear here after they sign up.
+                      </td>
+                    </tr>
+                  ) : (
+                    adminUsers.map(user => (
+                      <tr key={user.id} className="hover:bg-zinc-800/30">
+                        <td className="p-4">
+                          <div>
+                            <p className="text-white font-medium">{user.display_name || 'No name'}</p>
+                            <p className="text-sm text-zinc-500">{user.email || 'No email'}</p>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            user.is_active
+                              ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-700'
+                              : 'bg-red-950/50 text-red-400 border border-red-700'
+                          }`}>
+                            {user.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            user.is_admin
+                              ? 'bg-purple-950/50 text-purple-400 border border-purple-700'
+                              : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                          }`}>
+                            {user.is_admin ? 'Admin' : 'User'}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <div className="text-sm">
+                            <span className="capitalize text-white">{user.subscription_tier}</span>
+                            <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
+                              user.subscription_status === 'active'
+                                ? 'bg-emerald-950/50 text-emerald-400'
+                                : 'bg-zinc-800 text-zinc-500'
+                            }`}>
+                              {user.subscription_status}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-4 text-sm text-zinc-400">
+                          {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => { setEditingUser(user); setShowUserModal(true); }}
+                              className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded"
+                              title="Edit user"
+                            >
+                              <Icons.Edit />
+                            </button>
+                            <button
+                              onClick={() => toggleAdminStatus(user)}
+                              className={`p-1.5 rounded ${
+                                user.is_admin
+                                  ? 'text-purple-400 hover:text-purple-300 hover:bg-purple-950/50'
+                                  : 'text-zinc-400 hover:text-purple-400 hover:bg-zinc-800'
+                              }`}
+                              title={user.is_admin ? 'Remove admin' : 'Make admin'}
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => toggleActiveStatus(user)}
+                              className={`p-1.5 rounded ${
+                                user.is_active
+                                  ? 'text-emerald-400 hover:text-red-400 hover:bg-zinc-800'
+                                  : 'text-red-400 hover:text-emerald-400 hover:bg-zinc-800'
+                              }`}
+                              title={user.is_active ? 'Deactivate user' : 'Activate user'}
+                            >
+                              {user.is_active ? (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/>
+                                </svg>
+                              ) : (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Audit Log Header */}
+          <div className="flex items-center justify-between">
+            <p className="text-zinc-400">Track admin actions and changes</p>
+            <button
+              onClick={fetchAuditLog}
+              disabled={loadingAuditLog}
+              className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm flex items-center gap-2"
+            >
+              <Icons.Refresh />
+              {loadingAuditLog ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+
+          {/* Audit Log Table */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-zinc-800">
+                    <th className="text-left p-4 text-sm font-medium text-zinc-400">Time</th>
+                    <th className="text-left p-4 text-sm font-medium text-zinc-400">Admin</th>
+                    <th className="text-left p-4 text-sm font-medium text-zinc-400">Action</th>
+                    <th className="text-left p-4 text-sm font-medium text-zinc-400">Target</th>
+                    <th className="text-left p-4 text-sm font-medium text-zinc-400">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800">
+                  {loadingAuditLog ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-zinc-500">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin"></div>
+                          Loading audit log...
+                        </div>
+                      </td>
+                    </tr>
+                  ) : auditLog.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-zinc-500">
+                        No audit log entries yet. Admin actions will be recorded here.
+                      </td>
+                    </tr>
+                  ) : (
+                    auditLog.map(entry => (
+                      <tr key={entry.id} className="hover:bg-zinc-800/30">
+                        <td className="p-4 text-sm text-zinc-400">
+                          {entry.created_at ? new Date(entry.created_at).toLocaleString() : '-'}
+                        </td>
+                        <td className="p-4 text-sm text-white">
+                          {entry.admin_email || 'Unknown'}
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            entry.action.includes('grant') || entry.action.includes('activate')
+                              ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-700'
+                              : entry.action.includes('revoke') || entry.action.includes('deactivate')
+                              ? 'bg-red-950/50 text-red-400 border border-red-700'
+                              : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                          }`}>
+                            {entry.action.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="p-4 text-sm text-zinc-400">
+                          {entry.target_email || entry.target_id || '-'}
+                        </td>
+                        <td className="p-4 text-sm text-zinc-500 max-w-xs truncate">
+                          {entry.details ? JSON.stringify(entry.details) : '-'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Edit Modal */}
+      {showUserModal && editingUser && (
+        <div
+          className="fixed inset-0 bg-black/70 z-50 overflow-y-auto"
+          onClick={() => { setShowUserModal(false); setEditingUser(null); }}
+        >
+          <div className="min-h-full flex items-start justify-center p-4 py-8">
+            <div
+              className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-lg"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-5 border-b border-zinc-800 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Edit User</h3>
+                <button
+                  onClick={() => { setShowUserModal(false); setEditingUser(null); }}
+                  className="p-1 text-zinc-400 hover:text-white"
+                >
+                  <Icons.X />
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-1">Email</label>
+                  <input
+                    type="text"
+                    value={editingUser.email || ''}
+                    disabled
+                    className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-500 cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-1">Display Name</label>
+                  <input
+                    type="text"
+                    value={editingUser.display_name || ''}
+                    onChange={e => setEditingUser({ ...editingUser, display_name: e.target.value })}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                    placeholder="Enter display name"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">Subscription Tier</label>
+                    <select
+                      value={editingUser.subscription_tier}
+                      onChange={e => setEditingUser({ ...editingUser, subscription_tier: e.target.value })}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                    >
+                      <option value="free">Free</option>
+                      <option value="basic">Basic</option>
+                      <option value="pro">Pro</option>
+                      <option value="enterprise">Enterprise</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">Subscription Status</label>
+                    <select
+                      value={editingUser.subscription_status}
+                      onChange={e => setEditingUser({ ...editingUser, subscription_status: e.target.value })}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                    >
+                      <option value="active">Active</option>
+                      <option value="trial">Trial</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="expired">Expired</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex items-center gap-6 pt-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editingUser.is_admin}
+                      onChange={e => setEditingUser({ ...editingUser, is_admin: e.target.checked })}
+                      className="w-4 h-4 rounded border-zinc-600"
+                    />
+                    <span className="text-sm text-zinc-300">Admin privileges</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editingUser.is_active}
+                      onChange={e => setEditingUser({ ...editingUser, is_active: e.target.checked })}
+                      className="w-4 h-4 rounded border-zinc-600"
+                    />
+                    <span className="text-sm text-zinc-300">Account active</span>
+                  </label>
+                </div>
+              </div>
+              <div className="p-5 border-t border-zinc-800 flex gap-3">
+                <button
+                  onClick={() => { setShowUserModal(false); setEditingUser(null); }}
+                  className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => updateUserProfile(editingUser.id, editingUser)}
+                  disabled={saving}
+                  className="flex-1 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // ============================================================================
   // RENDER DATABASE TAB
   // ============================================================================
 
@@ -681,6 +1262,9 @@ export const SettingsPage: React.FC = () => {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'admin':
+        return renderAdminTab();
+
       case 'database':
         return renderDatabaseTab();
 
