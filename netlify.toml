@@ -3,9 +3,13 @@
 [build]
   # Base directory where the build runs from
   base = "Web App"
-  
+
   # Build command
   command = "npm run build"
+
+  # Disable Netlify's change detection - always build on merge
+  # This fixes false "no content change" cancellations with subdirectory bases
+  ignore = "false"
   
   # Publish directory (relative to base)
   publish = "dist"
