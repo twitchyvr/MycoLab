@@ -10,6 +10,7 @@ import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 // These must be set at build time via environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ||
+                        import.meta.env.VITE_SUPABASE_KEY ||
                         import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || '';
 
 // Check if Supabase is configured
