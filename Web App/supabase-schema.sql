@@ -474,10 +474,26 @@ BEGIN
 END $$;
 
 -- Add sterilization_date to cultures
-DO $$ 
+DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'sterilization_date') THEN
     ALTER TABLE cultures ADD COLUMN sterilization_date DATE;
+  END IF;
+END $$;
+
+-- Add altitude column to user_settings if it doesn't exist (for existing databases)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_settings' AND column_name = 'altitude') THEN
+    ALTER TABLE user_settings ADD COLUMN altitude INTEGER DEFAULT 0;
+  END IF;
+END $$;
+
+-- Add timezone column to user_settings if it doesn't exist (for existing databases)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_settings' AND column_name = 'timezone') THEN
+    ALTER TABLE user_settings ADD COLUMN timezone TEXT DEFAULT 'America/Chicago';
   END IF;
 END $$;
 
