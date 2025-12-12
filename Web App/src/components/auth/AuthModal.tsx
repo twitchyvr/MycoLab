@@ -3,8 +3,9 @@
 // Login, Signup, and Password Reset Modal Component
 // ============================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../lib/AuthContext';
+import { isSupabaseConfigured } from '../../lib/supabase';
 
 // ============================================================================
 // ICONS
@@ -71,6 +72,19 @@ const Icons = {
 // AUTH MODAL COMPONENT
 // ============================================================================
 
+// Timeout duration for auth operations (30 seconds)
+const AUTH_TIMEOUT_MS = 30000;
+
+// Helper to wrap a promise with a timeout
+const withTimeout = <T,>(promise: Promise<T>, ms: number, timeoutError: string): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(timeoutError)), ms)
+    )
+  ]);
+};
+
 export const AuthModal: React.FC = () => {
   const {
     showAuthModal,
@@ -83,6 +97,7 @@ export const AuthModal: React.FC = () => {
     resetPassword,
     upgradeAnonymousAccount,
     isAnonymous,
+    isAuthenticated,
   } = useAuth();
 
   // Form state
@@ -90,11 +105,32 @@ export const AuthModal: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Track if we're in the middle of an auth attempt
+  const authInProgressRef = useRef(false);
+
+  // Clear loading state and close modal when user becomes authenticated
+  useEffect(() => {
+    if (isAuthenticated && authInProgressRef.current) {
+      // User just authenticated while we had an auth attempt in progress
+      setIsLoading(false);
+      authInProgressRef.current = false;
+      // Modal will be closed by AuthContext's onAuthStateChange handler
+    }
+  }, [isAuthenticated]);
+
+  // Reset loading state when modal is closed/reopened
+  useEffect(() => {
+    if (!showAuthModal) {
+      setIsLoading(false);
+      authInProgressRef.current = false;
+    }
+  }, [showAuthModal]);
 
   if (!showAuthModal) return null;
 
@@ -128,10 +164,15 @@ export const AuthModal: React.FC = () => {
     setError(null);
     setSuccess(null);
     setIsLoading(true);
+    authInProgressRef.current = true;
 
     try {
       if (authModalMode === 'login') {
-        const { error } = await signIn(email, password);
+        const { error } = await withTimeout(
+          signIn(email, password),
+          AUTH_TIMEOUT_MS,
+          'Sign in timed out. Please check your connection and try again.'
+        );
         if (error) {
           setError(getErrorMessage(error));
         }
@@ -140,25 +181,35 @@ export const AuthModal: React.FC = () => {
         if (password !== confirmPassword) {
           setError('Passwords do not match');
           setIsLoading(false);
+          authInProgressRef.current = false;
           return;
         }
-        
+
         // Validate password strength
         if (password.length < 6) {
           setError('Password must be at least 6 characters');
           setIsLoading(false);
+          authInProgressRef.current = false;
           return;
         }
 
         // If user is anonymous, try to upgrade their account
         if (isAnonymous) {
-          const { error: upgradeError } = await upgradeAnonymousAccount(email, password);
+          const { error: upgradeError } = await withTimeout(
+            upgradeAnonymousAccount(email, password),
+            AUTH_TIMEOUT_MS,
+            'Account upgrade timed out. Please try again.'
+          );
           if (upgradeError) {
             // If upgrade fails, try regular signup as fallback
             // Note: This won't preserve the anonymous user's data
             console.log('Upgrade failed, trying regular signup. Error:', upgradeError);
-            
-            const { error: signUpError } = await signUp(email, password);
+
+            const { error: signUpError } = await withTimeout(
+              signUp(email, password),
+              AUTH_TIMEOUT_MS,
+              'Sign up timed out. Please try again.'
+            );
             if (signUpError) {
               // Check for common issues
               const msg = getErrorMessage(signUpError);
@@ -176,7 +227,11 @@ export const AuthModal: React.FC = () => {
             setSuccess('Account created! Your data has been preserved. Check your email to confirm your address.');
           }
         } else {
-          const { error } = await signUp(email, password);
+          const { error } = await withTimeout(
+            signUp(email, password),
+            AUTH_TIMEOUT_MS,
+            'Sign up timed out. Please try again.'
+          );
           if (error) {
             setError(getErrorMessage(error));
           } else {
@@ -184,7 +239,11 @@ export const AuthModal: React.FC = () => {
           }
         }
       } else if (authModalMode === 'reset') {
-        const { error } = await resetPassword(email);
+        const { error } = await withTimeout(
+          resetPassword(email),
+          AUTH_TIMEOUT_MS,
+          'Password reset request timed out. Please try again.'
+        );
         if (error) {
           setError(getErrorMessage(error));
         } else {
@@ -195,6 +254,7 @@ export const AuthModal: React.FC = () => {
       setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
+      authInProgressRef.current = false;
     }
   };
 
@@ -204,13 +264,18 @@ export const AuthModal: React.FC = () => {
       setError('Please enter your email address');
       return;
     }
-    
+
     setError(null);
     setSuccess(null);
     setIsLoading(true);
-    
+    authInProgressRef.current = true;
+
     try {
-      const { error } = await signInWithMagicLink(email);
+      const { error } = await withTimeout(
+        signInWithMagicLink(email),
+        AUTH_TIMEOUT_MS,
+        'Magic link request timed out. Please try again.'
+      );
       if (error) {
         setError(error.message);
       } else {
@@ -220,6 +285,7 @@ export const AuthModal: React.FC = () => {
       setError(err.message || 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
+      authInProgressRef.current = false;
     }
   };
 
@@ -262,8 +328,26 @@ export const AuthModal: React.FC = () => {
           </div>
         </div>
 
+        {/* Configuration warning - show when Supabase is not configured */}
+        {!isSupabaseConfigured && (
+          <div className="mx-6 mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <div className="flex items-start gap-3">
+              <div className="text-red-400 mt-0.5">
+                <Icons.AlertCircle />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-400">Cloud services not available</p>
+                <p className="text-sm text-zinc-400 mt-1">
+                  Authentication requires server configuration. The app is currently running in offline mode.
+                  {' '}If you're the site administrator, check that environment variables are set correctly.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Anonymous upgrade notice */}
-        {authModalMode === 'signup' && isAnonymous && (
+        {authModalMode === 'signup' && isAnonymous && isSupabaseConfigured && (
           <div className="mx-6 mt-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
             <div className="flex items-start gap-3">
               <div className="text-emerald-400 mt-0.5">
@@ -393,7 +477,7 @@ export const AuthModal: React.FC = () => {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !isSupabaseConfigured}
             className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
           >
             {isLoading ? (
@@ -425,7 +509,7 @@ export const AuthModal: React.FC = () => {
               <button
                 type="button"
                 onClick={handleMagicLink}
-                disabled={isLoading}
+                disabled={isLoading || !isSupabaseConfigured}
                 className="w-full py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-zinc-700"
               >
                 <Icons.Mail />

@@ -493,12 +493,12 @@ export const SettingsPage: React.FC = () => {
               </>
             ) : (
               <>
-                <div className="w-12 h-12 rounded-xl bg-red-950/50 border border-red-700 flex items-center justify-center text-red-400">
+                <div className="w-12 h-12 rounded-xl bg-amber-950/50 border border-amber-700 flex items-center justify-center text-amber-400">
                   <Icons.CloudOff />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-red-400">Not Connected</h3>
-                  <p className="text-sm text-zinc-500">Check environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY</p>
+                  <h3 className="text-lg font-semibold text-amber-400">Offline Mode</h3>
+                  <p className="text-sm text-zinc-500">Data is stored locally on this device</p>
                 </div>
               </>
             )}
