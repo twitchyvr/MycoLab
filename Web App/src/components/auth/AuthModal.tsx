@@ -187,6 +187,15 @@ export const AuthModal: React.FC = () => {
     return 'An error occurred. Please try again.';
   };
 
+  // Check if error is likely captcha-related (for showing config hint)
+  const isCaptchaConfigError = (errorMsg: string | null): boolean => {
+    if (!errorMsg) return false;
+    const lowerMsg = errorMsg.toLowerCase();
+    return lowerMsg.includes('captcha') ||
+           lowerMsg.includes('authentication failed') ||
+           (lowerMsg.includes('400') && !lowerMsg.includes('invalid'));
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -416,11 +425,19 @@ export const AuthModal: React.FC = () => {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Error Message */}
           {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl space-y-2">
               <div className="flex items-center gap-3 text-red-400">
                 <Icons.AlertCircle />
                 <p className="text-sm">{error}</p>
               </div>
+              {/* Show configuration hint for captcha-related errors */}
+              {isCaptchaConfigError(error) && (
+                <div className="text-xs text-zinc-400 pl-8">
+                  <p className="font-medium text-zinc-300">If you're the site administrator:</p>
+                  <p className="mt-1">Supabase captcha verification may need to be configured with test keys for non-Cloudflare deployments.</p>
+                  <p className="mt-1">In Supabase Dashboard: Authentication → Captcha Protection → Use test secret key: <code className="text-emerald-400">1x0000000000000000000000000000000AA</code></p>
+                </div>
+              )}
             </div>
           )}
 
