@@ -8,9 +8,10 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
   DataStoreState, LookupHelpers,
   Species, Strain, Location, Vessel, ContainerType, SubstrateType, Supplier,
-  InventoryCategory, InventoryItem, Culture, Grow, Recipe, AppSettings,
+  InventoryCategory, InventoryItem, InventoryLot, InventoryUsage, PurchaseOrder, PurchaseOrderItem,
+  Culture, Grow, Recipe, AppSettings,
   CultureObservation, CultureTransfer, GrowObservation, Flush, GrowStage,
-  RecipeCategoryItem
+  RecipeCategoryItem, GrainType, LotStatus, OrderStatus, PaymentStatus, UsageType
 } from './types';
 import { 
   supabase, 
@@ -35,6 +36,18 @@ const defaultRecipeCategories: RecipeCategoryItem[] = [
   { id: 'default-other', name: 'Other', code: 'other', icon: '📦', color: 'text-zinc-400 bg-zinc-800', isActive: true },
 ];
 
+// Default grain types (built-in spawn grain options)
+const defaultGrainTypes: GrainType[] = [
+  { id: 'default-oat', name: 'Oat Groats', code: 'oat_groats', isActive: true },
+  { id: 'default-rye', name: 'Rye Berries', code: 'rye_berries', isActive: true },
+  { id: 'default-wheat', name: 'Wheat Berries', code: 'wheat', isActive: true },
+  { id: 'default-millet', name: 'Millet', code: 'millet', isActive: true },
+  { id: 'default-popcorn', name: 'Popcorn', code: 'popcorn', isActive: true },
+  { id: 'default-brf', name: 'Brown Rice Flour (BRF)', code: 'brf', isActive: true },
+  { id: 'default-wbs', name: 'Wild Bird Seed', code: 'wbs', isActive: true },
+  { id: 'default-sorghum', name: 'Sorghum', code: 'sorghum', isActive: true },
+];
+
 const emptyState: DataStoreState = {
   species: [],
   strains: [],
@@ -45,7 +58,11 @@ const emptyState: DataStoreState = {
   suppliers: [],
   inventoryCategories: [],
   recipeCategories: [...defaultRecipeCategories],
+  grainTypes: [...defaultGrainTypes],
   inventoryItems: [],
+  inventoryLots: [],
+  inventoryUsages: [],
+  purchaseOrders: [],
   cultures: [],
   grows: [],
   recipes: [],
@@ -457,6 +474,120 @@ const transformFlushToDb = (flush: Omit<Flush, 'id'>, growId: string) => ({
   notes: flush.notes,
 });
 
+// Transform GrainType from DB format
+const transformGrainTypeFromDb = (row: any): GrainType => ({
+  id: row.id,
+  name: row.name,
+  code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
+  notes: row.notes,
+  isActive: row.is_active ?? true,
+});
+
+// Transform GrainType to DB format
+const transformGrainTypeToDb = (grain: Partial<GrainType>, userId?: string | null) => ({
+  name: grain.name,
+  code: grain.code,
+  notes: grain.notes,
+  is_active: grain.isActive,
+  ...(userId && { user_id: userId }),
+});
+
+// Transform InventoryLot from DB format
+const transformInventoryLotFromDb = (row: any): InventoryLot => ({
+  id: row.id,
+  inventoryItemId: row.inventory_item_id,
+  quantity: parseFloat(row.quantity) || 0,
+  originalQuantity: parseFloat(row.original_quantity) || 0,
+  unit: row.unit || 'g',
+  status: row.status || 'available',
+  purchaseOrderId: row.purchase_order_id,
+  supplierId: row.supplier_id,
+  purchaseDate: row.purchase_date ? new Date(row.purchase_date) : undefined,
+  purchaseCost: row.purchase_cost ? parseFloat(row.purchase_cost) : undefined,
+  locationId: row.location_id,
+  expirationDate: row.expiration_date ? new Date(row.expiration_date) : undefined,
+  lotNumber: row.lot_number,
+  images: row.images || [],
+  notes: row.notes,
+  createdAt: new Date(row.created_at),
+  updatedAt: new Date(row.updated_at),
+  isActive: row.is_active ?? true,
+});
+
+// Transform InventoryLot to DB format
+const transformInventoryLotToDb = (lot: Partial<InventoryLot>) => {
+  const result: Record<string, any> = {};
+  if (lot.inventoryItemId !== undefined) result.inventory_item_id = lot.inventoryItemId;
+  if (lot.quantity !== undefined) result.quantity = lot.quantity;
+  if (lot.originalQuantity !== undefined) result.original_quantity = lot.originalQuantity;
+  if (lot.unit !== undefined) result.unit = lot.unit;
+  if (lot.status !== undefined) result.status = lot.status;
+  if (lot.purchaseOrderId !== undefined) result.purchase_order_id = lot.purchaseOrderId;
+  if (lot.supplierId !== undefined) result.supplier_id = lot.supplierId;
+  if (lot.purchaseDate !== undefined) result.purchase_date = lot.purchaseDate instanceof Date ? lot.purchaseDate.toISOString() : lot.purchaseDate;
+  if (lot.purchaseCost !== undefined) result.purchase_cost = lot.purchaseCost;
+  if (lot.locationId !== undefined) result.location_id = lot.locationId;
+  if (lot.expirationDate !== undefined) result.expiration_date = lot.expirationDate instanceof Date ? lot.expirationDate.toISOString() : lot.expirationDate;
+  if (lot.lotNumber !== undefined) result.lot_number = lot.lotNumber;
+  if (lot.images !== undefined) result.images = lot.images;
+  if (lot.notes !== undefined) result.notes = lot.notes;
+  if (lot.isActive !== undefined) result.is_active = lot.isActive;
+  return result;
+};
+
+// Transform PurchaseOrder from DB format
+const transformPurchaseOrderFromDb = (row: any): PurchaseOrder => ({
+  id: row.id,
+  orderNumber: row.order_number,
+  supplierId: row.supplier_id,
+  status: row.status || 'draft',
+  paymentStatus: row.payment_status || 'unpaid',
+  items: row.items || [],
+  subtotal: parseFloat(row.subtotal) || 0,
+  shipping: parseFloat(row.shipping) || 0,
+  tax: parseFloat(row.tax) || 0,
+  total: parseFloat(row.total) || 0,
+  orderDate: new Date(row.order_date),
+  expectedDate: row.expected_date ? new Date(row.expected_date) : undefined,
+  receivedDate: row.received_date ? new Date(row.received_date) : undefined,
+  trackingNumber: row.tracking_number,
+  trackingUrl: row.tracking_url,
+  orderUrl: row.order_url,
+  receiptImage: row.receipt_image,
+  invoiceImage: row.invoice_image,
+  images: row.images || [],
+  notes: row.notes,
+  createdAt: new Date(row.created_at),
+  updatedAt: new Date(row.updated_at),
+  isActive: row.is_active ?? true,
+});
+
+// Transform PurchaseOrder to DB format
+const transformPurchaseOrderToDb = (order: Partial<PurchaseOrder>) => {
+  const result: Record<string, any> = {};
+  if (order.orderNumber !== undefined) result.order_number = order.orderNumber;
+  if (order.supplierId !== undefined) result.supplier_id = order.supplierId;
+  if (order.status !== undefined) result.status = order.status;
+  if (order.paymentStatus !== undefined) result.payment_status = order.paymentStatus;
+  if (order.items !== undefined) result.items = order.items;
+  if (order.subtotal !== undefined) result.subtotal = order.subtotal;
+  if (order.shipping !== undefined) result.shipping = order.shipping;
+  if (order.tax !== undefined) result.tax = order.tax;
+  if (order.total !== undefined) result.total = order.total;
+  if (order.orderDate !== undefined) result.order_date = order.orderDate instanceof Date ? order.orderDate.toISOString() : order.orderDate;
+  if (order.expectedDate !== undefined) result.expected_date = order.expectedDate instanceof Date ? order.expectedDate.toISOString() : order.expectedDate;
+  if (order.receivedDate !== undefined) result.received_date = order.receivedDate instanceof Date ? order.receivedDate.toISOString() : order.receivedDate;
+  if (order.trackingNumber !== undefined) result.tracking_number = order.trackingNumber;
+  if (order.trackingUrl !== undefined) result.tracking_url = order.trackingUrl;
+  if (order.orderUrl !== undefined) result.order_url = order.orderUrl;
+  if (order.receiptImage !== undefined) result.receipt_image = order.receiptImage;
+  if (order.invoiceImage !== undefined) result.invoice_image = order.invoiceImage;
+  if (order.images !== undefined) result.images = order.images;
+  if (order.notes !== undefined) result.notes = order.notes;
+  if (order.isActive !== undefined) result.is_active = order.isActive;
+  return result;
+};
+
 // ============================================================================
 // CONTEXT TYPES
 // ============================================================================
@@ -512,12 +643,31 @@ interface DataContextValue extends LookupHelpers {
   updateRecipeCategory: (id: string, updates: Partial<RecipeCategoryItem>) => Promise<void>;
   deleteRecipeCategory: (id: string) => Promise<void>;
 
+  // Grain Type CRUD
+  addGrainType: (grain: Omit<GrainType, 'id'>) => Promise<GrainType>;
+  updateGrainType: (id: string, updates: Partial<GrainType>) => Promise<void>;
+  deleteGrainType: (id: string) => Promise<void>;
+
   // Inventory Item CRUD
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>) => InventoryItem;
   updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => void;
   deleteInventoryItem: (id: string) => void;
   adjustInventoryQuantity: (id: string, delta: number) => void;
-  
+
+  // Inventory Lot CRUD
+  addInventoryLot: (lot: Omit<InventoryLot, 'id' | 'createdAt' | 'updatedAt'>) => Promise<InventoryLot>;
+  updateInventoryLot: (id: string, updates: Partial<InventoryLot>) => Promise<void>;
+  deleteInventoryLot: (id: string) => Promise<void>;
+  adjustLotQuantity: (lotId: string, delta: number, usageType?: UsageType, referenceId?: string, referenceName?: string) => Promise<void>;
+  getLotsForItem: (inventoryItemId: string) => InventoryLot[];
+
+  // Purchase Order CRUD
+  addPurchaseOrder: (order: Omit<PurchaseOrder, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PurchaseOrder>;
+  updatePurchaseOrder: (id: string, updates: Partial<PurchaseOrder>) => Promise<void>;
+  deletePurchaseOrder: (id: string) => Promise<void>;
+  receiveOrder: (orderId: string, receivedItems?: { itemId: string; quantity: number }[]) => Promise<void>;
+  generateOrderNumber: () => string;
+
   // Culture CRUD
   addCulture: (culture: Omit<Culture, 'id' | 'createdAt' | 'updatedAt' | 'observations' | 'transfers'>) => Promise<Culture>;
   updateCulture: (id: string, updates: Partial<Culture>) => Promise<void>;
@@ -806,7 +956,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const getSupplier = useCallback((id: string) => state.suppliers.find(s => s.id === id), [state.suppliers]);
   const getInventoryCategory = useCallback((id: string) => state.inventoryCategories.find(c => c.id === id), [state.inventoryCategories]);
   const getRecipeCategory = useCallback((code: string) => state.recipeCategories.find(c => c.code === code), [state.recipeCategories]);
+  const getGrainType = useCallback((id: string) => state.grainTypes.find(g => g.id === id), [state.grainTypes]);
   const getInventoryItem = useCallback((id: string) => state.inventoryItems.find(i => i.id === id), [state.inventoryItems]);
+  const getInventoryLot = useCallback((id: string) => state.inventoryLots.find(l => l.id === id), [state.inventoryLots]);
+  const getPurchaseOrder = useCallback((id: string) => state.purchaseOrders.find(o => o.id === id), [state.purchaseOrders]);
   const getCulture = useCallback((id: string) => state.cultures.find(c => c.id === id), [state.cultures]);
   const getGrow = useCallback((id: string) => state.grows.find(g => g.id === id), [state.grows]);
   const getRecipe = useCallback((id: string) => state.recipes.find(r => r.id === id), [state.recipes]);
@@ -821,7 +974,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const activeSuppliers = useMemo(() => state.suppliers.filter(s => s.isActive), [state.suppliers]);
   const activeInventoryCategories = useMemo(() => state.inventoryCategories.filter(c => c.isActive), [state.inventoryCategories]);
   const activeRecipeCategories = useMemo(() => state.recipeCategories.filter(c => c.isActive), [state.recipeCategories]);
+  const activeGrainTypes = useMemo(() => state.grainTypes.filter(g => g.isActive), [state.grainTypes]);
   const activeInventoryItems = useMemo(() => state.inventoryItems.filter(i => i.isActive), [state.inventoryItems]);
+  const activeInventoryLots = useMemo(() => state.inventoryLots.filter(l => l.isActive), [state.inventoryLots]);
+  const activePurchaseOrders = useMemo(() => state.purchaseOrders.filter(o => o.isActive), [state.purchaseOrders]);
   const activeRecipes = useMemo(() => state.recipes.filter(r => r.isActive), [state.recipes]);
 
   // ============================================================================
@@ -1687,6 +1843,64 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }));
   }, [supabase]);
 
+  // ============================================================================
+  // GRAIN TYPE CRUD
+  // ============================================================================
+
+  const addGrainType = useCallback(async (grain: Omit<GrainType, 'id'>): Promise<GrainType> => {
+    if (supabase) {
+      const userId = await getCurrentUserId();
+      const { data, error } = await supabase
+        .from('grain_types')
+        .insert(transformGrainTypeToDb(grain, userId))
+        .select()
+        .single();
+      if (error) throw error;
+      const newGrain = transformGrainTypeFromDb(data);
+      setState(prev => ({ ...prev, grainTypes: [...prev.grainTypes, newGrain] }));
+      return newGrain;
+    }
+    const newGrain = { ...grain, id: generateId('grain') } as GrainType;
+    setState(prev => ({ ...prev, grainTypes: [...prev.grainTypes, newGrain] }));
+    return newGrain;
+  }, [supabase, generateId]);
+
+  const updateGrainType = useCallback(async (id: string, updates: Partial<GrainType>) => {
+    // Don't allow updating default grain types
+    if (id.startsWith('default-')) return;
+    if (supabase) {
+      const { error } = await supabase
+        .from('grain_types')
+        .update(transformGrainTypeToDb(updates))
+        .eq('id', id);
+      if (error) throw error;
+    }
+    setState(prev => ({
+      ...prev,
+      grainTypes: prev.grainTypes.map(g => g.id === id ? { ...g, ...updates } : g)
+    }));
+  }, [supabase]);
+
+  const deleteGrainType = useCallback(async (id: string) => {
+    // Don't allow deleting default grain types
+    if (id.startsWith('default-')) return;
+    if (supabase) {
+      const { error } = await supabase
+        .from('grain_types')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+    }
+    setState(prev => ({
+      ...prev,
+      grainTypes: prev.grainTypes.map(g => g.id === id ? { ...g, isActive: false } : g)
+    }));
+  }, [supabase]);
+
+  // ============================================================================
+  // INVENTORY ITEM CRUD
+  // ============================================================================
+
   const addInventoryItem = useCallback((item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>): InventoryItem => {
     const now = new Date();
     const newItem: InventoryItem = {
@@ -1716,11 +1930,194 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const adjustInventoryQuantity = useCallback((id: string, delta: number) => {
     setState(prev => ({
       ...prev,
-      inventoryItems: prev.inventoryItems.map(i => 
+      inventoryItems: prev.inventoryItems.map(i =>
         i.id === id ? { ...i, quantity: Math.max(0, i.quantity + delta), updatedAt: new Date() } : i
       )
     }));
   }, []);
+
+  // ============================================================================
+  // INVENTORY LOT CRUD
+  // ============================================================================
+
+  const addInventoryLot = useCallback(async (lot: Omit<InventoryLot, 'id' | 'createdAt' | 'updatedAt'>): Promise<InventoryLot> => {
+    const now = new Date();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('inventory_lots')
+        .insert(transformInventoryLotToDb(lot))
+        .select()
+        .single();
+      if (error) throw error;
+      const newLot = transformInventoryLotFromDb(data);
+      setState(prev => ({ ...prev, inventoryLots: [...prev.inventoryLots, newLot] }));
+      return newLot;
+    }
+    const newLot: InventoryLot = {
+      ...lot,
+      id: generateId('lot'),
+      createdAt: now,
+      updatedAt: now,
+    };
+    setState(prev => ({ ...prev, inventoryLots: [...prev.inventoryLots, newLot] }));
+    return newLot;
+  }, [supabase, generateId]);
+
+  const updateInventoryLot = useCallback(async (id: string, updates: Partial<InventoryLot>) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('inventory_lots')
+        .update({ ...transformInventoryLotToDb(updates), updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    }
+    setState(prev => ({
+      ...prev,
+      inventoryLots: prev.inventoryLots.map(l => l.id === id ? { ...l, ...updates, updatedAt: new Date() } : l)
+    }));
+  }, [supabase]);
+
+  const deleteInventoryLot = useCallback(async (id: string) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('inventory_lots')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+    }
+    setState(prev => ({
+      ...prev,
+      inventoryLots: prev.inventoryLots.map(l => l.id === id ? { ...l, isActive: false } : l)
+    }));
+  }, [supabase]);
+
+  const adjustLotQuantity = useCallback(async (
+    lotId: string,
+    delta: number,
+    usageType?: UsageType,
+    referenceId?: string,
+    referenceName?: string
+  ) => {
+    const lot = state.inventoryLots.find(l => l.id === lotId);
+    if (!lot) return;
+
+    const newQuantity = Math.max(0, lot.quantity + delta);
+    const newStatus: LotStatus = newQuantity === 0 ? 'empty' : newQuantity < lot.originalQuantity * 0.1 ? 'low' : 'available';
+
+    // Update the lot
+    await updateInventoryLot(lotId, { quantity: newQuantity, status: newStatus });
+
+    // Log the usage if it's a deduction
+    if (delta < 0 && usageType) {
+      const usage: InventoryUsage = {
+        id: generateId('usage'),
+        lotId,
+        inventoryItemId: lot.inventoryItemId,
+        quantity: Math.abs(delta),
+        unit: lot.unit,
+        usageType,
+        referenceId,
+        referenceName,
+        usedAt: new Date(),
+      };
+      setState(prev => ({ ...prev, inventoryUsages: [...prev.inventoryUsages, usage] }));
+    }
+  }, [state.inventoryLots, updateInventoryLot, generateId]);
+
+  const getLotsForItem = useCallback((inventoryItemId: string): InventoryLot[] => {
+    return state.inventoryLots.filter(l => l.inventoryItemId === inventoryItemId && l.isActive);
+  }, [state.inventoryLots]);
+
+  // ============================================================================
+  // PURCHASE ORDER CRUD
+  // ============================================================================
+
+  const generateOrderNumber = useCallback((): string => {
+    const date = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+    const count = state.purchaseOrders.length + 1;
+    return `PO-${date}-${count.toString().padStart(3, '0')}`;
+  }, [state.purchaseOrders.length]);
+
+  const addPurchaseOrder = useCallback(async (order: Omit<PurchaseOrder, 'id' | 'createdAt' | 'updatedAt'>): Promise<PurchaseOrder> => {
+    const now = new Date();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .insert(transformPurchaseOrderToDb(order))
+        .select()
+        .single();
+      if (error) throw error;
+      const newOrder = transformPurchaseOrderFromDb(data);
+      setState(prev => ({ ...prev, purchaseOrders: [...prev.purchaseOrders, newOrder] }));
+      return newOrder;
+    }
+    const newOrder: PurchaseOrder = {
+      ...order,
+      id: generateId('po'),
+      createdAt: now,
+      updatedAt: now,
+    };
+    setState(prev => ({ ...prev, purchaseOrders: [...prev.purchaseOrders, newOrder] }));
+    return newOrder;
+  }, [supabase, generateId]);
+
+  const updatePurchaseOrder = useCallback(async (id: string, updates: Partial<PurchaseOrder>) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update({ ...transformPurchaseOrderToDb(updates), updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    }
+    setState(prev => ({
+      ...prev,
+      purchaseOrders: prev.purchaseOrders.map(o => o.id === id ? { ...o, ...updates, updatedAt: new Date() } : o)
+    }));
+  }, [supabase]);
+
+  const deletePurchaseOrder = useCallback(async (id: string) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+    }
+    setState(prev => ({
+      ...prev,
+      purchaseOrders: prev.purchaseOrders.map(o => o.id === id ? { ...o, isActive: false } : o)
+    }));
+  }, [supabase]);
+
+  const receiveOrder = useCallback(async (orderId: string, receivedItems?: { itemId: string; quantity: number }[]) => {
+    const order = state.purchaseOrders.find(o => o.id === orderId);
+    if (!order) return;
+
+    // Update order status
+    await updatePurchaseOrder(orderId, {
+      status: 'received',
+      receivedDate: new Date(),
+    });
+
+    // Create inventory lots for received items
+    for (const item of order.items) {
+      const receivedQty = receivedItems?.find(r => r.itemId === item.id)?.quantity ?? item.quantity;
+      if (receivedQty > 0) {
+        await addInventoryLot({
+          inventoryItemId: item.inventoryItemId || generateId('inv'),
+          quantity: receivedQty,
+          originalQuantity: receivedQty,
+          unit: item.unit,
+          status: 'available',
+          purchaseOrderId: orderId,
+          supplierId: order.supplierId,
+          purchaseDate: new Date(),
+          purchaseCost: item.unitCost * receivedQty,
+          isActive: true,
+        });
+      }
+    }
+  }, [state.purchaseOrders, updatePurchaseOrder, addInventoryLot, generateId]);
 
   // ============================================================================
   // SETTINGS
@@ -1902,10 +2299,11 @@ const loadSettings = async (): Promise<AppSettings> => {
 
     // Lookup helpers
     getSpecies, getStrain, getLocation, getVessel, getContainerType, getSubstrateType,
-    getSupplier, getInventoryCategory, getRecipeCategory, getInventoryItem, getCulture, getGrow, getRecipe,
+    getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
+    getInventoryLot, getPurchaseOrder, getCulture, getGrow, getRecipe,
     activeSpecies, activeStrains, activeLocations, activeVessels, activeContainerTypes,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
-    activeInventoryItems, activeRecipes,
+    activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes,
 
     // CRUD operations
     addSpecies, updateSpecies, deleteSpecies,
@@ -1917,7 +2315,10 @@ const loadSettings = async (): Promise<AppSettings> => {
     addSupplier, updateSupplier, deleteSupplier,
     addInventoryCategory, updateInventoryCategory, deleteInventoryCategory,
     addRecipeCategory, updateRecipeCategory, deleteRecipeCategory,
+    addGrainType, updateGrainType, deleteGrainType,
     addInventoryItem, updateInventoryItem, deleteInventoryItem, adjustInventoryQuantity,
+    addInventoryLot, updateInventoryLot, deleteInventoryLot, adjustLotQuantity, getLotsForItem,
+    addPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, receiveOrder, generateOrderNumber,
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
     getCultureLineage, generateCultureLabel,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
@@ -1929,10 +2330,11 @@ const loadSettings = async (): Promise<AppSettings> => {
   }), [
     state, isLoading, isConnected, error,
     getSpecies, getStrain, getLocation, getVessel, getContainerType, getSubstrateType,
-    getSupplier, getInventoryCategory, getRecipeCategory, getInventoryItem, getCulture, getGrow, getRecipe,
+    getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
+    getInventoryLot, getPurchaseOrder, getCulture, getGrow, getRecipe,
     activeSpecies, activeStrains, activeLocations, activeVessels, activeContainerTypes,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
-    activeInventoryItems, activeRecipes,
+    activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes,
     addSpecies, updateSpecies, deleteSpecies,
     addStrain, updateStrain, deleteStrain,
     addLocation, updateLocation, deleteLocation,
@@ -1942,7 +2344,10 @@ const loadSettings = async (): Promise<AppSettings> => {
     addSupplier, updateSupplier, deleteSupplier,
     addInventoryCategory, updateInventoryCategory, deleteInventoryCategory,
     addRecipeCategory, updateRecipeCategory, deleteRecipeCategory,
+    addGrainType, updateGrainType, deleteGrainType,
     addInventoryItem, updateInventoryItem, deleteInventoryItem, adjustInventoryQuantity,
+    addInventoryLot, updateInventoryLot, deleteInventoryLot, adjustLotQuantity, getLotsForItem,
+    addPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, receiveOrder, generateOrderNumber,
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
     getCultureLineage, generateCultureLabel,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,

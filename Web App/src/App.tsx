@@ -38,6 +38,7 @@ import { LineageVisualization } from './components/cultures/LineageVisualization
 import { GrowManagement } from './components/grows/GrowManagement';
 import { RecipeBuilder } from './components/recipes/RecipeBuilder';
 import { SetupWizard } from './components/setup/SetupWizard';
+import { StockManagement } from './components/inventory/StockManagement';
 
 // ============================================================================
 // CONTEXT
@@ -111,6 +112,11 @@ const Icons = {
   Inventory: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+    </svg>
+  ),
+  Package: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M16.5 9.4l-9-5.19"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
     </svg>
   ),
   Settings: () => (
@@ -209,7 +215,7 @@ const Icons = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'inventory' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
+type Page = 'dashboard' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
 
 interface NavItem {
   id: Page;
@@ -220,6 +226,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
   { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
+  { id: 'stock', label: 'Lab Stock', icon: Icons.Package },
   { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
   { id: 'lineage', label: 'Lineage', icon: Icons.Culture },
   { id: 'grows', label: 'Grows', icon: Icons.Grow },
@@ -731,6 +738,7 @@ const App: React.FC = () => {
   const pageConfig: Record<Page, { title: string; subtitle?: string }> = {
     dashboard: { title: 'Dashboard', subtitle: 'Overview of your mycology lab' },
     inventory: { title: 'Lab Inventory', subtitle: 'All cultures, spawn, and grows' },
+    stock: { title: 'Lab Stock', subtitle: 'Inventory lots, purchases, and tracking' },
     cultures: { title: 'Culture Library', subtitle: 'Manage your cultures and genetics' },
     lineage: { title: 'Lineage Visualization', subtitle: 'Interactive family tree of your cultures' },
     grows: { title: 'Grow Tracking', subtitle: 'Track your active and completed grows' },
@@ -759,6 +767,12 @@ const App: React.FC = () => {
         );
       case 'inventory':
         return <UnifiedItemView />;
+      case 'stock':
+        return (
+          <div className="p-6">
+            <StockManagement />
+          </div>
+        );
       case 'calculator':
         return (
           <div className="p-6">

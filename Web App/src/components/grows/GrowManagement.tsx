@@ -96,10 +96,12 @@ export const GrowManagement: React.FC = () => {
     activeLocations,
     activeContainerTypes,
     activeSubstrateTypes,
+    activeGrainTypes,
     getStrain,
     getLocation,
     getContainerType,
     getSubstrateType,
+    getGrainType,
     getCulture,
     addGrow,
     updateGrow,
@@ -112,6 +114,7 @@ export const GrowManagement: React.FC = () => {
     addLocation,
     addContainerType,
     addSubstrateType,
+    addGrainType,
   } = useData();
 
   const grows = state.grows;
@@ -136,7 +139,7 @@ export const GrowManagement: React.FC = () => {
     name: string;
     strainId: string;
     sourceCultureId: string;
-    spawnType: string;
+    grainTypeId: string;
     spawnWeight: number;
     substrateTypeId: string;
     substrateWeight: number;
@@ -154,7 +157,7 @@ export const GrowManagement: React.FC = () => {
     name: '',
     strainId: '',
     sourceCultureId: '',
-    spawnType: 'Oat Groats',
+    grainTypeId: '',
     spawnWeight: 500,
     substrateTypeId: '',
     substrateWeight: 2000,
@@ -260,6 +263,16 @@ export const GrowManagement: React.FC = () => {
     setNewGrow(prev => ({ ...prev, locationId: newLoc.id }));
   };
 
+  const handleAddGrainType = async (name: string) => {
+    const code = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const newGrain = await addGrainType({
+      name,
+      code,
+      isActive: true,
+    });
+    setNewGrow(prev => ({ ...prev, grainTypeId: newGrain.id }));
+  };
+
   const [newObservation, setNewObservation] = useState({
     type: 'general' as GrowObservation['type'],
     title: '',
@@ -354,6 +367,7 @@ export const GrowManagement: React.FC = () => {
 
     const strain = getStrain(newGrow.strainId);
     const container = getContainerType(newGrow.containerTypeId);
+    const grainType = getGrainType(newGrow.grainTypeId);
     const existingCount = grows.filter(g => g.strainId === newGrow.strainId && getContainerType(g.containerTypeId)?.id === newGrow.containerTypeId).length;
     const autoName = newGrow.name || `${strain?.name || 'Unknown'} ${container?.name || 'Grow'} #${existingCount + 1}`;
 
@@ -363,7 +377,7 @@ export const GrowManagement: React.FC = () => {
       status: 'active',
       currentStage: 'spawning',
       sourceCultureId: newGrow.sourceCultureId || undefined,
-      spawnType: newGrow.spawnType,
+      spawnType: grainType?.name || 'Unknown',
       spawnWeight: newGrow.spawnWeight,
       substrateTypeId: newGrow.substrateTypeId,
       substrateWeight: newGrow.substrateWeight,
@@ -940,21 +954,15 @@ export const GrowManagement: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Spawn Type</label>
-                  <select
-                    value={newGrow.spawnType}
-                    onChange={e => setNewGrow(prev => ({ ...prev, spawnType: e.target.value }))}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                  >
-                    <option value="Oat Groats">Oat Groats</option>
-                    <option value="Rye Berries">Rye Berries</option>
-                    <option value="Wheat">Wheat</option>
-                    <option value="Millet">Millet</option>
-                    <option value="Popcorn">Popcorn</option>
-                    <option value="BRF">BRF</option>
-                  </select>
-                </div>
+                <SelectWithAdd
+                  label="Spawn Type"
+                  value={newGrow.grainTypeId}
+                  onChange={value => setNewGrow(prev => ({ ...prev, grainTypeId: value }))}
+                  options={activeGrainTypes}
+                  placeholder="Select..."
+                  addLabel="Add New Grain Type"
+                  onAdd={handleAddGrainType}
+                />
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Spawn Weight (g)</label>
                   <input
