@@ -15,6 +15,28 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ||
 // Check if Supabase is configured
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
+// Debug logging for configuration issues (only in development or when there's a problem)
+if (!isSupabaseConfigured) {
+  console.warn(
+    '%c[MycoLab] Supabase not configured',
+    'color: #f59e0b; font-weight: bold',
+    '\n\nAuthentication and cloud sync are disabled.',
+    '\n\nTo enable:',
+    '\n1. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables',
+    '\n2. For Netlify: Add these in Site Settings > Environment Variables',
+    '\n3. Trigger a new build after adding the variables',
+    '\n\nCurrent values detected:',
+    '\n  - VITE_SUPABASE_URL:', supabaseUrl ? '(set)' : '(not set)',
+    '\n  - VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? '(set)' : '(not set)'
+  );
+} else {
+  console.log(
+    '%c[MycoLab] Supabase configured',
+    'color: #10b981; font-weight: bold',
+    '\n  - URL:', supabaseUrl.substring(0, 30) + '...'
+  );
+}
+
 // Create client (will be null if not configured)
 export const supabase: SupabaseClient | null = isSupabaseConfigured 
   ? createClient(supabaseUrl, supabaseAnonKey, {

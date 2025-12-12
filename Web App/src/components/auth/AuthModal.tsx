@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/AuthContext';
+import { isSupabaseConfigured } from '../../lib/supabase';
 
 // ============================================================================
 // ICONS
@@ -262,8 +263,26 @@ export const AuthModal: React.FC = () => {
           </div>
         </div>
 
+        {/* Configuration warning - show when Supabase is not configured */}
+        {!isSupabaseConfigured && (
+          <div className="mx-6 mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <div className="flex items-start gap-3">
+              <div className="text-red-400 mt-0.5">
+                <Icons.AlertCircle />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-400">Cloud services not available</p>
+                <p className="text-sm text-zinc-400 mt-1">
+                  Authentication requires server configuration. The app is currently running in offline mode.
+                  {' '}If you're the site administrator, check that environment variables are set correctly.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Anonymous upgrade notice */}
-        {authModalMode === 'signup' && isAnonymous && (
+        {authModalMode === 'signup' && isAnonymous && isSupabaseConfigured && (
           <div className="mx-6 mt-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
             <div className="flex items-start gap-3">
               <div className="text-emerald-400 mt-0.5">
@@ -393,7 +412,7 @@ export const AuthModal: React.FC = () => {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !isSupabaseConfigured}
             className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
           >
             {isLoading ? (
@@ -425,7 +444,7 @@ export const AuthModal: React.FC = () => {
               <button
                 type="button"
                 onClick={handleMagicLink}
-                disabled={isLoading}
+                disabled={isLoading || !isSupabaseConfigured}
                 className="w-full py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-zinc-700"
               >
                 <Icons.Mail />
