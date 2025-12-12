@@ -1,10 +1,13 @@
 # Netlify Configuration for MycoLab (Vite + React + TypeScript)
 
 [build]
+  # Base directory where the build runs from
+  base = "Web App"
+  
   # Build command
   command = "npm run build"
   
-  # Directory to publish (Vite outputs to 'dist' by default)
+  # Publish directory (relative to base)
   publish = "dist"
 
 # SPA routing - redirect all requests to index.html for client-side routing
