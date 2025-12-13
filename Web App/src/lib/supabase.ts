@@ -58,49 +58,64 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
 // Creates a persistent anonymous user session for pre-auth data storage
 // ============================================================================
 
+// Track if anonymous auth is available (set after first attempt)
+let anonymousAuthAvailable: boolean | null = null;
+
 /**
  * Ensure we have an authenticated session (anonymous or real user)
  * This allows storing user-specific data without requiring login
- * 
- * @returns The current session (anonymous or authenticated)
+ *
+ * @returns The current session (anonymous or authenticated), or null if no session
  */
 export const ensureSession = async (): Promise<Session | null> => {
   if (!supabase) return null;
-  
+
   try {
     // Check for existing session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (sessionError) {
       console.error('Error getting session:', sessionError);
       return null;
     }
-    
+
     // If we have a session, return it
     if (session) {
       return session;
     }
-    
-    // No session - try anonymous sign-in
+
+    // No session - check if we should try anonymous sign-in
+    // Skip if we already know anonymous auth is disabled
+    if (anonymousAuthAvailable === false) {
+      return null;
+    }
+
+    // Try anonymous sign-in
     // NOTE: Anonymous auth must be enabled in Supabase Dashboard:
     // Authentication > Providers > Anonymous Sign-Ins > Enable
     const { data, error: signInError } = await supabase.auth.signInAnonymously();
-    
+
     if (signInError) {
-      // If anonymous auth is not enabled, log a helpful message
-      if (signInError.message?.includes('Anonymous sign-ins are disabled')) {
+      // Mark anonymous auth as unavailable to prevent repeated attempts
+      anonymousAuthAvailable = false;
+
+      // If anonymous auth is not enabled, log a helpful message (only once)
+      if (signInError.message?.includes('Anonymous sign-ins are disabled') ||
+          signInError.status === 422) {
         console.warn(
-          'Anonymous auth not enabled. To persist settings:\n' +
-          '1. Go to Supabase Dashboard > Authentication > Providers\n' +
-          '2. Enable "Anonymous Sign-Ins"\n' +
-          'Using localStorage fallback for now.'
+          '%c[MycoLab] Anonymous auth not enabled. To persist settings:',
+          'color: #f59e0b',
+          '\n1. Go to Supabase Dashboard > Authentication > Providers',
+          '\n2. Enable "Anonymous Sign-Ins"',
+          '\nUsing localStorage fallback for now.'
         );
       } else {
         console.error('Anonymous sign-in failed:', signInError);
       }
       return null;
     }
-    
+
+    anonymousAuthAvailable = true;
     console.log('Anonymous session created:', data.session?.user.id);
     return data.session;
   } catch (err) {
@@ -108,6 +123,18 @@ export const ensureSession = async (): Promise<Session | null> => {
     return null;
   }
 };
+
+/**
+ * Reset the anonymous auth availability flag (call after logout)
+ */
+export const resetAnonymousAuthState = () => {
+  anonymousAuthAvailable = null;
+};
+
+/**
+ * Check if anonymous auth is available
+ */
+export const isAnonymousAuthAvailable = () => anonymousAuthAvailable !== false;
 
 /**
  * Get the current user ID (from session or null)

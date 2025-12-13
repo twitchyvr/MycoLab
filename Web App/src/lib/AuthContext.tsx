@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured, ensureSession, isAnonymousUser, clearLocalData } from './supabase';
+import { supabase, isSupabaseConfigured, ensureSession, isAnonymousUser, clearLocalData, isAnonymousAuthAvailable } from './supabase';
 
 // ============================================================================
 // TYPES
@@ -129,11 +129,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setProfile(userProfile);
           }
         } else {
-          // No session - create anonymous session for data persistence
+          // No session - try to create anonymous session for data persistence
+          // This is optional and will gracefully fail if anonymous auth is disabled
           const anonSession = await ensureSession();
           if (anonSession) {
             setSession(anonSession);
             setUser(anonSession.user);
+            setIsAnonymous(true);
+          } else {
+            // No session available - app will work in unauthenticated mode
+            // User needs to sign up or sign in to sync data
+            setSession(null);
+            setUser(null);
             setIsAnonymous(true);
           }
         }
@@ -357,14 +364,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     await supabase.auth.signOut();
 
-    // Create new anonymous session after logout
-    const anonSession = await ensureSession();
-    if (anonSession) {
-      setSession(anonSession);
-      setUser(anonSession.user);
-      setIsAnonymous(true);
+    // Only try anonymous session if anonymous auth is available
+    if (isAnonymousAuthAvailable()) {
+      const anonSession = await ensureSession();
+      if (anonSession) {
+        setSession(anonSession);
+        setUser(anonSession.user);
+        setIsAnonymous(true);
+        setProfile(null);
+        return;
+      }
     }
 
+    // No anonymous session - clear everything
+    setSession(null);
+    setUser(null);
+    setIsAnonymous(true);
     setProfile(null);
   }, []);
 
@@ -447,14 +462,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Sign out
       await supabase.auth.signOut();
 
-      // Create new anonymous session
-      const anonSession = await ensureSession();
-      if (anonSession) {
-        setSession(anonSession);
-        setUser(anonSession.user);
-        setIsAnonymous(true);
+      // Try anonymous session only if available
+      if (isAnonymousAuthAvailable()) {
+        const anonSession = await ensureSession();
+        if (anonSession) {
+          setSession(anonSession);
+          setUser(anonSession.user);
+          setIsAnonymous(true);
+          setProfile(null);
+          console.log('[Auth] Account deletion completed');
+          return { error: null };
+        }
       }
 
+      // No anonymous session - clear everything
+      setSession(null);
+      setUser(null);
+      setIsAnonymous(true);
       setProfile(null);
 
       console.log('[Auth] Account deletion completed');
