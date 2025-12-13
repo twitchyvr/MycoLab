@@ -691,6 +691,26 @@ DROP POLICY IF EXISTS "strains_insert" ON strains;
 DROP POLICY IF EXISTS "strains_update" ON strains;
 DROP POLICY IF EXISTS "strains_delete" ON strains;
 
+-- Location Types
+DROP POLICY IF EXISTS "anon_location_types_select" ON location_types;
+DROP POLICY IF EXISTS "anon_location_types_insert" ON location_types;
+DROP POLICY IF EXISTS "anon_location_types_update" ON location_types;
+DROP POLICY IF EXISTS "anon_location_types_delete" ON location_types;
+DROP POLICY IF EXISTS "location_types_select" ON location_types;
+DROP POLICY IF EXISTS "location_types_insert" ON location_types;
+DROP POLICY IF EXISTS "location_types_update" ON location_types;
+DROP POLICY IF EXISTS "location_types_delete" ON location_types;
+
+-- Location Classifications
+DROP POLICY IF EXISTS "anon_location_classifications_select" ON location_classifications;
+DROP POLICY IF EXISTS "anon_location_classifications_insert" ON location_classifications;
+DROP POLICY IF EXISTS "anon_location_classifications_update" ON location_classifications;
+DROP POLICY IF EXISTS "anon_location_classifications_delete" ON location_classifications;
+DROP POLICY IF EXISTS "location_classifications_select" ON location_classifications;
+DROP POLICY IF EXISTS "location_classifications_insert" ON location_classifications;
+DROP POLICY IF EXISTS "location_classifications_update" ON location_classifications;
+DROP POLICY IF EXISTS "location_classifications_delete" ON location_classifications;
+
 -- Locations
 DROP POLICY IF EXISTS "anon_locations_select" ON locations;
 DROP POLICY IF EXISTS "anon_locations_insert" ON locations;
@@ -1081,6 +1101,8 @@ $$ LANGUAGE plpgsql;
 -- Drop triggers if they exist, then recreate
 DROP TRIGGER IF EXISTS update_species_updated_at ON species;
 DROP TRIGGER IF EXISTS update_strains_updated_at ON strains;
+DROP TRIGGER IF EXISTS update_location_types_updated_at ON location_types;
+DROP TRIGGER IF EXISTS update_location_classifications_updated_at ON location_classifications;
 DROP TRIGGER IF EXISTS update_locations_updated_at ON locations;
 DROP TRIGGER IF EXISTS update_vessels_updated_at ON vessels;
 DROP TRIGGER IF EXISTS update_container_types_updated_at ON container_types;
@@ -1100,6 +1122,8 @@ DROP TRIGGER IF EXISTS update_recipe_categories_updated_at ON recipe_categories;
 
 CREATE TRIGGER update_species_updated_at BEFORE UPDATE ON species FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_strains_updated_at BEFORE UPDATE ON strains FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_location_types_updated_at BEFORE UPDATE ON location_types FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_location_classifications_updated_at BEFORE UPDATE ON location_classifications FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_locations_updated_at BEFORE UPDATE ON locations FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_vessels_updated_at BEFORE UPDATE ON vessels FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_container_types_updated_at BEFORE UPDATE ON container_types FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -1176,8 +1200,8 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 3)
-ON CONFLICT (id) DO UPDATE SET version = 3, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 4)
+ON CONFLICT (id) DO UPDATE SET version = 4, updated_at = NOW();
 
 -- ============================================================================
 -- SUCCESS MESSAGE
