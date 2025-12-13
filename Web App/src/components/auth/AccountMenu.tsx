@@ -179,6 +179,28 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 // ACCOUNT MENU COMPONENT
 // ============================================================================
 
+// Emergency logout function - bypasses React state entirely
+const forceLogout = () => {
+  try {
+    // Clear all storage
+    localStorage.removeItem('mycolab-auth');
+    localStorage.removeItem('mycolab-settings');
+    localStorage.removeItem('mycolab-last-sync');
+    // Clear any other mycolab keys
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('mycolab-')) {
+        localStorage.removeItem(key);
+      }
+    });
+    sessionStorage.clear();
+    // Force reload
+    window.location.href = window.location.origin;
+  } catch (e) {
+    console.error('Force logout error:', e);
+    window.location.reload();
+  }
+};
+
 export const AccountMenu: React.FC = () => {
   const {
     user,
@@ -209,6 +231,34 @@ export const AccountMenu: React.FC = () => {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Emergency keyboard shortcut: Press Escape 3 times quickly to force logout
+  useEffect(() => {
+    let escapeCount = 0;
+    let escapeTimer: NodeJS.Timeout | null = null;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        escapeCount++;
+        if (escapeTimer) clearTimeout(escapeTimer);
+
+        if (escapeCount >= 3) {
+          console.log('[MycoLab] Emergency logout triggered (Escape x3)');
+          forceLogout();
+        } else {
+          escapeTimer = setTimeout(() => {
+            escapeCount = 0;
+          }, 1000);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (escapeTimer) clearTimeout(escapeTimer);
+    };
   }, []);
 
   // Handle sign out click - show confirmation
@@ -262,10 +312,58 @@ export const AccountMenu: React.FC = () => {
     setShowAuthModal(true);
   };
 
-  // Loading state
+  // Loading state - still allow sign out!
   if (isLoading) {
     return (
-      <div className="w-10 h-10 rounded-full bg-zinc-800 animate-pulse" />
+      <div ref={menuRef} className="relative">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-10 h-10 rounded-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 animate-pulse flex items-center justify-center"
+          title="Account menu - click to sign out (or press Escape 3x)"
+        >
+          <Icons.User />
+        </button>
+
+        {isOpen && (
+          <div className="absolute right-0 mt-2 w-72 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden z-50">
+            <div className="p-4 border-b border-zinc-800">
+              <p className="text-sm text-zinc-400">Loading account...</p>
+              <p className="text-xs text-zinc-500 mt-1">Stuck? Use options below</p>
+            </div>
+            <div className="p-2">
+              <button
+                onClick={handleSignOutClick}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition-colors"
+              >
+                <Icons.LogOut />
+                <span>Sign Out</span>
+              </button>
+            </div>
+            <div className="p-2 border-t border-zinc-800">
+              <button
+                onClick={forceLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+              >
+                <Icons.Trash />
+                <span>Force Logout (Clear All Data)</span>
+              </button>
+              <p className="text-xs text-zinc-600 mt-2 px-3">Or press Escape 3 times quickly</p>
+            </div>
+          </div>
+        )}
+
+        {/* Logout Confirmation Modal */}
+        <ConfirmModal
+          isOpen={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={handleSignOutConfirm}
+          title="Sign Out"
+          message="Sign out and clear your session? This can help fix stuck loading issues."
+          confirmText="Sign Out"
+          confirmStyle="warning"
+          isLoading={isLoggingOut}
+        />
+      </div>
     );
   }
 
