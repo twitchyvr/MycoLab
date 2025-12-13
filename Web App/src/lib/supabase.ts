@@ -220,6 +220,47 @@ export const saveLocalSettings = (settings: Partial<LocalSettings>): void => {
  */
 export const isOfflineMode = () => !isSupabaseConfigured;
 
+/**
+ * Clear all local data (localStorage keys used by MycoLab)
+ * Call this on logout or account deletion
+ */
+export const clearLocalData = (options: { preserveSettings?: boolean } = {}): void => {
+  const keysToRemove = [
+    'mycolab-auth',
+    'mycolab-last-sync',
+  ];
+
+  // Only remove settings if not preserving them
+  if (!options.preserveSettings) {
+    keysToRemove.push(SETTINGS_STORAGE_KEY);
+  }
+
+  // Remove all MycoLab keys
+  keysToRemove.forEach(key => {
+    try {
+      localStorage.removeItem(key);
+    } catch (err) {
+      console.error(`Error removing ${key}:`, err);
+    }
+  });
+
+  // Also remove any other mycolab-prefixed keys that might exist
+  try {
+    const allKeys = Object.keys(localStorage);
+    allKeys.forEach(key => {
+      if (key.startsWith('mycolab-') && !keysToRemove.includes(key)) {
+        // Skip settings if preserving
+        if (options.preserveSettings && key === SETTINGS_STORAGE_KEY) return;
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (err) {
+    console.error('Error clearing local storage:', err);
+  }
+
+  console.log('[MycoLab] Local data cleared');
+};
+
 // ============================================================================
 // DATABASE TYPES
 // Generated from Supabase schema

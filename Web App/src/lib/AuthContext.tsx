@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured, ensureSession, isAnonymousUser } from './supabase';
+import { supabase, isSupabaseConfigured, ensureSession, isAnonymousUser, clearLocalData } from './supabase';
 
 // ============================================================================
 // TYPES
@@ -37,11 +37,12 @@ export interface AuthContextValue extends AuthState {
   signUp: (email: string, password: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   signInWithMagicLink: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
-  signOut: () => Promise<void>;
+  signOut: (options?: { clearData?: boolean }) => Promise<void>;
   resetPassword: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
   upgradeAnonymousAccount: (email: string, password: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
-  
+  deleteAccount: () => Promise<{ error: Error | null }>;
+
   // UI state
   showAuthModal: boolean;
   setShowAuthModal: (show: boolean) => void;
@@ -343,11 +344,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return { error };
   }, []);
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (options: { clearData?: boolean } = {}) => {
     if (!supabase) return;
-    
+
+    // Clear local data if requested (preserves settings by default)
+    if (options.clearData) {
+      clearLocalData({ preserveSettings: false });
+    } else {
+      // Just clear auth-related data on normal logout
+      clearLocalData({ preserveSettings: true });
+    }
+
     await supabase.auth.signOut();
-    
+
     // Create new anonymous session after logout
     const anonSession = await ensureSession();
     if (anonSession) {
@@ -355,6 +364,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(anonSession.user);
       setIsAnonymous(true);
     }
+
+    setProfile(null);
   }, []);
 
   const resetPassword = useCallback(async (email: string, captchaToken?: string) => {
@@ -374,13 +385,85 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updatePassword = useCallback(async (newPassword: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
-    
+
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
-    
+
     return { error };
   }, []);
+
+  // Delete account and all user data
+  const deleteAccount = useCallback(async (): Promise<{ error: Error | null }> => {
+    if (!supabase || !user) {
+      return { error: new Error('Not authenticated') };
+    }
+
+    const userId = user.id;
+
+    try {
+      console.log('[Auth] Deleting account data for user:', userId);
+
+      // Delete user data from all tables (RLS will ensure we only delete our own data)
+      // Order matters for foreign key constraints
+      const tablesToDelete = [
+        'culture_observations',
+        'grow_observations',
+        'flushes',
+        'culture_transfers',
+        'recipe_ingredients',
+        'grows',
+        'cultures',
+        'recipes',
+        'inventory_items',
+        'user_settings',
+      ];
+
+      for (const table of tablesToDelete) {
+        const { error: deleteError } = await supabase
+          .from(table)
+          .delete()
+          .eq('user_id', userId);
+
+        if (deleteError) {
+          console.warn(`[Auth] Error deleting from ${table}:`, deleteError.message);
+          // Continue with other tables even if one fails
+        }
+      }
+
+      // Mark user profile as inactive (we can't delete auth users from client)
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .update({ is_active: false })
+        .eq('user_id', userId);
+
+      if (profileError) {
+        console.warn('[Auth] Error deactivating profile:', profileError.message);
+      }
+
+      // Clear all local data
+      clearLocalData({ preserveSettings: false });
+
+      // Sign out
+      await supabase.auth.signOut();
+
+      // Create new anonymous session
+      const anonSession = await ensureSession();
+      if (anonSession) {
+        setSession(anonSession);
+        setUser(anonSession.user);
+        setIsAnonymous(true);
+      }
+
+      setProfile(null);
+
+      console.log('[Auth] Account deletion completed');
+      return { error: null };
+    } catch (err) {
+      console.error('[Auth] Account deletion error:', err);
+      return { error: err instanceof Error ? err : new Error('Failed to delete account') };
+    }
+  }, [user]);
 
   const upgradeAnonymousAccount = useCallback(async (email: string, password: string, captchaToken?: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
@@ -516,6 +599,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     resetPassword,
     updatePassword,
     upgradeAnonymousAccount,
+    deleteAccount,
 
     // UI state
     showAuthModal,
