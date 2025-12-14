@@ -1768,20 +1768,26 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addRecipe = useCallback(async (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>): Promise<Recipe> => {
     if (supabase) {
+      // Get current user ID for RLS policy
+      const userId = await getCurrentUserId();
+      const recipeData = transformRecipeToDb(recipe);
+      if (userId) {
+        recipeData.user_id = userId;
+      }
       const { data, error } = await supabase
         .from('recipes')
-        .insert(transformRecipeToDb(recipe))
+        .insert(recipeData)
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       const newRecipe = transformRecipeFromDb(data);
       newRecipe.ingredients = recipe.ingredients || [];
       setState(prev => ({ ...prev, recipes: [...prev.recipes, newRecipe] }));
       return newRecipe;
     }
-    
+
     const now = new Date();
     const newRecipe: Recipe = {
       ...recipe,
