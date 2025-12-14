@@ -310,6 +310,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onCl
             <div>
               <h1 className="text-lg font-semibold text-white tracking-tight">MycoLab</h1>
               <p className="text-xs text-zinc-500">Laboratory Manager</p>
+              <p className="text-[10px] text-zinc-600 font-mono">v{__APP_VERSION__}</p>
             </div>
           </div>
         </div>

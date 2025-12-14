@@ -83,22 +83,43 @@ const Icons = {
 // ============================================================================
 
 function extractPhase(id: string): string {
-  const match = id.match(/dev-(\d)/);
+  // Extract the first digit(s) to determine phase
+  const match = id.match(/dev-(\d+)/);
   if (!match) return 'misc';
-  const phaseNum = parseInt(match[1]);
-  const phases: Record<number, string> = {
-    0: 'Foundation',
-    1: 'Tracking',
-    2: 'Library',
-    3: 'Mapping',
-    4: 'Operations',
-    5: 'Recipes',
-    6: 'Photos',
-    7: 'Inventory',
-    8: 'Analytics',
-    9: 'QR/Labels',
-  };
-  return phases[phaseNum] || `Phase ${phaseNum}`;
+  const idNum = parseInt(match[1]);
+
+  // Map ID ranges to phases
+  if (idNum >= 800) return 'v1.0 Target';
+  if (idNum >= 700) return 'v0.9.0 Recent';
+  if (idNum >= 600) return 'Inline Creation';
+  if (idNum >= 500) return 'Workflows';
+  if (idNum >= 460) return 'Environmental';
+  if (idNum >= 450) return 'Reports';
+  if (idNum >= 440) return 'Onboarding';
+  if (idNum >= 430) return 'Data Integrity';
+  if (idNum >= 420) return 'Dashboard';
+  if (idNum >= 410) return 'Organization';
+  if (idNum >= 400) return 'Quick Actions';
+  if (idNum >= 300) return 'Core Features';
+  if (idNum >= 200) return 'Future';
+  if (idNum >= 180) return 'Virtual Lab';
+  if (idNum >= 160) return 'Calculators';
+  if (idNum >= 150) return 'UI Polish';
+  if (idNum >= 140) return 'Search';
+  if (idNum >= 130) return 'Mobile';
+  if (idNum >= 120) return 'Infrastructure';
+  if (idNum >= 110) return 'Configuration';
+  if (idNum >= 100) return 'Notifications';
+  if (idNum >= 90) return 'QR/Labels';
+  if (idNum >= 80) return 'Analytics';
+  if (idNum >= 70) return 'Inventory';
+  if (idNum >= 60) return 'Photos';
+  if (idNum >= 50) return 'Recipes';
+  if (idNum >= 40) return 'Operations';
+  if (idNum >= 30) return 'Mapping';
+  if (idNum >= 20) return 'Library';
+  if (idNum >= 10) return 'Tracking';
+  return 'Foundation';
 }
 
 function analyzeFeatures(features: DevLogFeature[]): AnalyzedFeature[] {
@@ -327,8 +348,16 @@ const DevLogPage: React.FC<DevLogPageProps> = ({ features, onUpdateStatus, onAdd
       if (!groups[f.phase]) groups[f.phase] = [];
       groups[f.phase].push(f);
     }
-    // Sort phases
-    const phaseOrder = ['Foundation', 'Tracking', 'Library', 'Mapping', 'Operations', 'Recipes', 'Photos', 'Inventory', 'Analytics', 'QR/Labels'];
+    // Sort phases - prioritize v1.0 Target and recent items first
+    const phaseOrder = [
+      'v1.0 Target', 'v0.9.0 Recent', 'Inline Creation',
+      'Foundation', 'Tracking', 'Library', 'Mapping', 'Operations', 'Recipes',
+      'Photos', 'Inventory', 'Analytics', 'QR/Labels', 'Notifications',
+      'Configuration', 'Infrastructure', 'Mobile', 'Search', 'UI Polish',
+      'Calculators', 'Virtual Lab', 'Quick Actions', 'Organization',
+      'Dashboard', 'Data Integrity', 'Onboarding', 'Reports', 'Environmental',
+      'Workflows', 'Core Features', 'Future'
+    ];
     return Object.entries(groups).sort((a, b) => {
       const aIdx = phaseOrder.indexOf(a[0]);
       const bIdx = phaseOrder.indexOf(b[0]);
