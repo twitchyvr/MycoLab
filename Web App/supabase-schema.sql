@@ -792,6 +792,268 @@ BEGIN
 END $$;
 
 -- ============================================================================
+-- GROWS TABLE MIGRATIONS
+-- Add missing columns used by the application
+-- ============================================================================
+DO $$
+BEGIN
+  -- Status field (active, paused, completed, failed)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'status') THEN
+    ALTER TABLE grows ADD COLUMN status TEXT CHECK (status IN ('active', 'paused', 'completed', 'failed')) DEFAULT 'active';
+  END IF;
+
+  -- Current stage (app uses current_stage, schema had stage)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'current_stage') THEN
+    ALTER TABLE grows ADD COLUMN current_stage TEXT CHECK (current_stage IN ('spawning', 'colonization', 'fruiting', 'harvesting', 'completed', 'contaminated', 'aborted')) DEFAULT 'spawning';
+  END IF;
+
+  -- Spawn type (grain type used)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'spawn_type') THEN
+    ALTER TABLE grows ADD COLUMN spawn_type TEXT DEFAULT 'grain';
+  END IF;
+
+  -- Spawn weight (app uses spawn_weight, not spawn_weight_g)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'spawn_weight') THEN
+    ALTER TABLE grows ADD COLUMN spawn_weight DECIMAL;
+  END IF;
+
+  -- Substrate weight (app uses substrate_weight)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'substrate_weight') THEN
+    ALTER TABLE grows ADD COLUMN substrate_weight DECIMAL;
+  END IF;
+
+  -- Spawn rate percentage
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'spawn_rate') THEN
+    ALTER TABLE grows ADD COLUMN spawn_rate DECIMAL DEFAULT 20;
+  END IF;
+
+  -- Spawned at timestamp (app uses spawned_at, not spawn_date)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'spawned_at') THEN
+    ALTER TABLE grows ADD COLUMN spawned_at TIMESTAMPTZ;
+  END IF;
+
+  -- Colonization started at (app uses colonization_started_at)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'colonization_started_at') THEN
+    ALTER TABLE grows ADD COLUMN colonization_started_at TIMESTAMPTZ;
+  END IF;
+
+  -- Fruiting started at (app uses fruiting_started_at)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'fruiting_started_at') THEN
+    ALTER TABLE grows ADD COLUMN fruiting_started_at TIMESTAMPTZ;
+  END IF;
+
+  -- Completed at timestamp
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'completed_at') THEN
+    ALTER TABLE grows ADD COLUMN completed_at TIMESTAMPTZ;
+  END IF;
+
+  -- First pins at timestamp
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'first_pins_at') THEN
+    ALTER TABLE grows ADD COLUMN first_pins_at TIMESTAMPTZ;
+  END IF;
+
+  -- First harvest at timestamp
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'first_harvest_at') THEN
+    ALTER TABLE grows ADD COLUMN first_harvest_at TIMESTAMPTZ;
+  END IF;
+
+  -- Target temperatures and humidity
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'target_temp_colonization') THEN
+    ALTER TABLE grows ADD COLUMN target_temp_colonization INTEGER DEFAULT 24;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'target_temp_fruiting') THEN
+    ALTER TABLE grows ADD COLUMN target_temp_fruiting INTEGER DEFAULT 22;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'target_humidity') THEN
+    ALTER TABLE grows ADD COLUMN target_humidity INTEGER DEFAULT 90;
+  END IF;
+
+  -- Total yield tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'total_yield') THEN
+    ALTER TABLE grows ADD COLUMN total_yield DECIMAL DEFAULT 0;
+  END IF;
+
+  -- Estimated cost
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'estimated_cost') THEN
+    ALTER TABLE grows ADD COLUMN estimated_cost DECIMAL DEFAULT 0;
+  END IF;
+
+  -- Recipe ID for substrate recipe used
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'recipe_id') THEN
+    ALTER TABLE grows ADD COLUMN recipe_id UUID REFERENCES recipes(id);
+  END IF;
+END $$;
+
+-- ============================================================================
+-- CULTURES TABLE MIGRATIONS
+-- Add missing columns used by the application
+-- ============================================================================
+DO $$
+BEGIN
+  -- Health rating (1-5 scale)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'health_rating') THEN
+    ALTER TABLE cultures ADD COLUMN health_rating INTEGER DEFAULT 5;
+  END IF;
+
+  -- Cost tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'cost') THEN
+    ALTER TABLE cultures ADD COLUMN cost DECIMAL DEFAULT 0;
+  END IF;
+
+  -- Supplier reference (where culture was purchased)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'supplier_id') THEN
+    ALTER TABLE cultures ADD COLUMN supplier_id UUID REFERENCES suppliers(id);
+  END IF;
+
+  -- Lot number for tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'lot_number') THEN
+    ALTER TABLE cultures ADD COLUMN lot_number TEXT;
+  END IF;
+
+  -- Expiration date
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'expires_at') THEN
+    ALTER TABLE cultures ADD COLUMN expires_at TIMESTAMPTZ;
+  END IF;
+END $$;
+
+-- Update cultures status constraint to include all app statuses
+-- First drop the old constraint if it exists, then add new one
+DO $$
+BEGIN
+  -- Drop old constraint (may fail if doesn't exist, that's ok)
+  BEGIN
+    ALTER TABLE cultures DROP CONSTRAINT IF EXISTS cultures_status_check;
+  EXCEPTION WHEN OTHERS THEN
+    NULL; -- Ignore error
+  END;
+
+  -- Add new constraint with all valid statuses
+  BEGIN
+    ALTER TABLE cultures ADD CONSTRAINT cultures_status_check
+      CHECK (status IN ('active', 'colonizing', 'ready', 'contaminated', 'archived', 'depleted', 'exhausted', 'in_use'));
+  EXCEPTION WHEN duplicate_object THEN
+    NULL; -- Constraint already exists
+  END;
+END $$;
+
+-- ============================================================================
+-- RECIPES TABLE MIGRATIONS
+-- Add missing columns used by the application
+-- ============================================================================
+DO $$
+BEGIN
+  -- Sterilization time in minutes
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipes' AND column_name = 'sterilization_time') THEN
+    ALTER TABLE recipes ADD COLUMN sterilization_time INTEGER;
+  END IF;
+
+  -- Sterilization PSI
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipes' AND column_name = 'sterilization_psi') THEN
+    ALTER TABLE recipes ADD COLUMN sterilization_psi INTEGER DEFAULT 15;
+  END IF;
+
+  -- Tips array
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipes' AND column_name = 'tips') THEN
+    ALTER TABLE recipes ADD COLUMN tips TEXT[];
+  END IF;
+
+  -- Source URL for recipe
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipes' AND column_name = 'source_url') THEN
+    ALTER TABLE recipes ADD COLUMN source_url TEXT;
+  END IF;
+
+  -- Cost per batch
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipes' AND column_name = 'cost_per_batch') THEN
+    ALTER TABLE recipes ADD COLUMN cost_per_batch DECIMAL;
+  END IF;
+END $$;
+
+-- Update recipes category constraint to include all app categories
+DO $$
+BEGIN
+  BEGIN
+    ALTER TABLE recipes DROP CONSTRAINT IF EXISTS recipes_category_check;
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+
+  BEGIN
+    ALTER TABLE recipes ADD CONSTRAINT recipes_category_check
+      CHECK (category IN ('substrate', 'agar', 'liquid_culture', 'grain_spawn', 'bulk_substrate', 'casing', 'supplement', 'other'));
+  EXCEPTION WHEN duplicate_object THEN
+    NULL;
+  END;
+END $$;
+
+-- ============================================================================
+-- FLUSHES TABLE MIGRATIONS
+-- Add missing columns used by the application
+-- ============================================================================
+DO $$
+BEGIN
+  -- Mushroom count
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'flushes' AND column_name = 'mushroom_count') THEN
+    ALTER TABLE flushes ADD COLUMN mushroom_count INTEGER;
+  END IF;
+
+  -- Quality rating
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'flushes' AND column_name = 'quality') THEN
+    ALTER TABLE flushes ADD COLUMN quality TEXT CHECK (quality IN ('excellent', 'good', 'fair', 'poor')) DEFAULT 'good';
+  END IF;
+END $$;
+
+-- ============================================================================
+-- INVENTORY_ITEMS TABLE MIGRATIONS
+-- Add missing columns used by the application
+-- ============================================================================
+DO $$
+BEGIN
+  -- SKU / Part number
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'sku') THEN
+    ALTER TABLE inventory_items ADD COLUMN sku TEXT;
+  END IF;
+
+  -- Reorder point (low stock alert threshold)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'reorder_point') THEN
+    ALTER TABLE inventory_items ADD COLUMN reorder_point DECIMAL DEFAULT 0;
+  END IF;
+
+  -- Reorder quantity (how much to order)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'reorder_qty') THEN
+    ALTER TABLE inventory_items ADD COLUMN reorder_qty DECIMAL;
+  END IF;
+
+  -- Unit cost (app uses unitCost)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'unit_cost') THEN
+    ALTER TABLE inventory_items ADD COLUMN unit_cost DECIMAL;
+  END IF;
+END $$;
+
+-- ============================================================================
+-- STRAINS TABLE MIGRATIONS
+-- Add speciesId reference to species table
+-- ============================================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'strains' AND column_name = 'species_id') THEN
+    ALTER TABLE strains ADD COLUMN species_id UUID REFERENCES species(id);
+  END IF;
+END $$;
+
+-- ============================================================================
+-- SUBSTRATE_TYPES TABLE MIGRATIONS
+-- Add code column if missing
+-- ============================================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'substrate_types' AND column_name = 'code') THEN
+    ALTER TABLE substrate_types ADD COLUMN code TEXT;
+  END IF;
+END $$;
+
+-- ============================================================================
 -- ROW LEVEL SECURITY
 -- ============================================================================
 
@@ -1376,7 +1638,24 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'user_id') THEN
     CREATE INDEX IF NOT EXISTS idx_grows_user_id ON grows(user_id);
   END IF;
-  
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'status') THEN
+    CREATE INDEX IF NOT EXISTS idx_grows_status ON grows(status);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'current_stage') THEN
+    CREATE INDEX IF NOT EXISTS idx_grows_current_stage ON grows(current_stage);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'recipe_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_grows_recipe_id ON grows(recipe_id);
+  END IF;
+
+  -- Cultures additional indexes
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'status') THEN
+    CREATE INDEX IF NOT EXISTS idx_cultures_status ON cultures(status);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'supplier_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_cultures_supplier_id ON cultures(supplier_id);
+  END IF;
+
   -- Other indexes
   CREATE INDEX IF NOT EXISTS idx_flushes_grow_id ON flushes(grow_id);
   CREATE INDEX IF NOT EXISTS idx_grow_observations_grow_id ON grow_observations(grow_id);
@@ -1404,12 +1683,25 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 7)
-ON CONFLICT (id) DO UPDATE SET version = 7, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 8)
+ON CONFLICT (id) DO UPDATE SET version = 8, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v8 (2024-12): Comprehensive schema sync with application types
+--               - grows: status, current_stage, spawn_type, spawn_weight, substrate_weight,
+--                 spawn_rate, spawned_at, colonization_started_at, fruiting_started_at,
+--                 completed_at, first_pins_at, first_harvest_at, target_temp_colonization,
+--                 target_temp_fruiting, target_humidity, total_yield, estimated_cost, recipe_id
+--               - cultures: health_rating, cost, supplier_id, lot_number, expires_at,
+--                 updated status constraint with all app statuses
+--               - recipes: sterilization_time, sterilization_psi, tips, source_url,
+--                 cost_per_batch, updated category constraint
+--               - flushes: mushroom_count, quality
+--               - inventory_items: sku, reorder_point, reorder_qty, unit_cost
+--               - strains: species_id FK
+--               - substrate_types: code column
 -- v7 (2024-12): Added migration for suppliers table columns (website, email,
 --               phone, notes) for existing databases
 -- v6 (2024-12): Added admin_notifications table for admin alerting system
