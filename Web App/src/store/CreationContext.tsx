@@ -32,6 +32,7 @@ export type CreatableEntityType =
   | 'containerType'
   | 'inventoryItem'
   | 'inventoryLot'
+  | 'inventoryCategory'
   | 'recipeCategory'
   | 'locationType'
   | 'locationClassification';
@@ -258,6 +259,17 @@ export const ENTITY_CONFIGS: Record<CreatableEntityType, EntityTypeConfig> = {
       unit: 'g',
       status: 'available',
       notes: '',
+    },
+  },
+  inventoryCategory: {
+    label: 'Inventory Category',
+    labelPlural: 'Inventory Categories',
+    requiredFields: ['name'],
+    defaultValues: {
+      color: 'text-zinc-400 bg-zinc-800',
+      icon: '',
+      notes: '',
+      isActive: true,
     },
   },
   recipeCategory: {

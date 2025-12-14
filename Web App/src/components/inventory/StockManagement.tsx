@@ -670,6 +670,8 @@ export const StockManagement: React.FC = () => {
                 onChange={value => setNewLot(prev => ({ ...prev, inventoryItemId: value }))}
                 options={activeInventoryItems}
                 placeholder="Select item..."
+                entityType="inventoryItem"
+                fieldName="inventoryItemId"
               />
 
               <div className="grid grid-cols-2 gap-4">

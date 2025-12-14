@@ -15,6 +15,8 @@ import { ContainerTypeForm } from './ContainerTypeForm';
 import { RecipeCategoryForm } from './RecipeCategoryForm';
 import { LocationTypeForm } from './LocationTypeForm';
 import { LocationClassificationForm } from './LocationClassificationForm';
+import { InventoryItemForm } from './InventoryItemForm';
+import { InventoryCategoryForm } from './InventoryCategoryForm';
 
 // Icons
 const Icons = {
@@ -214,6 +216,34 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
           break;
         }
 
+        case 'inventoryItem': {
+          const newEntity = await data.addInventoryItem({
+            name: formData.name,
+            categoryId: formData.categoryId || '',
+            sku: formData.sku,
+            quantity: 0,  // Items start with 0 quantity - stock is added via lots
+            unit: formData.unit || 'ea',
+            unitCost: formData.unitCost || 0,
+            reorderPoint: formData.reorderPoint || 0,
+            reorderQty: formData.reorderQty || 0,
+            notes: formData.notes,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'inventoryItem' };
+          break;
+        }
+
+        case 'inventoryCategory': {
+          const newEntity = await data.addInventoryCategory({
+            name: formData.name,
+            color: formData.color || 'text-zinc-400 bg-zinc-800',
+            icon: formData.icon,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'inventoryCategory' };
+          break;
+        }
+
         default:
           console.error(`Unknown entity type: ${entityType}`);
           return;
@@ -328,6 +358,22 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
       case 'locationClassification':
         return (
           <LocationClassificationForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+          />
+        );
+      case 'inventoryItem':
+        return (
+          <InventoryItemForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+          />
+        );
+      case 'inventoryCategory':
+        return (
+          <InventoryCategoryForm
             data={formData as any}
             onChange={handleFormChange}
             errors={validationErrors}
