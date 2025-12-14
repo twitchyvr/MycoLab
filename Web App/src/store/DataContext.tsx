@@ -2172,9 +2172,15 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const addInventoryLot = useCallback(async (lot: Omit<InventoryLot, 'id' | 'createdAt' | 'updatedAt'>): Promise<InventoryLot> => {
     const now = new Date();
     if (supabase) {
+      // Get current user ID - required for RLS policy
+      const userId = await getCurrentUserId();
+      const insertData = {
+        ...transformInventoryLotToDb(lot),
+        ...(userId && { user_id: userId }),
+      };
       const { data, error } = await supabase
         .from('inventory_lots')
-        .insert(transformInventoryLotToDb(lot))
+        .insert(insertData)
         .select()
         .single();
       if (error) throw error;
@@ -2270,9 +2276,15 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const addPurchaseOrder = useCallback(async (order: Omit<PurchaseOrder, 'id' | 'createdAt' | 'updatedAt'>): Promise<PurchaseOrder> => {
     const now = new Date();
     if (supabase) {
+      // Get current user ID - required for RLS policy
+      const userId = await getCurrentUserId();
+      const insertData = {
+        ...transformPurchaseOrderToDb(order),
+        ...(userId && { user_id: userId }),
+      };
       const { data, error } = await supabase
         .from('purchase_orders')
-        .insert(transformPurchaseOrderToDb(order))
+        .insert(insertData)
         .select()
         .single();
       if (error) throw error;
