@@ -71,7 +71,7 @@ interface UnifiedItem {
   original: Culture | Grow;
 }
 
-type Page = 'dashboard' | 'today' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'substrate-calc' | 'spawn-rate' | 'pressure-cook' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog' | 'setup';
+type Page = 'dashboard' | 'today' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
 
 interface UnifiedItemViewProps {
   onNavigate?: (page: Page) => void;
