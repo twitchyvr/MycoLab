@@ -128,6 +128,7 @@ export const StockManagement: React.FC = () => {
     generateOrderNumber,
     addInventoryItem,
     addSupplier,
+    addLocation,
     generateId,
   } = useData();
 
@@ -349,6 +350,11 @@ export const StockManagement: React.FC = () => {
   const handleAddSupplier = async (name: string) => {
     const newSup = await addSupplier({ name, isActive: true });
     return newSup.id;
+  };
+
+  const handleAddLocation = async (name: string) => {
+    const newLoc = await addLocation({ name, type: 'storage', isActive: true });
+    return newLoc.id;
   };
 
   // Handle add inventory item inline
@@ -770,6 +776,11 @@ export const StockManagement: React.FC = () => {
                 onChange={value => setNewLot(prev => ({ ...prev, locationId: value }))}
                 options={activeLocations}
                 placeholder="Select location..."
+                addLabel="Add New Location"
+                onAdd={async (name) => {
+                  const id = await handleAddLocation(name);
+                  setNewLot(prev => ({ ...prev, locationId: id }));
+                }}
               />
 
               <div className="grid grid-cols-2 gap-4">

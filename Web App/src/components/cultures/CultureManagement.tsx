@@ -5,7 +5,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
-import type { Culture, CultureType, CultureStatus, CultureObservation } from '../../store/types';
+import { SelectWithAdd } from '../common/SelectWithAdd';
+import type { Culture, CultureType, CultureStatus, CultureObservation, RecipeCategory } from '../../store/types';
 
 // Type configurations
 const cultureTypeConfig: Record<CultureType, { label: string; icon: string; prefix: string }> = {
@@ -80,6 +81,11 @@ export const CultureManagement: React.FC = () => {
     deleteCulture,
     addCultureObservation,
     addCultureTransfer,
+    addStrain,
+    addLocation,
+    addVessel,
+    addSupplier,
+    addRecipe,
   } = useData();
 
   const cultures = state.cultures;
@@ -125,6 +131,67 @@ export const CultureManagement: React.FC = () => {
     notes: '',
     createNewRecord: false,
   });
+
+  // Inline add handlers for SelectWithAdd dropdowns
+  const handleAddStrain = async (name: string) => {
+    const newStrainRecord = await addStrain({
+      name,
+      species: 'Unknown',
+      difficulty: 'intermediate',
+      colonizationDays: { min: 14, max: 21 },
+      fruitingDays: { min: 7, max: 14 },
+      optimalTempColonization: { min: 21, max: 27 },
+      optimalTempFruiting: { min: 18, max: 24 },
+      isActive: true,
+    });
+    setNewCulture(prev => ({ ...prev, strainId: newStrainRecord.id }));
+  };
+
+  const handleAddLocation = async (name: string) => {
+    const newLoc = await addLocation({
+      name,
+      type: 'storage',
+      isActive: true,
+    });
+    setNewCulture(prev => ({ ...prev, locationId: newLoc.id }));
+  };
+
+  const handleAddVessel = async (name: string) => {
+    const newVesselRecord = await addVessel({
+      name,
+      type: 'jar',
+      isReusable: true,
+      isActive: true,
+    });
+    setNewCulture(prev => ({ ...prev, vesselId: newVesselRecord.id }));
+  };
+
+  const handleAddSupplier = async (name: string) => {
+    const newSupplierRecord = await addSupplier({
+      name,
+      isActive: true,
+    });
+    setNewCulture(prev => ({ ...prev, supplierId: newSupplierRecord.id }));
+  };
+
+  const handleAddRecipe = async (name: string) => {
+    // Determine the category based on the current culture type
+    let category: RecipeCategory = 'agar';
+    if (newCulture.type === 'liquid_culture') category = 'liquid_culture';
+    else if (newCulture.type === 'agar' || newCulture.type === 'slant') category = 'agar';
+    else if (newCulture.type === 'spore_syringe') category = 'liquid_culture';
+
+    const newRecipeRecord = await addRecipe({
+      name,
+      category,
+      description: '',
+      yield: { amount: 1, unit: 'batch' },
+      ingredients: [],
+      instructions: [],
+      isActive: true,
+    });
+    setNewCulture(prev => ({ ...prev, recipeId: newRecipeRecord.id }));
+  };
 
   // Listen for header "New" button click
   useEffect(() => {
@@ -754,71 +821,63 @@ export const CultureManagement: React.FC = () => {
               </div>
 
               {/* Strain */}
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Strain *</label>
-                <select
-                  value={newCulture.strainId}
-                  onChange={e => setNewCulture(prev => ({ ...prev, strainId: e.target.value }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                >
-                  <option value="">Select strain...</option>
-                  {activeStrains.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
+              <SelectWithAdd
+                label="Strain"
+                required
+                value={newCulture.strainId}
+                onChange={value => setNewCulture(prev => ({ ...prev, strainId: value }))}
+                options={activeStrains}
+                placeholder="Select strain..."
+                addLabel="Add New Strain"
+                onAdd={handleAddStrain}
+              />
 
               {/* Location */}
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Location *</label>
-                <select
-                  value={newCulture.locationId}
-                  onChange={e => setNewCulture(prev => ({ ...prev, locationId: e.target.value }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                >
-                  <option value="">Select location...</option>
-                  {activeLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
-              </div>
+              <SelectWithAdd
+                label="Location"
+                required
+                value={newCulture.locationId}
+                onChange={value => setNewCulture(prev => ({ ...prev, locationId: value }))}
+                options={activeLocations}
+                placeholder="Select location..."
+                addLabel="Add New Location"
+                onAdd={handleAddLocation}
+              />
 
               {/* Vessel */}
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Vessel *</label>
-                <select
-                  value={newCulture.vesselId}
-                  onChange={e => setNewCulture(prev => ({ ...prev, vesselId: e.target.value }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                >
-                  <option value="">Select vessel...</option>
-                  {activeVessels.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                </select>
-              </div>
+              <SelectWithAdd
+                label="Vessel"
+                required
+                value={newCulture.vesselId}
+                onChange={value => setNewCulture(prev => ({ ...prev, vesselId: value }))}
+                options={activeVessels}
+                placeholder="Select vessel..."
+                addLabel="Add New Vessel"
+                onAdd={handleAddVessel}
+              />
 
               {/* Recipe - filter by culture type */}
               <div>
-                <label className="block text-sm text-zinc-400 mb-2">
-                  Recipe / Media Formula
-                  <span className="text-zinc-500 text-xs ml-2">(what's in this container?)</span>
-                </label>
-                <select
+                <SelectWithAdd
+                  label="Recipe / Media Formula"
                   value={newCulture.recipeId}
-                  onChange={e => setNewCulture(prev => ({ ...prev, recipeId: e.target.value }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                >
-                  <option value="">Select recipe...</option>
-                  {activeRecipes
-                    .filter(r => {
-                      // Filter recipes by matching culture type
-                      if (newCulture.type === 'liquid_culture') return r.category === 'liquid_culture';
-                      if (newCulture.type === 'agar' || newCulture.type === 'slant') return r.category === 'agar';
-                      if (newCulture.type === 'spore_syringe') return r.category === 'liquid_culture' || r.category === 'other';
-                      return true;
-                    })
-                    .map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
-                {newCulture.recipeId && (
-                  <p className="text-xs text-zinc-500 mt-1">
-                    {getRecipe(newCulture.recipeId)?.description || 'No description'}
-                  </p>
-                )}
+                  onChange={value => setNewCulture(prev => ({ ...prev, recipeId: value }))}
+                  options={activeRecipes.filter(r => {
+                    // Filter recipes by matching culture type
+                    if (newCulture.type === 'liquid_culture') return r.category === 'liquid_culture';
+                    if (newCulture.type === 'agar' || newCulture.type === 'slant') return r.category === 'agar';
+                    if (newCulture.type === 'spore_syringe') return r.category === 'liquid_culture' || r.category === 'other';
+                    return true;
+                  })}
+                  placeholder="Select recipe..."
+                  addLabel="Add New Recipe"
+                  onAdd={handleAddRecipe}
+                />
+                <p className="text-xs text-zinc-500 mt-1">
+                  {newCulture.recipeId
+                    ? (getRecipe(newCulture.recipeId)?.description || 'No description')
+                    : "(what's in this container?)"}
+                </p>
               </div>
 
               {/* Volume fields - show for liquids and optionally for others */}
@@ -877,17 +936,15 @@ export const CultureManagement: React.FC = () => {
               </div>
 
               {/* Supplier */}
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Supplier</label>
-                <select
-                  value={newCulture.supplierId}
-                  onChange={e => setNewCulture(prev => ({ ...prev, supplierId: e.target.value }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                >
-                  <option value="">Select supplier...</option>
-                  {activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
+              <SelectWithAdd
+                label="Supplier"
+                value={newCulture.supplierId}
+                onChange={value => setNewCulture(prev => ({ ...prev, supplierId: value }))}
+                options={activeSuppliers}
+                placeholder="Select supplier..."
+                addLabel="Add New Supplier"
+                onAdd={handleAddSupplier}
+              />
 
               {/* Notes */}
               <div>
