@@ -900,6 +900,8 @@ export const GrowManagement: React.FC = () => {
                   onChange={value => setNewGrow(prev => ({ ...prev, sourceCultureId: value }))}
                   options={readyCultureOptions}
                   placeholder="None"
+                  entityType="culture"
+                  fieldName="sourceCultureId"
                 />
               </div>
 
