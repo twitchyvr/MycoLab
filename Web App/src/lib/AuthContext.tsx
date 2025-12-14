@@ -399,7 +399,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const signOut = useCallback(async (options: { clearData?: boolean } = {}) => {
-    if (!supabase) return;
+    console.log('[Auth] signOut called');
+    if (!supabase) {
+      console.log('[Auth] No supabase client, clearing state');
+      setSession(null);
+      setUser(null);
+      setIsAnonymous(true);
+      setProfile(null);
+      return;
+    }
 
     // Clear local data if requested (preserves settings by default)
     if (options.clearData) {
@@ -409,25 +417,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       clearLocalData({ preserveSettings: true });
     }
 
-    await supabase.auth.signOut();
-
-    // Only try anonymous session if anonymous auth is available
-    if (isAnonymousAuthAvailable()) {
-      const anonSession = await ensureSession();
-      if (anonSession) {
-        setSession(anonSession);
-        setUser(anonSession.user);
-        setIsAnonymous(true);
-        setProfile(null);
-        return;
-      }
+    try {
+      await supabase.auth.signOut();
+      console.log('[Auth] Supabase signOut completed');
+    } catch (err) {
+      console.error('[Auth] Error during signOut:', err);
     }
 
-    // No anonymous session - clear everything
+    // Clear state immediately - don't wait for anonymous session
     setSession(null);
     setUser(null);
     setIsAnonymous(true);
     setProfile(null);
+    console.log('[Auth] State cleared after signOut');
+
+    // Try anonymous session in background (non-blocking) with timeout
+    if (isAnonymousAuthAvailable()) {
+      // Use a timeout to prevent hanging
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+
+      Promise.race([ensureSession(), timeoutPromise])
+        .then((anonSession) => {
+          if (anonSession) {
+            console.log('[Auth] Anonymous session created after signOut');
+            setSession(anonSession);
+            setUser(anonSession.user);
+            setIsAnonymous(true);
+          }
+        })
+        .catch((err) => {
+          console.warn('[Auth] Failed to create anonymous session after signOut:', err);
+        });
+    }
   }, []);
 
   const resetPassword = useCallback(async (email: string, captchaToken?: string) => {

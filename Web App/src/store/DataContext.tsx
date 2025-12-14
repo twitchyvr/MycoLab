@@ -1448,14 +1448,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addCulture = useCallback(async (culture: Omit<Culture, 'id' | 'createdAt' | 'updatedAt' | 'observations' | 'transfers'>): Promise<Culture> => {
     if (supabase) {
+      // Get current user ID - required for RLS policy
+      const userId = await getCurrentUserId();
+      const insertData = {
+        ...transformCultureToDb(culture),
+        ...(userId && { user_id: userId }),
+      };
+
       const { data, error } = await supabase
         .from('cultures')
-        .insert(transformCultureToDb(culture))
+        .insert(insertData)
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       const newCulture = transformCultureFromDb(data);
       setState(prev => ({ ...prev, cultures: [newCulture, ...prev.cultures] }));
       return newCulture;
@@ -1570,14 +1577,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addGrow = useCallback(async (grow: Omit<Grow, 'id' | 'createdAt' | 'observations' | 'flushes' | 'totalYield'>): Promise<Grow> => {
     if (supabase) {
+      // Get current user ID - required for RLS policy
+      const userId = await getCurrentUserId();
+      const insertData = {
+        ...transformGrowToDb(grow),
+        ...(userId && { user_id: userId }),
+      };
+
       const { data, error } = await supabase
         .from('grows')
-        .insert(transformGrowToDb(grow))
+        .insert(insertData)
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       const newGrow = transformGrowFromDb(data);
       setState(prev => ({ ...prev, grows: [newGrow, ...prev.grows] }));
       return newGrow;
