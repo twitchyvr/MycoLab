@@ -812,6 +812,23 @@ export const initialDevLog: DevLogFeature[] = [
     estimatedHours: 12,
     actualHours: 14,
     completedAt: new Date().toISOString(),
+    notes: `Two-tier inventory system:
+
+**Inventory Items** (catalog/taxonomy):
+- Base items you track (LME, Petri Dishes, Coco Coir, etc.)
+- Categories, default units, costs, reorder settings, SKUs
+- "+ Add Item" button in all inventory dropdowns
+
+**Stock Lots** (individual purchases/batches):
+- Track actual stock of each item
+- Supplier, cost, expiration, lot numbers, location
+- Photos and notes per lot
+
+**Lab Stock Page Features:**
+- Add Stock modal with inline item creation
+- Purchase Order tracking (draft → ordered → received)
+- Stock lot filtering by status, item type
+- Reorder alerts when below threshold`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -2247,8 +2264,38 @@ Prerequisites:
     category: 'ui',
     status: 'completed',
     priority: 'critical',
-    estimatedHours: 0,
-    notes: 'HIGHEST PRIORITY - Users cannot complete workflows without this. Must be able to add missing options on the fly.',
+    estimatedHours: 16,
+    actualHours: 20,
+    completedAt: new Date().toISOString(),
+    notes: `Comprehensive inline creation system implemented:
+
+**Core Infrastructure:**
+- StandardDropdown component with entityType prop for "+ Add" buttons
+- CreationContext with draft stack for nested creation (create strain → create species → back to strain)
+- EntityFormModal with 14+ entity type forms
+- useEntityForm hook for form state management
+
+**Supported Entity Types (all with "+ Add" in dropdowns):**
+- Strains (with nested species creation)
+- Locations (with type/classification creation)
+- Vessels, Container Types
+- Grain Types, Substrate Types
+- Suppliers
+- Recipe Categories
+- Location Types, Location Classifications
+- Inventory Items (with category creation)
+- Inventory Categories
+
+**Pre-configured dropdown variants:**
+- StrainDropdown, LocationDropdown, VesselDropdown
+- SupplierDropdown, GrainTypeDropdown, SubstrateTypeDropdown
+- ContainerTypeDropdown, InventoryItemDropdown, InventoryCategoryDropdown
+
+**Key Features:**
+- Draft auto-selection after creation
+- Nested creation support (up to 3 levels deep)
+- Breadcrumb navigation in nested forms
+- Form validation with required field indicators`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
