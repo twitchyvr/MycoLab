@@ -9,6 +9,8 @@ import { useAuth } from '../../lib/AuthContext';
 import type { Species, Strain, Location, LocationType, LocationClassification, Vessel, ContainerType, SubstrateType, Supplier, InventoryCategory, AppSettings } from '../../store/types';
 import { createClient } from '@supabase/supabase-js';
 import { SelectWithAdd } from '../common/SelectWithAdd';
+import { AdminMasterData } from './AdminMasterData';
+import { AdminNotifications } from './AdminNotifications';
 
 // ============================================================================
 // TYPES
@@ -142,7 +144,7 @@ export const SettingsPage: React.FC = () => {
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingAuditLog, setLoadingAuditLog] = useState(false);
-  const [adminSubTab, setAdminSubTab] = useState<'users' | 'audit'>('users');
+  const [adminSubTab, setAdminSubTab] = useState<'users' | 'audit' | 'masterData' | 'notifications'>('users');
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
 
@@ -779,7 +781,7 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       {/* Sub-tabs */}
-      <div className="flex gap-2 border-b border-zinc-800 pb-3">
+      <div className="flex flex-wrap gap-2 border-b border-zinc-800 pb-3">
         <button
           onClick={() => setAdminSubTab('users')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -789,6 +791,26 @@ export const SettingsPage: React.FC = () => {
           }`}
         >
           Users ({adminUsers.length})
+        </button>
+        <button
+          onClick={() => setAdminSubTab('masterData')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            adminSubTab === 'masterData'
+              ? 'bg-purple-500 text-white'
+              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+          }`}
+        >
+          Master Data
+        </button>
+        <button
+          onClick={() => setAdminSubTab('notifications')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            adminSubTab === 'notifications'
+              ? 'bg-purple-500 text-white'
+              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+          }`}
+        >
+          Notifications
         </button>
         <button
           onClick={() => setAdminSubTab('audit')}
@@ -940,6 +962,10 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
         </div>
+      ) : adminSubTab === 'masterData' ? (
+        <AdminMasterData isConnected={isConnected} />
+      ) : adminSubTab === 'notifications' ? (
+        <AdminNotifications isConnected={isConnected} />
       ) : (
         <div className="space-y-4">
           {/* Audit Log Header */}

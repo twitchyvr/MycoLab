@@ -506,6 +506,24 @@ CREATE TABLE IF NOT EXISTS admin_audit_log (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Admin notifications for alerting admins of important events
+CREATE TABLE IF NOT EXISTS admin_notifications (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  type TEXT NOT NULL CHECK (type IN ('user_signup', 'user_deactivated', 'data_change', 'system', 'warning', 'error')),
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  severity TEXT DEFAULT 'info' CHECK (severity IN ('info', 'warning', 'error', 'success')),
+  target_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  target_user_email TEXT,
+  related_table TEXT,
+  related_id TEXT,
+  metadata JSONB,
+  is_read BOOLEAN DEFAULT false,
+  read_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Function to automatically create user profile on signup
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
@@ -605,6 +623,80 @@ DROP TRIGGER IF EXISTS on_user_created_populate_data ON auth.users;
 CREATE TRIGGER on_user_created_populate_data
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION populate_default_user_data();
+
+-- ============================================================================
+-- ADMIN NOTIFICATION FUNCTIONS
+-- ============================================================================
+
+-- Function to create admin notification for new user signups
+CREATE OR REPLACE FUNCTION notify_admins_new_user()
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Create notification for admins when a new user signs up
+  BEGIN
+    INSERT INTO admin_notifications (type, title, message, severity, target_user_id, target_user_email, metadata)
+    VALUES (
+      'user_signup',
+      'New User Signup',
+      COALESCE('New user registered: ' || NEW.email, 'New anonymous user registered'),
+      'info',
+      NEW.user_id,
+      NEW.email,
+      jsonb_build_object(
+        'display_name', NEW.display_name,
+        'subscription_tier', NEW.subscription_tier
+      )
+    );
+  EXCEPTION WHEN OTHERS THEN
+    -- Don't fail user signup if notification fails
+    RAISE WARNING '[notify_admins_new_user] Failed to create notification: %', SQLERRM;
+  END;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to notify admins when new user profile is created
+DROP TRIGGER IF EXISTS on_user_profile_created_notify ON user_profiles;
+CREATE TRIGGER on_user_profile_created_notify
+  AFTER INSERT ON user_profiles
+  FOR EACH ROW EXECUTE FUNCTION notify_admins_new_user();
+
+-- Function to create admin notification helper (for use in application code)
+CREATE OR REPLACE FUNCTION create_admin_notification(
+  p_type TEXT,
+  p_title TEXT,
+  p_message TEXT,
+  p_severity TEXT DEFAULT 'info',
+  p_target_user_id UUID DEFAULT NULL,
+  p_target_user_email TEXT DEFAULT NULL,
+  p_related_table TEXT DEFAULT NULL,
+  p_related_id TEXT DEFAULT NULL,
+  p_metadata JSONB DEFAULT NULL
+)
+RETURNS UUID
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_notification_id UUID;
+BEGIN
+  INSERT INTO admin_notifications (
+    type, title, message, severity, target_user_id, target_user_email,
+    related_table, related_id, metadata
+  )
+  VALUES (
+    p_type, p_title, p_message, p_severity, p_target_user_id, p_target_user_email,
+    p_related_table, p_related_id, p_metadata
+  )
+  RETURNING id INTO v_notification_id;
+
+  RETURN v_notification_id;
+END;
+$$ LANGUAGE plpgsql;
 
 -- ============================================================================
 -- SCHEMA MIGRATIONS (Add columns that may be missing from older schemas)
@@ -714,6 +806,7 @@ ALTER TABLE inventory_lots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_usages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_notifications ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- ROW LEVEL SECURITY POLICIES
@@ -747,6 +840,12 @@ DROP POLICY IF EXISTS "user_profiles_delete" ON user_profiles;
 -- Admin audit log
 DROP POLICY IF EXISTS "admin_audit_log_select" ON admin_audit_log;
 DROP POLICY IF EXISTS "admin_audit_log_insert" ON admin_audit_log;
+
+-- Admin notifications
+DROP POLICY IF EXISTS "admin_notifications_select" ON admin_notifications;
+DROP POLICY IF EXISTS "admin_notifications_insert" ON admin_notifications;
+DROP POLICY IF EXISTS "admin_notifications_update" ON admin_notifications;
+DROP POLICY IF EXISTS "admin_notifications_delete" ON admin_notifications;
 
 -- Species
 DROP POLICY IF EXISTS "anon_species_select" ON species;
@@ -1012,6 +1111,12 @@ CREATE POLICY "user_profiles_delete" ON user_profiles FOR DELETE USING (is_admin
 CREATE POLICY "admin_audit_log_select" ON admin_audit_log FOR SELECT USING (is_admin());
 CREATE POLICY "admin_audit_log_insert" ON admin_audit_log FOR INSERT WITH CHECK (is_admin());
 
+-- Admin notifications policies (admin only)
+CREATE POLICY "admin_notifications_select" ON admin_notifications FOR SELECT USING (is_admin());
+CREATE POLICY "admin_notifications_insert" ON admin_notifications FOR INSERT WITH CHECK (is_admin());
+CREATE POLICY "admin_notifications_update" ON admin_notifications FOR UPDATE USING (is_admin());
+CREATE POLICY "admin_notifications_delete" ON admin_notifications FOR DELETE USING (is_admin());
+
 -- Species policies (shared defaults + user's own)
 CREATE POLICY "species_select" ON species FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
 CREATE POLICY "species_insert" ON species FOR INSERT WITH CHECK (user_id = auth.uid());
@@ -1264,6 +1369,11 @@ BEGIN
   CREATE INDEX IF NOT EXISTS idx_inventory_lots_inventory_item_id ON inventory_lots(inventory_item_id);
   CREATE INDEX IF NOT EXISTS idx_inventory_usages_lot_id ON inventory_usages(lot_id);
   CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier_id ON purchase_orders(supplier_id);
+
+  -- Admin notifications indexes
+  CREATE INDEX IF NOT EXISTS idx_admin_notifications_type ON admin_notifications(type);
+  CREATE INDEX IF NOT EXISTS idx_admin_notifications_is_read ON admin_notifications(is_read);
+  CREATE INDEX IF NOT EXISTS idx_admin_notifications_created_at ON admin_notifications(created_at DESC);
 END $$;
 
 -- ============================================================================
@@ -1277,12 +1387,14 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 5)
-ON CONFLICT (id) DO UPDATE SET version = 5, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 6)
+ON CONFLICT (id) DO UPDATE SET version = 6, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v6 (2024-12): Added admin_notifications table for admin alerting system
+--               with automatic notifications for user signups
 -- v5 (2024-12): Added populate_default_user_data function with error handling
 --               to prevent signup failures from FK violations
 -- v4: Added user_profiles table and admin functionality
