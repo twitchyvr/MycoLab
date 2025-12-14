@@ -774,6 +774,23 @@ BEGIN
   END IF;
 END $$;
 
+-- Add columns to existing suppliers table if they don't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'suppliers' AND column_name = 'website') THEN
+    ALTER TABLE suppliers ADD COLUMN website TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'suppliers' AND column_name = 'email') THEN
+    ALTER TABLE suppliers ADD COLUMN email TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'suppliers' AND column_name = 'phone') THEN
+    ALTER TABLE suppliers ADD COLUMN phone TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'suppliers' AND column_name = 'notes') THEN
+    ALTER TABLE suppliers ADD COLUMN notes TEXT;
+  END IF;
+END $$;
+
 -- ============================================================================
 -- ROW LEVEL SECURITY
 -- ============================================================================
@@ -1387,12 +1404,14 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 6)
-ON CONFLICT (id) DO UPDATE SET version = 6, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 7)
+ON CONFLICT (id) DO UPDATE SET version = 7, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v7 (2024-12): Added migration for suppliers table columns (website, email,
+--               phone, notes) for existing databases
 -- v6 (2024-12): Added admin_notifications table for admin alerting system
 --               with automatic notifications for user signups
 -- v5 (2024-12): Added populate_default_user_data function with error handling
