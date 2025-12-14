@@ -944,6 +944,21 @@ END $$;
 -- ============================================================================
 DO $$
 BEGIN
+  -- Prep time in minutes
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipes' AND column_name = 'prep_time_minutes') THEN
+    ALTER TABLE recipes ADD COLUMN prep_time_minutes INTEGER;
+  END IF;
+
+  -- Yield amount
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipes' AND column_name = 'yield_amount') THEN
+    ALTER TABLE recipes ADD COLUMN yield_amount DECIMAL;
+  END IF;
+
+  -- Yield unit
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipes' AND column_name = 'yield_unit') THEN
+    ALTER TABLE recipes ADD COLUMN yield_unit TEXT DEFAULT 'g';
+  END IF;
+
   -- Sterilization time in minutes
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipes' AND column_name = 'sterilization_time') THEN
     ALTER TABLE recipes ADD COLUMN sterilization_time INTEGER;
