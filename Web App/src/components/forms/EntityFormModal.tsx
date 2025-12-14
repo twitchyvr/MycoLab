@@ -1,0 +1,378 @@
+// ============================================================================
+// ENTITY FORM MODAL - Modal wrapper that displays the appropriate entity form
+// ============================================================================
+
+import React, { useState, useEffect } from 'react';
+import { useCreation, useEntityForm, CreatableEntityType, CreationResult, ENTITY_CONFIGS } from '../../store/CreationContext';
+import { useData } from '../../store';
+import { StrainForm } from './StrainForm';
+import { LocationForm } from './LocationForm';
+import { VesselForm } from './VesselForm';
+import { SupplierForm } from './SupplierForm';
+import { GrainTypeForm } from './GrainTypeForm';
+import { SubstrateTypeForm } from './SubstrateTypeForm';
+import { ContainerTypeForm } from './ContainerTypeForm';
+
+// Icons
+const Icons = {
+  X: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  ChevronLeft: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><polyline points="15 18 9 12 15 6"/></svg>,
+  Stack: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><rect x="4" y="4" width="16" height="6" rx="1"/><rect x="4" y="14" width="16" height="6" rx="1"/></svg>,
+};
+
+interface EntityFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const EntityFormModal: React.FC<EntityFormModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
+  const creation = useCreation();
+  const data = useData();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  const currentDraft = creation.currentDraft;
+  const entityType = currentDraft?.entityType;
+
+  // Clear validation errors when form data changes
+  useEffect(() => {
+    if (currentDraft) {
+      setValidationErrors({});
+    }
+  }, [currentDraft?.formData]);
+
+  if (!isOpen || !currentDraft || !entityType) {
+    return null;
+  }
+
+  const config = ENTITY_CONFIGS[entityType];
+  const formData = currentDraft.formData;
+
+  // Handle form data change
+  const handleFormChange = (updates: Record<string, any>) => {
+    creation.updateDraft(currentDraft.id, updates);
+  };
+
+  // Validate form
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    config.requiredFields.forEach(field => {
+      const value = formData[field];
+      if (value === undefined || value === null || value === '') {
+        errors[field] = 'This field is required';
+      }
+    });
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle form submission
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    try {
+      let result: CreationResult | null = null;
+
+      // Create the entity based on type
+      switch (entityType) {
+        case 'strain': {
+          const newEntity = await data.addStrain({
+            name: formData.name,
+            species: formData.species || 'Unknown',
+            speciesId: formData.speciesId,
+            difficulty: formData.difficulty || 'intermediate',
+            colonizationDays: formData.colonizationDays || { min: 14, max: 21 },
+            fruitingDays: formData.fruitingDays || { min: 7, max: 14 },
+            optimalTempColonization: formData.optimalTempColonization || { min: 21, max: 27 },
+            optimalTempFruiting: formData.optimalTempFruiting || { min: 18, max: 24 },
+            notes: formData.notes,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'strain' };
+          break;
+        }
+
+        case 'location': {
+          const newEntity = await data.addLocation({
+            name: formData.name,
+            type: formData.type || 'storage',
+            tempRange: formData.tempRange,
+            humidityRange: formData.humidityRange,
+            notes: formData.description ? `${formData.description}\n${formData.notes || ''}`.trim() : formData.notes,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'location' };
+          break;
+        }
+
+        case 'vessel': {
+          const newEntity = await data.addVessel({
+            name: formData.name,
+            type: formData.type || 'jar',
+            volumeMl: formData.volumeMl,
+            isReusable: formData.isReusable ?? true,
+            notes: formData.notes,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'vessel' };
+          break;
+        }
+
+        case 'supplier': {
+          const newEntity = await data.addSupplier({
+            name: formData.name,
+            website: formData.website,
+            email: formData.email,
+            phone: formData.phone,
+            notes: formData.notes,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'supplier' };
+          break;
+        }
+
+        case 'grainType': {
+          const newEntity = await data.addGrainType({
+            name: formData.name,
+            code: formData.code || formData.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10),
+            notes: formData.notes,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'grainType' };
+          break;
+        }
+
+        case 'substrateType': {
+          const newEntity = await data.addSubstrateType({
+            name: formData.name,
+            code: formData.code || formData.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10),
+            category: formData.category || 'bulk',
+            spawnRateRange: formData.spawnRateRange || { min: 5, optimal: 10, max: 20 },
+            fieldCapacity: formData.fieldCapacity,
+            notes: formData.notes,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'substrateType' };
+          break;
+        }
+
+        case 'containerType': {
+          const newEntity = await data.addContainerType({
+            name: formData.name,
+            category: formData.category || 'tub',
+            volumeL: formData.volumeL,
+            dimensions: formData.dimensions,
+            notes: formData.notes,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'containerType' };
+          break;
+        }
+
+        default:
+          console.error(`Unknown entity type: ${entityType}`);
+          return;
+      }
+
+      if (result) {
+        // Complete the creation and return to parent draft (if any)
+        const parentDraft = creation.completeCreation(currentDraft.id, result);
+
+        // If no parent draft, close the modal
+        if (!parentDraft) {
+          onClose();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to create entity:', error);
+      setValidationErrors({ _form: 'Failed to create. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle cancel
+  const handleCancel = () => {
+    const parentDraft = creation.cancelCreation(currentDraft.id);
+    if (!parentDraft) {
+      onClose();
+    }
+  };
+
+  // Handle going back (for nested creation)
+  const handleBack = () => {
+    creation.cancelCreation(currentDraft.id);
+  };
+
+  // Render the appropriate form
+  const renderForm = () => {
+    switch (entityType) {
+      case 'strain':
+        return (
+          <StrainForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+            species={data.state.species}
+          />
+        );
+      case 'location':
+        return (
+          <LocationForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+          />
+        );
+      case 'vessel':
+        return (
+          <VesselForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+          />
+        );
+      case 'supplier':
+        return (
+          <SupplierForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+          />
+        );
+      case 'grainType':
+        return (
+          <GrainTypeForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+          />
+        );
+      case 'substrateType':
+        return (
+          <SubstrateTypeForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+          />
+        );
+      case 'containerType':
+        return (
+          <ContainerTypeForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+          />
+        );
+      default:
+        return <div className="text-zinc-400">Unknown entity type: {entityType}</div>;
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+          <div className="flex items-center gap-3">
+            {creation.stackDepth > 1 && (
+              <button
+                onClick={handleBack}
+                className="p-1 text-zinc-400 hover:text-white rounded transition-colors"
+                title="Back to previous form"
+              >
+                <Icons.ChevronLeft />
+              </button>
+            )}
+            <div>
+              <h3 className="text-lg font-semibold text-white">
+                {currentDraft.label || `New ${config.label}`}
+              </h3>
+              {creation.stackDepth > 1 && (
+                <div className="flex items-center gap-1 text-xs text-zinc-500 mt-0.5">
+                  <Icons.Stack />
+                  <span>Creating for {creation.draftStack[creation.stackDepth - 2]?.label}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={handleCancel}
+            className="text-zinc-400 hover:text-white transition-colors"
+          >
+            <Icons.X />
+          </button>
+        </div>
+
+        {/* Breadcrumb for nested creation */}
+        {creation.stackDepth > 1 && (
+          <div className="px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
+            <div className="flex items-center gap-2 text-xs">
+              {creation.draftStack.map((draft, index) => (
+                <React.Fragment key={draft.id}>
+                  {index > 0 && <span className="text-zinc-600">/</span>}
+                  <span className={index === creation.stackDepth - 1 ? 'text-emerald-400' : 'text-zinc-500'}>
+                    {draft.label || `New ${ENTITY_CONFIGS[draft.entityType].label}`}
+                  </span>
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Form content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {validationErrors._form && (
+            <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-400 text-sm">
+              {validationErrors._form}
+            </div>
+          )}
+          {renderForm()}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-3 p-4 border-t border-zinc-800">
+          <div className="text-xs text-zinc-500">
+            {config.requiredFields.length > 0 && (
+              <span>* Required fields</span>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleCancel}
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-lg font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-800 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Creating...
+                </>
+              ) : (
+                `Create ${config.label}`
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default EntityFormModal;

@@ -3,8 +3,9 @@
 // ============================================================================
 
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { DataProvider, useData } from './store';
+import { DataProvider, useData, CreationProvider, useCreation } from './store';
 import { AuthProvider } from './lib/AuthContext';
+import { EntityFormModal } from './components/forms';
 import { AuthModal, AccountMenu } from './components/auth';
 import DevLogPage from './components/devlog/DevLogPage';
 import type { 
@@ -846,21 +847,36 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <DataProvider>
-        <AppContext.Provider value={contextValue}>
-          <AuthModal />
-          <AppContent 
-            showSetup={showSetup}
-            setShowSetup={setShowSetup}
-            currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-            renderPage={renderPage}
-            pageConfig={pageConfig}
-          />
-        </AppContext.Provider>
+        <CreationProvider>
+          <AppContext.Provider value={contextValue}>
+            <AuthModal />
+            <CreationModalManager />
+            <AppContent
+              showSetup={showSetup}
+              setShowSetup={setShowSetup}
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              sidebarOpen={sidebarOpen}
+              setSidebarOpen={setSidebarOpen}
+              renderPage={renderPage}
+              pageConfig={pageConfig}
+            />
+          </AppContext.Provider>
+        </CreationProvider>
       </DataProvider>
     </AuthProvider>
+  );
+};
+
+// Component to manage EntityFormModal visibility based on creation context
+const CreationModalManager: React.FC = () => {
+  const { isCreating, clearAllDrafts } = useCreation();
+
+  return (
+    <EntityFormModal
+      isOpen={isCreating}
+      onClose={clearAllDrafts}
+    />
   );
 };
 

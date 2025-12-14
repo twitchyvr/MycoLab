@@ -6,7 +6,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
 import type { Grow, GrowStage, GrowStatus, GrowObservation, Flush } from '../../store/types';
-import { SelectWithAdd } from '../common/SelectWithAdd';
+import { StandardDropdown } from '../common/StandardDropdown';
 
 // Draft key for localStorage
 const GROW_DRAFT_KEY = 'mycolab-grow-draft';
@@ -110,13 +110,6 @@ export const GrowManagement: React.FC = () => {
     markGrowContaminated,
     addGrowObservation,
     addFlush,
-    addStrain,
-    addLocation,
-    addContainerType,
-    addSubstrateType,
-    addGrainType,
-    addCulture,
-    generateCultureLabel,
   } = useData();
 
   const grows = state.grows;
@@ -219,82 +212,6 @@ export const GrowManagement: React.FC = () => {
         setShowCreateModal(true);
       } catch (e) {}
     }
-  };
-
-  // Handle inline add functions
-  const handleAddStrain = async (name: string) => {
-    const newStrain = await addStrain({
-      name,
-      species: 'Unknown',
-      difficulty: 'intermediate',
-      colonizationDays: { min: 14, max: 21 },
-      fruitingDays: { min: 7, max: 14 },
-      optimalTempColonization: { min: 21, max: 27 },
-      optimalTempFruiting: { min: 18, max: 24 },
-      isActive: true,
-    });
-    setNewGrow(prev => ({ ...prev, strainId: newStrain.id }));
-  };
-
-  const handleAddSubstrate = async (name: string) => {
-    const newSub = await addSubstrateType({
-      name,
-      code: name.toLowerCase().replace(/\s+/g, '-'),
-      category: 'bulk',
-      spawnRateRange: { min: 10, optimal: 20, max: 30 },
-      isActive: true,
-    });
-    setNewGrow(prev => ({ ...prev, substrateTypeId: newSub.id }));
-  };
-
-  const handleAddContainer = async (name: string) => {
-    const newContainer = await addContainerType({
-      name,
-      category: 'tub',
-      isActive: true,
-    });
-    setNewGrow(prev => ({ ...prev, containerTypeId: newContainer.id }));
-  };
-
-  const handleAddLocation = async (name: string) => {
-    const newLoc = await addLocation({
-      name,
-      type: 'fruiting',
-      isActive: true,
-    });
-    setNewGrow(prev => ({ ...prev, locationId: newLoc.id }));
-  };
-
-  const handleAddGrainType = async (name: string) => {
-    const code = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-    const newGrain = await addGrainType({
-      name,
-      code,
-      isActive: true,
-    });
-    setNewGrow(prev => ({ ...prev, grainTypeId: newGrain.id }));
-  };
-
-  const handleAddCulture = async (name: string) => {
-    // Create a new culture - use the selected strain if available, otherwise use first active strain
-    const strainId = newGrow.strainId || (activeStrains[0]?.id ?? '');
-    if (!strainId) return;
-
-    const label = generateCultureLabel('liquid_culture');
-    const newCulture = await addCulture({
-      type: 'liquid_culture',
-      label: name || label,
-      strainId,
-      status: 'ready',
-      locationId: newGrow.locationId || (activeLocations[0]?.id ?? ''),
-      vesselId: '',
-      generation: 1,
-      healthRating: 5,
-      cost: 0,
-      volumeMl: 100,
-      notes: 'Created from grow form',
-    });
-    setNewGrow(prev => ({ ...prev, sourceCultureId: newCulture.id }));
   };
 
   const [newObservation, setNewObservation] = useState({
@@ -967,36 +884,34 @@ export const GrowManagement: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <SelectWithAdd
+                <StandardDropdown
                   label="Strain"
                   required
                   value={newGrow.strainId}
                   onChange={value => setNewGrow(prev => ({ ...prev, strainId: value }))}
                   options={activeStrains}
                   placeholder="Select..."
-                  addLabel="Add New Strain"
-                  onAdd={handleAddStrain}
+                  entityType="strain"
+                  fieldName="strainId"
                 />
-                <SelectWithAdd
+                <StandardDropdown
                   label="Source Culture"
                   value={newGrow.sourceCultureId}
                   onChange={value => setNewGrow(prev => ({ ...prev, sourceCultureId: value }))}
                   options={readyCultureOptions}
                   placeholder="None"
-                  addLabel="Add New Culture"
-                  onAdd={handleAddCulture}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <SelectWithAdd
+                <StandardDropdown
                   label="Spawn Type"
                   value={newGrow.grainTypeId}
                   onChange={value => setNewGrow(prev => ({ ...prev, grainTypeId: value }))}
                   options={activeGrainTypes}
                   placeholder="Select..."
-                  addLabel="Add New Grain Type"
-                  onAdd={handleAddGrainType}
+                  entityType="grainType"
+                  fieldName="grainTypeId"
                 />
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Spawn Weight (g)</label>
@@ -1010,15 +925,16 @@ export const GrowManagement: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <SelectWithAdd
+                <StandardDropdown
                   label="Substrate"
                   required
                   value={newGrow.substrateTypeId}
                   onChange={value => setNewGrow(prev => ({ ...prev, substrateTypeId: value }))}
-                  options={activeSubstrateTypes.filter(s => s.category === 'bulk')}
+                  options={activeSubstrateTypes}
+                  filterFn={s => s.category === 'bulk'}
                   placeholder="Select..."
-                  addLabel="Add New Substrate"
-                  onAdd={handleAddSubstrate}
+                  entityType="substrateType"
+                  fieldName="substrateTypeId"
                 />
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Substrate Weight (g)</label>
@@ -1039,15 +955,15 @@ export const GrowManagement: React.FC = () => {
               )}
 
               <div className="grid grid-cols-2 gap-4">
-                <SelectWithAdd
+                <StandardDropdown
                   label="Container"
                   required
                   value={newGrow.containerTypeId}
                   onChange={value => setNewGrow(prev => ({ ...prev, containerTypeId: value }))}
                   options={activeContainerTypes}
                   placeholder="Select..."
-                  addLabel="Add New Container"
-                  onAdd={handleAddContainer}
+                  entityType="containerType"
+                  fieldName="containerTypeId"
                 />
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Count</label>
@@ -1061,15 +977,15 @@ export const GrowManagement: React.FC = () => {
                 </div>
               </div>
 
-              <SelectWithAdd
+              <StandardDropdown
                 label="Location"
                 required
                 value={newGrow.locationId}
                 onChange={value => setNewGrow(prev => ({ ...prev, locationId: value }))}
                 options={activeLocations}
                 placeholder="Select..."
-                addLabel="Add New Location"
-                onAdd={handleAddLocation}
+                entityType="location"
+                fieldName="locationId"
               />
 
               <div>
