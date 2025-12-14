@@ -1033,12 +1033,48 @@ END $$;
 
 -- ============================================================================
 -- STRAINS TABLE MIGRATIONS
--- Add speciesId reference to species table
+-- Add species reference and variety/phenotype tracking
 -- ============================================================================
 DO $$
 BEGIN
+  -- Species ID reference
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'strains' AND column_name = 'species_id') THEN
     ALTER TABLE strains ADD COLUMN species_id UUID REFERENCES species(id);
+  END IF;
+
+  -- Variety/Cultivar (e.g., "var. alba")
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'strains' AND column_name = 'variety') THEN
+    ALTER TABLE strains ADD COLUMN variety TEXT;
+  END IF;
+
+  -- Phenotype (e.g., "Albino", "Leucistic", "APE")
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'strains' AND column_name = 'phenotype') THEN
+    ALTER TABLE strains ADD COLUMN phenotype TEXT;
+  END IF;
+
+  -- Genetics source (vendor, trade, wild isolation)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'strains' AND column_name = 'genetics_source') THEN
+    ALTER TABLE strains ADD COLUMN genetics_source TEXT;
+  END IF;
+
+  -- Isolation type (multispore, clone, agar_isolation, spore_isolation, lc_isolation, unknown)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'strains' AND column_name = 'isolation_type') THEN
+    ALTER TABLE strains ADD COLUMN isolation_type TEXT CHECK (isolation_type IN ('multispore', 'clone', 'agar_isolation', 'spore_isolation', 'lc_isolation', 'unknown'));
+  END IF;
+
+  -- Generation from original (G0, G1, G2, etc.)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'strains' AND column_name = 'generation') THEN
+    ALTER TABLE strains ADD COLUMN generation INTEGER DEFAULT 0;
+  END IF;
+
+  -- Geographic origin or breeder
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'strains' AND column_name = 'origin') THEN
+    ALTER TABLE strains ADD COLUMN origin TEXT;
+  END IF;
+
+  -- Detailed description
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'strains' AND column_name = 'description') THEN
+    ALTER TABLE strains ADD COLUMN description TEXT;
   END IF;
 END $$;
 
@@ -1748,12 +1784,16 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 9)
-ON CONFLICT (id) DO UPDATE SET version = 9, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 10)
+ON CONFLICT (id) DO UPDATE SET version = 10, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v10 (2024-12): Enhanced strains table with taxonomy tracking:
+--                - variety, phenotype, genetics_source, isolation_type
+--                - generation, origin, description fields
+--                Enables precise tracking of genetic lineage and phenotypes
 -- v9 (2024-12): Added default species seed data with proper scientific names,
 --               common names, and categories. 35 species across gourmet (21),
 --               medicinal (8), and research (6) categories.

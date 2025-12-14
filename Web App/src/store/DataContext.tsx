@@ -124,24 +124,35 @@ const getSupabaseClient = (): SupabaseClient | null => {
 const transformStrainFromDb = (row: any): Strain => ({
   id: row.id,
   name: row.name,
-  species: row.species || 'cubensis',
+  speciesId: row.species_id,
+  species: row.species || '',
+  // Variety/Phenotype tracking
+  variety: row.variety,
+  phenotype: row.phenotype,
+  geneticsSource: row.genetics_source,
+  isolationType: row.isolation_type,
+  generation: row.generation,
+  // Growing characteristics
   difficulty: row.difficulty || 'intermediate',
-  colonizationDays: { 
-    min: row.colonization_days_min || 14, 
-    max: row.colonization_days_max || 21 
+  colonizationDays: {
+    min: row.colonization_days_min || 14,
+    max: row.colonization_days_max || 21
   },
-  fruitingDays: { 
-    min: row.fruiting_days_min || 7, 
-    max: row.fruiting_days_max || 14 
+  fruitingDays: {
+    min: row.fruiting_days_min || 7,
+    max: row.fruiting_days_max || 14
   },
-  optimalTempColonization: { 
-    min: row.optimal_temp_colonization || 24, 
-    max: row.optimal_temp_colonization || 27 
+  optimalTempColonization: {
+    min: row.optimal_temp_colonization || 24,
+    max: row.optimal_temp_colonization || 27
   },
-  optimalTempFruiting: { 
-    min: row.optimal_temp_fruiting || 20, 
-    max: row.optimal_temp_fruiting || 24 
+  optimalTempFruiting: {
+    min: row.optimal_temp_fruiting || 20,
+    max: row.optimal_temp_fruiting || 24
   },
+  // Additional metadata
+  origin: row.origin,
+  description: row.description,
   notes: row.notes,
   isActive: row.is_active ?? true,
 });
@@ -149,7 +160,15 @@ const transformStrainFromDb = (row: any): Strain => ({
 // Transform Strain to DB format
 const transformStrainToDb = (strain: Partial<Strain>, userId?: string | null) => ({
   name: strain.name,
+  species_id: strain.speciesId,
   species: strain.species,
+  // Variety/Phenotype tracking
+  variety: strain.variety,
+  phenotype: strain.phenotype,
+  genetics_source: strain.geneticsSource,
+  isolation_type: strain.isolationType,
+  generation: strain.generation,
+  // Growing characteristics
   difficulty: strain.difficulty,
   colonization_days_min: strain.colonizationDays?.min,
   colonization_days_max: strain.colonizationDays?.max,
@@ -157,6 +176,9 @@ const transformStrainToDb = (strain: Partial<Strain>, userId?: string | null) =>
   fruiting_days_max: strain.fruitingDays?.max,
   optimal_temp_colonization: strain.optimalTempColonization?.min,
   optimal_temp_fruiting: strain.optimalTempFruiting?.min,
+  // Additional metadata
+  origin: strain.origin,
+  description: strain.description,
   notes: strain.notes,
   is_active: strain.isActive,
   ...(userId && { user_id: userId }),

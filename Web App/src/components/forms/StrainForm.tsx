@@ -3,17 +3,28 @@
 // ============================================================================
 
 import React from 'react';
-import type { Strain } from '../../store/types';
+import type { Strain, Species } from '../../store/types';
+import { formatSpeciesDisplay } from '../../utils/taxonomy';
 
 export interface StrainFormData {
   name: string;
   species: string;
   speciesId?: string;
+  // Variety/Phenotype
+  variety?: string;
+  phenotype?: string;
+  geneticsSource?: string;
+  isolationType?: 'multispore' | 'clone' | 'agar_isolation' | 'spore_isolation' | 'lc_isolation' | 'unknown';
+  generation?: number;
+  // Growing characteristics
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   colonizationDays: { min: number; max: number };
   fruitingDays: { min: number; max: number };
   optimalTempColonization: { min: number; max: number };
   optimalTempFruiting: { min: number; max: number };
+  // Additional metadata
+  origin?: string;
+  description?: string;
   notes?: string;
   isActive: boolean;
 }
@@ -22,7 +33,7 @@ interface StrainFormProps {
   data: StrainFormData;
   onChange: (data: Partial<StrainFormData>) => void;
   errors?: Record<string, string>;
-  species?: Array<{ id: string; name: string }>;
+  species?: Species[];
 }
 
 const difficultyOptions = [
@@ -31,12 +42,50 @@ const difficultyOptions = [
   { value: 'advanced', label: 'Advanced', description: 'Requires precise conditions' },
 ];
 
+const isolationTypeOptions = [
+  { value: 'multispore', label: 'Multispore', description: 'From spore print/syringe' },
+  { value: 'clone', label: 'Clone', description: 'Tissue clone from fruiting body' },
+  { value: 'agar_isolation', label: 'Agar Isolation', description: 'Isolated on agar' },
+  { value: 'spore_isolation', label: 'Spore Isolation', description: 'Single spore isolation' },
+  { value: 'lc_isolation', label: 'LC Isolation', description: 'Isolated in liquid culture' },
+  { value: 'unknown', label: 'Unknown', description: 'Origin unknown' },
+];
+
+const phenotypeOptions = [
+  'Standard',
+  'Albino',
+  'Leucistic',
+  'APE (Albino Penis Envy)',
+  'TAT (True Albino Teacher)',
+  'Rusty Whyte',
+  'Ghost',
+  'Jack Frost',
+  'Yeti',
+  'Other',
+];
+
 export const StrainForm: React.FC<StrainFormProps> = ({
   data,
   onChange,
   errors = {},
   species = [],
 }) => {
+  // Group species by category for better organization
+  const groupedSpecies = React.useMemo(() => {
+    const groups: Record<string, Species[]> = {
+      gourmet: [],
+      medicinal: [],
+      research: [],
+      other: [],
+    };
+    species.forEach(s => {
+      const cat = s.category || 'other';
+      if (groups[cat]) groups[cat].push(s);
+      else groups.other.push(s);
+    });
+    return groups;
+  }, [species]);
+
   return (
     <div className="space-y-4">
       {/* Name */}
@@ -48,7 +97,7 @@ export const StrainForm: React.FC<StrainFormProps> = ({
           type="text"
           value={data.name || ''}
           onChange={e => onChange({ name: e.target.value })}
-          placeholder="e.g., Golden Teacher, B+, Lion's Mane"
+          placeholder="e.g., Golden Teacher, B+, Pink Oyster"
           className={`w-full bg-zinc-800 border rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 ${
             errors.name ? 'border-red-500' : 'border-zinc-700'
           }`}
@@ -56,7 +105,7 @@ export const StrainForm: React.FC<StrainFormProps> = ({
         {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
       </div>
 
-      {/* Species */}
+      {/* Species - with formatted display */}
       <div>
         <label className="block text-sm text-zinc-400 mb-2">
           Species <span className="text-red-400">*</span>
@@ -68,7 +117,7 @@ export const StrainForm: React.FC<StrainFormProps> = ({
               const selected = species.find(s => s.id === e.target.value);
               onChange({
                 speciesId: e.target.value,
-                species: selected?.name || '',
+                species: selected?.scientificName || selected?.name || '',
               });
             }}
             className={`w-full bg-zinc-800 border rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 ${
@@ -76,9 +125,38 @@ export const StrainForm: React.FC<StrainFormProps> = ({
             }`}
           >
             <option value="">Select species...</option>
-            {species.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
+            {/* Gourmet */}
+            {groupedSpecies.gourmet.length > 0 && (
+              <optgroup label="Gourmet/Culinary">
+                {groupedSpecies.gourmet.map(s => (
+                  <option key={s.id} value={s.id}>{formatSpeciesDisplay(s)}</option>
+                ))}
+              </optgroup>
+            )}
+            {/* Medicinal */}
+            {groupedSpecies.medicinal.length > 0 && (
+              <optgroup label="Medicinal">
+                {groupedSpecies.medicinal.map(s => (
+                  <option key={s.id} value={s.id}>{formatSpeciesDisplay(s)}</option>
+                ))}
+              </optgroup>
+            )}
+            {/* Research */}
+            {groupedSpecies.research.length > 0 && (
+              <optgroup label="Research">
+                {groupedSpecies.research.map(s => (
+                  <option key={s.id} value={s.id}>{formatSpeciesDisplay(s)}</option>
+                ))}
+              </optgroup>
+            )}
+            {/* Other */}
+            {groupedSpecies.other.length > 0 && (
+              <optgroup label="Other">
+                {groupedSpecies.other.map(s => (
+                  <option key={s.id} value={s.id}>{formatSpeciesDisplay(s)}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
         ) : (
           <input
@@ -92,6 +170,91 @@ export const StrainForm: React.FC<StrainFormProps> = ({
           />
         )}
         {errors.species && <p className="text-xs text-red-400 mt-1">{errors.species}</p>}
+      </div>
+
+      {/* Phenotype / Variety Section */}
+      <div className="border-t border-zinc-700 pt-4">
+        <label className="block text-sm text-zinc-300 mb-3">Genetics & Phenotype</label>
+        <div className="grid grid-cols-2 gap-4">
+          {/* Phenotype */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1">Phenotype</label>
+            <select
+              value={data.phenotype || ''}
+              onChange={e => onChange({ phenotype: e.target.value })}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+            >
+              <option value="">Standard/None</option>
+              {phenotypeOptions.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Variety */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1">Variety/Cultivar</label>
+            <input
+              type="text"
+              value={data.variety || ''}
+              onChange={e => onChange({ variety: e.target.value })}
+              placeholder="e.g., var. alba"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          {/* Isolation Type */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1">Isolation Type</label>
+            <select
+              value={data.isolationType || ''}
+              onChange={e => onChange({ isolationType: e.target.value as any })}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+            >
+              <option value="">Select...</option>
+              {isolationTypeOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Generation */}
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1">Generation</label>
+            <input
+              type="number"
+              value={data.generation ?? ''}
+              onChange={e => onChange({ generation: parseInt(e.target.value) || undefined })}
+              placeholder="e.g., 0, 1, 2..."
+              min="0"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        {/* Genetics Source */}
+        <div className="mt-3">
+          <label className="block text-xs text-zinc-500 mb-1">Genetics Source</label>
+          <input
+            type="text"
+            value={data.geneticsSource || ''}
+            onChange={e => onChange({ geneticsSource: e.target.value })}
+            placeholder="e.g., Sporeworks, trade with user, wild isolation"
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        {/* Origin */}
+        <div className="mt-3">
+          <label className="block text-xs text-zinc-500 mb-1">Geographic Origin</label>
+          <input
+            type="text"
+            value={data.origin || ''}
+            onChange={e => onChange({ origin: e.target.value })}
+            placeholder="e.g., Amazon Basin, Pacific Northwest, Thai"
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+          />
+        </div>
       </div>
 
       {/* Difficulty */}
