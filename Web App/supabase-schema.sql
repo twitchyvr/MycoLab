@@ -2,6 +2,28 @@
 -- MYCOLAB DATABASE SCHEMA (Idempotent - Safe to run multiple times)
 -- Run this in your Supabase SQL Editor to set up the database
 -- ============================================================================
+--
+-- AUTH TRIGGER ARCHITECTURE
+-- ============================================================================
+-- When a new user signs up, three triggers fire on auth.users:
+--
+-- 1. on_auth_user_created -> handle_new_user()
+--    Creates a user_profiles row with user_id and email
+--
+-- 2. on_user_created_populate_data -> populate_default_user_data()
+--    Creates user_settings and default locations
+--    IMPORTANT: Uses exception handlers to prevent signup failures
+--
+-- 3. on_auth_user_updated -> handle_user_update()
+--    Syncs email to user_profiles when user upgrades from anonymous
+--
+-- CRITICAL SAFEGUARDS (learned from production issues):
+-- - populate_default_user_data() MUST NOT reference lookup table FKs
+--   (type_id, classification_id) as these tables may be empty
+-- - All inserts in trigger functions wrapped in EXCEPTION blocks
+-- - Use RAISE WARNING instead of RAISE EXCEPTION for non-critical failures
+-- - user_profiles.user_id references auth.users(id), NOT public.users
+-- ============================================================================
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -528,6 +550,61 @@ DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
 CREATE TRIGGER on_auth_user_updated
   AFTER UPDATE ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_user_update();
+
+-- ============================================================================
+-- POPULATE DEFAULT USER DATA
+-- ============================================================================
+-- IMPORTANT: This function creates default data for new users.
+-- It uses EXCEPTION blocks to prevent signup failures if any insert fails.
+--
+-- SAFEGUARDS APPLIED (2024-12):
+-- 1. NO foreign key references to lookup tables (type_id, classification_id, etc.)
+--    These may not have data for new users, causing FK violations
+-- 2. Each insert is wrapped in its own BEGIN/EXCEPTION block
+-- 3. Failures are logged as warnings, not errors, so signup completes
+-- 4. Uses SECURITY DEFINER to run with elevated privileges
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION populate_default_user_data()
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Create default user settings
+  -- Wrapped in exception block to prevent signup failure
+  BEGIN
+    INSERT INTO user_settings (user_id, default_units, default_currency, altitude, timezone)
+    VALUES (NEW.id, 'metric', 'USD', 0, 'America/Chicago')
+    ON CONFLICT (user_id) DO NOTHING;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING '[populate_default_user_data] Failed to create user_settings for user %: %', NEW.id, SQLERRM;
+  END;
+
+  -- Create default locations for the user
+  -- IMPORTANT: Do NOT use type_id or classification_id - these reference lookup tables
+  -- that may be empty for new users, causing foreign key violations
+  BEGIN
+    INSERT INTO locations (name, type, temp_min, temp_max, humidity_min, humidity_max, notes, user_id)
+    VALUES
+      ('Incubation Chamber', 'incubation', 24, 28, 70, 80, 'Main incubation space', NEW.id),
+      ('Fruiting Chamber', 'fruiting', 18, 24, 85, 95, 'High humidity fruiting area', NEW.id),
+      ('Main Lab', 'lab', 20, 25, NULL, NULL, 'Clean work area', NEW.id);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING '[populate_default_user_data] Failed to create default locations for user %: %', NEW.id, SQLERRM;
+  END;
+
+  -- Always return NEW to allow the trigger to complete
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to populate default data for new users
+-- Fires after user profile is created by handle_new_user
+DROP TRIGGER IF EXISTS on_user_created_populate_data ON auth.users;
+CREATE TRIGGER on_user_created_populate_data
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION populate_default_user_data();
 
 -- ============================================================================
 -- SCHEMA MIGRATIONS (Add columns that may be missing from older schemas)
@@ -1200,8 +1277,18 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 4)
-ON CONFLICT (id) DO UPDATE SET version = 4, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 5)
+ON CONFLICT (id) DO UPDATE SET version = 5, updated_at = NOW();
+
+-- ============================================================================
+-- VERSION HISTORY
+-- ============================================================================
+-- v5 (2024-12): Added populate_default_user_data function with error handling
+--               to prevent signup failures from FK violations
+-- v4: Added user_profiles table and admin functionality
+-- v3: Added purchase orders and inventory lots
+-- v2: Added location types, classifications, and enhanced fields
+-- v1: Initial schema
 
 -- ============================================================================
 -- SUCCESS MESSAGE
