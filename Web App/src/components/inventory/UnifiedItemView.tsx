@@ -71,7 +71,13 @@ interface UnifiedItem {
   original: Culture | Grow;
 }
 
-export const UnifiedItemView: React.FC = () => {
+type Page = 'dashboard' | 'today' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'substrate-calc' | 'spawn-rate' | 'pressure-cook' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog' | 'setup';
+
+interface UnifiedItemViewProps {
+  onNavigate?: (page: Page) => void;
+}
+
+export const UnifiedItemView: React.FC<UnifiedItemViewProps> = ({ onNavigate }) => {
   const { state, isLoading, isConnected, activeStrains, refreshData } = useData();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
@@ -416,10 +422,40 @@ export const UnifiedItemView: React.FC = () => {
                 </div>
               )}
               <div className="pt-4 flex gap-3">
-                <button className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium">
+                <button
+                  onClick={() => {
+                    const targetPage = selectedItem.isGrow ? 'grows' : 'cultures';
+                    setSelectedItem(null);
+                    if (onNavigate) {
+                      onNavigate(targetPage);
+                      // Dispatch event to select the item on the target page
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('mycolab:select-item', {
+                          detail: { id: selectedItem.id, type: selectedItem.isGrow ? 'grow' : 'culture' }
+                        }));
+                      }, 100);
+                    }
+                  }}
+                  className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium"
+                >
                   {selectedItem.isGrow ? 'View Grow' : 'View Culture'}
                 </button>
-                <button className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700">
+                <button
+                  onClick={() => {
+                    const targetPage = selectedItem.isGrow ? 'grows' : 'cultures';
+                    setSelectedItem(null);
+                    if (onNavigate) {
+                      onNavigate(targetPage);
+                      // Dispatch event to select and edit the item on the target page
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('mycolab:edit-item', {
+                          detail: { id: selectedItem.id, type: selectedItem.isGrow ? 'grow' : 'culture' }
+                        }));
+                      }, 100);
+                    }
+                  }}
+                  className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700"
+                >
                   Edit
                 </button>
               </div>
