@@ -589,7 +589,7 @@ export const AuthModal: React.FC = () => {
 
         {/* Form - hidden when signup is complete */}
         {!signupComplete && (
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4" autoComplete="on">
           {/* Error Message */}
           {error && (
             <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl space-y-2">
@@ -629,11 +629,13 @@ export const AuthModal: React.FC = () => {
               </div>
               <input
                 type="email"
+                id="email"
+                name="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
-                autoComplete="email"
+                autoComplete="email username"
                 className="w-full pl-11 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-colors"
               />
             </div>
@@ -651,6 +653,8 @@ export const AuthModal: React.FC = () => {
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -682,6 +686,8 @@ export const AuthModal: React.FC = () => {
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  id="confirm-password"
+                  name="confirm-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
