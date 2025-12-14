@@ -4,7 +4,7 @@
 // ============================================================================
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useAuth } from '../../lib/AuthContext';
+import { useAuth, SignUpResult } from '../../lib/AuthContext';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import { TurnstileCaptcha } from './TurnstileCaptcha';
 
@@ -67,6 +67,24 @@ const Icons = {
       <path d="M19 12l1 2 1-2 2-1-2-1-1-2-1 2-2 1 2 1z"/>
     </svg>
   ),
+  Inbox: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+      <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+    </svg>
+  ),
+  CheckCircle: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+  ),
+  ArrowRight: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <line x1="5" y1="12" x2="19" y2="12"/>
+      <polyline points="12 5 19 12 12 19"/>
+    </svg>
+  ),
 };
 
 // ============================================================================
@@ -116,6 +134,13 @@ export const AuthModal: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Signup completion state (for showing dedicated success view)
+  const [signupComplete, setSignupComplete] = useState<{
+    email: string;
+    needsEmailConfirmation: boolean;
+    dataPreserved: boolean;
+  } | null>(null);
 
   // Track if we're in the middle of an auth attempt
   const authInProgressRef = useRef(false);
@@ -167,6 +192,7 @@ export const AuthModal: React.FC = () => {
     setAuthModalMode(mode);
     setError(null);
     setSuccess(null);
+    setSignupComplete(null);
     setPassword('');
     setConfirmPassword('');
     resetCaptcha();
@@ -239,52 +265,65 @@ export const AuthModal: React.FC = () => {
           return;
         }
 
+        let signupResult: SignUpResult;
+        let dataPreserved = false;
+
         // If user is anonymous, try to upgrade their account
         if (isAnonymous) {
-          const { error: upgradeError } = await withTimeout(
+          const upgradeResult = await withTimeout(
             upgradeAnonymousAccount(email, password, captchaToken),
             AUTH_TIMEOUT_MS,
             'Account upgrade timed out. Please try again.'
           );
-          if (upgradeError) {
+
+          if (upgradeResult.error) {
             // If upgrade fails, try regular signup as fallback
             // Note: This won't preserve the anonymous user's data
-            console.log('Upgrade failed, trying regular signup. Error:', upgradeError);
+            console.log('Upgrade failed, trying regular signup. Error:', upgradeResult.error);
 
-            const { error: signUpError } = await withTimeout(
+            signupResult = await withTimeout(
               signUp(email, password, captchaToken),
               AUTH_TIMEOUT_MS,
               'Sign up timed out. Please try again.'
             );
-            if (signUpError) {
-              // Check for common issues
-              const msg = getErrorMessage(signUpError);
-              if (msg.includes('already registered') || msg.includes('email_exists')) {
-                setError('This email is already registered. Try signing in instead.');
-              } else if (msg.includes('rate limit')) {
-                setError('Too many attempts. Please wait a few minutes and try again.');
-              } else {
-                setError(msg || 'Failed to create account. Please check your Supabase configuration.');
-              }
-              resetCaptcha(); // Reset captcha on error
-            } else {
-              setSuccess('Account created! Check your email to confirm your address. Note: You may need to re-enter any data from your guest session.');
-            }
+            dataPreserved = false;
           } else {
-            setSuccess('Account created! Your data has been preserved. Check your email to confirm your address.');
+            signupResult = upgradeResult;
+            dataPreserved = true;
           }
         } else {
-          const { error } = await withTimeout(
+          signupResult = await withTimeout(
             signUp(email, password, captchaToken),
             AUTH_TIMEOUT_MS,
             'Sign up timed out. Please try again.'
           );
-          if (error) {
-            setError(getErrorMessage(error));
-            resetCaptcha(); // Reset captcha on error
+          dataPreserved = false;
+        }
+
+        // Handle the result
+        if (signupResult.error) {
+          // Check for common issues
+          const msg = getErrorMessage(signupResult.error);
+          if (msg.includes('already registered') || msg.includes('email_exists')) {
+            setError('This email is already registered. Try signing in instead.');
+          } else if (msg.includes('rate limit')) {
+            setError('Too many attempts. Please wait a few minutes and try again.');
           } else {
-            setSuccess('Account created! Check your email to confirm your address.');
+            setError(msg || 'Failed to create account. Please check your Supabase configuration.');
           }
+          resetCaptcha(); // Reset captcha on error
+        } else if (!signupResult.user) {
+          // No error but also no user - something went wrong silently
+          setError('Account creation failed. Please try again or contact support if the problem persists.');
+          resetCaptcha();
+        } else {
+          // Success! Show the success screen
+          setSignupComplete({
+            email,
+            needsEmailConfirmation: signupResult.needsEmailConfirmation,
+            dataPreserved,
+          });
+          setError(null);
         }
       } else if (authModalMode === 'reset') {
         const { error } = await withTimeout(
@@ -405,7 +444,7 @@ export const AuthModal: React.FC = () => {
         )}
 
         {/* Anonymous upgrade notice */}
-        {authModalMode === 'signup' && isAnonymous && isSupabaseConfigured && (
+        {authModalMode === 'signup' && isAnonymous && isSupabaseConfigured && !signupComplete && (
           <div className="mx-6 mt-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
             <div className="flex items-start gap-3">
               <div className="text-emerald-400 mt-0.5">
@@ -421,7 +460,135 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
-        {/* Form */}
+        {/* Success Screen - shown after successful signup */}
+        {signupComplete && (
+          <div className="p-6 space-y-6">
+            {/* Success Header */}
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
+                <div className="text-emerald-400">
+                  <Icons.CheckCircle />
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">
+                Account Created Successfully!
+              </h3>
+              <p className="text-zinc-400">
+                Your MycoLab account has been set up for <span className="text-emerald-400 font-medium">{signupComplete.email}</span>
+              </p>
+            </div>
+
+            {/* Email Confirmation Notice */}
+            {signupComplete.needsEmailConfirmation && (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="text-amber-400 mt-0.5">
+                    <Icons.Inbox />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-amber-400">Check your inbox</p>
+                    <p className="text-sm text-zinc-400 mt-1">
+                      We've sent a confirmation email to <strong>{signupComplete.email}</strong>.
+                      Click the link in the email to verify your account and complete setup.
+                    </p>
+                    <p className="text-xs text-zinc-500 mt-2">
+                      Didn't receive the email? Check your spam folder, or{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSignupComplete(null);
+                          setAuthModalMode('login');
+                        }}
+                        className="text-emerald-400 hover:text-emerald-300"
+                      >
+                        try signing in
+                      </button>{' '}
+                      to resend it.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Data Preserved Notice */}
+            {signupComplete.dataPreserved && (
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="text-emerald-400 mt-0.5">
+                    <Icons.Check />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-emerald-400">Your data has been preserved</p>
+                    <p className="text-sm text-zinc-400 mt-1">
+                      All your existing cultures, grows, and settings have been linked to your new account.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Next Steps */}
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-zinc-300">Next steps:</p>
+              <ol className="space-y-2 text-sm text-zinc-400">
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-400 font-medium">1.</span>
+                  {signupComplete.needsEmailConfirmation
+                    ? 'Open your email and click the confirmation link'
+                    : 'Your email is confirmed - you\'re ready to go!'}
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-400 font-medium">2.</span>
+                  {signupComplete.needsEmailConfirmation
+                    ? 'Return to MycoLab and sign in with your credentials'
+                    : 'Your account is now active and syncing'}
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-400 font-medium">3.</span>
+                  Start tracking your grows!
+                </li>
+              </ol>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3">
+              {signupComplete.needsEmailConfirmation ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSignupComplete(null);
+                      setAuthModalMode('login');
+                    }}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                  >
+                    <span>Go to Sign In</span>
+                    <Icons.ArrowRight />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthModal(false)}
+                    className="w-full py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium rounded-xl transition-colors border border-zinc-700"
+                  >
+                    I'll confirm later
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowAuthModal(false)}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                >
+                  <span>Continue to MycoLab</span>
+                  <Icons.ArrowRight />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Form - hidden when signup is complete */}
+        {!signupComplete && (
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Error Message */}
           {error && (
@@ -601,8 +768,10 @@ export const AuthModal: React.FC = () => {
             </>
           )}
         </form>
+        )}
 
-        {/* Footer */}
+        {/* Footer - hidden when signup is complete */}
+        {!signupComplete && (
         <div className="p-6 pt-0 text-center">
           {authModalMode === 'login' && (
             <p className="text-sm text-zinc-400">
@@ -638,6 +807,7 @@ export const AuthModal: React.FC = () => {
             </p>
           )}
         </div>
+        )}
       </div>
     </div>
   );

@@ -32,15 +32,23 @@ export interface AuthState {
   isAdmin: boolean;
 }
 
+// Signup result with detailed info for better UX
+export interface SignUpResult {
+  error: AuthError | null;
+  user: User | null;
+  session: Session | null;
+  needsEmailConfirmation: boolean;
+}
+
 export interface AuthContextValue extends AuthState {
   // Auth actions (captchaToken is optional for backward compatibility)
-  signUp: (email: string, password: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, captchaToken?: string) => Promise<SignUpResult>;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   signInWithMagicLink: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   signOut: (options?: { clearData?: boolean }) => Promise<void>;
   resetPassword: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
-  upgradeAnonymousAccount: (email: string, password: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
+  upgradeAnonymousAccount: (email: string, password: string, captchaToken?: string) => Promise<SignUpResult>;
   deleteAccount: () => Promise<{ error: Error | null }>;
 
   // UI state
@@ -192,8 +200,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // AUTH ACTIONS
   // ============================================================================
 
-  const signUp = useCallback(async (email: string, password: string, captchaToken?: string) => {
-    if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
+  const signUp = useCallback(async (email: string, password: string, captchaToken?: string): Promise<SignUpResult> => {
+    const emptyResult: SignUpResult = { error: null, user: null, session: null, needsEmailConfirmation: false };
+
+    if (!supabase) {
+      return { ...emptyResult, error: new Error('Supabase not configured') as AuthError };
+    }
 
     // Retry configuration for transient failures
     const MAX_RETRIES = 3;
@@ -201,6 +213,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     let lastError: any = null;
+    let lastData: any = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       if (attempt > 0) {
@@ -209,7 +222,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await delay(delayMs);
       }
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -218,11 +231,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
       });
 
-      if (!error) {
-        return { error: null };
-      }
-
+      lastData = data;
       lastError = error;
+
+      if (!error) {
+        // Success - check if user was actually created
+        const userCreated = !!data?.user;
+        const hasSession = !!data?.session;
+        const needsEmailConfirmation = userCreated && !hasSession;
+
+        // Log for debugging
+        console.log('[Auth] Sign up result:', {
+          userCreated,
+          hasSession,
+          needsEmailConfirmation,
+          userId: data?.user?.id,
+          email: data?.user?.email,
+          emailConfirmedAt: data?.user?.email_confirmed_at,
+        });
+
+        // If no user was created, this is a silent failure
+        if (!userCreated) {
+          console.warn('[Auth] Sign up returned success but no user was created');
+          return {
+            ...emptyResult,
+            error: { message: 'Account creation failed. Please try again or contact support.' } as AuthError,
+          };
+        }
+
+        return {
+          error: null,
+          user: data.user,
+          session: data.session,
+          needsEmailConfirmation,
+        };
+      }
 
       // Log detailed error for debugging
       console.error('[Auth] Sign up error:', {
@@ -259,7 +302,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.warn('[Auth] 400 error - possibly captcha verification failed on server. Check Supabase Turnstile secret key configuration.');
       message = 'Sign up failed. This may be due to captcha verification. Please try again.';
     }
-    return { error: { ...lastError, message } as AuthError };
+
+    return {
+      ...emptyResult,
+      error: { ...lastError, message } as AuthError,
+    };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string, captchaToken?: string) => {
@@ -489,13 +536,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [user]);
 
-  const upgradeAnonymousAccount = useCallback(async (email: string, password: string, captchaToken?: string) => {
-    if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
+  const upgradeAnonymousAccount = useCallback(async (email: string, password: string, captchaToken?: string): Promise<SignUpResult> => {
+    const emptyResult: SignUpResult = { error: null, user: null, session: null, needsEmailConfirmation: false };
+
+    if (!supabase) {
+      return { ...emptyResult, error: new Error('Supabase not configured') as AuthError };
+    }
 
     // Check if current user is anonymous
     const isAnon = await isAnonymousUser();
     if (!isAnon) {
-      return { error: new Error('Current user is not anonymous') as AuthError };
+      return { ...emptyResult, error: new Error('Current user is not anonymous') as AuthError };
     }
 
     // Retry configuration for handling transient failures (504s, network issues)
@@ -556,7 +607,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               if (retryResult.data?.user) {
                 setIsAnonymous(false);
               }
-              return { error: null };
+
+              // Get current session to check if email confirmation needed
+              const { data: sessionData } = await supabase.auth.getSession();
+              const needsEmailConfirmation = !retryResult.data?.user?.email_confirmed_at;
+
+              return {
+                error: null,
+                user: retryResult.data?.user || null,
+                session: sessionData?.session || null,
+                needsEmailConfirmation,
+              };
             }
 
             // If non-retryable error, break out
@@ -583,21 +644,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } else if (error.message?.toLowerCase().includes('captcha')) {
           message = 'Captcha verification failed. Please try again.';
         }
-        return { error: { ...error, message } as AuthError };
+        return { ...emptyResult, error: { ...error, message } as AuthError };
       }
 
+      // Success - check results
       if (data?.user) {
         setIsAnonymous(false);
       }
 
-      return { error: null };
+      // Get current session
+      const { data: sessionData } = await supabase.auth.getSession();
+      const needsEmailConfirmation = !data?.user?.email_confirmed_at;
+
+      console.log('[Auth] Upgrade result:', {
+        userUpdated: !!data?.user,
+        hasSession: !!sessionData?.session,
+        needsEmailConfirmation,
+        userId: data?.user?.id,
+        email: data?.user?.email,
+      });
+
+      return {
+        error: null,
+        user: data?.user || null,
+        session: sessionData?.session || null,
+        needsEmailConfirmation,
+      };
     } catch (err: any) {
       console.error('Upgrade anonymous account exception:', err);
       let message = err.message || 'Failed to create account';
       if (err.message?.toLowerCase().includes('captcha')) {
         message = 'Captcha verification failed. Please try again.';
       }
-      return { error: { message } as AuthError };
+      return { ...emptyResult, error: { message } as AuthError };
     }
   }, []);
 
