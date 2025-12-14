@@ -1054,6 +1054,71 @@ BEGIN
 END $$;
 
 -- ============================================================================
+-- DEFAULT SPECIES SEED DATA
+-- Global species available to all users (user_id = NULL)
+-- Uses ON CONFLICT to be idempotent - safe to re-run
+-- ============================================================================
+
+-- Gourmet Species
+INSERT INTO species (name, scientific_name, common_names, category, notes, user_id) VALUES
+  ('Pleurotus ostreatus', 'Pleurotus ostreatus', ARRAY['Oyster Mushroom', 'Pearl Oyster', 'Tree Oyster'], 'gourmet', 'Most widely cultivated oyster mushroom. Fast colonizer, aggressive, forgiving for beginners.', NULL),
+  ('Pleurotus eryngii', 'Pleurotus eryngii', ARRAY['King Oyster', 'King Trumpet', 'French Horn', 'Eryngii'], 'gourmet', 'Thick meaty stems, excellent culinary mushroom. Longer fruiting time than other oysters.', NULL),
+  ('Pleurotus citrinopileatus', 'Pleurotus citrinopileatus', ARRAY['Golden Oyster', 'Yellow Oyster', 'Tamogitake'], 'gourmet', 'Beautiful yellow clusters. Prefers warmer temperatures. Delicate, nutty flavor.', NULL),
+  ('Pleurotus djamor', 'Pleurotus djamor', ARRAY['Pink Oyster', 'Flamingo Oyster', 'Salmon Oyster'], 'gourmet', 'Vibrant pink color, tropical species. Needs warm temps (65-85°F). Fast fruiter.', NULL),
+  ('Pleurotus pulmonarius', 'Pleurotus pulmonarius', ARRAY['Phoenix Oyster', 'Lung Oyster', 'Indian Oyster', 'Italian Oyster'], 'gourmet', 'Tolerates higher temperatures than P. ostreatus. Good summer variety.', NULL),
+  ('Pleurotus columbinus', 'Pleurotus columbinus', ARRAY['Blue Oyster'], 'gourmet', 'Blue-gray caps, cold tolerant. Popular commercial variety.', NULL),
+  ('Lentinula edodes', 'Lentinula edodes', ARRAY['Shiitake', 'Black Forest Mushroom', 'Oak Mushroom'], 'gourmet', 'Second most cultivated mushroom worldwide. Requires longer colonization, rewards patience.', NULL),
+  ('Hericium erinaceus', 'Hericium erinaceus', ARRAY['Lions Mane', 'Monkey Head', 'Bearded Tooth', 'Pom Pom'], 'gourmet', 'Unique appearance with cascading spines. Both culinary and medicinal. Lobster-like flavor.', NULL),
+  ('Hericium americanum', 'Hericium americanum', ARRAY['Bears Head Tooth', 'American Lions Mane'], 'gourmet', 'Native to North America. Similar to H. erinaceus but with shorter spines on branches.', NULL),
+  ('Flammulina velutipes', 'Flammulina velutipes', ARRAY['Enoki', 'Enokitake', 'Golden Needle', 'Velvet Foot'], 'gourmet', 'Cold-loving species. Commercial variety grown in bottles differs from wild form.', NULL),
+  ('Pholiota nameko', 'Pholiota nameko', ARRAY['Nameko', 'Butterscotch Mushroom'], 'gourmet', 'Amber-colored with gelatinous coating. Popular in Japanese cuisine, especially miso soup.', NULL),
+  ('Hypsizygus tessellatus', 'Hypsizygus tessellatus', ARRAY['Shimeji', 'Beech Mushroom', 'Clamshell Mushroom'], 'gourmet', 'Grows in clusters. Bitter when raw, nutty and mild when cooked. White and brown varieties.', NULL),
+  ('Cyclocybe aegerita', 'Cyclocybe aegerita', ARRAY['Pioppino', 'Black Poplar', 'Velvet Pioppini', 'Swordbelt Agrocybe'], 'gourmet', 'Italian favorite. Crunchy texture, nutty flavor. Also known as Agrocybe aegerita.', NULL),
+  ('Stropharia rugosoannulata', 'Stropharia rugosoannulata', ARRAY['Wine Cap', 'King Stropharia', 'Garden Giant', 'Burgundy Mushroom'], 'gourmet', 'Excellent outdoor species for garden beds. Large caps, wine-red color when young.', NULL),
+  ('Agaricus bisporus', 'Agaricus bisporus', ARRAY['Button Mushroom', 'Cremini', 'Portobello', 'White Mushroom'], 'gourmet', 'Most commercially cultivated mushroom. Different stages: button, cremini (brown), portobello (mature).', NULL),
+  ('Laetiporus sulphureus', 'Laetiporus sulphureus', ARRAY['Chicken of the Woods', 'Sulphur Shelf', 'Crab of the Woods'], 'gourmet', 'Bright orange/yellow bracket fungus. Meat-like texture. Usually foraged, difficult to cultivate.', NULL),
+  ('Grifola frondosa', 'Grifola frondosa', ARRAY['Maitake', 'Hen of the Woods', 'Dancing Mushroom', 'Sheep Head'], 'gourmet', 'Large cluster-forming polypore. Both culinary and medicinal value. Earthy, rich flavor.', NULL),
+  ('Auricularia auricula-judae', 'Auricularia auricula-judae', ARRAY['Wood Ear', 'Jews Ear', 'Black Fungus', 'Cloud Ear'], 'gourmet', 'Gelatinous texture. Common in Asian cuisine. Easy to cultivate on supplemented sawdust.', NULL),
+  ('Sparassis crispa', 'Sparassis crispa', ARRAY['Cauliflower Mushroom', 'Wood Cauliflower'], 'gourmet', 'Large, brain-like appearance. Nutty, earthy flavor. Challenging to cultivate.', NULL),
+  ('Coprinus comatus', 'Coprinus comatus', ARRAY['Shaggy Mane', 'Lawyers Wig', 'Shaggy Ink Cap'], 'gourmet', 'Deliquescent - turns to ink when mature. Must be eaten same day as harvest.', NULL),
+  ('Lepista nuda', 'Lepista nuda', ARRAY['Blewit', 'Wood Blewit', 'Blue Foot'], 'gourmet', 'Purple/lilac colored. Late season fruiter. Distinctive floral aroma.', NULL)
+ON CONFLICT (name) DO UPDATE SET
+  scientific_name = EXCLUDED.scientific_name,
+  common_names = EXCLUDED.common_names,
+  category = EXCLUDED.category,
+  notes = EXCLUDED.notes;
+
+-- Medicinal Species
+INSERT INTO species (name, scientific_name, common_names, category, notes, user_id) VALUES
+  ('Ganoderma lucidum', 'Ganoderma lucidum', ARRAY['Reishi', 'Lingzhi', 'Varnished Conk', 'Mushroom of Immortality'], 'medicinal', 'Most studied medicinal mushroom. Woody texture, used for tea/extracts. Slow grower.', NULL),
+  ('Ganoderma tsugae', 'Ganoderma tsugae', ARRAY['Hemlock Reishi', 'Hemlock Varnish Shelf'], 'medicinal', 'North American Reishi relative. Similar properties to G. lucidum.', NULL),
+  ('Inonotus obliquus', 'Inonotus obliquus', ARRAY['Chaga', 'Birch Conk', 'Clinker Polypore'], 'medicinal', 'Parasitic on birch trees. Wild-harvested sclerotia used medicinally. Very slow growing.', NULL),
+  ('Trametes versicolor', 'Trametes versicolor', ARRAY['Turkey Tail', 'Yun Zhi', 'Kawaratake'], 'medicinal', 'Common polypore with concentric color zones. Well-researched for immune support.', NULL),
+  ('Cordyceps militaris', 'Cordyceps militaris', ARRAY['Cordyceps', 'Orange Caterpillar Fungus', 'Military Cordyceps'], 'medicinal', 'Cultivated alternative to wild C. sinensis. Orange club-shaped fruiting bodies.', NULL),
+  ('Antrodia camphorata', 'Antrodia camphorata', ARRAY['Niu Zhang Zhi', 'Antrodia', 'Taiwanofungus'], 'medicinal', 'Native to Taiwan. Highly valued in traditional medicine. Difficult to cultivate.', NULL),
+  ('Phellinus linteus', 'Phellinus linteus', ARRAY['Meshima', 'Sang Hwang', 'Black Hoof Fungus'], 'medicinal', 'Used in Asian traditional medicine for centuries. Woody bracket fungus.', NULL),
+  ('Wolfiporia extensa', 'Wolfiporia extensa', ARRAY['Fu Ling', 'Poria', 'Tuckahoe', 'Indian Bread'], 'medicinal', 'Underground sclerotia used in Traditional Chinese Medicine. Associated with pine roots.', NULL)
+ON CONFLICT (name) DO UPDATE SET
+  scientific_name = EXCLUDED.scientific_name,
+  common_names = EXCLUDED.common_names,
+  category = EXCLUDED.category,
+  notes = EXCLUDED.notes;
+
+-- Research Species (for educational/research purposes only)
+INSERT INTO species (name, scientific_name, common_names, category, notes, user_id) VALUES
+  ('Psilocybe cubensis', 'Psilocybe cubensis', ARRAY['Cubensis', 'Golden Top', 'Mexican Mushroom'], 'research', 'Most widely studied psilocybin species. Subtropical/tropical origin. Legal status varies by jurisdiction.', NULL),
+  ('Psilocybe cyanescens', 'Psilocybe cyanescens', ARRAY['Wavy Caps', 'Blue Halo'], 'research', 'Potent wood-loving species. Native to Pacific Northwest. Outdoor cultivation only.', NULL),
+  ('Psilocybe semilanceata', 'Psilocybe semilanceata', ARRAY['Liberty Cap'], 'research', 'Small grassland species. Cannot be cultivated - only wild harvested.', NULL),
+  ('Psilocybe azurescens', 'Psilocybe azurescens', ARRAY['Azzies', 'Flying Saucers', 'Blue Angels'], 'research', 'Most potent known Psilocybe species. Cold-weather, wood-loving. Outdoor only.', NULL),
+  ('Panaeolus cyanescens', 'Panaeolus cyanescens', ARRAY['Blue Meanies', 'Pan Cyan', 'Copelandia cyanescens'], 'research', 'Tropical dung-loving species. Sometimes confused with P. cubensis strains of same name.', NULL),
+  ('Gymnopilus spectabilis', 'Gymnopilus spectabilis', ARRAY['Big Laughing Gym', 'Spectacular Rustgill'], 'research', 'Large wood-decaying species. Contains psilocybin in some populations.', NULL)
+ON CONFLICT (name) DO UPDATE SET
+  scientific_name = EXCLUDED.scientific_name,
+  common_names = EXCLUDED.common_names,
+  category = EXCLUDED.category,
+  notes = EXCLUDED.notes;
+
+-- ============================================================================
 -- ROW LEVEL SECURITY
 -- ============================================================================
 
@@ -1683,12 +1748,15 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 8)
-ON CONFLICT (id) DO UPDATE SET version = 8, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 9)
+ON CONFLICT (id) DO UPDATE SET version = 9, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v9 (2024-12): Added default species seed data with proper scientific names,
+--               common names, and categories. 35 species across gourmet (21),
+--               medicinal (8), and research (6) categories.
 -- v8 (2024-12): Comprehensive schema sync with application types
 --               - grows: status, current_stage, spawn_type, spawn_weight, substrate_weight,
 --                 spawn_rate, spawned_at, colonization_started_at, fruiting_started_at,
