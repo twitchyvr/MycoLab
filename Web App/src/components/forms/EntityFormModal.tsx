@@ -384,8 +384,12 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
     }
   };
 
+  // Dynamic z-index based on stack depth to ensure nested modals appear above parent modals
+  // Base z-index is 100 (above page-level modals at z-50), plus 10 for each nesting level
+  const zIndex = 100 + (creation.stackDepth - 1) * 10;
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex }}>
       <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
