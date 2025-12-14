@@ -6,7 +6,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../store';
 import type { InventoryLot, PurchaseOrder, PurchaseOrderItem, LotStatus, OrderStatus, PaymentStatus } from '../../store/types';
-import { SelectWithAdd } from '../common/SelectWithAdd';
+import { StandardDropdown } from '../common/StandardDropdown';
 
 // Icons
 const Icons = {
@@ -126,9 +126,6 @@ export const StockManagement: React.FC = () => {
     deletePurchaseOrder,
     receiveOrder,
     generateOrderNumber,
-    addInventoryItem,
-    addSupplier,
-    addLocation,
     generateId,
   } = useData();
 
@@ -344,32 +341,6 @@ export const StockManagement: React.FC = () => {
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
     }));
-  };
-
-  // Handle add supplier inline
-  const handleAddSupplier = async (name: string) => {
-    const newSup = await addSupplier({ name, isActive: true });
-    return newSup.id;
-  };
-
-  const handleAddLocation = async (name: string) => {
-    const newLoc = await addLocation({ name, type: 'storage', isActive: true });
-    return newLoc.id;
-  };
-
-  // Handle add inventory item inline
-  const handleAddInventoryItem = (name: string) => {
-    const newItem = addInventoryItem({
-      name,
-      categoryId: '',
-      quantity: 0,
-      unit: 'ea',
-      unitCost: 0,
-      reorderPoint: 0,
-      reorderQty: 0,
-      isActive: true,
-    });
-    return newItem.id;
   };
 
   return (
@@ -692,18 +663,13 @@ export const StockManagement: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              <SelectWithAdd
+              <StandardDropdown
                 label="Item"
                 required
                 value={newLot.inventoryItemId}
                 onChange={value => setNewLot(prev => ({ ...prev, inventoryItemId: value }))}
                 options={activeInventoryItems}
                 placeholder="Select item..."
-                addLabel="Add New Item"
-                onAdd={async (name) => {
-                  const id = handleAddInventoryItem(name);
-                  setNewLot(prev => ({ ...prev, inventoryItemId: id }));
-                }}
               />
 
               <div className="grid grid-cols-2 gap-4">
@@ -735,17 +701,14 @@ export const StockManagement: React.FC = () => {
                 </div>
               </div>
 
-              <SelectWithAdd
+              <StandardDropdown
                 label="Supplier"
                 value={newLot.supplierId}
                 onChange={value => setNewLot(prev => ({ ...prev, supplierId: value }))}
                 options={activeSuppliers}
                 placeholder="Select supplier..."
-                addLabel="Add New Supplier"
-                onAdd={async (name) => {
-                  const id = await handleAddSupplier(name);
-                  setNewLot(prev => ({ ...prev, supplierId: id }));
-                }}
+                entityType="supplier"
+                fieldName="supplierId"
               />
 
               <div className="grid grid-cols-2 gap-4">
@@ -770,17 +733,14 @@ export const StockManagement: React.FC = () => {
                 </div>
               </div>
 
-              <SelectWithAdd
+              <StandardDropdown
                 label="Location"
                 value={newLot.locationId}
                 onChange={value => setNewLot(prev => ({ ...prev, locationId: value }))}
                 options={activeLocations}
                 placeholder="Select location..."
-                addLabel="Add New Location"
-                onAdd={async (name) => {
-                  const id = await handleAddLocation(name);
-                  setNewLot(prev => ({ ...prev, locationId: id }));
-                }}
+                entityType="location"
+                fieldName="locationId"
               />
 
               <div className="grid grid-cols-2 gap-4">
@@ -854,18 +814,15 @@ export const StockManagement: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              <SelectWithAdd
+              <StandardDropdown
                 label="Supplier"
                 required
                 value={newOrder.supplierId}
                 onChange={value => setNewOrder(prev => ({ ...prev, supplierId: value }))}
                 options={activeSuppliers}
                 placeholder="Select supplier..."
-                addLabel="Add New Supplier"
-                onAdd={async (name) => {
-                  const id = await handleAddSupplier(name);
-                  setNewOrder(prev => ({ ...prev, supplierId: id }));
-                }}
+                entityType="supplier"
+                fieldName="supplierId"
               />
 
               {/* Order Items */}
