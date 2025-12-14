@@ -209,11 +209,18 @@ export const AdminMasterData: React.FC<AdminMasterDataProps> = ({ isConnected })
 
   // Fetch users for the filter dropdown
   const fetchUsers = async () => {
-    if (!isConnected || !isAdmin) return;
+    console.log('[AdminMasterData] fetchUsers called', { isConnected, isAdmin });
+    if (!isConnected || !isAdmin) {
+      console.log('[AdminMasterData] fetchUsers skipped - not connected or not admin');
+      return;
+    }
 
     try {
       const { supabase } = await import('../../lib/supabase');
-      if (!supabase) return;
+      if (!supabase) {
+        console.log('[AdminMasterData] fetchUsers - no supabase client');
+        return;
+      }
 
       const { data, error: fetchError } = await supabase
         .from('user_profiles')
@@ -233,14 +240,21 @@ export const AdminMasterData: React.FC<AdminMasterDataProps> = ({ isConnected })
 
   // Fetch items for the selected table
   const fetchItems = async () => {
-    if (!isConnected || !isAdmin) return;
+    console.log('[AdminMasterData] fetchItems called', { selectedTable, isConnected, isAdmin });
+    if (!isConnected || !isAdmin) {
+      console.log('[AdminMasterData] fetchItems skipped - not connected or not admin');
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
       const { supabase } = await import('../../lib/supabase');
-      if (!supabase) return;
+      if (!supabase) {
+        console.log('[AdminMasterData] fetchItems - no supabase client');
+        return;
+      }
 
       let query = supabase
         .from(selectedTable)
@@ -289,6 +303,7 @@ export const AdminMasterData: React.FC<AdminMasterDataProps> = ({ isConnected })
 
   // Open add modal with empty form
   const openAddModal = () => {
+    console.log('[AdminMasterData] openAddModal clicked');
     setEditingItem(null);
     const defaultData: Record<string, any> = { is_global: true };
     tableConfigs[selectedTable].fields.forEach(field => {
