@@ -768,7 +768,7 @@ interface DataContextValue extends LookupHelpers {
   deleteGrainType: (id: string) => Promise<void>;
 
   // Inventory Item CRUD
-  addInventoryItem: (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>) => InventoryItem;
+  addInventoryItem: (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>) => Promise<InventoryItem>;
   updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => void;
   deleteInventoryItem: (id: string) => void;
   adjustInventoryQuantity: (id: string, delta: number) => void;
@@ -1715,25 +1715,31 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const addFlush = useCallback(async (growId: string, flush: Omit<Flush, 'id' | 'flushNumber'>) => {
     const grow = state.grows.find(g => g.id === growId);
     if (!grow) return;
-    
+
     const flushNumber = grow.flushes.length + 1;
-    
+
     if (supabase) {
+      // Get current user ID - required for RLS policy
+      const userId = await getCurrentUserId();
+      const insertData = {
+        ...transformFlushToDb({ ...flush, flushNumber }, growId),
+        ...(userId && { user_id: userId }),
+      };
       const { data, error } = await supabase
         .from('flushes')
-        .insert(transformFlushToDb({ ...flush, flushNumber }, growId))
+        .insert(insertData)
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       const newFlush = transformFlushFromDb(data);
       setState(prev => ({
         ...prev,
-        grows: prev.grows.map(g => 
-          g.id === growId 
-            ? { 
-                ...g, 
+        grows: prev.grows.map(g =>
+          g.id === growId
+            ? {
+                ...g,
                 flushes: [...g.flushes, newFlush],
                 totalYield: g.totalYield + flush.wetWeight
               }
@@ -1742,7 +1748,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       }));
       return;
     }
-    
+
     const newFlush: Flush = {
       ...flush,
       id: generateId('flush'),
@@ -1750,10 +1756,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     };
     setState(prev => ({
       ...prev,
-      grows: prev.grows.map(g => 
-        g.id === growId 
-          ? { 
-              ...g, 
+      grows: prev.grows.map(g =>
+        g.id === growId
+          ? {
+              ...g,
               flushes: [...g.flushes, newFlush],
               totalYield: g.totalYield + flush.wetWeight
             }
@@ -2158,8 +2164,52 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // INVENTORY ITEM CRUD
   // ============================================================================
 
-  const addInventoryItem = useCallback((item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>): InventoryItem => {
+  const addInventoryItem = useCallback(async (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<InventoryItem> => {
     const now = new Date();
+    if (supabase) {
+      // Get current user ID - required for RLS policy
+      const userId = await getCurrentUserId();
+      const insertData = {
+        name: item.name,
+        category_id: item.categoryId || null,
+        quantity: item.quantity || 0,
+        unit: item.unit || 'units',
+        min_quantity: item.reorderPoint || 0,
+        cost_per_unit: item.unitCost || 0,
+        supplier_id: item.supplierId || null,
+        location_id: item.locationId || null,
+        notes: item.notes,
+        is_active: item.isActive ?? true,
+        ...(userId && { user_id: userId }),
+      };
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newItem: InventoryItem = {
+        id: data.id,
+        name: data.name,
+        categoryId: data.category_id,
+        quantity: data.quantity || 0,
+        unit: data.unit || 'units',
+        unitCost: data.cost_per_unit || 0,
+        reorderPoint: data.min_quantity || 0,
+        reorderQty: 0,
+        supplierId: data.supplier_id,
+        locationId: data.location_id,
+        notes: data.notes,
+        isActive: data.is_active ?? true,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      };
+      setState(prev => ({ ...prev, inventoryItems: [...prev.inventoryItems, newItem] }));
+      return newItem;
+    }
+
     const newItem: InventoryItem = {
       ...item,
       id: generateId('inv'),
@@ -2168,7 +2218,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     };
     setState(prev => ({ ...prev, inventoryItems: [...prev.inventoryItems, newItem] }));
     return newItem;
-  }, [generateId]);
+  }, [supabase, generateId]);
 
   const updateInventoryItem = useCallback((id: string, updates: Partial<InventoryItem>) => {
     setState(prev => ({
