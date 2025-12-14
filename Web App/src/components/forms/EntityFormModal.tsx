@@ -17,6 +17,7 @@ import { LocationTypeForm } from './LocationTypeForm';
 import { LocationClassificationForm } from './LocationClassificationForm';
 import { InventoryItemForm } from './InventoryItemForm';
 import { InventoryCategoryForm } from './InventoryCategoryForm';
+import { RecipeForm } from './RecipeForm';
 
 // Icons
 const Icons = {
@@ -244,6 +245,25 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
           break;
         }
 
+        case 'recipe': {
+          const newEntity = await data.addRecipe({
+            name: formData.name,
+            category: formData.category || 'agar',
+            description: formData.description || '',
+            yield: formData.yield || { amount: 500, unit: 'ml' },
+            prepTime: formData.prepTime,
+            sterilizationTime: formData.sterilizationTime,
+            sterilizationPsi: formData.sterilizationPsi,
+            ingredients: formData.ingredients || [],
+            instructions: formData.instructions || [],
+            tips: formData.tips || [],
+            notes: formData.notes,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'recipe' };
+          break;
+        }
+
         default:
           console.error(`Unknown entity type: ${entityType}`);
           return;
@@ -377,6 +397,15 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
             data={formData as any}
             onChange={handleFormChange}
             errors={validationErrors}
+          />
+        );
+      case 'recipe':
+        return (
+          <RecipeForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+            recipeCategories={data.state.recipeCategories}
           />
         );
       default:
