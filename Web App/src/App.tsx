@@ -40,6 +40,7 @@ import { GrowManagement } from './components/grows/GrowManagement';
 import { RecipeBuilder } from './components/recipes/RecipeBuilder';
 import { SetupWizard } from './components/setup/SetupWizard';
 import { StockManagement } from './components/inventory/StockManagement';
+import { TodayView } from './components/today';
 
 // ============================================================================
 // CONTEXT
@@ -210,13 +211,21 @@ const Icons = {
       <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
     </svg>
   ),
+  Sun: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+      <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+  ),
 };
 
 // ============================================================================
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
+type Page = 'dashboard' | 'today' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
 
 interface NavItem {
   id: Page;
@@ -226,6 +235,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
+  { id: 'today', label: 'Today', icon: Icons.Sun },
   { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
   { id: 'stock', label: 'Lab Stock', icon: Icons.Package },
   { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
@@ -379,6 +389,7 @@ interface HeaderProps {
 // Map pages to their "new" action pages
 const newButtonConfig: Partial<Record<Page, { label: string; page: Page }>> = {
   dashboard: { label: 'New Culture', page: 'cultures' },
+  today: { label: 'New Culture', page: 'cultures' },
   cultures: { label: 'New Culture', page: 'cultures' },
   grows: { label: 'New Grow', page: 'grows' },
   recipes: { label: 'New Recipe', page: 'recipes' },
@@ -738,6 +749,7 @@ const App: React.FC = () => {
 
   const pageConfig: Record<Page, { title: string; subtitle?: string }> = {
     dashboard: { title: 'Dashboard', subtitle: 'Overview of your mycology lab' },
+    today: { title: 'Today', subtitle: 'Daily tasks and actionable items' },
     inventory: { title: 'Lab Inventory', subtitle: 'All cultures, spawn, and grows' },
     stock: { title: 'Lab Stock', subtitle: 'Inventory lots, purchases, and tracking' },
     cultures: { title: 'Culture Library', subtitle: 'Manage your cultures and genetics' },
@@ -758,6 +770,12 @@ const App: React.FC = () => {
     switch (currentPage) {
       case 'dashboard':
         return <DashboardPage onNavigate={setCurrentPage} />;
+      case 'today':
+        return (
+          <div className="p-6">
+            <TodayView onNavigate={setCurrentPage} />
+          </div>
+        );
       case 'devlog':
         return (
           <DevLogPage 
