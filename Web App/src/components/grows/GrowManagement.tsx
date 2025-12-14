@@ -302,7 +302,7 @@ export const GrowManagement: React.FC = () => {
     [cultures]
   );
 
-  // Ready cultures formatted for SelectWithAdd
+  // Ready cultures formatted for dropdown
   const readyCultureOptions = useMemo(() =>
     readyCultures.map(c => ({
       id: c.id,

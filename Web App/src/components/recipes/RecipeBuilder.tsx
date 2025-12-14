@@ -6,7 +6,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
 import type { Recipe, RecipeCategory, RecipeIngredient, RecipeCategoryItem } from '../../store/types';
-import { SelectWithAdd } from '../common/SelectWithAdd';
+import { StandardDropdown } from '../common/StandardDropdown';
 
 // Icons
 const Icons = {
@@ -30,7 +30,6 @@ export const RecipeBuilder: React.FC = () => {
     updateRecipe,
     deleteRecipe,
     scaleRecipe,
-    addRecipeCategory,
     generateId,
   } = useData();
 
@@ -520,34 +519,18 @@ export const RecipeBuilder: React.FC = () => {
                   <label className="block text-sm text-zinc-400 mb-2">Name *</label>
                   <input type="text" value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" placeholder="e.g., Standard MEA" />
                 </div>
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Category</label>
-                  <SelectWithAdd
-                    value={formData.category}
-                    onChange={(val) => setFormData(prev => ({ ...prev, category: val as RecipeCategory }))}
-                    options={activeRecipeCategories.map(cat => ({
-                      id: cat.code,
-                      name: `${cat.icon} ${cat.name}`,
-                    }))}
-                    placeholder="Select category..."
-                    addLabel="Add New Category"
-                    addFields={[
-                      { name: 'name', label: 'Category Name', type: 'text', required: true },
-                      { name: 'icon', label: 'Icon (emoji)', type: 'text', required: false },
-                    ]}
-                    onAddComplete={async (data) => {
-                      const code = data.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-                      await addRecipeCategory({
-                        name: data.name,
-                        code,
-                        icon: data.icon || '📦',
-                        color: 'text-zinc-400 bg-zinc-800',
-                        isActive: true,
-                      });
-                      setFormData(prev => ({ ...prev, category: code }));
-                    }}
-                  />
-                </div>
+                <StandardDropdown
+                  label="Category"
+                  value={formData.category}
+                  onChange={(val) => setFormData(prev => ({ ...prev, category: val as RecipeCategory }))}
+                  options={activeRecipeCategories.map(cat => ({
+                    id: cat.code,
+                    name: `${cat.icon} ${cat.name}`,
+                  }))}
+                  placeholder="Select category..."
+                  entityType="recipeCategory"
+                  fieldName="category"
+                />
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Yield</label>
                   <div className="flex gap-2">

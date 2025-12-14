@@ -8,7 +8,7 @@ import { useData } from '../../store';
 import { useAuth } from '../../lib/AuthContext';
 import type { Species, Strain, Location, LocationType, LocationClassification, Vessel, ContainerType, SubstrateType, Supplier, InventoryCategory, AppSettings } from '../../store/types';
 import { createClient } from '@supabase/supabase-js';
-import { SelectWithAdd } from '../common/SelectWithAdd';
+import { StandardDropdown } from '../common/StandardDropdown';
 import { AdminMasterData } from './AdminMasterData';
 import { AdminNotifications } from './AdminNotifications';
 
@@ -1696,29 +1696,23 @@ export const SettingsPage: React.FC = () => {
                 <input type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" autoFocus />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <SelectWithAdd
+                <StandardDropdown
                   value={formData.typeId || ''}
                   onChange={(value) => setFormData({ ...formData, typeId: value })}
                   options={activeLocationTypes}
                   label="Type"
                   placeholder="Select type..."
-                  addLabel="Add Location Type"
-                  onAdd={async (name) => {
-                    const newType = await addLocationType({ name, code: name.toLowerCase().replace(/\s+/g, '_'), isActive: true });
-                    setFormData({ ...formData, typeId: newType.id });
-                  }}
+                  entityType="locationType"
+                  fieldName="typeId"
                 />
-                <SelectWithAdd
+                <StandardDropdown
                   value={formData.classificationId || ''}
                   onChange={(value) => setFormData({ ...formData, classificationId: value })}
                   options={activeLocationClassifications}
                   label="Classification"
                   placeholder="Select classification..."
-                  addLabel="Add Classification"
-                  onAdd={async (name) => {
-                    const newClass = await addLocationClassification({ name, code: name.toLowerCase().replace(/\s+/g, '_'), isActive: true });
-                    setFormData({ ...formData, classificationId: newClass.id });
-                  }}
+                  entityType="locationClassification"
+                  fieldName="classificationId"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1764,17 +1758,14 @@ export const SettingsPage: React.FC = () => {
               <div className="border-t border-zinc-700 pt-4 mt-4">
                 <h4 className="text-sm font-medium text-zinc-300 mb-3">Procurement Details</h4>
                 <div className="space-y-4">
-                  <SelectWithAdd
+                  <StandardDropdown
                     value={formData.supplierId || ''}
                     onChange={(value) => setFormData({ ...formData, supplierId: value })}
                     options={activeSuppliers}
                     label="Supplier/Source"
                     placeholder="Select supplier..."
-                    addLabel="Add Supplier"
-                    onAdd={async (name) => {
-                      const newSupplier = await addSupplier({ name, isActive: true });
-                      setFormData({ ...formData, supplierId: newSupplier.id });
-                    }}
+                    entityType="supplier"
+                    fieldName="supplierId"
                   />
                   <div className="grid grid-cols-2 gap-4">
                     <div>

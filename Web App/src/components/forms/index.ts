@@ -23,4 +23,10 @@ export type { SubstrateTypeFormData } from './SubstrateTypeForm';
 export { ContainerTypeForm } from './ContainerTypeForm';
 export type { ContainerTypeFormData } from './ContainerTypeForm';
 
+export { RecipeCategoryForm } from './RecipeCategoryForm';
+
+export { LocationTypeForm } from './LocationTypeForm';
+
+export { LocationClassificationForm } from './LocationClassificationForm';
+
 export { EntityFormModal } from './EntityFormModal';
