@@ -479,11 +479,11 @@ const transformRecipeFromDb = (row: any): Recipe => ({
   name: row.name,
   category: row.category,
   description: row.description || '',
-  yield: { 
-    amount: row.yield_amount || 500, 
-    unit: row.yield_unit || 'ml' 
+  yield: {
+    amount: row.yield_amount || 500,
+    unit: row.yield_unit || 'ml'
   },
-  prepTime: row.prep_time,
+  prepTime: row.prep_time_minutes,
   sterilizationTime: row.sterilization_time,
   sterilizationPsi: row.sterilization_psi || 15,
   ingredients: [],
@@ -505,7 +505,7 @@ const transformRecipeToDb = (recipe: Partial<Recipe>) => {
     result.yield_amount = recipe.yield.amount;
     result.yield_unit = recipe.yield.unit;
   }
-  if (recipe.prepTime !== undefined) result.prep_time = recipe.prepTime;
+  if (recipe.prepTime !== undefined) result.prep_time_minutes = recipe.prepTime;
   if (recipe.sterilizationTime !== undefined) result.sterilization_time = recipe.sterilizationTime;
   if (recipe.sterilizationPsi !== undefined) result.sterilization_psi = recipe.sterilizationPsi;
   if (recipe.instructions !== undefined) result.instructions = recipe.instructions;
@@ -520,7 +520,7 @@ const transformSupplierFromDb = (row: any): Supplier => ({
   id: row.id,
   name: row.name,
   website: row.website,
-  email: row.contact_email || row.email,
+  email: row.email,
   phone: row.phone,
   notes: row.notes,
   isActive: row.is_active ?? true,
@@ -530,7 +530,7 @@ const transformSupplierFromDb = (row: any): Supplier => ({
 const transformSupplierToDb = (supplier: Partial<Supplier>, userId?: string | null) => ({
   name: supplier.name,
   website: supplier.website,
-  contact_email: supplier.email,
+  email: supplier.email,
   phone: supplier.phone,
   notes: supplier.notes,
   is_active: supplier.isActive,
@@ -542,8 +542,8 @@ const transformFlushFromDb = (row: any): Flush => ({
   id: row.id,
   flushNumber: row.flush_number,
   harvestDate: new Date(row.harvest_date),
-  wetWeight: row.wet_weight,
-  dryWeight: row.dry_weight,
+  wetWeight: row.wet_weight_g,
+  dryWeight: row.dry_weight_g,
   mushroomCount: row.mushroom_count,
   quality: row.quality || 'good',
   notes: row.notes,
@@ -554,8 +554,8 @@ const transformFlushToDb = (flush: Omit<Flush, 'id'>, growId: string) => ({
   grow_id: growId,
   flush_number: flush.flushNumber,
   harvest_date: flush.harvestDate instanceof Date ? flush.harvestDate.toISOString() : flush.harvestDate,
-  wet_weight: flush.wetWeight,
-  dry_weight: flush.dryWeight,
+  wet_weight_g: flush.wetWeight,
+  dry_weight_g: flush.dryWeight,
   mushroom_count: flush.mushroomCount,
   quality: flush.quality,
   notes: flush.notes,
