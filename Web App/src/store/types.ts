@@ -22,11 +22,21 @@ export interface Strain {
   name: string;
   speciesId?: string; // Reference to species table
   species: string; // Legacy field - now stores species name directly
+  // Variety/Phenotype tracking
+  variety?: string; // Specific variety or cultivar (e.g., "var. alba")
+  phenotype?: string; // Observable traits (e.g., "Albino", "Leucistic", "APE")
+  geneticsSource?: string; // Where genetics came from (vendor, trade, isolation)
+  isolationType?: 'multispore' | 'clone' | 'agar_isolation' | 'spore_isolation' | 'lc_isolation' | 'unknown';
+  generation?: number; // Generation from original (G0, G1, G2, etc.)
+  // Growing characteristics
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   colonizationDays: { min: number; max: number };
   fruitingDays: { min: number; max: number };
   optimalTempColonization: { min: number; max: number };
   optimalTempFruiting: { min: number; max: number };
+  // Additional metadata
+  origin?: string; // Geographic origin or breeder
+  description?: string; // Detailed description of characteristics
   notes?: string;
   isActive: boolean;
 }

@@ -205,13 +205,61 @@ export const StandardDropdown: React.FC<StandardDropdownProps> = ({
 // SPECIALIZED DROPDOWN VARIANTS
 // ============================================================================
 
-// Pre-configured dropdown for strains
-export const StrainDropdown: React.FC<Omit<StandardDropdownProps, 'entityType' | 'fieldName'> & { fieldName?: string }> = (props) => (
+// Pre-configured dropdown for species with formatted names
+export const SpeciesDropdown: React.FC<Omit<StandardDropdownProps, 'entityType' | 'fieldName' | 'renderOption'> & { fieldName?: string }> = (props) => (
+  <StandardDropdown
+    {...props}
+    entityType="species"
+    fieldName={props.fieldName || 'speciesId'}
+    addLabel="Add New Species"
+    renderOption={(opt) => {
+      // Format: "Common Name (Scientific Name)"
+      const species = opt as any;
+      const commonName = species.commonNames?.[0] ||
+        (species.name !== species.scientificName ? species.name : null);
+      const scientificName = species.scientificName || species.name;
+
+      if (commonName && scientificName && commonName !== scientificName) {
+        return `${commonName} (${scientificName})`;
+      }
+      return scientificName || species.name;
+    }}
+  />
+);
+
+// Pre-configured dropdown for strains with species info
+export const StrainDropdown: React.FC<Omit<StandardDropdownProps, 'entityType' | 'fieldName'> & {
+  fieldName?: string;
+  speciesMap?: Map<string, any> | Record<string, any>;
+}> = ({ speciesMap, ...props }) => (
   <StandardDropdown
     {...props}
     entityType="strain"
     fieldName={props.fieldName || 'strainId'}
     addLabel="Add New Strain"
+    renderOption={(opt) => {
+      const strain = opt as any;
+      // Try to get species info for display
+      let speciesDisplay = strain.species || '';
+
+      if (speciesMap && strain.speciesId) {
+        const species = speciesMap instanceof Map
+          ? speciesMap.get(strain.speciesId)
+          : speciesMap[strain.speciesId];
+        if (species?.scientificName) {
+          // Abbreviate: "Psilocybe cubensis" => "P. cubensis"
+          const parts = species.scientificName.split(/\s+/);
+          speciesDisplay = parts.length >= 2
+            ? `${parts[0][0]}. ${parts.slice(1).join(' ')}`
+            : species.scientificName;
+        }
+      }
+
+      if (speciesDisplay) {
+        return `${strain.name} (${speciesDisplay})`;
+      }
+      return strain.name;
+    }}
   />
 );
 
