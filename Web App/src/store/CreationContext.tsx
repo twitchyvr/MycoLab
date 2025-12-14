@@ -31,7 +31,10 @@ export type CreatableEntityType =
   | 'substrateType'
   | 'containerType'
   | 'inventoryItem'
-  | 'inventoryLot';
+  | 'inventoryLot'
+  | 'recipeCategory'
+  | 'locationType'
+  | 'locationClassification';
 
 // A single entry in the draft stack
 export interface DraftEntry {
@@ -255,6 +258,39 @@ export const ENTITY_CONFIGS: Record<CreatableEntityType, EntityTypeConfig> = {
       unit: 'g',
       status: 'available',
       notes: '',
+    },
+  },
+  recipeCategory: {
+    label: 'Recipe Category',
+    labelPlural: 'Recipe Categories',
+    requiredFields: ['name'],
+    defaultValues: {
+      code: '',
+      icon: '📦',
+      color: 'text-zinc-400 bg-zinc-800',
+      isActive: true,
+    },
+  },
+  locationType: {
+    label: 'Location Type',
+    labelPlural: 'Location Types',
+    requiredFields: ['name'],
+    defaultValues: {
+      code: '',
+      description: '',
+      notes: '',
+      isActive: true,
+    },
+  },
+  locationClassification: {
+    label: 'Location Classification',
+    labelPlural: 'Location Classifications',
+    requiredFields: ['name'],
+    defaultValues: {
+      code: '',
+      description: '',
+      notes: '',
+      isActive: true,
     },
   },
 };

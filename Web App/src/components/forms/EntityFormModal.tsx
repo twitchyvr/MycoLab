@@ -12,6 +12,9 @@ import { SupplierForm } from './SupplierForm';
 import { GrainTypeForm } from './GrainTypeForm';
 import { SubstrateTypeForm } from './SubstrateTypeForm';
 import { ContainerTypeForm } from './ContainerTypeForm';
+import { RecipeCategoryForm } from './RecipeCategoryForm';
+import { LocationTypeForm } from './LocationTypeForm';
+import { LocationClassificationForm } from './LocationClassificationForm';
 
 // Icons
 const Icons = {
@@ -175,6 +178,42 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
           break;
         }
 
+        case 'recipeCategory': {
+          const newEntity = await data.addRecipeCategory({
+            name: formData.name,
+            code: formData.code || formData.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+            icon: formData.icon || '📦',
+            color: formData.color || 'text-zinc-400 bg-zinc-800',
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'recipeCategory' };
+          break;
+        }
+
+        case 'locationType': {
+          const newEntity = await data.addLocationType({
+            name: formData.name,
+            code: formData.code || formData.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+            description: formData.description,
+            notes: formData.notes,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'locationType' };
+          break;
+        }
+
+        case 'locationClassification': {
+          const newEntity = await data.addLocationClassification({
+            name: formData.name,
+            code: formData.code || formData.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+            description: formData.description,
+            notes: formData.notes,
+            isActive: true,
+          });
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'locationClassification' };
+          break;
+        }
+
         default:
           console.error(`Unknown entity type: ${entityType}`);
           return;
@@ -265,6 +304,30 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
       case 'containerType':
         return (
           <ContainerTypeForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+          />
+        );
+      case 'recipeCategory':
+        return (
+          <RecipeCategoryForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+          />
+        );
+      case 'locationType':
+        return (
+          <LocationTypeForm
+            data={formData as any}
+            onChange={handleFormChange}
+            errors={validationErrors}
+          />
+        );
+      case 'locationClassification':
+        return (
+          <LocationClassificationForm
             data={formData as any}
             onChange={handleFormChange}
             errors={validationErrors}
