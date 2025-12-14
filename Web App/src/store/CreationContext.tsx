@@ -23,6 +23,7 @@ export type CreatableEntityType =
   | 'culture'
   | 'grow'
   | 'recipe'
+  | 'species'
   | 'strain'
   | 'location'
   | 'vessel'
@@ -155,6 +156,18 @@ export const ENTITY_CONFIGS: Record<CreatableEntityType, EntityTypeConfig> = {
       ingredients: [],
       instructions: [],
       tips: [],
+      notes: '',
+      isActive: true,
+    },
+  },
+  species: {
+    label: 'Species',
+    labelPlural: 'Species',
+    requiredFields: ['name'],
+    defaultValues: {
+      scientificName: '',
+      commonNames: [],
+      category: 'other',
       notes: '',
       isActive: true,
     },
