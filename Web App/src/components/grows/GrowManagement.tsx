@@ -240,6 +240,33 @@ export const GrowManagement: React.FC = () => {
     return () => window.removeEventListener('mycolab:create-new', handleCreateNew as EventListener);
   }, []);
 
+  // Listen for select-item and edit-item events from Lab Inventory
+  useEffect(() => {
+    const handleSelectItem = (event: CustomEvent) => {
+      if (event.detail?.type === 'grow') {
+        const grow = grows.find(g => g.id === event.detail.id);
+        if (grow) {
+          setSelectedGrow(grow);
+        }
+      }
+    };
+    const handleEditItem = (event: CustomEvent) => {
+      if (event.detail?.type === 'grow') {
+        const grow = grows.find(g => g.id === event.detail.id);
+        if (grow) {
+          setSelectedGrow(grow);
+          // For now, just select it - could open edit modal in future
+        }
+      }
+    };
+    window.addEventListener('mycolab:select-item', handleSelectItem as EventListener);
+    window.addEventListener('mycolab:edit-item', handleEditItem as EventListener);
+    return () => {
+      window.removeEventListener('mycolab:select-item', handleSelectItem as EventListener);
+      window.removeEventListener('mycolab:edit-item', handleEditItem as EventListener);
+    };
+  }, [grows]);
+
   // Calculated spawn rate
   const calculatedSpawnRate = useMemo(() => {
     if (!newGrow.spawnWeight || !newGrow.substrateWeight) return 0;

@@ -138,6 +138,33 @@ export const CultureManagement: React.FC = () => {
     return () => window.removeEventListener('mycolab:create-new', handleCreateNew as EventListener);
   }, []);
 
+  // Listen for select-item and edit-item events from Lab Inventory
+  useEffect(() => {
+    const handleSelectItem = (event: CustomEvent) => {
+      if (event.detail?.type === 'culture') {
+        const culture = cultures.find(c => c.id === event.detail.id);
+        if (culture) {
+          setSelectedCulture(culture);
+        }
+      }
+    };
+    const handleEditItem = (event: CustomEvent) => {
+      if (event.detail?.type === 'culture') {
+        const culture = cultures.find(c => c.id === event.detail.id);
+        if (culture) {
+          setSelectedCulture(culture);
+          // For now, just select it - could open edit modal in future
+        }
+      }
+    };
+    window.addEventListener('mycolab:select-item', handleSelectItem as EventListener);
+    window.addEventListener('mycolab:edit-item', handleEditItem as EventListener);
+    return () => {
+      window.removeEventListener('mycolab:select-item', handleSelectItem as EventListener);
+      window.removeEventListener('mycolab:edit-item', handleEditItem as EventListener);
+    };
+  }, [cultures]);
+
   // Filtered and sorted cultures
   const filteredCultures = useMemo(() => {
     let result = [...cultures];

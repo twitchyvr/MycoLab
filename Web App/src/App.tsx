@@ -785,7 +785,7 @@ const App: React.FC = () => {
           />
         );
       case 'inventory':
-        return <UnifiedItemView />;
+        return <UnifiedItemView onNavigate={setCurrentPage} />;
       case 'stock':
         return (
           <div className="p-6">
