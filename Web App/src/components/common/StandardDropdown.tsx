@@ -275,4 +275,24 @@ export const ContainerTypeDropdown: React.FC<Omit<StandardDropdownProps, 'entity
   />
 );
 
+// Pre-configured dropdown for inventory items
+export const InventoryItemDropdown: React.FC<Omit<StandardDropdownProps, 'entityType' | 'fieldName'> & { fieldName?: string }> = (props) => (
+  <StandardDropdown
+    {...props}
+    entityType="inventoryItem"
+    fieldName={props.fieldName || 'inventoryItemId'}
+    addLabel="Add New Item"
+  />
+);
+
+// Pre-configured dropdown for inventory categories
+export const InventoryCategoryDropdown: React.FC<Omit<StandardDropdownProps, 'entityType' | 'fieldName'> & { fieldName?: string }> = (props) => (
+  <StandardDropdown
+    {...props}
+    entityType="inventoryCategory"
+    fieldName={props.fieldName || 'categoryId'}
+    addLabel="Add New Category"
+  />
+);
+
 export default StandardDropdown;
