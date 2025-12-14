@@ -520,7 +520,7 @@ const transformSupplierFromDb = (row: any): Supplier => ({
   id: row.id,
   name: row.name,
   website: row.website,
-  email: row.contact_email || row.email,
+  email: row.email,
   phone: row.phone,
   notes: row.notes,
   isActive: row.is_active ?? true,
@@ -530,7 +530,7 @@ const transformSupplierFromDb = (row: any): Supplier => ({
 const transformSupplierToDb = (supplier: Partial<Supplier>, userId?: string | null) => ({
   name: supplier.name,
   website: supplier.website,
-  contact_email: supplier.email,
+  email: supplier.email,
   phone: supplier.phone,
   notes: supplier.notes,
   is_active: supplier.isActive,
