@@ -222,12 +222,18 @@ const transformLocationFromDb = (row: any): Location => ({
   isActive: row.is_active ?? true,
 });
 
+// Helper to filter out default IDs (not valid UUIDs for DB)
+const toDbId = (id: string | undefined): string | null => {
+  if (!id || id.startsWith('default-')) return null;
+  return id;
+};
+
 // Transform Location to DB format
 const transformLocationToDb = (location: Partial<Location>, userId?: string | null) => ({
   name: location.name,
   type: location.type,
-  type_id: location.typeId,
-  classification_id: location.classificationId,
+  type_id: toDbId(location.typeId),
+  classification_id: toDbId(location.classificationId),
   temp_min: location.tempRange?.min,
   temp_max: location.tempRange?.max,
   humidity_min: location.humidityRange?.min,
@@ -236,7 +242,7 @@ const transformLocationToDb = (location: Partial<Location>, userId?: string | nu
   power_usage: location.powerUsage,
   has_air_circulation: location.hasAirCirculation,
   size: location.size,
-  supplier_id: location.supplierId,
+  supplier_id: toDbId(location.supplierId),
   cost: location.cost,
   procurement_date: location.procurementDate?.toISOString(),
   notes: location.notes,

@@ -142,50 +142,50 @@ export const StandardDropdown: React.FC<StandardDropdownProps> = ({
         </label>
       )}
 
-      {/* Select wrapper */}
-      <div className="relative">
-        <select
-          value={value}
-          onChange={e => {
-            const val = e.target.value;
-            if (val === '__ADD_NEW__') {
-              handleAddNew();
-              // Reset to previous value since we're not actually selecting
-              e.target.value = value;
-            } else {
-              onChange(val);
-            }
-          }}
-          disabled={disabled}
-          className={`
-            w-full bg-zinc-800 border rounded-lg px-3 py-2 text-white
-            appearance-none cursor-pointer
-            focus:outline-none focus:border-emerald-500
-            disabled:cursor-not-allowed disabled:opacity-50
-            ${error ? 'border-red-500' : 'border-zinc-700'}
-          `}
-        >
-          <option value="">{placeholder}</option>
+      {/* Select with Add New button */}
+      <div className="flex gap-2">
+        {/* Select wrapper */}
+        <div className="relative flex-1">
+          <select
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            disabled={disabled}
+            className={`
+              w-full bg-zinc-800 border rounded-lg px-3 py-2 text-white
+              appearance-none cursor-pointer
+              focus:outline-none focus:border-emerald-500
+              disabled:cursor-not-allowed disabled:opacity-50
+              ${error ? 'border-red-500' : 'border-zinc-700'}
+            `}
+          >
+            <option value="">{placeholder}</option>
 
-          {/* Options */}
-          {processedOptions.map(opt => (
-            <option key={opt.id} value={opt.id}>
-              {renderOption ? renderOption(opt) : opt.name}
-            </option>
-          ))}
+            {/* Options */}
+            {processedOptions.map(opt => (
+              <option key={opt.id} value={opt.id}>
+                {renderOption ? renderOption(opt) : opt.name}
+              </option>
+            ))}
+          </select>
 
-          {/* Add New option */}
-          {canAddNew && (
-            <option value="__ADD_NEW__" className="text-emerald-400 font-medium">
-              + {addButtonLabel}...
-            </option>
-          )}
-        </select>
-
-        {/* Chevron icon */}
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
-          <Icons.ChevronDown />
+          {/* Chevron icon */}
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
+            <Icons.ChevronDown />
+          </div>
         </div>
+
+        {/* Add New button - visible beside the dropdown */}
+        {canAddNew && (
+          <button
+            type="button"
+            onClick={handleAddNew}
+            className="px-3 py-2 bg-zinc-800 border border-zinc-700 hover:border-emerald-500 hover:bg-zinc-700 text-emerald-400 rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap"
+            title={addButtonLabel}
+          >
+            <Icons.Plus />
+            <span className="hidden sm:inline text-sm">Add</span>
+          </button>
+        )}
       </div>
 
       {/* Error message */}
