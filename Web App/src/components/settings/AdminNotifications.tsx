@@ -137,14 +137,21 @@ export const AdminNotifications: React.FC<AdminNotificationsProps> = ({ isConnec
 
   // Fetch notifications
   const fetchNotifications = async () => {
-    if (!isConnected || !isAdmin) return;
+    console.log('[AdminNotifications] fetchNotifications called', { isConnected, isAdmin });
+    if (!isConnected || !isAdmin) {
+      console.log('[AdminNotifications] fetchNotifications skipped - not connected or not admin');
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
       const { supabase } = await import('../../lib/supabase');
-      if (!supabase) return;
+      if (!supabase) {
+        console.log('[AdminNotifications] fetchNotifications - no supabase client');
+        return;
+      }
 
       let query = supabase
         .from('admin_notifications')
