@@ -43,6 +43,7 @@ import { StockManagement } from './components/inventory/StockManagement';
 import { TodayView } from './components/today';
 import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
 import { ObservationTimeline } from './components/observations';
+import { ProfilePage } from './components/profile';
 
 // ============================================================================
 // CONTEXT
@@ -234,7 +235,7 @@ const Icons = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
+type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
 
 interface NavItem {
   id: Page;
@@ -461,7 +462,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
           </button>
         )}
         {/* Account Menu */}
-        <AccountMenu />
+        <AccountMenu onNavigate={(page) => onNavigate(page as Page)} />
       </div>
     </header>
   );
@@ -777,6 +778,7 @@ const App: React.FC = () => {
     efficiency: { title: 'Biological Efficiency', subtitle: 'Calculate and compare BE% across grows' },
     analytics: { title: 'Analytics', subtitle: 'Data visualization and insights' },
     settings: { title: 'Settings', subtitle: 'Configure lookups and preferences' },
+    profile: { title: 'My Profile', subtitle: 'Manage your account and security settings' },
     devlog: { title: 'Dev Roadmap', subtitle: 'Feature tracker with intelligent prioritization' },
   };
 
@@ -876,6 +878,12 @@ const App: React.FC = () => {
         return (
           <div className="p-6">
             <SettingsPage />
+          </div>
+        );
+      case 'profile':
+        return (
+          <div className="p-6">
+            <ProfilePage />
           </div>
         );
       default:

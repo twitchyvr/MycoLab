@@ -201,7 +201,11 @@ const forceLogout = () => {
   }
 };
 
-export const AccountMenu: React.FC = () => {
+interface AccountMenuProps {
+  onNavigate?: (page: string) => void;
+}
+
+export const AccountMenu: React.FC<AccountMenuProps> = ({ onNavigate }) => {
   const {
     user,
     isAuthenticated,
@@ -506,12 +510,14 @@ export const AccountMenu: React.FC = () => {
             <button
               onClick={() => {
                 setIsOpen(false);
-                // Navigate to settings/account - could add this
+                if (onNavigate) {
+                  onNavigate('profile');
+                }
               }}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
             >
-              <Icons.Shield />
-              <span>Account Security</span>
+              <Icons.User />
+              <span>Manage Profile</span>
             </button>
           </div>
 
