@@ -1478,9 +1478,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     if (supabase) {
       // Get current user ID - required for RLS policy
       const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('Authentication required. Please sign in to create cultures.');
+      }
       const insertData = {
         ...transformCultureToDb(culture),
-        ...(userId && { user_id: userId }),
+        user_id: userId,
       };
 
       const { data, error } = await supabase
@@ -1607,9 +1610,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     if (supabase) {
       // Get current user ID - required for RLS policy
       const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('Authentication required. Please sign in to create grows.');
+      }
       const insertData = {
         ...transformGrowToDb(grow),
-        ...(userId && { user_id: userId }),
+        user_id: userId,
       };
 
       const { data, error } = await supabase
@@ -1721,9 +1727,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     if (supabase) {
       // Get current user ID - required for RLS policy
       const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('Authentication required. Please sign in to record flushes.');
+      }
       const insertData = {
         ...transformFlushToDb({ ...flush, flushNumber }, growId),
-        ...(userId && { user_id: userId }),
+        user_id: userId,
       };
       const { data, error } = await supabase
         .from('flushes')
@@ -2169,18 +2178,23 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     if (supabase) {
       // Get current user ID - required for RLS policy
       const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('Authentication required. Please sign in to create inventory items.');
+      }
       const insertData = {
         name: item.name,
         category_id: item.categoryId || null,
+        sku: item.sku || null,
         quantity: item.quantity || 0,
         unit: item.unit || 'units',
         min_quantity: item.reorderPoint || 0,
+        reorder_qty: item.reorderQty || null,
         cost_per_unit: item.unitCost || 0,
         supplier_id: item.supplierId || null,
         location_id: item.locationId || null,
         notes: item.notes,
         is_active: item.isActive ?? true,
-        ...(userId && { user_id: userId }),
+        user_id: userId,
       };
       const { data, error } = await supabase
         .from('inventory_items')
@@ -2194,11 +2208,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         id: data.id,
         name: data.name,
         categoryId: data.category_id,
+        sku: data.sku,
         quantity: data.quantity || 0,
         unit: data.unit || 'units',
         unitCost: data.cost_per_unit || 0,
         reorderPoint: data.min_quantity || 0,
-        reorderQty: 0,
+        reorderQty: data.reorder_qty || 0,
         supplierId: data.supplier_id,
         locationId: data.location_id,
         notes: data.notes,
@@ -2252,9 +2267,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     if (supabase) {
       // Get current user ID - required for RLS policy
       const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('Authentication required. Please sign in to create inventory lots.');
+      }
       const insertData = {
         ...transformInventoryLotToDb(lot),
-        ...(userId && { user_id: userId }),
+        user_id: userId,
       };
       const { data, error } = await supabase
         .from('inventory_lots')
@@ -2356,9 +2374,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     if (supabase) {
       // Get current user ID - required for RLS policy
       const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('Authentication required. Please sign in to create purchase orders.');
+      }
       const insertData = {
         ...transformPurchaseOrderToDb(order),
-        ...(userId && { user_id: userId }),
+        user_id: userId,
       };
       const { data, error } = await supabase
         .from('purchase_orders')
