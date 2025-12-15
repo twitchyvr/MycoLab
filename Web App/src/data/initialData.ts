@@ -706,6 +706,46 @@ export const initialDevLog: DevLogFeature[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
+  {
+    id: 'dev-022',
+    title: 'Enhanced Species/Strain Library',
+    description: 'Dedicated Library navigation page with educational content, taxonomy browser, advanced search, and community contribution system',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 16,
+    actualHours: 14,
+    dependencies: ['dev-020'],
+    completedAt: new Date().toISOString(),
+    notes: `Added SpeciesLibrary component as a standalone Library page. Features:
+**Educational Content:**
+- Terminology Guide explaining Species vs Strain vs Variety vs Phenotype vs Isolate vs Generation
+- Color-coded definitions with examples
+- Pro tips for each term
+
+**Taxonomy Browser:**
+- Hierarchy Visualization showing species → strains tree structure
+- Two browse modes: Cards (grid) and Taxonomy Tree
+- Expandable/collapsible species nodes
+
+**Advanced Search:**
+- Search across species/strains by name, scientific name, characteristics
+- Filter by difficulty (beginner, intermediate, advanced)
+- Filter by category (gourmet, medicinal, research)
+- Sort by name, difficulty, or colonization time
+
+**Detail Views:**
+- Species cards with scientific name, common names, strain count
+- Strain cards with growing parameters, difficulty rating
+- Full detail modals with all growing parameters
+
+**Community Contributions:**
+- Suggestion modal for proposing species/strain changes
+- Admin approval workflow (pending → approved/rejected)
+- Source URL and notes fields for citations`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 
   // =============================================================================
   // PHASE 4: FARM/LAB MAPPING & LOCATIONS
@@ -799,10 +839,20 @@ export const initialDevLog: DevLogFeature[] = [
     title: 'Cool Room / Fridge Check',
     description: 'Mobile fridge check feature: review inventory live, track cold-storage items, support multiple cold rooms (cultures, spawn ready, etc.)',
     category: 'core',
-    status: 'planned',
+    status: 'completed',
     priority: 'medium',
     estimatedHours: 8,
+    actualHours: 6,
     dependencies: ['dev-030'],
+    completedAt: new Date().toISOString(),
+    notes: `Added ColdStorageCheck component with mobile-friendly interface for reviewing cold storage inventory. Features:
+- Auto-detects cold storage locations (type="storage" or temp ≤45°F)
+- Groups items by location (cultures, spawn, substrates, ingredients)
+- Health check buttons: Good / Attention / Remove
+- Visual indicators for expiry status (fresh, expiring soon, expired)
+- Progress tracking with completion percentage
+- Session summary showing items checked and flagged
+- Integrates with existing cultures, grows, and inventory data`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -893,9 +943,21 @@ export const initialDevLog: DevLogFeature[] = [
     title: 'Event/Observation Logging',
     description: 'Log any event or observation with timestamp, notes, photos. Track inoculation, colonization progress, issues, harvests.',
     category: 'core',
-    status: 'planned',
+    status: 'completed',
     priority: 'high',
     estimatedHours: 8,
+    actualHours: 7,
+    completedAt: new Date().toISOString(),
+    notes: `Added EventLogger component for general-purpose lab event logging. Features:
+- 11 event categories: observation, maintenance, harvest, inoculation, transfer, contamination, environmental, supply, milestone, note, other
+- Quick log buttons for rapid entry during lab work
+- Link events to cultures, grows, or locations
+- Severity levels (info, success, warning, critical)
+- Tag support for custom categorization
+- Integrates with existing observation system (culture_observations, grow_observations)
+- Searchable timeline with category and date filters
+- Stats dashboard showing today/week/critical counts
+- Photo attachment support (placeholder for future image upload)`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
