@@ -3610,6 +3610,194 @@ CREATE POLICY "Users can delete their own room_statuses"
   USING (auth.uid() = user_id);
 
 -- ============================================================================
+-- LAB EVENTS (General purpose event logging - dev-062)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS lab_events (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  category TEXT CHECK (category IN ('observation', 'maintenance', 'harvest', 'inoculation', 'transfer', 'contamination', 'environmental', 'supply', 'milestone', 'note', 'other')) DEFAULT 'observation',
+  title TEXT NOT NULL,
+  description TEXT,
+  entity_type TEXT CHECK (entity_type IN ('culture', 'grow', 'location', 'equipment', 'general')),
+  entity_id UUID,
+  entity_name TEXT,
+  severity TEXT CHECK (severity IN ('info', 'success', 'warning', 'critical')) DEFAULT 'info',
+  tags TEXT[],
+  images TEXT[],
+  metadata JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for lab_events
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_lab_events_user_id ON lab_events(user_id);
+  CREATE INDEX IF NOT EXISTS idx_lab_events_timestamp ON lab_events(timestamp DESC);
+  CREATE INDEX IF NOT EXISTS idx_lab_events_category ON lab_events(category);
+  CREATE INDEX IF NOT EXISTS idx_lab_events_entity ON lab_events(entity_type, entity_id);
+END $$;
+
+-- Enable RLS for lab_events
+ALTER TABLE lab_events ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for lab_events
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own lab_events" ON lab_events;
+  DROP POLICY IF EXISTS "Users can insert their own lab_events" ON lab_events;
+  DROP POLICY IF EXISTS "Users can update their own lab_events" ON lab_events;
+  DROP POLICY IF EXISTS "Users can delete their own lab_events" ON lab_events;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own lab_events"
+  ON lab_events FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own lab_events"
+  ON lab_events FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own lab_events"
+  ON lab_events FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own lab_events"
+  ON lab_events FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- LIBRARY SUGGESTIONS (Community contribution system)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS library_suggestions (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  suggestion_type TEXT CHECK (suggestion_type IN ('species', 'strain', 'correction', 'addition', 'other')) NOT NULL,
+  target_species_id UUID REFERENCES species(id) ON DELETE SET NULL,
+  target_strain_id UUID REFERENCES strains(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  proposed_changes JSONB,
+  source_url TEXT,
+  source_notes TEXT,
+  status TEXT CHECK (status IN ('pending', 'approved', 'rejected', 'needs_info')) DEFAULT 'pending',
+  admin_notes TEXT,
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for library_suggestions
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_library_suggestions_user_id ON library_suggestions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_library_suggestions_status ON library_suggestions(status);
+  CREATE INDEX IF NOT EXISTS idx_library_suggestions_type ON library_suggestions(suggestion_type);
+END $$;
+
+-- Enable RLS for library_suggestions
+ALTER TABLE library_suggestions ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for library_suggestions
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own library_suggestions" ON library_suggestions;
+  DROP POLICY IF EXISTS "Admins can view all library_suggestions" ON library_suggestions;
+  DROP POLICY IF EXISTS "Users can insert their own library_suggestions" ON library_suggestions;
+  DROP POLICY IF EXISTS "Users can update their own pending suggestions" ON library_suggestions;
+  DROP POLICY IF EXISTS "Admins can update all library_suggestions" ON library_suggestions;
+  DROP POLICY IF EXISTS "Users can delete their own pending suggestions" ON library_suggestions;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own library_suggestions"
+  ON library_suggestions FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can view all library_suggestions"
+  ON library_suggestions FOR SELECT
+  USING (EXISTS (SELECT 1 FROM user_profiles WHERE user_id = auth.uid() AND is_admin = true));
+
+CREATE POLICY "Users can insert their own library_suggestions"
+  ON library_suggestions FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own pending suggestions"
+  ON library_suggestions FOR UPDATE
+  USING (auth.uid() = user_id AND status = 'pending');
+
+CREATE POLICY "Admins can update all library_suggestions"
+  ON library_suggestions FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM user_profiles WHERE user_id = auth.uid() AND is_admin = true));
+
+CREATE POLICY "Users can delete their own pending suggestions"
+  ON library_suggestions FOR DELETE
+  USING (auth.uid() = user_id AND status = 'pending');
+
+-- ============================================================================
+-- COLD STORAGE CHECKS (dev-042)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS cold_storage_checks (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  check_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
+  location_name TEXT,
+  item_type TEXT CHECK (item_type IN ('culture', 'spawn', 'substrate', 'ingredient', 'other')) NOT NULL,
+  item_id UUID,
+  item_name TEXT NOT NULL,
+  result TEXT CHECK (result IN ('good', 'attention', 'remove')) NOT NULL,
+  notes TEXT,
+  expiry_date DATE,
+  quantity INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for cold_storage_checks
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_cold_storage_checks_user_id ON cold_storage_checks(user_id);
+  CREATE INDEX IF NOT EXISTS idx_cold_storage_checks_date ON cold_storage_checks(check_date DESC);
+  CREATE INDEX IF NOT EXISTS idx_cold_storage_checks_location ON cold_storage_checks(location_id);
+  CREATE INDEX IF NOT EXISTS idx_cold_storage_checks_item ON cold_storage_checks(item_type, item_id);
+END $$;
+
+-- Enable RLS for cold_storage_checks
+ALTER TABLE cold_storage_checks ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for cold_storage_checks
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own cold_storage_checks" ON cold_storage_checks;
+  DROP POLICY IF EXISTS "Users can insert their own cold_storage_checks" ON cold_storage_checks;
+  DROP POLICY IF EXISTS "Users can update their own cold_storage_checks" ON cold_storage_checks;
+  DROP POLICY IF EXISTS "Users can delete their own cold_storage_checks" ON cold_storage_checks;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own cold_storage_checks"
+  ON cold_storage_checks FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own cold_storage_checks"
+  ON cold_storage_checks FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own cold_storage_checks"
+  ON cold_storage_checks FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own cold_storage_checks"
+  ON cold_storage_checks FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
 -- SCHEMA VERSION (for tracking migrations)
 -- ============================================================================
 
@@ -3620,12 +3808,21 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 16)
-ON CONFLICT (id) DO UPDATE SET version = 16, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 17)
+ON CONFLICT (id) DO UPDATE SET version = 17, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v17 (2024-12): Added new features tables:
+--               - lab_events: General purpose event logging (dev-062)
+--                 Supports observations, maintenance, harvests, transfers, etc.
+--                 Links to cultures, grows, locations with full tagging system
+--               - library_suggestions: Community contribution system for Library
+--                 Allows users to suggest species/strain changes, admin approval workflow
+--               - cold_storage_checks: Cold storage inventory checks (dev-042)
+--                 Track fridge/cold room inventory health during daily checks
+--               - Full RLS policies and indexes for all new tables
 -- v16 (2024-12): Added daily check and harvest workflow tables (dev-040, dev-184):
 --               - daily_checks: Room-by-room daily inspection tracking
 --               - harvest_forecasts: 7-day harvest predictions

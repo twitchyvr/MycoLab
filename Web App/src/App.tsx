@@ -43,14 +43,15 @@ import { SetupWizard } from './components/setup/SetupWizard';
 import { StockManagement } from './components/inventory/StockManagement';
 import { TodayView } from './components/today';
 import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
-import { ObservationTimeline } from './components/observations';
+import { ObservationTimeline, EventLogger } from './components/observations';
 import { ProfilePage } from './components/profile';
 import { FloatingActionButton } from './components/dashboard';
 import { LabMapping, LocationOccupancy } from './components/locations';
 import { LabelDesigner } from './components/labels';
 import { QRScanner } from './components/qr';
-import { DailyCheck, HarvestWorkflow } from './components/dailycheck';
+import { DailyCheck, HarvestWorkflow, ColdStorageCheck } from './components/dailycheck';
 import { HarvestForecast } from './components/forecast/HarvestForecast';
+import { SpeciesLibrary } from './components/library';
 
 // ============================================================================
 // CONTEXT
@@ -263,13 +264,37 @@ const Icons = {
       <path d="M12 3v18M3 12h18M5.5 5.5l13 13M18.5 5.5l-13 13"/>
     </svg>
   ),
+  Library: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      <path d="M8 7h8"/>
+      <path d="M8 11h8"/>
+      <path d="M8 15h4"/>
+    </svg>
+  ),
+  Snowflake: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <line x1="12" y1="2" x2="12" y2="22"/>
+      <path d="M4.93 4.93l4.24 4.24"/>
+      <path d="M14.83 14.83l4.24 4.24"/>
+      <path d="M19.07 4.93l-4.24 4.24"/>
+      <path d="M9.17 14.83l-4.24 4.24"/>
+      <line x1="2" y1="12" x2="22" y2="12"/>
+    </svg>
+  ),
+  Pencil: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+    </svg>
+  ),
 };
 
 // ============================================================================
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
 
 interface NavItem {
   id: Page;
@@ -283,7 +308,10 @@ const navItems: NavItem[] = [
   { id: 'dailycheck', label: 'Daily Check', icon: Icons.Clipboard },
   { id: 'harvest', label: 'Harvest', icon: Icons.Scale },
   { id: 'forecast', label: 'Forecast', icon: Icons.TrendingUp },
+  { id: 'coldstorage', label: 'Cold Storage', icon: Icons.Snowflake },
   { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
+  { id: 'eventlog', label: 'Event Logger', icon: Icons.Pencil },
+  { id: 'library', label: 'Library', icon: Icons.Library },
   { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
   { id: 'stock', label: 'Lab Stock', icon: Icons.Package },
   { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
@@ -816,7 +844,10 @@ const App: React.FC = () => {
     dailycheck: { title: 'Daily Room Check', subtitle: 'Growing room rounds with harvest estimates' },
     harvest: { title: 'Harvest Workflow', subtitle: 'Quick harvest recording with auto BE% calculation' },
     forecast: { title: 'Harvest Forecasting', subtitle: 'Predict stage transitions and forecast upcoming harvests' },
+    coldstorage: { title: 'Cold Storage Check', subtitle: 'Review fridge and cold room inventory' },
     observations: { title: 'Observations', subtitle: 'Timeline of all culture and grow observations' },
+    eventlog: { title: 'Event Logger', subtitle: 'Log events, notes, and observations across your lab' },
+    library: { title: 'Species & Strain Library', subtitle: 'Reference guide with growing parameters and terminology' },
     inventory: { title: 'Lab Inventory', subtitle: 'All cultures, spawn, and grows' },
     stock: { title: 'Lab Stock', subtitle: 'Inventory lots, purchases, and tracking' },
     cultures: { title: 'Culture Library', subtitle: 'Manage your cultures and genetics' },
@@ -866,10 +897,28 @@ const App: React.FC = () => {
             <HarvestForecast />
           </div>
         );
+      case 'coldstorage':
+        return (
+          <div className="p-6">
+            <ColdStorageCheck />
+          </div>
+        );
       case 'observations':
         return (
           <div className="p-6">
             <ObservationTimeline onNavigate={setCurrentPage} />
+          </div>
+        );
+      case 'eventlog':
+        return (
+          <div className="p-6">
+            <EventLogger />
+          </div>
+        );
+      case 'library':
+        return (
+          <div className="p-6">
+            <SpeciesLibrary />
           </div>
         );
       case 'devlog':
