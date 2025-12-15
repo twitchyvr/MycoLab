@@ -1729,11 +1729,30 @@ export const SettingsPage: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-zinc-400 mb-1">Name *</label>
-                <input type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" placeholder="e.g., Golden Teacher" autoFocus />
+                <input type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" placeholder="e.g., Blue Oyster, Golden Teacher" autoFocus />
               </div>
               <div>
                 <label className="block text-sm text-zinc-400 mb-1">Species *</label>
-                <input type="text" value={formData.species || ''} onChange={e => setFormData({ ...formData, species: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" placeholder="e.g., Psilocybe cubensis" />
+                <select
+                  value={formData.speciesId || ''}
+                  onChange={e => {
+                    const selectedSpecies = activeSpecies.find(s => s.id === e.target.value);
+                    setFormData({
+                      ...formData,
+                      speciesId: e.target.value,
+                      species: selectedSpecies?.scientificName || selectedSpecies?.name || ''
+                    });
+                  }}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                >
+                  <option value="">Select species...</option>
+                  {activeSpecies.map(species => (
+                    <option key={species.id} value={species.id}>
+                      {species.name} {species.scientificName ? `(${species.scientificName})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-zinc-500 mt-1">Select the species this strain belongs to. Add new species in the Species tab.</p>
               </div>
               <div>
                 <label className="block text-sm text-zinc-400 mb-1">Difficulty</label>
