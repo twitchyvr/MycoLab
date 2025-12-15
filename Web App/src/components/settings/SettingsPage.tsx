@@ -1725,6 +1725,7 @@ export const SettingsPage: React.FC = () => {
           );
 
         case 'strains':
+          const activeSpecies = (state.species || []).filter((s: { isActive?: boolean }) => s.isActive !== false);
           return (
             <div className="space-y-4">
               <div>
@@ -1736,7 +1737,7 @@ export const SettingsPage: React.FC = () => {
                 <select
                   value={formData.speciesId || ''}
                   onChange={e => {
-                    const selectedSpecies = activeSpecies.find(s => s.id === e.target.value);
+                    const selectedSpecies = activeSpecies.find((s: { id: string }) => s.id === e.target.value);
                     setFormData({
                       ...formData,
                       speciesId: e.target.value,
@@ -1746,7 +1747,7 @@ export const SettingsPage: React.FC = () => {
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
                 >
                   <option value="">Select species...</option>
-                  {activeSpecies.map(species => (
+                  {activeSpecies.map((species: { id: string; name: string; scientificName?: string }) => (
                     <option key={species.id} value={species.id}>
                       {species.name} {species.scientificName ? `(${species.scientificName})` : ''}
                     </option>
