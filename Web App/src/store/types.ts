@@ -7,12 +7,67 @@
 // LOOKUP TABLE TYPES
 // ============================================================================
 
+// Temperature range in Fahrenheit
+export interface TemperatureRange {
+  min: number;
+  max: number;
+  optimal?: number;
+}
+
+// Humidity range as percentage
+export interface HumidityRange {
+  min: number;
+  max: number;
+}
+
+// Parameters for each growth phase
+export interface GrowPhaseParameters {
+  tempRange?: TemperatureRange;
+  humidityRange?: HumidityRange;
+  daysMin?: number;
+  daysMax?: number;
+  co2Tolerance?: 'low' | 'moderate' | 'high'; // FAE requirements inverse
+  lightRequirement?: 'none' | 'indirect' | 'direct' | '12hr_cycle';
+  notes?: string;
+}
+
 export interface Species {
   id: string;
-  name: string;
-  scientificName?: string;
-  commonNames?: string[];
+  name: string;                    // Common name (e.g., "Pearl Oyster")
+  scientificName?: string;         // e.g., "Pleurotus ostreatus"
+  commonNames?: string[];          // Alternative names
   category: 'gourmet' | 'medicinal' | 'research' | 'other';
+
+  // Growing parameters by stage
+  spawnColonization?: GrowPhaseParameters;  // Stage 1: Grain/spawn colonization
+  bulkColonization?: GrowPhaseParameters;   // Stage 2: Substrate colonization
+  pinning?: GrowPhaseParameters;            // Stage 3a: Pin formation
+  maturation?: GrowPhaseParameters;         // Stage 3b: Fruit body development
+
+  // Substrate preferences
+  preferredSubstrates?: string[];  // e.g., ["hardwood sawdust", "straw", "masters mix"]
+  substrateNotes?: string;
+
+  // Growing characteristics
+  difficulty?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  characteristics?: string;        // Notable physical/growing traits
+
+  // Culinary/Usage info
+  flavorProfile?: string;
+  culinaryNotes?: string;
+  medicinalProperties?: string;
+
+  // Community knowledge
+  communityTips?: string;
+  importantFacts?: string;
+
+  // Yield expectations
+  typicalYield?: string;           // e.g., "1-2 lbs per 5lb block"
+  flushCount?: string;             // e.g., "2-3 flushes"
+
+  // Shelf life (days)
+  shelfLifeDays?: { min: number; max: number };
+
   notes?: string;
   isActive: boolean;
 }

@@ -1105,69 +1105,706 @@ BEGIN
 END $$;
 
 -- ============================================================================
+-- SPECIES TABLE MIGRATIONS
+-- Add comprehensive growing parameters, substrate preferences, and characteristics
+-- ============================================================================
+DO $$
+BEGIN
+  -- Growing parameters (JSONB for flexibility)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'spawn_colonization') THEN
+    ALTER TABLE species ADD COLUMN spawn_colonization JSONB;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'bulk_colonization') THEN
+    ALTER TABLE species ADD COLUMN bulk_colonization JSONB;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'pinning') THEN
+    ALTER TABLE species ADD COLUMN pinning JSONB;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'maturation') THEN
+    ALTER TABLE species ADD COLUMN maturation JSONB;
+  END IF;
+
+  -- Substrate preferences
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'preferred_substrates') THEN
+    ALTER TABLE species ADD COLUMN preferred_substrates TEXT[];
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'substrate_notes') THEN
+    ALTER TABLE species ADD COLUMN substrate_notes TEXT;
+  END IF;
+
+  -- Growing characteristics
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'difficulty') THEN
+    ALTER TABLE species ADD COLUMN difficulty TEXT CHECK (difficulty IN ('beginner', 'intermediate', 'advanced', 'expert'));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'characteristics') THEN
+    ALTER TABLE species ADD COLUMN characteristics TEXT;
+  END IF;
+
+  -- Culinary/Usage info
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'flavor_profile') THEN
+    ALTER TABLE species ADD COLUMN flavor_profile TEXT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'culinary_notes') THEN
+    ALTER TABLE species ADD COLUMN culinary_notes TEXT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'medicinal_properties') THEN
+    ALTER TABLE species ADD COLUMN medicinal_properties TEXT;
+  END IF;
+
+  -- Community knowledge
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'community_tips') THEN
+    ALTER TABLE species ADD COLUMN community_tips TEXT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'important_facts') THEN
+    ALTER TABLE species ADD COLUMN important_facts TEXT;
+  END IF;
+
+  -- Yield expectations
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'typical_yield') THEN
+    ALTER TABLE species ADD COLUMN typical_yield TEXT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'flush_count') THEN
+    ALTER TABLE species ADD COLUMN flush_count TEXT;
+  END IF;
+
+  -- Shelf life
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'shelf_life_days_min') THEN
+    ALTER TABLE species ADD COLUMN shelf_life_days_min INTEGER;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'shelf_life_days_max') THEN
+    ALTER TABLE species ADD COLUMN shelf_life_days_max INTEGER;
+  END IF;
+END $$;
+
+-- ============================================================================
 -- DEFAULT SPECIES SEED DATA
 -- Global species available to all users (user_id = NULL)
--- Uses ON CONFLICT to be idempotent - safe to re-run
+-- Comprehensive growing parameters based on community knowledge
+-- All temperatures in Fahrenheit
 -- ============================================================================
 
--- Gourmet Species
-INSERT INTO species (name, scientific_name, common_names, category, notes, user_id) VALUES
-  ('Pleurotus ostreatus', 'Pleurotus ostreatus', ARRAY['Oyster Mushroom', 'Pearl Oyster', 'Tree Oyster'], 'gourmet', 'Most widely cultivated oyster mushroom. Fast colonizer, aggressive, forgiving for beginners.', NULL),
-  ('Pleurotus eryngii', 'Pleurotus eryngii', ARRAY['King Oyster', 'King Trumpet', 'French Horn', 'Eryngii'], 'gourmet', 'Thick meaty stems, excellent culinary mushroom. Longer fruiting time than other oysters.', NULL),
-  ('Pleurotus citrinopileatus', 'Pleurotus citrinopileatus', ARRAY['Golden Oyster', 'Yellow Oyster', 'Tamogitake'], 'gourmet', 'Beautiful yellow clusters. Prefers warmer temperatures. Delicate, nutty flavor.', NULL),
-  ('Pleurotus djamor', 'Pleurotus djamor', ARRAY['Pink Oyster', 'Flamingo Oyster', 'Salmon Oyster'], 'gourmet', 'Vibrant pink color, tropical species. Needs warm temps (65-85°F). Fast fruiter.', NULL),
-  ('Pleurotus pulmonarius', 'Pleurotus pulmonarius', ARRAY['Phoenix Oyster', 'Lung Oyster', 'Indian Oyster', 'Italian Oyster'], 'gourmet', 'Tolerates higher temperatures than P. ostreatus. Good summer variety.', NULL),
-  ('Pleurotus columbinus', 'Pleurotus columbinus', ARRAY['Blue Oyster'], 'gourmet', 'Blue-gray caps, cold tolerant. Popular commercial variety.', NULL),
-  ('Lentinula edodes', 'Lentinula edodes', ARRAY['Shiitake', 'Black Forest Mushroom', 'Oak Mushroom'], 'gourmet', 'Second most cultivated mushroom worldwide. Requires longer colonization, rewards patience.', NULL),
-  ('Hericium erinaceus', 'Hericium erinaceus', ARRAY['Lions Mane', 'Monkey Head', 'Bearded Tooth', 'Pom Pom'], 'gourmet', 'Unique appearance with cascading spines. Both culinary and medicinal. Lobster-like flavor.', NULL),
-  ('Hericium americanum', 'Hericium americanum', ARRAY['Bears Head Tooth', 'American Lions Mane'], 'gourmet', 'Native to North America. Similar to H. erinaceus but with shorter spines on branches.', NULL),
-  ('Flammulina velutipes', 'Flammulina velutipes', ARRAY['Enoki', 'Enokitake', 'Golden Needle', 'Velvet Foot'], 'gourmet', 'Cold-loving species. Commercial variety grown in bottles differs from wild form.', NULL),
-  ('Pholiota nameko', 'Pholiota nameko', ARRAY['Nameko', 'Butterscotch Mushroom'], 'gourmet', 'Amber-colored with gelatinous coating. Popular in Japanese cuisine, especially miso soup.', NULL),
-  ('Hypsizygus tessellatus', 'Hypsizygus tessellatus', ARRAY['Shimeji', 'Beech Mushroom', 'Clamshell Mushroom'], 'gourmet', 'Grows in clusters. Bitter when raw, nutty and mild when cooked. White and brown varieties.', NULL),
-  ('Cyclocybe aegerita', 'Cyclocybe aegerita', ARRAY['Pioppino', 'Black Poplar', 'Velvet Pioppini', 'Swordbelt Agrocybe'], 'gourmet', 'Italian favorite. Crunchy texture, nutty flavor. Also known as Agrocybe aegerita.', NULL),
-  ('Stropharia rugosoannulata', 'Stropharia rugosoannulata', ARRAY['Wine Cap', 'King Stropharia', 'Garden Giant', 'Burgundy Mushroom'], 'gourmet', 'Excellent outdoor species for garden beds. Large caps, wine-red color when young.', NULL),
-  ('Agaricus bisporus', 'Agaricus bisporus', ARRAY['Button Mushroom', 'Cremini', 'Portobello', 'White Mushroom'], 'gourmet', 'Most commercially cultivated mushroom. Different stages: button, cremini (brown), portobello (mature).', NULL),
-  ('Laetiporus sulphureus', 'Laetiporus sulphureus', ARRAY['Chicken of the Woods', 'Sulphur Shelf', 'Crab of the Woods'], 'gourmet', 'Bright orange/yellow bracket fungus. Meat-like texture. Usually foraged, difficult to cultivate.', NULL),
-  ('Grifola frondosa', 'Grifola frondosa', ARRAY['Maitake', 'Hen of the Woods', 'Dancing Mushroom', 'Sheep Head'], 'gourmet', 'Large cluster-forming polypore. Both culinary and medicinal value. Earthy, rich flavor.', NULL),
-  ('Auricularia auricula-judae', 'Auricularia auricula-judae', ARRAY['Wood Ear', 'Jews Ear', 'Black Fungus', 'Cloud Ear'], 'gourmet', 'Gelatinous texture. Common in Asian cuisine. Easy to cultivate on supplemented sawdust.', NULL),
-  ('Sparassis crispa', 'Sparassis crispa', ARRAY['Cauliflower Mushroom', 'Wood Cauliflower'], 'gourmet', 'Large, brain-like appearance. Nutty, earthy flavor. Challenging to cultivate.', NULL),
-  ('Coprinus comatus', 'Coprinus comatus', ARRAY['Shaggy Mane', 'Lawyers Wig', 'Shaggy Ink Cap'], 'gourmet', 'Deliquescent - turns to ink when mature. Must be eaten same day as harvest.', NULL),
-  ('Lepista nuda', 'Lepista nuda', ARRAY['Blewit', 'Wood Blewit', 'Blue Foot'], 'gourmet', 'Purple/lilac colored. Late season fruiter. Distinctive floral aroma.', NULL)
-ON CONFLICT (name) DO UPDATE SET
-  scientific_name = EXCLUDED.scientific_name,
-  common_names = EXCLUDED.common_names,
-  category = EXCLUDED.category,
-  notes = EXCLUDED.notes;
+-- Clear existing species to update with new comprehensive data
+DELETE FROM species WHERE user_id IS NULL;
 
--- Medicinal Species
-INSERT INTO species (name, scientific_name, common_names, category, notes, user_id) VALUES
-  ('Ganoderma lucidum', 'Ganoderma lucidum', ARRAY['Reishi', 'Lingzhi', 'Varnished Conk', 'Mushroom of Immortality'], 'medicinal', 'Most studied medicinal mushroom. Woody texture, used for tea/extracts. Slow grower.', NULL),
-  ('Ganoderma tsugae', 'Ganoderma tsugae', ARRAY['Hemlock Reishi', 'Hemlock Varnish Shelf'], 'medicinal', 'North American Reishi relative. Similar properties to G. lucidum.', NULL),
-  ('Inonotus obliquus', 'Inonotus obliquus', ARRAY['Chaga', 'Birch Conk', 'Clinker Polypore'], 'medicinal', 'Parasitic on birch trees. Wild-harvested sclerotia used medicinally. Very slow growing.', NULL),
-  ('Trametes versicolor', 'Trametes versicolor', ARRAY['Turkey Tail', 'Yun Zhi', 'Kawaratake'], 'medicinal', 'Common polypore with concentric color zones. Well-researched for immune support.', NULL),
-  ('Cordyceps militaris', 'Cordyceps militaris', ARRAY['Cordyceps', 'Orange Caterpillar Fungus', 'Military Cordyceps'], 'medicinal', 'Cultivated alternative to wild C. sinensis. Orange club-shaped fruiting bodies.', NULL),
-  ('Antrodia camphorata', 'Antrodia camphorata', ARRAY['Niu Zhang Zhi', 'Antrodia', 'Taiwanofungus'], 'medicinal', 'Native to Taiwan. Highly valued in traditional medicine. Difficult to cultivate.', NULL),
-  ('Phellinus linteus', 'Phellinus linteus', ARRAY['Meshima', 'Sang Hwang', 'Black Hoof Fungus'], 'medicinal', 'Used in Asian traditional medicine for centuries. Woody bracket fungus.', NULL),
-  ('Wolfiporia extensa', 'Wolfiporia extensa', ARRAY['Fu Ling', 'Poria', 'Tuckahoe', 'Indian Bread'], 'medicinal', 'Underground sclerotia used in Traditional Chinese Medicine. Associated with pine roots.', NULL)
-ON CONFLICT (name) DO UPDATE SET
-  scientific_name = EXCLUDED.scientific_name,
-  common_names = EXCLUDED.common_names,
-  category = EXCLUDED.category,
-  notes = EXCLUDED.notes;
+-- GOURMET SPECIES
+-- Pearl Oyster
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Pearl Oyster', 'Pleurotus ostreatus',
+  ARRAY['Oyster Mushroom', 'Tree Oyster', 'Hiratake'],
+  'gourmet', 'beginner',
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 10, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['straw', 'hardwood sawdust', 'hardwood chips', 'cardboard', 'coffee grounds', 'paper', 'masters mix'],
+  'Pasteurized straw is traditional and economical. Supplemented hardwood sawdust produces denser fruits. Can fruit on almost any cellulose-based material.',
+  'Aggressive colonizer that outcompetes most contaminants. Fan-shaped clusters with gills running down short stem. Color varies from white to gray to brown.',
+  'Mild, slightly anise-like when raw. Savory and earthy when cooked.',
+  'Excellent sautéed with garlic and butter. Holds up well in soups and stir-fries. Can be dried for long-term storage.',
+  'Spore load can be heavy during fruiting—ensure good ventilation. Harvest when cap edges are still slightly curled for best texture.',
+  'Most forgiving species for beginners. Yields 1-2 lbs per 5lb block over 2-3 flushes.',
+  '1-2 lbs per 5lb block', '2-3 flushes', 7, 10,
+  'The most widely cultivated oyster mushroom worldwide. Fast colonizer, aggressive, forgiving for beginners.',
+  NULL
+);
 
--- Research Species (for educational/research purposes only)
-INSERT INTO species (name, scientific_name, common_names, category, notes, user_id) VALUES
-  ('Psilocybe cubensis', 'Psilocybe cubensis', ARRAY['Cubensis', 'Golden Top', 'Mexican Mushroom'], 'research', 'Most widely studied psilocybin species. Subtropical/tropical origin. Legal status varies by jurisdiction.', NULL),
-  ('Psilocybe cyanescens', 'Psilocybe cyanescens', ARRAY['Wavy Caps', 'Blue Halo'], 'research', 'Potent wood-loving species. Native to Pacific Northwest. Outdoor cultivation only.', NULL),
-  ('Psilocybe semilanceata', 'Psilocybe semilanceata', ARRAY['Liberty Cap'], 'research', 'Small grassland species. Cannot be cultivated - only wild harvested.', NULL),
-  ('Psilocybe azurescens', 'Psilocybe azurescens', ARRAY['Azzies', 'Flying Saucers', 'Blue Angels'], 'research', 'Most potent known Psilocybe species. Cold-weather, wood-loving. Outdoor only.', NULL),
-  ('Panaeolus cyanescens', 'Panaeolus cyanescens', ARRAY['Blue Meanies', 'Pan Cyan', 'Copelandia cyanescens'], 'research', 'Tropical dung-loving species. Sometimes confused with P. cubensis strains of same name.', NULL),
-  ('Gymnopilus spectabilis', 'Gymnopilus spectabilis', ARRAY['Big Laughing Gym', 'Spectacular Rustgill'], 'research', 'Large wood-decaying species. Contains psilocybin in some populations.', NULL)
-ON CONFLICT (name) DO UPDATE SET
-  scientific_name = EXCLUDED.scientific_name,
-  common_names = EXCLUDED.common_names,
-  category = EXCLUDED.category,
-  notes = EXCLUDED.notes;
+-- Blue Oyster
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Blue Oyster', 'Pleurotus columbinus',
+  ARRAY['Blue Pearl'],
+  'gourmet', 'beginner',
+  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 12, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 60, "max": 70, "optimal": 65}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 45, "max": 55, "optimal": 50}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 45, "max": 65, "optimal": 55}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 4, "daysMax": 6, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['straw', 'hardwood sawdust', 'hardwood chips', 'masters mix'],
+  'Same substrates as Pearl Oyster. Excels in cooler conditions.',
+  'Cold-tolerant oyster producing blue-gray caps that fade to gray-brown with age. Slightly firmer texture than pearl oyster.',
+  'Mild, earthy flavor. Slightly firmer texture than pearl oyster.',
+  'Excellent for unheated spaces, basements, and garages. Can fruit outdoors in fall/spring in temperate climates.',
+  'Prefers cooler temperatures than most oysters. Harvest when edges still slightly curled.',
+  'Best choice for cool-weather cultivation. Deep blue/steel gray caps when young.',
+  '1-2 lbs per 5lb block', '2-3 flushes', 7, 10,
+  'Cold-tolerant oyster variety producing blue-gray caps. Popular commercial variety.',
+  NULL
+);
+
+-- Pink Oyster
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Pink Oyster', 'Pleurotus djamor',
+  ARRAY['Flamingo Oyster', 'Salmon Oyster'],
+  'gourmet', 'beginner',
+  '{"tempRange": {"min": 75, "max": 85, "optimal": 80}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 75, "max": 85, "optimal": 80}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 80, "optimal": 75}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 2, "daysMax": 3, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 85, "optimal": 75}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 2, "daysMax": 3, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['straw', 'hardwood sawdust', 'coffee grounds', 'masters mix'],
+  'Thrives in warm conditions. Does not tolerate cold.',
+  'Stunning bright pink coloration. Tropical species that dies below 40°F. Fastest fruiting oyster.',
+  'Delicate, bacon-like flavor when sautéed. Color fades significantly when cooked.',
+  'Best cooked hot and fast. Excellent in stir-fries. Very short shelf life—use immediately after harvest.',
+  'CRITICAL: Dies below 40°F—NEVER refrigerate spawn or cultures. Aggressive colonizer, good for beginners in warm climates.',
+  'Fastest fruiting oyster (3-5 days from pins to harvest). Beautiful but ephemeral.',
+  '0.75-1.5 lbs per 5lb block', '2-3 flushes', 2, 4,
+  'Tropical species with stunning pink coloration. Needs warmth, dies below 40°F.',
+  NULL
+);
+
+-- Golden Oyster
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Golden Oyster', 'Pleurotus citrinopileatus',
+  ARRAY['Yellow Oyster', 'Tamogitake'],
+  'gourmet', 'beginner',
+  '{"tempRange": {"min": 70, "max": 80, "optimal": 75}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 10, "daysMax": 14, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 70, "max": 80, "optimal": 75}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 80, "optimal": 72}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 2, "daysMax": 4, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 85, "optimal": 75}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 3, "daysMax": 4, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['hardwood sawdust', 'straw', 'masters mix'],
+  'Similar to pink oyster. Does not tolerate cold storage.',
+  'Beautiful bright yellow clusters. Delicate, handle carefully. More delicate than other oysters.',
+  'Nutty, cashew-like flavor. Can turn bitter or ammonia-scented when old.',
+  'MUST be sautéed thoroughly—bitter if undercooked. Great for Asian cuisine.',
+  'Like pink oyster, sensitive to cold—do not refrigerate spawn. Harvest promptly for best flavor.',
+  'Fruits in dense clusters. Short shelf life (3-5 days).',
+  '0.75-1.5 lbs per 5lb block', '2-3 flushes', 3, 5,
+  'Beautiful bright yellow clusters with delicate, nutty, cashew-like flavor. Sensitive to cold.',
+  NULL
+);
+
+-- King Oyster
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'King Oyster', 'Pleurotus eryngii',
+  ARRAY['King Trumpet', 'French Horn Mushroom', 'Eryngii', 'Trumpet Royale'],
+  'gourmet', 'intermediate',
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 14, "daysMax": 28, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 10, "daysMax": 18, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 4, "daysMax": 6, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 5, "daysMax": 8, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['supplemented hardwood sawdust', 'masters mix'],
+  'Requires supplemented sawdust (10-20% wheat bran). Pure straw does not work well.',
+  'Premium gourmet with thick, meaty stems. Individual fruits rather than clusters. Longer grow cycle than other oysters.',
+  'Mild, umami-rich. Excellent meaty texture.',
+  'Stems are the prize—harvest when caps flatten. Excellent seared, grilled, or sliced into steaks.',
+  'Tolerates higher CO2 than other oysters. Requires good nutrition (supplementation) for best results.',
+  'Worth the longer wait. Excellent shelf life (10-14 days).',
+  '0.75-1 lb per 5lb block', '2-3 flushes', 10, 14,
+  'Premium gourmet mushroom with thick, meaty stems prized for texture. Requires supplementation.',
+  NULL
+);
+
+-- Phoenix Oyster
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Phoenix Oyster', 'Pleurotus pulmonarius',
+  ARRAY['Lung Oyster', 'Indian Oyster', 'Italian Oyster', 'Summer Oyster'],
+  'gourmet', 'beginner',
+  '{"tempRange": {"min": 75, "max": 80, "optimal": 77}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 10, "daysMax": 18, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 70, "max": 80, "optimal": 75}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 7, "daysMax": 12, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 80, "optimal": 72}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 85, "optimal": 75}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['straw', 'hardwood sawdust', 'masters mix'],
+  'Responds well to straw. Similar cultivation to pearl oyster.',
+  'Heat-tolerant oyster ideal for summer growing. Slightly thinner caps, more delicate than P. ostreatus.',
+  'Mild, delicate flavor similar to pearl oyster.',
+  'Good choice when ambient temps exceed 70°F. Often lighter colored than P. ostreatus.',
+  'Fast colonizer with similar aggressive characteristics to other oysters. Excels in warm conditions.',
+  'Best summer oyster variety. Tolerates 65-85°F fruiting temps.',
+  '1-2 lbs per 5lb block', '2-3 flushes', 5, 8,
+  'Heat-tolerant oyster ideal for summer growing. Good choice when ambient temps exceed 70°F.',
+  NULL
+);
+
+-- Lion's Mane
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Lion''s Mane', 'Hericium erinaceus',
+  ARRAY['Monkey Head', 'Bearded Tooth', 'Pom Pom', 'Satyr''s Beard', 'Hedgehog Mushroom'],
+  'gourmet', 'intermediate',
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "low", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 10, "daysMax": 16, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 60, "max": 70, "optimal": 65}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 60, "max": 70, "optimal": 65}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 4, "daysMax": 7, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['supplemented hardwood sawdust', 'masters mix'],
+  'Requires supplemented hardwood sawdust (15-20% bran). Masters mix works well.',
+  'Unique appearance with cascading white spines. No caps—forms single globular mass with teeth. Turning yellow/brown indicates age or low humidity.',
+  'Lobster/crab-like flavor and texture. Exceptional culinary mushroom.',
+  'Excellent seafood substitute. Tear into pieces and sear in butter. Great in pasta, risotto, or as crab cake alternative.',
+  'Studied for nerve growth factor (NGF) stimulation. Contains hericenones and erinacines.',
+  'HIGH HUMIDITY CRITICAL (90-95%). Does not tolerate CO2 buildup well. Heavy FAE needed.',
+  'Harvest when spines are 0.5-1cm, before browning.',
+  '0.5-1 lb per 5lb block', '2-3 flushes', 5, 7,
+  'Unique appearance with cascading white spines. Both culinary and medicinal. Lobster-like flavor.',
+  NULL
+);
+
+-- Shiitake
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Shiitake', 'Lentinula edodes',
+  ARRAY['Black Forest Mushroom', 'Oak Mushroom', 'Donko', 'Shanku'],
+  'gourmet', 'intermediate',
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 30, "daysMax": 60, "co2Tolerance": "moderate", "lightRequirement": "none", "notes": "60-120 days on logs"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 14, "daysMax": 30, "co2Tolerance": "moderate", "lightRequirement": "none", "notes": "Brown-out phase critical"}'::jsonb,
+  '{"tempRange": {"min": 50, "max": 60, "optimal": 55}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "indirect", "notes": "Requires cold shock"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 70, "optimal": 62}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 5, "daysMax": 8, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['supplemented hardwood sawdust', 'oak logs', 'hardwood logs'],
+  'Oak/hardwood logs (traditional, 60-120 day colonization) or supplemented hardwood sawdust blocks (faster, 30-60 days).',
+  'Second most cultivated mushroom worldwide. Brown-out phase critical—fully colonized blocks turn brown before fruiting.',
+  'Rich umami flavor. Different grades: donko (cold-weather, thick, cracked caps—premium), koshin (thin caps, warm weather).',
+  'Excellent dried. Rehydrates well. Essential in Asian cuisine.',
+  'Contains lentinan (beta-glucan) studied in cancer research. AHCC extract derived from shiitake mycelium.',
+  'Requires cold shock (50°F for 24-72 hrs) or soaking to initiate pins. Patience rewarded.',
+  'Longer colonization than oysters but worth the wait. Excellent shelf life.',
+  '0.5-1 lb per 5lb block', '3-5 flushes', 14, 21,
+  'Second most cultivated mushroom worldwide. Rich umami flavor. Requires longer colonization, rewards patience.',
+  NULL
+);
+
+-- Maitake
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Maitake', 'Grifola frondosa',
+  ARRAY['Hen of the Woods', 'Dancing Mushroom', 'Sheep''s Head', 'Ram''s Head'],
+  'gourmet', 'advanced',
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 30, "daysMax": 60, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 20, "daysMax": 40, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "low", "lightRequirement": "12hr_cycle"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "low", "lightRequirement": "12hr_cycle"}'::jsonb,
+  ARRAY['supplemented hardwood sawdust', 'oak sawdust'],
+  'Oak preferred. Challenging indoor cultivation—easier on buried logs/stumps outdoors.',
+  'Large polypore clusters prized for rich umami. Forms large rosettes with overlapping gray-brown caps.',
+  'Rich, earthy, umami flavor. One of the most flavorful gourmet mushrooms.',
+  'Can reach several pounds per cluster. Excellent sautéed, roasted, or in soups.',
+  'Beta-glucan rich (D-fraction). Studied for immune support, blood sugar regulation.',
+  'Needs 12hr light cycles and temperature drop to initiate fruiting. Indoor blocks may take multiple attempts.',
+  'Challenging for beginners. Often takes 2+ years on logs outdoors.',
+  '1-3 lbs per large block', '1-2 flushes', 7, 10,
+  'Large cluster-forming polypore. Both culinary and medicinal value. Challenging indoor cultivation.',
+  NULL
+);
+
+-- Enoki
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Enoki', 'Flammulina velutipes',
+  ARRAY['Enokitake', 'Golden Needle', 'Velvet Foot', 'Winter Mushroom'],
+  'gourmet', 'advanced',
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 72, "optimal": 68}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 10, "daysMax": 16, "co2Tolerance": "high", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 40, "max": 50, "optimal": 45}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "high", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 40, "max": 50, "optimal": 45}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 7, "daysMax": 12, "co2Tolerance": "high", "lightRequirement": "indirect", "notes": "High CO2 elongates stems"}'::jsonb,
+  ARRAY['supplemented hardwood sawdust'],
+  'Commercial enoki grown in bottles with restrictive collars for elongated stem shape. High CO2 during fruiting elongates stems.',
+  'Long thin stems with tiny caps. Wild form has brown velvety stems; commercial is pure white.',
+  'Mild, slightly fruity. Crunchy raw, softens when cooked.',
+  'Crunchy raw in salads. Popular in hot pot, soups, and Asian cuisine.',
+  'Named "winter mushroom" for cold-fruiting nature. Requires refrigeration or cold room to fruit (40-50°F).',
+  'Very cold fruiting temperatures required. Not for warm climates without cooling.',
+  '0.5-0.75 lb per container', '2-3 flushes', 7, 14,
+  'Long thin stems with tiny caps. Cold-loving species. Commercial variety differs from wild form.',
+  NULL
+);
+
+-- Beech Mushroom / Shimeji
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Beech Mushroom', 'Hypsizygus tessellatus',
+  ARRAY['Shimeji', 'Clamshell Mushroom', 'Bunapi'],
+  'gourmet', 'intermediate',
+  '{"tempRange": {"min": 68, "max": 75, "optimal": 72}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 21, "daysMax": 35, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 72, "optimal": 68}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 50, "max": 60, "optimal": 55}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "indirect", "notes": "Requires cold shock"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 5, "daysMax": 8, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['supplemented hardwood sawdust', 'masters mix'],
+  'Commercial production uses bottles. Brown (buna-shimeji) and white (bunapi) varieties available.',
+  'Clusters of small capped mushrooms with crunchy texture. Cluster integrity important for market.',
+  'Bitter when raw, nutty and mild when cooked. MUST be cooked.',
+  'DO NOT eat raw—bitter. Nutty, mild flavor when cooked. Excellent in stir-fries and soups.',
+  'Needs cold shock (40-50°F for 3-5 days) to initiate pinning.',
+  'Excellent shelf life (10-14 days).',
+  '0.5-0.75 lb per container', '2-3 flushes', 10, 14,
+  'Clusters of small capped mushrooms. Bitter when raw, nutty and mild when cooked.',
+  NULL
+);
+
+-- Pioppino
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Pioppino', 'Cyclocybe aegerita',
+  ARRAY['Black Poplar', 'Velvet Pioppini', 'Swordbelt Agrocybe', 'Chestnut Mushroom'],
+  'gourmet', 'intermediate',
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 21, "daysMax": 35, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 5, "daysMax": 8, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['supplemented hardwood sawdust', 'straw with supplements', 'masters mix'],
+  'Benefits from temperature fluctuation to initiate fruiting.',
+  'Italian favorite. Forms clusters on long thin stems with brown caps. Caps often have small scales.',
+  'Nutty, earthy flavor with excellent crunchy texture.',
+  'Firm texture holds up excellently in cooking—popular for pasta dishes. Harvest before caps fully flatten for best texture.',
+  'Relatively slow colonizer. Also sold as "Agrocybe aegerita" in older literature.',
+  'Benefits from temperature fluctuation.',
+  '0.5-1 lb per 5lb block', '2-3 flushes', 7, 10,
+  'Italian favorite with crunchy texture and nutty flavor. Popular for pasta dishes.',
+  NULL
+);
+
+-- Wood Ear
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Wood Ear', 'Auricularia auricula-judae',
+  ARRAY['Jelly Ear', 'Judas''s Ear', 'Black Fungus', 'Cloud Ear', 'Kikurage'],
+  'gourmet', 'beginner',
+  '{"tempRange": {"min": 75, "max": 80, "optimal": 77}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 14, "daysMax": 28, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 75, "max": 82, "optimal": 78}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 10, "daysMax": 18, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 70, "max": 82, "optimal": 76}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 70, "max": 85, "optimal": 78}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['supplemented hardwood sawdust', 'elder wood'],
+  'Grows well on elder. Tolerates humidity fluctuations better than most species.',
+  'Gelatinous ear-shaped fungus. Unique rubbery/crunchy texture.',
+  'Mild, slightly woody flavor. Valued for texture more than taste.',
+  'Used in hot and sour soup, stir-fries, salads. Rehydrates well from dried—expands 5-10x.',
+  'Don''t wash—briefly rinse if needed. Easy to grow, tolerates humidity fluctuations.',
+  'Dries very well and stores for years.',
+  '0.5-1 lb per 5lb block', '3-5 flushes', 7, 14,
+  'Gelatinous ear-shaped fungus common in Asian cuisine. Easy to cultivate.',
+  NULL
+);
+
+-- Wine Cap
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Wine Cap', 'Stropharia rugosoannulata',
+  ARRAY['King Stropharia', 'Garden Giant', 'Burgundy Mushroom'],
+  'gourmet', 'beginner',
+  '{"tempRange": {"min": 60, "max": 75, "optimal": 68}, "humidityRange": {"min": 70, "max": 90}, "daysMin": 14, "daysMax": 28, "co2Tolerance": "high", "lightRequirement": "none", "notes": "Outdoor spawn run"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 70, "optimal": 62}, "humidityRange": {"min": 70, "max": 90}, "daysMin": 21, "daysMax": 60, "co2Tolerance": "high", "lightRequirement": "indirect", "notes": "In wood chip beds"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 70, "optimal": 62}, "humidityRange": {"min": 75, "max": 90}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "high", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 60, "max": 70, "optimal": 65}, "humidityRange": {"min": 75, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "high", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['hardwood chips', 'straw', 'garden beds'],
+  'Best grown outdoors in wood chip beds 4-8" deep. Establish bed and inoculate with grain/sawdust spawn.',
+  'Premier outdoor garden species with wine-red caps that fade to tan with age. Large caps (4-12").',
+  'Mild, potato-like flavor.',
+  'Excellent for permaculture and food forests. Benefits garden by breaking down wood chips.',
+  'Easy entry point for outdoor cultivation. Can produce for years once established.',
+  'Fruits spring/fall when ground temps 60-70°F with moisture.',
+  'Variable—pounds per established bed', 'Multiple years', 5, 7,
+  'Premier outdoor garden species. Large wine-red caps. Excellent for permaculture.',
+  NULL
+);
+
+-- Nameko
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Nameko', 'Pholiota nameko',
+  ARRAY['Butterscotch Mushroom'],
+  'gourmet', 'intermediate',
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 21, "daysMax": 30, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 72, "optimal": 68}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 50, "max": 60, "optimal": 55}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 50, "max": 60, "optimal": 55}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 5, "daysMax": 8, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['supplemented hardwood sawdust', 'hardwood logs'],
+  'Prefers cooler temperatures. Works well on logs outdoors.',
+  'Amber-orange caps with distinctive gelatinous coating (mucilage). Clusters of small caps.',
+  'Mild, woodsy flavor.',
+  'The slime layer is prized in Japanese cuisine, especially miso soup. DO NOT wash off the slime—it''s the point!',
+  'Prefers cooler temperatures. Easier than it looks once dialed in.',
+  'Short shelf life (5-7 days).',
+  '0.5-0.75 lb per container', '2-3 flushes', 5, 7,
+  'Amber-orange caps with distinctive gelatinous coating. Popular in Japanese cuisine, especially miso soup.',
+  NULL
+);
+
+-- Button Mushroom (Agaricus bisporus)
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Button Mushroom', 'Agaricus bisporus',
+  ARRAY['White Mushroom', 'Cremini', 'Crimini', 'Portobello', 'Portabella', 'Baby Bella'],
+  'gourmet', 'advanced',
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 10, "daysMax": 16, "co2Tolerance": "moderate", "lightRequirement": "none", "notes": "Requires casing layer"}'::jsonb,
+  '{"tempRange": {"min": 60, "max": 65, "optimal": 62}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 60, "max": 65, "optimal": 62}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['composted substrate'],
+  'UNIQUELY requires composted substrate (Phase I and II composting process). Cannot fruit on sawdust/straw like other species. Commercial operations use horse manure-based compost.',
+  'Most commercially cultivated mushroom worldwide. Same species at different stages: Button=young white, cremini=young brown, portobello=mature brown.',
+  'Mild, earthy flavor. Intensifies when dried or cooked.',
+  'Universal culinary use. Can be eaten raw or cooked.',
+  'Challenging for home cultivators due to composting requirements. Requires casing layer (peat/verm mix).',
+  'Different marketing names for same species at different maturity/color.',
+  '2-4 lbs per tray over multiple flushes', '3-5 flushes', 7, 10,
+  'Most commercially cultivated mushroom worldwide. Challenging for home cultivators due to composting requirements.',
+  NULL
+);
+
+-- MEDICINAL SPECIES
+
+-- Reishi
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Reishi', 'Ganoderma lucidum',
+  ARRAY['Lingzhi', 'Varnish Conk', 'Mushroom of Immortality', 'Divine Mushroom'],
+  'medicinal', 'intermediate',
+  '{"tempRange": {"min": 70, "max": 80, "optimal": 75}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 30, "daysMax": 60, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 70, "max": 80, "optimal": 75}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 20, "daysMax": 40, "co2Tolerance": "high", "lightRequirement": "none", "notes": "High CO2 = antler form"}'::jsonb,
+  '{"tempRange": {"min": 70, "max": 80, "optimal": 75}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 10, "daysMax": 20, "co2Tolerance": "low", "lightRequirement": "12hr_cycle"}'::jsonb,
+  '{"tempRange": {"min": 70, "max": 80, "optimal": 75}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 30, "daysMax": 90, "co2Tolerance": "low", "lightRequirement": "12hr_cycle"}'::jsonb,
+  ARRAY['supplemented hardwood sawdust', 'oak sawdust', 'maple sawdust'],
+  'Oak/maple preferred. High CO2 produces antler form; normal FAE produces conk (kidney-shaped with lacquered surface).',
+  'Forms either antler (high CO2, elongated) or conk (normal FAE, kidney-shaped with lacquered surface) based on conditions.',
+  'Extremely bitter. Not a culinary mushroom.',
+  'Woody texture—not culinary, used for tea, tinctures, extracts. Dual extraction (water + alcohol) captures full spectrum.',
+  'Most studied medicinal mushroom with 2000+ years of use. Contains triterpenoids, beta-glucans, polysaccharides.',
+  '12hr light cycles trigger conk formation. Long grow cycle (3-6 months total).',
+  'Dual extraction recommended for full medicinal benefit.',
+  '0.25-0.5 lb per 5lb block', '1-2 flushes', 365, 730,
+  'Most studied medicinal mushroom. Woody texture, used for tea/extracts. Long grow cycle (3-6 months).',
+  NULL
+);
+
+-- Turkey Tail
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Turkey Tail', 'Trametes versicolor',
+  ARRAY['Yun Zhi', 'Kawaratake', 'Cloud Mushroom'],
+  'medicinal', 'beginner',
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 14, "daysMax": 28, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 60, "max": 75, "optimal": 68}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 60, "max": 75, "optimal": 68}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['hardwood sawdust', 'hardwood logs', 'wood chips', 'stumps', 'straw'],
+  'Very adaptable. Can establish outdoors on hardwood logs/stumps for continuous production.',
+  'Colorful thin bracket fungus with concentric color zones on cap. One of easiest medicinal mushrooms to cultivate.',
+  'Not culinary—thin leathery texture.',
+  'Used for tea/extract only. Not a culinary mushroom.',
+  'Contains PSK and PSP polysaccharides extensively studied in cancer research for immune support.',
+  'Fast colonizer, aggressive. Easy to grow on many substrates.',
+  'One of the best-researched medicinal mushrooms.',
+  '0.25-0.5 lb per log/block', 'Continuous on logs', 365, 730,
+  'Colorful thin bracket fungus. One of easiest medicinal mushrooms. Extensively researched for immune support.',
+  NULL
+);
+
+-- Cordyceps militaris
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Cordyceps', 'Cordyceps militaris',
+  ARRAY['Caterpillar Fungus', 'Orange Caterpillar', 'Military Cordyceps'],
+  'medicinal', 'advanced',
+  '{"tempRange": {"min": 68, "max": 72, "optimal": 70}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 65, "max": 70, "optimal": 68}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 60, "max": 68, "optimal": 64}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 10, "daysMax": 20, "co2Tolerance": "low", "lightRequirement": "12hr_cycle", "notes": "12-16hr light triggers fruiting"}'::jsonb,
+  '{"tempRange": {"min": 60, "max": 68, "optimal": 64}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 20, "daysMax": 40, "co2Tolerance": "low", "lightRequirement": "12hr_cycle"}'::jsonb,
+  ARRAY['grain + silkworm pupae', 'rice-based substrate'],
+  'Unique substrate requirements: grain + silkworm pupae or specialized rice-based formulas. Requires specialized conditions.',
+  'Orange club-shaped fruiting bodies. Requires 12-16hr light daily to trigger fruiting.',
+  'Mild, slightly sweet.',
+  'Can be added to soups or teas. Also available as extract.',
+  'Contains cordycepin and adenosine. Traditional use for energy, athletic performance.',
+  'Wild C. sinensis (on caterpillar hosts) costs $20,000+/lb and cannot be cultivated. C. militaris is the accessible alternative.',
+  'Challenging but achievable with proper setup.',
+  '0.1-0.25 lb per container', '1-2 flushes', 30, 60,
+  'Orange club-shaped fruiting bodies. Cultivated alternative to wild C. sinensis. Contains cordycepin.',
+  NULL
+);
+
+-- Chaga (included for reference - cannot be cultivated)
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, notes, user_id)
+VALUES (
+  'Chaga', 'Inonotus obliquus',
+  ARRAY['Clinker Polypore', 'Birch Conk', 'Black Mass'],
+  'medicinal', 'expert',
+  '{"notes": "Cannot be conventionally cultivated"}'::jsonb,
+  '{"notes": "Requires living birch tree host"}'::jsonb,
+  '{"notes": "Not applicable - wild harvest only"}'::jsonb,
+  '{"notes": "10-20+ years to develop significant size"}'::jsonb,
+  ARRAY['living birch trees'],
+  'Not technically a mushroom—parasitic sterile conk (sclerotium) on birch trees. Cannot be conventionally cultivated.',
+  'Black exterior is melanin-rich; interior orange-brown. Parasitic on living birch trees. 10-20+ years to develop significant size.',
+  'Earthy, slightly vanilla when prepared as tea.',
+  'Traditional use: tea/decoction. Not eaten directly.',
+  'Contains betulinic acid (from birch), antioxidants. Overharvesting is a conservation concern.',
+  'Wild-harvested only. Some lab cultivation of mycelium exists but lacks compounds developed in wild sclerotia.',
+  'Sustainable sourcing important. Home cultivation not practical.',
+  'Wild harvest only', 'N/A',
+  'Parasitic on birch trees. Wild-harvested sclerotia used medicinally. Cannot be conventionally cultivated.',
+  NULL
+);
+
+-- RESEARCH SPECIES
+
+-- Psilocybe cubensis
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Psilocybe cubensis', 'Psilocybe cubensis',
+  ARRAY['Golden Teacher', 'Cubes', 'Mexican Mushroom', 'Golden Cap'],
+  'research', 'beginner',
+  '{"tempRange": {"min": 75, "max": 80, "optimal": 77}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 10, "daysMax": 14, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 72, "max": 78, "optimal": 75}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 5, "daysMax": 7, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['brown rice flour/vermiculite (PF Tek)', 'grain spawn to coir/verm', 'manure-based substrate'],
+  'Many cultivation methods: PF Tek (beginner), grain spawn to bulk substrate (intermediate). Coir/verm or manure-based.',
+  'Subtropical/tropical origin. Many cultivars exist (B+, Golden Teacher, Penis Envy, etc.) with varying characteristics.',
+  'Not relevant for this category.',
+  'Not consumed as food.',
+  'Most widely studied and cultivated psilocybin species for research.',
+  'Legal status varies by jurisdiction—federally scheduled in US, decriminalized or legal elsewhere. For microscopy and taxonomy study only where applicable.',
+  'For microscopy and taxonomy study only where applicable.',
+  '1-2 oz dried per quart spawn', '3-5 flushes', 7, 14,
+  'Most widely studied psilocybin species. Legal status varies by jurisdiction. For microscopy/research only.',
+  NULL
+);
+
+-- Psilocybe cyanescens
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile,
+  community_tips, important_facts, typical_yield, flush_count, notes, user_id)
+VALUES (
+  'Psilocybe cyanescens', 'Psilocybe cyanescens',
+  ARRAY['Wavy Caps', 'Blue Halo', 'Cyans'],
+  'research', 'advanced',
+  '{"tempRange": {"min": 60, "max": 75, "optimal": 68}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 60, "daysMax": 120, "co2Tolerance": "high", "lightRequirement": "none", "notes": "Summer colonization in wood chips"}'::jsonb,
+  '{"tempRange": {"min": 55, "max": 70, "optimal": 62}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 30, "daysMax": 90, "co2Tolerance": "high", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 40, "max": 55, "optimal": 48}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "high", "lightRequirement": "indirect", "notes": "Requires cold temps"}'::jsonb,
+  '{"tempRange": {"min": 40, "max": 55, "optimal": 48}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "high", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['wood chips', 'hardwood mulch'],
+  'OUTDOOR CULTIVATION ONLY—will not fruit indoors in typical conditions. Requires wood chip beds, cool fall temperatures with humidity.',
+  'Wood-loving species native to Pacific Northwest. Wavy cap margins distinctive. Strong blue-staining reaction.',
+  'Not relevant for this category.',
+  'Cannot be cultivated like P. cubensis. Colonization in wood chips over summer, fruits fall/early winter when temps drop to 40-55°F.',
+  'Spreading as invasive in Europe on landscape mulch. Higher research compound potency than cubensis.',
+  'Variable—outdoor bed dependent', 'Annual (fall)',
+  'Potent wood-loving species. Outdoor cultivation only. Native to Pacific Northwest.',
+  NULL
+);
+
+-- Psilocybe azurescens
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile,
+  community_tips, important_facts, typical_yield, flush_count, notes, user_id)
+VALUES (
+  'Psilocybe azurescens', 'Psilocybe azurescens',
+  ARRAY['Azzies', 'Flying Saucers', 'Blue Angels', 'Indigo Psilocybe'],
+  'research', 'expert',
+  '{"tempRange": {"min": 55, "max": 70, "optimal": 62}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 90, "daysMax": 180, "co2Tolerance": "high", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 50, "max": 65, "optimal": 58}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 60, "daysMax": 120, "co2Tolerance": "high", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 35, "max": 50, "optimal": 42}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 10, "daysMax": 21, "co2Tolerance": "high", "lightRequirement": "indirect", "notes": "Fruits near freezing"}'::jsonb,
+  '{"tempRange": {"min": 35, "max": 50, "optimal": 42}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "high", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['wood chips', 'hardwood debris'],
+  'Outdoor cultivation only. Requires wood chip beds, coastal climate conditions. Very cold-tolerant—fruits in temperatures near freezing.',
+  'Most potent known Psilocybe species. Native to small coastal Oregon area. Caramel-colored caps with pronounced umbo. Strong bluing reaction.',
+  'Not relevant for this category.',
+  'Cultivation requires specific conditions difficult to replicate outside native range. Spreading slowly in Pacific Northwest.',
+  'For academic/research interest regarding potency studies.',
+  'Variable—outdoor bed dependent', 'Annual (late fall/winter)',
+  'Most potent known Psilocybe species. Native to coastal Oregon. Outdoor only, very cold-tolerant.',
+  NULL
+);
+
+-- Panaeolus cyanescens
+INSERT INTO species (name, scientific_name, common_names, category, difficulty,
+  spawn_colonization, bulk_colonization, pinning, maturation,
+  preferred_substrates, substrate_notes, characteristics, flavor_profile,
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+VALUES (
+  'Panaeolus cyanescens', 'Panaeolus cyanescens',
+  ARRAY['Blue Meanies', 'Pan Cyan', 'Copelandia cyanescens'],
+  'research', 'intermediate',
+  '{"tempRange": {"min": 75, "max": 85, "optimal": 80}, "humidityRange": {"min": 95, "max": 99}, "daysMin": 7, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
+  '{"tempRange": {"min": 78, "max": 85, "optimal": 82}, "humidityRange": {"min": 95, "max": 99}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 75, "max": 85, "optimal": 80}, "humidityRange": {"min": 95, "max": 99}, "daysMin": 3, "daysMax": 7, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{"tempRange": {"min": 75, "max": 85, "optimal": 80}, "humidityRange": {"min": 95, "max": 99}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  ARRAY['dung-based substrate', 'pasteurized manure'],
+  'Prefers dung-based substrate. Fast colonizer but more contamination-prone than cubensis.',
+  'Tropical dung-loving species. Mottled black gills when mature. Strong bluing reaction. DISTINCT from P. cubensis "Blue Meanie" strain—different species.',
+  'Not relevant for this category.',
+  'Requires tropical conditions (75-85°F) and very high humidity (95%+).',
+  'Note: name "Blue Meanie" also used for P. cubensis strain—different species. Higher research compound concentration than cubensis.',
+  '0.5-1 oz dried per quart spawn', '3-5 flushes', 5, 7,
+  'Tropical dung-loving species. Distinct from P. cubensis "Blue Meanie" strain. Higher potency.',
+  NULL
+);
 
 -- ============================================================================
 -- ROW LEVEL SECURITY
@@ -1799,12 +2436,20 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 10)
-ON CONFLICT (id) DO UPDATE SET version = 10, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 11)
+ON CONFLICT (id) DO UPDATE SET version = 11, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v11 (2024-12): Comprehensive species data with grow cycle parameters:
+--                - spawn_colonization, bulk_colonization, pinning, maturation (JSONB)
+--                  Each contains tempRange, humidityRange, daysMin/Max, co2Tolerance, lightRequirement
+--                - preferred_substrates (TEXT[]), substrate_notes
+--                - difficulty, characteristics, flavor_profile, culinary_notes, medicinal_properties
+--                - community_tips, important_facts, typical_yield, flush_count
+--                - shelf_life_days_min/max
+--                Updated seed data with accurate temperatures and parameters for 20+ species
 -- v10 (2024-12): Enhanced strains table with taxonomy tracking:
 --                - variety, phenotype, genetics_source, isolation_type
 --                - generation, origin, description fields
