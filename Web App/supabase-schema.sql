@@ -3456,6 +3456,160 @@ BEGIN
 END $$;
 
 -- ============================================================================
+-- DAILY CHECK TABLES (dev-040)
+-- ============================================================================
+
+-- Daily room checks for growing rooms
+CREATE TABLE IF NOT EXISTS daily_checks (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  location_id UUID REFERENCES locations(id) ON DELETE CASCADE,
+  check_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  check_type TEXT CHECK (check_type IN ('growing_room', 'cool_room', 'general')) DEFAULT 'growing_room',
+
+  -- Growing room specific
+  harvest_estimate_7day DECIMAL,
+  needs_attention BOOLEAN DEFAULT false,
+  attention_reason TEXT,
+  flag_for_recheck BOOLEAN DEFAULT false,
+  needs_harvest_assistance BOOLEAN DEFAULT false,
+
+  -- Cool room specific
+  inventory_count INTEGER,
+  stock_levels JSONB,
+
+  -- General
+  notes TEXT,
+  photos TEXT[],
+  checked_by UUID REFERENCES auth.users(id),
+  checked_at TIMESTAMPTZ DEFAULT NOW(),
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Harvest forecast tracking
+CREATE TABLE IF NOT EXISTS harvest_forecasts (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  daily_check_id UUID REFERENCES daily_checks(id) ON DELETE CASCADE,
+  forecast_date DATE NOT NULL,
+  estimated_weight_grams DECIMAL,
+  pickers_needed INTEGER,
+  confidence TEXT CHECK (confidence IN ('low', 'medium', 'high')) DEFAULT 'medium',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Room status tracking for grow cycle planning
+CREATE TABLE IF NOT EXISTS room_statuses (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  location_id UUID REFERENCES locations(id) ON DELETE CASCADE,
+  status TEXT CHECK (status IN ('empty', 'filling', 'colonizing', 'pinning', 'fruiting', 'harvesting', 'resting', 'cleaning')) DEFAULT 'empty',
+  strain_ids UUID[],
+  block_count INTEGER DEFAULT 0,
+  estimated_ready_date DATE,
+  last_harvest_date DATE,
+  total_yield_grams DECIMAL DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for daily check tables
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_daily_checks_location_id ON daily_checks(location_id);
+  CREATE INDEX IF NOT EXISTS idx_daily_checks_check_date ON daily_checks(check_date DESC);
+  CREATE INDEX IF NOT EXISTS idx_daily_checks_user_id ON daily_checks(user_id);
+  CREATE INDEX IF NOT EXISTS idx_harvest_forecasts_daily_check_id ON harvest_forecasts(daily_check_id);
+  CREATE INDEX IF NOT EXISTS idx_room_statuses_location_id ON room_statuses(location_id);
+END $$;
+
+-- Enable RLS for daily check tables
+ALTER TABLE daily_checks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE harvest_forecasts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE room_statuses ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for daily_checks
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own daily_checks" ON daily_checks;
+  DROP POLICY IF EXISTS "Users can insert their own daily_checks" ON daily_checks;
+  DROP POLICY IF EXISTS "Users can update their own daily_checks" ON daily_checks;
+  DROP POLICY IF EXISTS "Users can delete their own daily_checks" ON daily_checks;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own daily_checks"
+  ON daily_checks FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own daily_checks"
+  ON daily_checks FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own daily_checks"
+  ON daily_checks FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own daily_checks"
+  ON daily_checks FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- RLS Policies for harvest_forecasts
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own harvest_forecasts" ON harvest_forecasts;
+  DROP POLICY IF EXISTS "Users can insert their own harvest_forecasts" ON harvest_forecasts;
+  DROP POLICY IF EXISTS "Users can update their own harvest_forecasts" ON harvest_forecasts;
+  DROP POLICY IF EXISTS "Users can delete their own harvest_forecasts" ON harvest_forecasts;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own harvest_forecasts"
+  ON harvest_forecasts FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own harvest_forecasts"
+  ON harvest_forecasts FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own harvest_forecasts"
+  ON harvest_forecasts FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own harvest_forecasts"
+  ON harvest_forecasts FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- RLS Policies for room_statuses
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own room_statuses" ON room_statuses;
+  DROP POLICY IF EXISTS "Users can insert their own room_statuses" ON room_statuses;
+  DROP POLICY IF EXISTS "Users can update their own room_statuses" ON room_statuses;
+  DROP POLICY IF EXISTS "Users can delete their own room_statuses" ON room_statuses;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own room_statuses"
+  ON room_statuses FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own room_statuses"
+  ON room_statuses FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own room_statuses"
+  ON room_statuses FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own room_statuses"
+  ON room_statuses FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
 -- SCHEMA VERSION (for tracking migrations)
 -- ============================================================================
 
@@ -3466,12 +3620,17 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 15)
-ON CONFLICT (id) DO UPDATE SET version = 15, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 16)
+ON CONFLICT (id) DO UPDATE SET version = 16, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v16 (2024-12): Added daily check and harvest workflow tables (dev-040, dev-184):
+--               - daily_checks: Room-by-room daily inspection tracking
+--               - harvest_forecasts: 7-day harvest predictions
+--               - room_statuses: Room lifecycle tracking (empty, colonizing, fruiting, etc.)
+--               - Full RLS policies and indexes for all tables
 -- v15 (2024-12): Fix species seed data re-run safety:
 --               - Added conditional check to skip seeding if 5+ species exist
 --               - Added partial unique index on species.name for global species
