@@ -3,10 +3,11 @@
 // ============================================================================
 
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { DataProvider, useData, CreationProvider, useCreation } from './store';
+import { DataProvider, useData, CreationProvider, useCreation, NotificationProvider } from './store';
 import { AuthProvider } from './lib/AuthContext';
 import { EntityFormModal } from './components/forms';
 import { AuthModal, AccountMenu } from './components/auth';
+import { ToastContainer, NotificationBell } from './components/notifications';
 import DevLogPage from './components/devlog/DevLogPage';
 import type { 
   AppState, 
@@ -308,31 +309,44 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onCl
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
-      
+
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50
-        w-64 bg-zinc-900 border-r border-zinc-800 
+        w-64 bg-zinc-900 border-r border-zinc-800
         flex flex-col h-full
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Logo */}
         <div className="p-4 border-b border-zinc-800 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <span className="text-xl">🍄</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <span className="text-xl">🍄</span>
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold text-white tracking-tight">MycoLab</h1>
+                <p className="text-xs text-zinc-500">Laboratory Manager</p>
+                <p className="text-[10px] text-zinc-600 font-mono">v{__APP_VERSION__}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-lg font-semibold text-white tracking-tight">MycoLab</h1>
-              <p className="text-xs text-zinc-500">Laboratory Manager</p>
-              <p className="text-[10px] text-zinc-600 font-mono">v{__APP_VERSION__}</p>
-            </div>
+            {/* Mobile close button */}
+            <button
+              onClick={onClose}
+              className="lg:hidden p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              aria-label="Close menu"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -412,12 +426,13 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
   const newAction = newButtonConfig[currentPage];
 
   return (
-    <header className="h-14 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/30 flex-shrink-0">
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="h-14 border-b border-zinc-800 flex items-center justify-between px-3 sm:px-4 bg-zinc-900/30 flex-shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {/* Mobile menu button */}
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 -ml-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+          className="lg:hidden p-2 -ml-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+          aria-label="Open menu"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
             <line x1="3" y1="12" x2="21" y2="12"/>
@@ -426,24 +441,18 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
           </svg>
         </button>
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-white truncate">{title}</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-white truncate">{title}</h2>
           {subtitle && <p className="text-xs text-zinc-500 truncate hidden sm:block">{subtitle}</p>}
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
         {/* Global Search Trigger */}
         <SearchTrigger onClick={onSearchClick} />
-        {/* Notification Bell - only show dot when there are actual notifications */}
-        <button
-          className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors relative"
-          title="Notifications coming soon"
-        >
-          <Icons.Bell />
-          {/* No hardcoded notification dot - will be dynamic when notifications are implemented */}
-        </button>
+        {/* Notification Bell */}
+        <NotificationBell onNavigateToSettings={() => onNavigate('settings')} />
         {newAction && (
           <button
-            className="flex items-center gap-2 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
             onClick={() => {
               if (currentPage === newAction.page) {
                 // Already on the page, just dispatch the create event
@@ -894,22 +903,25 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <DataProvider>
-        <CreationProvider>
-          <AppContext.Provider value={contextValue}>
-            <AuthModal />
-            <CreationModalManager />
-            <AppContent
-              showSetup={showSetup}
-              setShowSetup={setShowSetup}
-              currentPage={currentPage}
-              setCurrentPage={setCurrentPage}
-              sidebarOpen={sidebarOpen}
-              setSidebarOpen={setSidebarOpen}
-              renderPage={renderPage}
-              pageConfig={pageConfig}
-            />
-          </AppContext.Provider>
-        </CreationProvider>
+        <NotificationProvider>
+          <CreationProvider>
+            <AppContext.Provider value={contextValue}>
+              <AuthModal />
+              <CreationModalManager />
+              <ToastContainer />
+              <AppContent
+                showSetup={showSetup}
+                setShowSetup={setShowSetup}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                sidebarOpen={sidebarOpen}
+                setSidebarOpen={setSidebarOpen}
+                renderPage={renderPage}
+                pageConfig={pageConfig}
+              />
+            </AppContext.Provider>
+          </CreationProvider>
+        </NotificationProvider>
       </DataProvider>
     </AuthProvider>
   );

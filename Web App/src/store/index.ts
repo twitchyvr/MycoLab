@@ -6,3 +6,4 @@
 export * from './types';
 export * from './DataContext';
 export * from './CreationContext';
+export * from './NotificationContext';
