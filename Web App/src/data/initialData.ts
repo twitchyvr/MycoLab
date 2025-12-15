@@ -1088,6 +1088,27 @@ export const initialDevLog: DevLogFeature[] = [
     updatedAt: new Date().toISOString(),
   },
   {
+    id: 'dev-122b',
+    title: 'Profile Management Page',
+    description: 'Dedicated page for users to manage their profile, update display name, change password, view account details, and delete account.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    actualHours: 3,
+    completedAt: new Date().toISOString(),
+    dependencies: ['dev-122'],
+    notes: `ProfilePage component at /profile with:
+- Personal information editing (display name)
+- Email display with verification status
+- Password change with validation
+- Account details (member since, subscription tier, last sign in)
+- Delete account with confirmation modal
+- Accessible via AccountMenu "Manage Profile" button`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
     id: 'dev-123',
     title: 'Cloud File Storage',
     description: 'Azure Blob or DigitalOcean Spaces for photos. Secure upload, CDN delivery.',
@@ -1250,9 +1271,12 @@ Prerequisites:
     title: 'Global Search',
     description: 'Search across all entities: cultures, grows, strains, recipes. Advanced filtering.',
     category: 'core',
-    status: 'planned',
+    status: 'completed',
     priority: 'high',
     estimatedHours: 10,
+    actualHours: 8,
+    completedAt: new Date().toISOString(),
+    notes: 'GlobalSearch component with Cmd/Ctrl+K shortcut. Searches cultures, grows, strains, recipes with instant results and navigation.',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
