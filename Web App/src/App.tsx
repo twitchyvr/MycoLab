@@ -32,6 +32,7 @@ import { UnifiedItemView } from './components/inventory/UnifiedItemView';
 import { ContaminationAnalysis } from './components/analysis/ContaminationAnalysis';
 import { BiologicalEfficiencyCalculator } from './components/analysis/BiologicalEfficiencyCalculator';
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
+import { StrainPerformanceAnalytics } from './components/analytics/StrainPerformanceAnalytics';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { SpawnRateCalculator } from './components/tools/SpawnRateCalculator';
 import { PressureCookingCalculator } from './components/tools/PressureCookingCalculator';
@@ -207,6 +208,11 @@ const Icons = {
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
     </svg>
   ),
+  Target: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+    </svg>
+  ),
   TrendingUp: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
       <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
@@ -294,7 +300,7 @@ const Icons = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
 
 interface NavItem {
   id: Page;
@@ -328,6 +334,7 @@ const navItems: NavItem[] = [
   { id: 'contamination', label: 'Contamination', icon: Icons.AlertTriangle },
   { id: 'efficiency', label: 'BE Calculator', icon: Icons.TrendingUp },
   { id: 'analytics', label: 'Analytics', icon: Icons.Chart },
+  { id: 'strainanalytics', label: 'Strain Analytics', icon: Icons.Target },
   { id: 'settings', label: 'Settings', icon: Icons.Settings },
   { id: 'devlog', label: 'Roadmap', icon: Icons.DevLog },
 ];
@@ -864,6 +871,7 @@ const App: React.FC = () => {
     contamination: { title: 'Contamination Analysis', subtitle: 'Track and analyze contamination patterns' },
     efficiency: { title: 'Biological Efficiency', subtitle: 'Calculate and compare BE% across grows' },
     analytics: { title: 'Analytics', subtitle: 'Data visualization and insights' },
+    strainanalytics: { title: 'Strain Performance', subtitle: 'Track success rates, yields, and optimal conditions per strain' },
     settings: { title: 'Settings', subtitle: 'Configure lookups and preferences' },
     profile: { title: 'My Profile', subtitle: 'Manage your account and security settings' },
     devlog: { title: 'Dev Roadmap', subtitle: 'Feature tracker with intelligent prioritization' },
@@ -1013,6 +1021,8 @@ const App: React.FC = () => {
             <AnalyticsDashboard />
           </div>
         );
+      case 'strainanalytics':
+        return <StrainPerformanceAnalytics />;
       case 'spawnrate':
         return (
           <div className="p-6">
