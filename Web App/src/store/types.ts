@@ -166,6 +166,12 @@ export interface Species {
   // Automation configuration (for future IoT integration)
   automationConfig?: SpeciesAutomationConfig;
 
+  // Stage-specific notes (easily accessible for UI display)
+  spawnColonizationNotes?: string;  // Human-readable guidance for spawn colonization
+  bulkColonizationNotes?: string;   // Human-readable guidance for bulk colonization
+  pinningNotes?: string;            // Human-readable guidance for pinning stage
+  maturationNotes?: string;         // Human-readable guidance for maturation/harvest
+
   notes?: string;
   isActive: boolean;
 }

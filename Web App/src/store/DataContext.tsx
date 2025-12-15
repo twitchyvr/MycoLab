@@ -1005,6 +1005,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           : undefined,
         // Automation configuration (for IoT/sensor integration)
         automationConfig: row.automation_config,
+        // Stage-specific notes (easily accessible for UI)
+        spawnColonizationNotes: row.spawn_colonization_notes,
+        bulkColonizationNotes: row.bulk_colonization_notes,
+        pinningNotes: row.pinning_notes,
+        maturationNotes: row.maturation_notes,
         notes: row.notes,
         isActive: row.is_active ?? true,
       }));
@@ -1172,6 +1177,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           shelf_life_days_max: species.shelfLifeDays?.max,
           // Automation configuration (JSONB for IoT/sensor integration)
           automation_config: species.automationConfig,
+          // Stage-specific notes
+          spawn_colonization_notes: species.spawnColonizationNotes,
+          bulk_colonization_notes: species.bulkColonizationNotes,
+          pinning_notes: species.pinningNotes,
+          maturation_notes: species.maturationNotes,
           notes: species.notes,
           is_active: species.isActive ?? true,
           ...(userId && { user_id: userId }),
@@ -1206,6 +1216,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           ? { min: data.shelf_life_days_min, max: data.shelf_life_days_max }
           : undefined,
         automationConfig: data.automation_config,
+        spawnColonizationNotes: data.spawn_colonization_notes,
+        bulkColonizationNotes: data.bulk_colonization_notes,
+        pinningNotes: data.pinning_notes,
+        maturationNotes: data.maturation_notes,
         notes: data.notes,
         isActive: data.is_active ?? true,
       };
@@ -1245,6 +1259,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         dbUpdates.shelf_life_days_max = updates.shelfLifeDays?.max;
       }
       if (updates.automationConfig !== undefined) dbUpdates.automation_config = updates.automationConfig;
+      if (updates.spawnColonizationNotes !== undefined) dbUpdates.spawn_colonization_notes = updates.spawnColonizationNotes;
+      if (updates.bulkColonizationNotes !== undefined) dbUpdates.bulk_colonization_notes = updates.bulkColonizationNotes;
+      if (updates.pinningNotes !== undefined) dbUpdates.pinning_notes = updates.pinningNotes;
+      if (updates.maturationNotes !== undefined) dbUpdates.maturation_notes = updates.maturationNotes;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
       if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
 

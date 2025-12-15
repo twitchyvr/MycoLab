@@ -1190,6 +1190,24 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'automation_config') THEN
     ALTER TABLE species ADD COLUMN automation_config JSONB;
   END IF;
+
+  -- Stage-specific notes (easily accessible TEXT fields for UI display)
+  -- These provide human-readable guidance for each growth stage
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'spawn_colonization_notes') THEN
+    ALTER TABLE species ADD COLUMN spawn_colonization_notes TEXT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'bulk_colonization_notes') THEN
+    ALTER TABLE species ADD COLUMN bulk_colonization_notes TEXT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'pinning_notes') THEN
+    ALTER TABLE species ADD COLUMN pinning_notes TEXT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'maturation_notes') THEN
+    ALTER TABLE species ADD COLUMN maturation_notes TEXT;
+  END IF;
 END $$;
 
 -- ============================================================================
@@ -1207,15 +1225,64 @@ DELETE FROM species WHERE user_id IS NULL;
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, spawn_colonization_notes, bulk_colonization_notes, pinning_notes, maturation_notes, notes, user_id)
 VALUES (
   'Pearl Oyster', 'Pleurotus ostreatus',
   ARRAY['Oyster Mushroom', 'Tree Oyster', 'Hiratake'],
   'gourmet', 'beginner',
-  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 10, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 75, "optimal": 72, "warningLow": 65, "warningHigh": 80, "criticalLow": 60, "criticalHigh": 85, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 5000, "optimal": 2000, "warningHigh": 8000, "criticalHigh": 15000, "unit": "ppm"},
+    "daysMin": 10, "daysMax": 21, "daysTypical": 14,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "2x daily during colonization",
+    "lightRequirement": "none",
+    "lightSchedule": {"photoperiod": 0, "intensity": "low"},
+    "transitionCriteria": {"minDays": 10, "maxDays": 21, "typicalDays": 14, "colonizationPercent": 100, "visualIndicators": ["fully white mycelium", "no visible grain"], "autoTransition": false, "transitionAlertDays": 2},
+    "criticalParameters": ["temperature", "humidity"],
+    "equipmentNotes": "Standard incubation chamber, minimal FAE needed"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 75, "optimal": 70, "warningLow": 60, "warningHigh": 80, "criticalLow": 55, "criticalHigh": 85, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 2000, "optimal": 800, "warningHigh": 3000, "criticalHigh": 5000, "unit": "ppm"},
+    "daysMin": 7, "daysMax": 14, "daysTypical": 10,
+    "co2Tolerance": "low",
+    "faeFrequency": "4x daily or continuous passive",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "low", "spectrum": "cool"},
+    "transitionCriteria": {"minDays": 7, "maxDays": 14, "typicalDays": 10, "colonizationPercent": 100, "visualIndicators": ["substrate fully colonized", "pins forming at holes"], "autoTransition": false, "transitionAlertDays": 2},
+    "criticalParameters": ["humidity", "co2", "fae"],
+    "equipmentNotes": "Martha tent or fruiting chamber with FAE"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 65, "optimal": 60, "warningLow": 50, "warningHigh": 70, "criticalLow": 45, "criticalHigh": 75, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 92, "warningLow": 80, "warningHigh": 98, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 1000, "optimal": 500, "warningHigh": 1500, "criticalHigh": 2500, "unit": "ppm"},
+    "daysMin": 3, "daysMax": 5, "daysTypical": 4,
+    "co2Tolerance": "low",
+    "faeFrequency": "6x daily or continuous",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 3, "maxDays": 5, "typicalDays": 4, "visualIndicators": ["primordia visible", "small pins 1-2cm"], "autoTransition": true, "transitionAlertDays": 1},
+    "criticalParameters": ["humidity", "fae", "co2"],
+    "equipmentNotes": "High humidity critical, increase FAE, drop temperature"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 65, "optimal": 60, "warningLow": 50, "warningHigh": 70, "criticalLow": 45, "criticalHigh": 75, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 1000, "optimal": 500, "warningHigh": 1500, "criticalHigh": 2500, "unit": "ppm"},
+    "daysMin": 3, "daysMax": 5, "daysTypical": 4,
+    "co2Tolerance": "low",
+    "faeFrequency": "6x daily or continuous",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool"},
+    "transitionCriteria": {"minDays": 3, "maxDays": 5, "typicalDays": 4, "visualIndicators": ["caps flattening", "edges uncurling", "gills visible"], "autoTransition": false, "transitionAlertDays": 1},
+    "criticalParameters": ["humidity", "fae"],
+    "equipmentNotes": "Harvest when cap edges still slightly curled"
+  }'::jsonb,
   ARRAY['straw', 'hardwood sawdust', 'hardwood chips', 'cardboard', 'coffee grounds', 'paper', 'masters mix'],
   'Pasteurized straw is traditional and economical. Supplemented hardwood sawdust produces denser fruits. Can fruit on almost any cellulose-based material.',
   'Aggressive colonizer that outcompetes most contaminants. Fan-shaped clusters with gills running down short stem. Color varies from white to gray to brown.',
@@ -1224,6 +1291,22 @@ VALUES (
   'Spore load can be heavy during fruiting—ensure good ventilation. Harvest when cap edges are still slightly curled for best texture.',
   'Most forgiving species for beginners. Yields 1-2 lbs per 5lb block over 2-3 flushes.',
   '1-2 lbs per 5lb block', '2-3 flushes', 7, 10,
+  '{
+    "automationTested": true,
+    "automationNotes": "Excellent species for automation due to forgiving nature. Tolerates parameter fluctuations well.",
+    "requiredSensors": ["temperature", "humidity"],
+    "optionalSensors": ["co2", "light", "weight"],
+    "controllerTypes": ["inkbird", "ac_infinity", "custom_arduino", "raspberry_pi"],
+    "alertOnTempDeviation": 5,
+    "alertOnHumidityDeviation": 10,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 300,
+    "dataRetentionDays": 90
+  }'::jsonb,
+  'SPAWN COLONIZATION (70-75°F, 10-21 days): Inoculate grain spawn and keep at 72°F optimal. Store in dark, warm place. Minimal FAE needed—just check for contamination. Wait for complete colonization (fully white, no visible grain). Shake at 30% colonization to speed up.',
+  'BULK COLONIZATION (65-75°F, 7-14 days): Transfer colonized spawn to bulk substrate. Maintain 70°F with higher humidity (85-95%). Begin introducing indirect light. Watch for primordia formation at air holes. Ready for fruiting when surface is fully colonized.',
+  'PINNING (55-65°F, 3-5 days): Drop temperature to 60°F to trigger pinning. Increase FAE significantly—CO2 must stay below 1000ppm. High humidity (90%+) critical. Indirect light 12hr/day. Pins should appear within 3-5 days.',
+  'MATURATION (55-65°F, 3-5 days): Maintain fruiting conditions. Harvest when cap edges are still slightly curled inward before they flatten. Twist and pull to harvest. Expect 1-2lbs per 5lb block. Second flush in 1-2 weeks after soaking.',
   'The most widely cultivated oyster mushroom worldwide. Fast colonizer, aggressive, forgiving for beginners.',
   NULL
 );
@@ -1232,15 +1315,63 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Blue Oyster', 'Pleurotus columbinus',
   ARRAY['Blue Pearl'],
   'gourmet', 'beginner',
-  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 12, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 60, "max": 70, "optimal": 65}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 45, "max": 55, "optimal": 50}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 45, "max": 65, "optimal": 55}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 4, "daysMax": 6, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 75, "optimal": 70, "warningLow": 60, "warningHigh": 78, "criticalLow": 55, "criticalHigh": 82, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 5000, "optimal": 2000, "warningHigh": 8000, "criticalHigh": 15000, "unit": "ppm"},
+    "daysMin": 12, "daysMax": 21, "daysTypical": 16,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "2x daily during colonization",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 12, "maxDays": 21, "typicalDays": 16, "colonizationPercent": 100, "visualIndicators": ["fully white mycelium"], "autoTransition": false},
+    "criticalParameters": ["temperature", "humidity"],
+    "equipmentNotes": "Standard incubation, tolerates cooler temps than most oysters"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 60, "max": 70, "optimal": 65, "warningLow": 55, "warningHigh": 75, "criticalLow": 50, "criticalHigh": 80, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 2000, "optimal": 800, "warningHigh": 3000, "criticalHigh": 5000, "unit": "ppm"},
+    "daysMin": 7, "daysMax": 14, "daysTypical": 10,
+    "co2Tolerance": "low",
+    "faeFrequency": "4x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "low", "spectrum": "cool"},
+    "transitionCriteria": {"minDays": 7, "maxDays": 14, "typicalDays": 10, "visualIndicators": ["pins forming"]},
+    "criticalParameters": ["humidity", "co2"],
+    "equipmentNotes": "Benefits from cold shock to initiate pinning"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 45, "max": 55, "optimal": 50, "warningLow": 40, "warningHigh": 60, "criticalLow": 35, "criticalHigh": 65, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 92, "warningLow": 80, "warningHigh": 98, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 1000, "optimal": 500, "warningHigh": 1500, "criticalHigh": 2500, "unit": "ppm"},
+    "daysMin": 3, "daysMax": 5, "daysTypical": 4,
+    "co2Tolerance": "low",
+    "faeFrequency": "continuous or 6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool"},
+    "transitionCriteria": {"minDays": 3, "maxDays": 5, "visualIndicators": ["primordia developing", "pins 1-2cm"]},
+    "criticalParameters": ["temperature", "humidity", "fae"],
+    "equipmentNotes": "Prefers cold fruiting conditions"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 45, "max": 65, "optimal": 55, "warningLow": 40, "warningHigh": 70, "criticalLow": 35, "criticalHigh": 75, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 1000, "optimal": 500, "warningHigh": 1500, "criticalHigh": 2500, "unit": "ppm"},
+    "daysMin": 4, "daysMax": 6, "daysTypical": 5,
+    "co2Tolerance": "low",
+    "faeFrequency": "continuous or 6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool"},
+    "transitionCriteria": {"minDays": 4, "maxDays": 6, "visualIndicators": ["caps flattening", "blue-gray color developing"]},
+    "criticalParameters": ["humidity", "fae"],
+    "equipmentNotes": "Harvest when edges still curled for best color"
+  }'::jsonb,
   ARRAY['straw', 'hardwood sawdust', 'hardwood chips', 'masters mix'],
   'Same substrates as Pearl Oyster. Excels in cooler conditions.',
   'Cold-tolerant oyster producing blue-gray caps that fade to gray-brown with age. Slightly firmer texture than pearl oyster.',
@@ -1249,6 +1380,18 @@ VALUES (
   'Prefers cooler temperatures than most oysters. Harvest when edges still slightly curled.',
   'Best choice for cool-weather cultivation. Deep blue/steel gray caps when young.',
   '1-2 lbs per 5lb block', '2-3 flushes', 7, 10,
+  '{
+    "automationTested": true,
+    "automationNotes": "Great for unheated spaces. Cold-tolerant, ideal for basement/garage setups without heating.",
+    "requiredSensors": ["temperature", "humidity"],
+    "optionalSensors": ["co2", "light"],
+    "controllerTypes": ["inkbird", "ac_infinity", "custom_arduino"],
+    "alertOnTempDeviation": 5,
+    "alertOnHumidityDeviation": 10,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 300,
+    "dataRetentionDays": 90
+  }'::jsonb,
   'Cold-tolerant oyster variety producing blue-gray caps. Popular commercial variety.',
   NULL
 );
@@ -1257,15 +1400,63 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Pink Oyster', 'Pleurotus djamor',
   ARRAY['Flamingo Oyster', 'Salmon Oyster'],
   'gourmet', 'beginner',
-  '{"tempRange": {"min": 75, "max": 85, "optimal": 80}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 75, "max": 85, "optimal": 80}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 80, "optimal": 75}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 2, "daysMax": 3, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 85, "optimal": 75}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 2, "daysMax": 3, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 75, "max": 85, "optimal": 80, "warningLow": 70, "warningHigh": 88, "criticalLow": 40, "criticalHigh": 95, "rampRate": 2},
+    "humidityRange": {"min": 80, "max": 90, "optimal": 85, "warningLow": 75, "warningHigh": 95, "criticalLow": 65, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 5000, "optimal": 2000, "warningHigh": 8000, "criticalHigh": 15000, "unit": "ppm"},
+    "daysMin": 7, "daysMax": 14, "daysTypical": 10,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "2x daily",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 7, "maxDays": 14, "typicalDays": 10, "colonizationPercent": 100, "visualIndicators": ["fully colonized", "pink tinge visible"], "autoTransition": false, "transitionAlertDays": 2},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "CRITICAL: Keep above 40°F at ALL times. Use heating mat if needed. Dies below 40°F."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 75, "max": 85, "optimal": 80, "warningLow": 70, "warningHigh": 88, "criticalLow": 40, "criticalHigh": 95, "rampRate": 2},
+    "humidityRange": {"min": 80, "max": 90, "optimal": 85, "warningLow": 75, "warningHigh": 95, "criticalLow": 65, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 2000, "optimal": 800, "warningHigh": 3000, "criticalHigh": 5000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 10, "daysTypical": 7,
+    "co2Tolerance": "low",
+    "faeFrequency": "4x daily or continuous",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "warm"},
+    "transitionCriteria": {"minDays": 5, "maxDays": 10, "typicalDays": 7, "visualIndicators": ["pins forming rapidly"]},
+    "criticalParameters": ["temperature", "humidity"],
+    "equipmentNotes": "Fastest fruiting oyster. Keep warm."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 80, "optimal": 75, "warningLow": 55, "warningHigh": 85, "criticalLow": 40, "criticalHigh": 90, "rampRate": 2},
+    "humidityRange": {"min": 80, "max": 90, "optimal": 85, "warningLow": 75, "warningHigh": 95, "criticalLow": 65, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 1000, "optimal": 500, "warningHigh": 1500, "criticalHigh": 2500, "unit": "ppm"},
+    "daysMin": 2, "daysMax": 3, "daysTypical": 2,
+    "co2Tolerance": "low",
+    "faeFrequency": "6x daily or continuous",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "warm"},
+    "transitionCriteria": {"minDays": 2, "maxDays": 3, "visualIndicators": ["primordia developing rapidly", "pink color intensifying"], "autoTransition": true},
+    "criticalParameters": ["temperature", "humidity"],
+    "equipmentNotes": "Very fast development. Monitor closely."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 85, "optimal": 75, "warningLow": 55, "warningHigh": 88, "criticalLow": 40, "criticalHigh": 95, "rampRate": 2},
+    "humidityRange": {"min": 80, "max": 90, "optimal": 85, "warningLow": 75, "warningHigh": 95, "criticalLow": 65, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 1000, "optimal": 500, "warningHigh": 1500, "criticalHigh": 2500, "unit": "ppm"},
+    "daysMin": 2, "daysMax": 3, "daysTypical": 2,
+    "co2Tolerance": "low",
+    "faeFrequency": "continuous",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "warm"},
+    "transitionCriteria": {"minDays": 2, "maxDays": 3, "visualIndicators": ["caps fully developed", "bright pink color", "edges slightly curled"]},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Harvest immediately when ready. Very short shelf life."
+  }'::jsonb,
   ARRAY['straw', 'hardwood sawdust', 'coffee grounds', 'masters mix'],
   'Thrives in warm conditions. Does not tolerate cold.',
   'Stunning bright pink coloration. Tropical species that dies below 40°F. Fastest fruiting oyster.',
@@ -1274,6 +1465,18 @@ VALUES (
   'CRITICAL: Dies below 40°F—NEVER refrigerate spawn or cultures. Aggressive colonizer, good for beginners in warm climates.',
   'Fastest fruiting oyster (3-5 days from pins to harvest). Beautiful but ephemeral.',
   '0.75-1.5 lbs per 5lb block', '2-3 flushes', 2, 4,
+  '{
+    "automationTested": true,
+    "automationNotes": "CRITICAL: Temperature must NEVER drop below 40°F or mycelium dies. Requires heating in cold climates. Fastest fruiting oyster - tight monitoring needed.",
+    "requiredSensors": ["temperature", "humidity"],
+    "optionalSensors": ["co2"],
+    "controllerTypes": ["inkbird", "ac_infinity"],
+    "alertOnTempDeviation": 3,
+    "alertOnHumidityDeviation": 8,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 180,
+    "dataRetentionDays": 60
+  }'::jsonb,
   'Tropical species with stunning pink coloration. Needs warmth, dies below 40°F.',
   NULL
 );
@@ -1282,15 +1485,63 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Golden Oyster', 'Pleurotus citrinopileatus',
   ARRAY['Yellow Oyster', 'Tamogitake'],
   'gourmet', 'beginner',
-  '{"tempRange": {"min": 70, "max": 80, "optimal": 75}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 10, "daysMax": 14, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 70, "max": 80, "optimal": 75}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 80, "optimal": 72}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 2, "daysMax": 4, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 85, "optimal": 75}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 3, "daysMax": 4, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 80, "optimal": 75, "warningLow": 65, "warningHigh": 83, "criticalLow": 45, "criticalHigh": 90, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 5000, "optimal": 2000, "warningHigh": 8000, "criticalHigh": 15000, "unit": "ppm"},
+    "daysMin": 10, "daysMax": 14, "daysTypical": 12,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "2x daily",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 10, "maxDays": 14, "typicalDays": 12, "colonizationPercent": 100, "visualIndicators": ["fully colonized"], "autoTransition": false},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Cold sensitive like pink oyster but more tolerant. Do not refrigerate spawn."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 80, "optimal": 75, "warningLow": 65, "warningHigh": 83, "criticalLow": 50, "criticalHigh": 88, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 2000, "optimal": 800, "warningHigh": 3000, "criticalHigh": 5000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 10, "daysTypical": 7,
+    "co2Tolerance": "low",
+    "faeFrequency": "4x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "warm"},
+    "transitionCriteria": {"minDays": 5, "maxDays": 10, "typicalDays": 7, "visualIndicators": ["pins forming"]},
+    "criticalParameters": ["humidity", "co2"],
+    "equipmentNotes": "Introduce light and FAE to trigger pinning"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 80, "optimal": 72, "warningLow": 60, "warningHigh": 83, "criticalLow": 50, "criticalHigh": 88, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 88, "warningLow": 80, "warningHigh": 95, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 1000, "optimal": 500, "warningHigh": 1500, "criticalHigh": 2500, "unit": "ppm"},
+    "daysMin": 2, "daysMax": 4, "daysTypical": 3,
+    "co2Tolerance": "low",
+    "faeFrequency": "6x daily or continuous",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "warm"},
+    "transitionCriteria": {"minDays": 2, "maxDays": 4, "visualIndicators": ["primordia visible", "yellow color developing"]},
+    "criticalParameters": ["humidity", "fae"],
+    "equipmentNotes": "High humidity and FAE critical for pin development"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 85, "optimal": 75, "warningLow": 60, "warningHigh": 88, "criticalLow": 50, "criticalHigh": 90, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 1000, "optimal": 500, "warningHigh": 1500, "criticalHigh": 2500, "unit": "ppm"},
+    "daysMin": 3, "daysMax": 4, "daysTypical": 3,
+    "co2Tolerance": "low",
+    "faeFrequency": "continuous",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "warm"},
+    "transitionCriteria": {"minDays": 3, "maxDays": 4, "visualIndicators": ["bright yellow clusters", "caps developing"]},
+    "criticalParameters": ["humidity"],
+    "equipmentNotes": "Harvest promptly. Turns bitter when old."
+  }'::jsonb,
   ARRAY['hardwood sawdust', 'straw', 'masters mix'],
   'Similar to pink oyster. Does not tolerate cold storage.',
   'Beautiful bright yellow clusters. Delicate, handle carefully. More delicate than other oysters.',
@@ -1299,6 +1550,18 @@ VALUES (
   'Like pink oyster, sensitive to cold—do not refrigerate spawn. Harvest promptly for best flavor.',
   'Fruits in dense clusters. Short shelf life (3-5 days).',
   '0.75-1.5 lbs per 5lb block', '2-3 flushes', 3, 5,
+  '{
+    "automationTested": true,
+    "automationNotes": "Cold sensitive - do not refrigerate spawn. Short shelf life requires prompt harvesting. Use harvest weight sensors if available.",
+    "requiredSensors": ["temperature", "humidity"],
+    "optionalSensors": ["co2", "weight"],
+    "controllerTypes": ["inkbird", "ac_infinity"],
+    "alertOnTempDeviation": 5,
+    "alertOnHumidityDeviation": 8,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 300,
+    "dataRetentionDays": 60
+  }'::jsonb,
   'Beautiful bright yellow clusters with delicate, nutty, cashew-like flavor. Sensitive to cold.',
   NULL
 );
@@ -1307,15 +1570,63 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'King Oyster', 'Pleurotus eryngii',
   ARRAY['King Trumpet', 'French Horn Mushroom', 'Eryngii', 'Trumpet Royale'],
   'gourmet', 'intermediate',
-  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 14, "daysMax": 28, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 10, "daysMax": 18, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 4, "daysMax": 6, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 5, "daysMax": 8, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 75, "optimal": 72, "warningLow": 65, "warningHigh": 78, "criticalLow": 60, "criticalHigh": 82, "rampRate": 1},
+    "humidityRange": {"min": 80, "max": 90, "optimal": 85, "warningLow": 75, "warningHigh": 95, "criticalLow": 65, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 8000, "optimal": 4000, "warningHigh": 12000, "criticalHigh": 20000, "unit": "ppm"},
+    "daysMin": 14, "daysMax": 28, "daysTypical": 21,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "1x daily during colonization",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 14, "maxDays": 28, "typicalDays": 21, "colonizationPercent": 100, "visualIndicators": ["fully colonized", "substrate browning"], "autoTransition": false, "transitionAlertDays": 3},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Longer colonization than other oysters. Patience required."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 75, "optimal": 70, "warningLow": 60, "warningHigh": 78, "criticalLow": 55, "criticalHigh": 82, "rampRate": 1},
+    "humidityRange": {"min": 80, "max": 90, "optimal": 85, "warningLow": 75, "warningHigh": 95, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 6000, "optimal": 3000, "warningHigh": 10000, "criticalHigh": 15000, "unit": "ppm"},
+    "daysMin": 10, "daysMax": 18, "daysTypical": 14,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "2x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "low", "spectrum": "cool", "dawnDuskRamp": 15},
+    "transitionCriteria": {"minDays": 10, "maxDays": 18, "typicalDays": 14, "colonizationPercent": 100, "visualIndicators": ["fully consolidated", "primordia forming"], "autoTransition": true, "transitionAlertDays": 2, "tempTransitionHours": 24, "humidityTransitionHours": 12},
+    "criticalParameters": ["temperature", "humidity"],
+    "equipmentNotes": "Bulk colonization complete when fully white. Watch for primordia formation."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 65, "optimal": 60, "warningLow": 50, "warningHigh": 68, "criticalLow": 45, "criticalHigh": 72, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1000, "optimal": 600, "warningHigh": 1500, "criticalHigh": 2000, "unit": "ppm"},
+    "daysMin": 4, "daysMax": 6, "daysTypical": 5,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "4-6x daily or continuous low",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 4, "maxDays": 6, "typicalDays": 5, "visualIndicators": ["pins visible", "primordia developing"], "autoTransition": true, "transitionAlertDays": 1, "tempTransitionHours": 12},
+    "criticalParameters": ["temperature", "humidity", "co2", "fae"],
+    "equipmentNotes": "Temperature drop critical for pinning. King oysters pin individually, not in clusters."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 65, "optimal": 60, "warningLow": 50, "warningHigh": 68, "criticalLow": 45, "criticalHigh": 72, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1200, "optimal": 800, "warningHigh": 2000, "criticalHigh": 3000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 8, "daysTypical": 6,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "4-6x daily or continuous low",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 5, "maxDays": 8, "typicalDays": 6, "visualIndicators": ["caps flattening", "stems thickening", "gills exposed"], "autoTransition": false, "transitionAlertDays": 1},
+    "criticalParameters": ["humidity", "co2", "fae"],
+    "equipmentNotes": "Harvest when caps flatten. Stems are the prize - thick and meaty."
+  }'::jsonb,
   ARRAY['supplemented hardwood sawdust', 'masters mix'],
   'Requires supplemented sawdust (10-20% wheat bran). Pure straw does not work well.',
   'Premium gourmet with thick, meaty stems. Individual fruits rather than clusters. Longer grow cycle than other oysters.',
@@ -1324,6 +1635,18 @@ VALUES (
   'Tolerates higher CO2 than other oysters. Requires good nutrition (supplementation) for best results.',
   'Worth the longer wait. Excellent shelf life (10-14 days).',
   '0.75-1 lb per 5lb block', '2-3 flushes', 10, 14,
+  '{
+    "automationTested": false,
+    "automationNotes": "Individual fruiting pattern differs from cluster oysters. May require different harvest detection.",
+    "requiredSensors": ["temperature", "humidity"],
+    "optionalSensors": ["co2", "light", "camera"],
+    "controllerTypes": ["climate controller", "humidifier", "exhaust fan", "lighting timer"],
+    "alertOnTempDeviation": 5,
+    "alertOnHumidityDeviation": 10,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 300,
+    "dataRetentionDays": 365
+  }'::jsonb,
   'Premium gourmet mushroom with thick, meaty stems prized for texture. Requires supplementation.',
   NULL
 );
@@ -1332,15 +1655,63 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Phoenix Oyster', 'Pleurotus pulmonarius',
   ARRAY['Lung Oyster', 'Indian Oyster', 'Italian Oyster', 'Summer Oyster'],
   'gourmet', 'beginner',
-  '{"tempRange": {"min": 75, "max": 80, "optimal": 77}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 10, "daysMax": 18, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 70, "max": 80, "optimal": 75}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 7, "daysMax": 12, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 80, "optimal": 72}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 85, "optimal": 75}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 75, "max": 80, "optimal": 77, "warningLow": 70, "warningHigh": 85, "criticalLow": 65, "criticalHigh": 90, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 10000, "optimal": 5000, "warningHigh": 15000, "criticalHigh": 20000, "unit": "ppm"},
+    "daysMin": 10, "daysMax": 18, "daysTypical": 14,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "1x daily during colonization",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 10, "maxDays": 18, "typicalDays": 14, "colonizationPercent": 100, "visualIndicators": ["fully colonized", "mycelium consolidating"], "autoTransition": true, "transitionAlertDays": 2},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Heat-tolerant species. Colonizes well at higher temps than other oysters."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 80, "optimal": 75, "warningLow": 65, "warningHigh": 85, "criticalLow": 60, "criticalHigh": 90, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 75, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 2000, "optimal": 1000, "warningHigh": 3000, "criticalHigh": 5000, "unit": "ppm"},
+    "daysMin": 7, "daysMax": 12, "daysTypical": 9,
+    "co2Tolerance": "low",
+    "faeFrequency": "4-6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "low", "spectrum": "cool", "dawnDuskRamp": 15},
+    "transitionCriteria": {"minDays": 7, "maxDays": 12, "typicalDays": 9, "colonizationPercent": 100, "visualIndicators": ["primordia forming", "knots visible"], "autoTransition": true, "transitionAlertDays": 2, "tempTransitionHours": 12},
+    "criticalParameters": ["temperature", "humidity", "co2"],
+    "equipmentNotes": "Excellent summer species. Tolerates higher ambient temps."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 80, "optimal": 72, "warningLow": 60, "warningHigh": 85, "criticalLow": 55, "criticalHigh": 90, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1000, "optimal": 600, "warningHigh": 1500, "criticalHigh": 2500, "unit": "ppm"},
+    "daysMin": 3, "daysMax": 5, "daysTypical": 4,
+    "co2Tolerance": "low",
+    "faeFrequency": "continuous or 6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 3, "maxDays": 5, "typicalDays": 4, "visualIndicators": ["pins elongating", "cap edges visible"], "autoTransition": true, "transitionAlertDays": 1},
+    "criticalParameters": ["humidity", "co2", "fae"],
+    "equipmentNotes": "Fast pinning. Responds quickly to environmental triggers."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 85, "optimal": 75, "warningLow": 60, "warningHigh": 88, "criticalLow": 55, "criticalHigh": 92, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 80, "warningHigh": 98, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1200, "optimal": 800, "warningHigh": 2000, "criticalHigh": 3000, "unit": "ppm"},
+    "daysMin": 3, "daysMax": 5, "daysTypical": 4,
+    "co2Tolerance": "low",
+    "faeFrequency": "continuous or 6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 3, "maxDays": 5, "typicalDays": 4, "visualIndicators": ["caps flattening", "gills visible", "cap edges curling up"], "autoTransition": false, "transitionAlertDays": 1},
+    "criticalParameters": ["humidity", "co2", "fae"],
+    "equipmentNotes": "Harvest before caps fully flatten. More delicate than P. ostreatus."
+  }'::jsonb,
   ARRAY['straw', 'hardwood sawdust', 'masters mix'],
   'Responds well to straw. Similar cultivation to pearl oyster.',
   'Heat-tolerant oyster ideal for summer growing. Slightly thinner caps, more delicate than P. ostreatus.',
@@ -1349,6 +1720,18 @@ VALUES (
   'Fast colonizer with similar aggressive characteristics to other oysters. Excels in warm conditions.',
   'Best summer oyster variety. Tolerates 65-85°F fruiting temps.',
   '1-2 lbs per 5lb block', '2-3 flushes', 5, 8,
+  '{
+    "automationTested": false,
+    "automationNotes": "Excellent summer species for warm climates. More temperature tolerant than other oysters.",
+    "requiredSensors": ["temperature", "humidity"],
+    "optionalSensors": ["co2", "light"],
+    "controllerTypes": ["climate controller", "humidifier", "exhaust fan"],
+    "alertOnTempDeviation": 8,
+    "alertOnHumidityDeviation": 10,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 300,
+    "dataRetentionDays": 180
+  }'::jsonb,
   'Heat-tolerant oyster ideal for summer growing. Good choice when ambient temps exceed 70°F.',
   NULL
 );
@@ -1357,15 +1740,63 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Lion''s Mane', 'Hericium erinaceus',
   ARRAY['Monkey Head', 'Bearded Tooth', 'Pom Pom', 'Satyr''s Beard', 'Hedgehog Mushroom'],
   'gourmet', 'intermediate',
-  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "low", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 10, "daysMax": 16, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 60, "max": 70, "optimal": 65}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 3, "daysMax": 5, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 60, "max": 70, "optimal": 65}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 4, "daysMax": 7, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 75, "optimal": 72, "warningLow": 65, "warningHigh": 78, "criticalLow": 60, "criticalHigh": 82, "rampRate": 1},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 92, "warningLow": 85, "warningHigh": 98, "criticalLow": 80, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 5000, "optimal": 2500, "warningHigh": 8000, "criticalHigh": 12000, "unit": "ppm"},
+    "daysMin": 14, "daysMax": 21, "daysTypical": 17,
+    "co2Tolerance": "low",
+    "faeFrequency": "2x daily during colonization",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 14, "maxDays": 21, "typicalDays": 17, "colonizationPercent": 100, "visualIndicators": ["fully colonized", "mycelium thick and ropy"], "autoTransition": true, "transitionAlertDays": 3},
+    "criticalParameters": ["temperature", "humidity"],
+    "equipmentNotes": "Slower colonizer than oysters. Requires patience and high humidity throughout."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 75, "optimal": 70, "warningLow": 60, "warningHigh": 78, "criticalLow": 55, "criticalHigh": 82, "rampRate": 1},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 92, "warningLow": 85, "warningHigh": 98, "criticalLow": 80, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 2000, "optimal": 1000, "warningHigh": 3000, "criticalHigh": 5000, "unit": "ppm"},
+    "daysMin": 10, "daysMax": 16, "daysTypical": 12,
+    "co2Tolerance": "low",
+    "faeFrequency": "4-6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "low", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 10, "maxDays": 16, "typicalDays": 12, "colonizationPercent": 100, "visualIndicators": ["primordia bumps visible", "surface texture changing"], "autoTransition": true, "transitionAlertDays": 2, "tempTransitionHours": 24, "humidityTransitionHours": 6},
+    "criticalParameters": ["humidity", "co2", "temperature"],
+    "equipmentNotes": "Very sensitive to low humidity. Browning indicates humidity too low."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 60, "max": 70, "optimal": 65, "warningLow": 55, "warningHigh": 73, "criticalLow": 50, "criticalHigh": 78, "rampRate": 2},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 93, "warningLow": 88, "warningHigh": 98, "criticalLow": 85, "criticalHigh": 100, "rampRate": 2},
+    "co2Range": {"min": 400, "max": 800, "optimal": 500, "warningHigh": 1000, "criticalHigh": 1500, "unit": "ppm"},
+    "daysMin": 3, "daysMax": 5, "daysTypical": 4,
+    "co2Tolerance": "low",
+    "faeFrequency": "continuous or 8x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 3, "maxDays": 5, "typicalDays": 4, "visualIndicators": ["teeth/spines beginning to form", "white pom-pom shape visible"], "autoTransition": true, "transitionAlertDays": 1},
+    "criticalParameters": ["humidity", "co2", "fae"],
+    "equipmentNotes": "VERY CO2 SENSITIVE. Must maintain excellent air exchange. Browning = humidity problem."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 60, "max": 70, "optimal": 65, "warningLow": 55, "warningHigh": 73, "criticalLow": 50, "criticalHigh": 78, "rampRate": 1},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 93, "warningLow": 88, "warningHigh": 98, "criticalLow": 85, "criticalHigh": 100, "rampRate": 2},
+    "co2Range": {"min": 400, "max": 800, "optimal": 500, "warningHigh": 1000, "criticalHigh": 1500, "unit": "ppm"},
+    "daysMin": 4, "daysMax": 7, "daysTypical": 5,
+    "co2Tolerance": "low",
+    "faeFrequency": "continuous or 8x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 4, "maxDays": 7, "typicalDays": 5, "visualIndicators": ["spines 0.5-1cm long", "bright white color", "before any yellowing"], "autoTransition": false, "transitionAlertDays": 1},
+    "criticalParameters": ["humidity", "co2", "fae"],
+    "equipmentNotes": "Harvest when spines are 0.5-1cm BEFORE browning. Yellow/brown = past prime."
+  }'::jsonb,
   ARRAY['supplemented hardwood sawdust', 'masters mix'],
   'Requires supplemented hardwood sawdust (15-20% bran). Masters mix works well.',
   'Unique appearance with cascading white spines. No caps—forms single globular mass with teeth. Turning yellow/brown indicates age or low humidity.',
@@ -1375,6 +1806,18 @@ VALUES (
   'HIGH HUMIDITY CRITICAL (90-95%). Does not tolerate CO2 buildup well. Heavy FAE needed.',
   'Harvest when spines are 0.5-1cm, before browning.',
   '0.5-1 lb per 5lb block', '2-3 flushes', 5, 7,
+  '{
+    "automationTested": false,
+    "automationNotes": "Extremely humidity and CO2 sensitive. Requires robust humidity control and excellent FAE. Yellowing/browning is first sign of problems.",
+    "requiredSensors": ["temperature", "humidity", "co2"],
+    "optionalSensors": ["light", "camera"],
+    "controllerTypes": ["climate controller", "humidifier", "exhaust fan", "intake fan", "lighting timer"],
+    "alertOnTempDeviation": 5,
+    "alertOnHumidityDeviation": 5,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 180,
+    "dataRetentionDays": 365
+  }'::jsonb,
   'Unique appearance with cascading white spines. Both culinary and medicinal. Lobster-like flavor.',
   NULL
 );
@@ -1383,15 +1826,65 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Shiitake', 'Lentinula edodes',
   ARRAY['Black Forest Mushroom', 'Oak Mushroom', 'Donko', 'Shanku'],
   'gourmet', 'intermediate',
-  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 30, "daysMax": 60, "co2Tolerance": "moderate", "lightRequirement": "none", "notes": "60-120 days on logs"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 14, "daysMax": 30, "co2Tolerance": "moderate", "lightRequirement": "none", "notes": "Brown-out phase critical"}'::jsonb,
-  '{"tempRange": {"min": 50, "max": 60, "optimal": 55}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "indirect", "notes": "Requires cold shock"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 70, "optimal": 62}, "humidityRange": {"min": 80, "max": 90}, "daysMin": 5, "daysMax": 8, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 75, "optimal": 72, "warningLow": 65, "warningHigh": 80, "criticalLow": 60, "criticalHigh": 85, "rampRate": 1},
+    "humidityRange": {"min": 80, "max": 90, "optimal": 85, "warningLow": 75, "warningHigh": 95, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 10000, "optimal": 5000, "warningHigh": 15000, "criticalHigh": 20000, "unit": "ppm"},
+    "daysMin": 30, "daysMax": 60, "daysTypical": 45,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "1x daily during colonization",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 30, "maxDays": 60, "typicalDays": 45, "colonizationPercent": 100, "visualIndicators": ["fully colonized", "brown-out beginning", "popcorning/bumps on surface"], "autoTransition": false, "transitionAlertDays": 7},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Long colonization 30-60 days on blocks, 60-120 days on logs. Watch for brown-out phase.",
+    "notes": "60-120 days on logs"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 75, "optimal": 70, "warningLow": 60, "warningHigh": 80, "criticalLow": 55, "criticalHigh": 85, "rampRate": 1},
+    "humidityRange": {"min": 80, "max": 90, "optimal": 85, "warningLow": 75, "warningHigh": 95, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 8000, "optimal": 4000, "warningHigh": 12000, "criticalHigh": 18000, "unit": "ppm"},
+    "daysMin": 14, "daysMax": 30, "daysTypical": 21,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "2x daily",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 14, "maxDays": 30, "typicalDays": 21, "colonizationPercent": 100, "visualIndicators": ["brown-out complete", "surface turned brown", "popcorn texture visible"], "autoTransition": false, "transitionAlertDays": 5},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Brown-out phase critical. Block turns brown when ready. Do not mistake for contamination.",
+    "notes": "Brown-out phase critical"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 50, "max": 60, "optimal": 55, "warningLow": 45, "warningHigh": 65, "criticalLow": 40, "criticalHigh": 70, "rampRate": 5},
+    "humidityRange": {"min": 80, "max": 90, "optimal": 85, "warningLow": 75, "warningHigh": 95, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 400, "max": 1500, "optimal": 800, "warningHigh": 2500, "criticalHigh": 4000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 10, "daysTypical": 7,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "4-6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 5, "maxDays": 10, "typicalDays": 7, "visualIndicators": ["pins emerging", "primordia visible", "small bumps developing caps"], "autoTransition": true, "transitionAlertDays": 2, "tempTransitionHours": 48},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "REQUIRES COLD SHOCK (50°F for 24-72 hrs) or soaking to initiate pins. Critical step.",
+    "notes": "Requires cold shock"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 70, "optimal": 62, "warningLow": 50, "warningHigh": 75, "criticalLow": 45, "criticalHigh": 80, "rampRate": 2},
+    "humidityRange": {"min": 80, "max": 90, "optimal": 85, "warningLow": 75, "warningHigh": 95, "criticalLow": 70, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 400, "max": 1500, "optimal": 800, "warningHigh": 2500, "criticalHigh": 4000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 8, "daysTypical": 6,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "4-6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 5, "maxDays": 8, "typicalDays": 6, "visualIndicators": ["veil breaking", "gills exposed", "caps flattening"], "autoTransition": false, "transitionAlertDays": 1},
+    "criticalParameters": ["humidity"],
+    "equipmentNotes": "Harvest before caps fully flatten. Multiple flushes possible (3-5)."
+  }'::jsonb,
   ARRAY['supplemented hardwood sawdust', 'oak logs', 'hardwood logs'],
   'Oak/hardwood logs (traditional, 60-120 day colonization) or supplemented hardwood sawdust blocks (faster, 30-60 days).',
   'Second most cultivated mushroom worldwide. Brown-out phase critical—fully colonized blocks turn brown before fruiting.',
@@ -1401,6 +1894,18 @@ VALUES (
   'Requires cold shock (50°F for 24-72 hrs) or soaking to initiate pins. Patience rewarded.',
   'Longer colonization than oysters but worth the wait. Excellent shelf life.',
   '0.5-1 lb per 5lb block', '3-5 flushes', 14, 21,
+  '{
+    "automationTested": false,
+    "automationNotes": "Unique cold shock requirement for pinning. Automation must include refrigeration capability or cold room. Brown-out phase may confuse visual detection systems.",
+    "requiredSensors": ["temperature", "humidity"],
+    "optionalSensors": ["co2", "light", "camera"],
+    "controllerTypes": ["climate controller", "humidifier", "exhaust fan", "refrigeration unit", "lighting timer"],
+    "alertOnTempDeviation": 5,
+    "alertOnHumidityDeviation": 10,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 300,
+    "dataRetentionDays": 365
+  }'::jsonb,
   'Second most cultivated mushroom worldwide. Rich umami flavor. Requires longer colonization, rewards patience.',
   NULL
 );
@@ -1409,15 +1914,63 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  medicinal_properties, community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Maitake', 'Grifola frondosa',
   ARRAY['Hen of the Woods', 'Dancing Mushroom', 'Sheep''s Head', 'Ram''s Head'],
   'gourmet', 'advanced',
-  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 30, "daysMax": 60, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 20, "daysMax": 40, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "low", "lightRequirement": "12hr_cycle"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "low", "lightRequirement": "12hr_cycle"}'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 75, "optimal": 72, "warningLow": 65, "warningHigh": 78, "criticalLow": 60, "criticalHigh": 82, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 8000, "optimal": 4000, "warningHigh": 12000, "criticalHigh": 18000, "unit": "ppm"},
+    "daysMin": 30, "daysMax": 60, "daysTypical": 45,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "1x daily during colonization",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 30, "maxDays": 60, "typicalDays": 45, "colonizationPercent": 100, "visualIndicators": ["fully colonized", "mycelium consolidating"], "autoTransition": false, "transitionAlertDays": 7},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Very long colonization. Patience critical. May take multiple attempts."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 75, "optimal": 70, "warningLow": 60, "warningHigh": 78, "criticalLow": 55, "criticalHigh": 82, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 5000, "optimal": 2500, "warningHigh": 8000, "criticalHigh": 12000, "unit": "ppm"},
+    "daysMin": 20, "daysMax": 40, "daysTypical": 30,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "2-4x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "low", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 20, "maxDays": 40, "typicalDays": 30, "colonizationPercent": 100, "visualIndicators": ["surface texture changing", "primordia bumps"], "autoTransition": false, "transitionAlertDays": 5, "tempTransitionHours": 48},
+    "criticalParameters": ["temperature", "humidity"],
+    "equipmentNotes": "Light cycles important. Gradual temp drop helps initiate fruiting."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 65, "optimal": 60, "warningLow": 50, "warningHigh": 68, "criticalLow": 45, "criticalHigh": 72, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1500, "optimal": 800, "warningHigh": 2500, "criticalHigh": 4000, "unit": "ppm"},
+    "daysMin": 7, "daysMax": 14, "daysTypical": 10,
+    "co2Tolerance": "low",
+    "faeFrequency": "6x daily or continuous",
+    "lightRequirement": "12hr_cycle",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 60},
+    "transitionCriteria": {"minDays": 7, "maxDays": 14, "typicalDays": 10, "visualIndicators": ["rosette formation beginning", "fronds developing"], "autoTransition": true, "transitionAlertDays": 2},
+    "criticalParameters": ["temperature", "humidity", "light", "co2"],
+    "equipmentNotes": "12hr light cycle CRITICAL. Temperature drop to 55-65°F required."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 65, "optimal": 60, "warningLow": 50, "warningHigh": 68, "criticalLow": 45, "criticalHigh": 72, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1500, "optimal": 800, "warningHigh": 2500, "criticalHigh": 4000, "unit": "ppm"},
+    "daysMin": 7, "daysMax": 14, "daysTypical": 10,
+    "co2Tolerance": "low",
+    "faeFrequency": "6x daily or continuous",
+    "lightRequirement": "12hr_cycle",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 60},
+    "transitionCriteria": {"minDays": 7, "maxDays": 14, "typicalDays": 10, "visualIndicators": ["fronds mature", "caps firm", "edges curling slightly"], "autoTransition": false, "transitionAlertDays": 2},
+    "criticalParameters": ["humidity", "co2"],
+    "equipmentNotes": "Can reach several pounds per cluster. Harvest when fronds are firm."
+  }'::jsonb,
   ARRAY['supplemented hardwood sawdust', 'oak sawdust'],
   'Oak preferred. Challenging indoor cultivation—easier on buried logs/stumps outdoors.',
   'Large polypore clusters prized for rich umami. Forms large rosettes with overlapping gray-brown caps.',
@@ -1427,6 +1980,18 @@ VALUES (
   'Needs 12hr light cycles and temperature drop to initiate fruiting. Indoor blocks may take multiple attempts.',
   'Challenging for beginners. Often takes 2+ years on logs outdoors.',
   '1-3 lbs per large block', '1-2 flushes', 7, 10,
+  '{
+    "automationTested": false,
+    "automationNotes": "Advanced species. Requires precise light cycle control (12hr on/off) and temperature drop capability. May take multiple attempts even with perfect conditions.",
+    "requiredSensors": ["temperature", "humidity", "light"],
+    "optionalSensors": ["co2", "camera", "weight"],
+    "controllerTypes": ["climate controller", "humidifier", "exhaust fan", "lighting timer", "temperature controller"],
+    "alertOnTempDeviation": 5,
+    "alertOnHumidityDeviation": 8,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 300,
+    "dataRetentionDays": 365
+  }'::jsonb,
   'Large cluster-forming polypore. Both culinary and medicinal value. Challenging indoor cultivation.',
   NULL
 );
@@ -1435,15 +2000,63 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Enoki', 'Flammulina velutipes',
   ARRAY['Enokitake', 'Golden Needle', 'Velvet Foot', 'Winter Mushroom'],
   'gourmet', 'advanced',
-  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 72, "optimal": 68}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 10, "daysMax": 16, "co2Tolerance": "high", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 40, "max": 50, "optimal": 45}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "high", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 40, "max": 50, "optimal": 45}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 7, "daysMax": 12, "co2Tolerance": "high", "lightRequirement": "indirect", "notes": "High CO2 elongates stems"}'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 75, "optimal": 72, "warningLow": 65, "warningHigh": 78, "criticalLow": 60, "criticalHigh": 82, "rampRate": 1},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 92, "warningLow": 85, "warningHigh": 98, "criticalLow": 80, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 10000, "optimal": 5000, "warningHigh": 15000, "criticalHigh": 20000, "unit": "ppm"},
+    "daysMin": 14, "daysMax": 21, "daysTypical": 17,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "1x daily during colonization",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 14, "maxDays": 21, "typicalDays": 17, "colonizationPercent": 100, "visualIndicators": ["fully colonized", "mycelium dense"], "autoTransition": true, "transitionAlertDays": 3},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Standard colonization temps. Prepare for dramatic temp drop after."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 72, "optimal": 68, "warningLow": 60, "warningHigh": 75, "criticalLow": 55, "criticalHigh": 80, "rampRate": 1},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 92, "warningLow": 85, "warningHigh": 98, "criticalLow": 80, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 2000, "max": 10000, "optimal": 6000, "warningLow": 1000, "warningHigh": 15000, "criticalHigh": 20000, "unit": "ppm"},
+    "daysMin": 10, "daysMax": 16, "daysTypical": 13,
+    "co2Tolerance": "high",
+    "faeFrequency": "minimal - high CO2 desired",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 10, "maxDays": 16, "typicalDays": 13, "colonizationPercent": 100, "visualIndicators": ["primordia forming", "surface bumpy"], "autoTransition": true, "transitionAlertDays": 2, "tempTransitionHours": 72},
+    "criticalParameters": ["temperature", "co2"],
+    "equipmentNotes": "HIGH CO2 DESIRED during this phase to elongate stems. Reduce FAE."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 40, "max": 50, "optimal": 45, "warningLow": 35, "warningHigh": 55, "criticalLow": 32, "criticalHigh": 60, "rampRate": 3},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 92, "warningLow": 85, "warningHigh": 98, "criticalLow": 80, "criticalHigh": 100, "rampRate": 2},
+    "co2Range": {"min": 2000, "max": 10000, "optimal": 6000, "warningLow": 1000, "warningHigh": 15000, "criticalHigh": 25000, "unit": "ppm"},
+    "daysMin": 7, "daysMax": 14, "daysTypical": 10,
+    "co2Tolerance": "high",
+    "faeFrequency": "minimal - high CO2 elongates stems",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 8, "intensity": "low", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 7, "maxDays": 14, "typicalDays": 10, "visualIndicators": ["pins elongating", "thin stems forming"], "autoTransition": true, "transitionAlertDays": 2},
+    "criticalParameters": ["temperature", "co2"],
+    "equipmentNotes": "REQUIRES REFRIGERATION (40-50°F). High CO2 critical for long thin stems."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 40, "max": 50, "optimal": 45, "warningLow": 35, "warningHigh": 55, "criticalLow": 32, "criticalHigh": 60, "rampRate": 2},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 92, "warningLow": 85, "warningHigh": 98, "criticalLow": 80, "criticalHigh": 100, "rampRate": 2},
+    "co2Range": {"min": 2000, "max": 10000, "optimal": 5000, "warningLow": 800, "warningHigh": 15000, "criticalHigh": 25000, "unit": "ppm"},
+    "daysMin": 7, "daysMax": 12, "daysTypical": 9,
+    "co2Tolerance": "high",
+    "faeFrequency": "minimal",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 8, "intensity": "low", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 7, "maxDays": 12, "typicalDays": 9, "visualIndicators": ["stems 3-4 inches", "tiny caps formed", "bundle tight"], "autoTransition": false, "transitionAlertDays": 1},
+    "criticalParameters": ["temperature", "co2"],
+    "equipmentNotes": "High CO2 elongates stems. Commercial uses bottle collars to force tall growth.",
+    "notes": "High CO2 elongates stems"
+  }'::jsonb,
   ARRAY['supplemented hardwood sawdust'],
   'Commercial enoki grown in bottles with restrictive collars for elongated stem shape. High CO2 during fruiting elongates stems.',
   'Long thin stems with tiny caps. Wild form has brown velvety stems; commercial is pure white.',
@@ -1452,6 +2065,18 @@ VALUES (
   'Named "winter mushroom" for cold-fruiting nature. Requires refrigeration or cold room to fruit (40-50°F).',
   'Very cold fruiting temperatures required. Not for warm climates without cooling.',
   '0.5-0.75 lb per container', '2-3 flushes', 7, 14,
+  '{
+    "automationTested": false,
+    "automationNotes": "UNIQUE REQUIREMENTS: Very cold temps (40-50°F) and HIGH CO2 desired (opposite of most species). Requires dedicated refrigeration. CO2 control may need to be inverted (less FAE = better).",
+    "requiredSensors": ["temperature", "humidity", "co2"],
+    "optionalSensors": ["light", "camera"],
+    "controllerTypes": ["refrigeration unit", "humidifier", "CO2 controller", "lighting timer"],
+    "alertOnTempDeviation": 5,
+    "alertOnHumidityDeviation": 8,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 300,
+    "dataRetentionDays": 365
+  }'::jsonb,
   'Long thin stems with tiny caps. Cold-loving species. Commercial variety differs from wild form.',
   NULL
 );
@@ -1460,15 +2085,64 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Beech Mushroom', 'Hypsizygus tessellatus',
   ARRAY['Shimeji', 'Clamshell Mushroom', 'Bunapi'],
   'gourmet', 'intermediate',
-  '{"tempRange": {"min": 68, "max": 75, "optimal": 72}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 21, "daysMax": 35, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 72, "optimal": 68}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 50, "max": 60, "optimal": 55}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "indirect", "notes": "Requires cold shock"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 5, "daysMax": 8, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 68, "max": 75, "optimal": 72, "warningLow": 65, "warningHigh": 78, "criticalLow": 60, "criticalHigh": 82, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 10000, "optimal": 5000, "warningHigh": 15000, "criticalHigh": 20000, "unit": "ppm"},
+    "daysMin": 21, "daysMax": 35, "daysTypical": 28,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "1x daily during colonization",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 21, "maxDays": 35, "typicalDays": 28, "colonizationPercent": 100, "visualIndicators": ["fully colonized", "mycelium dense"], "autoTransition": true, "transitionAlertDays": 5},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Longer colonization than oysters. Patience required."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 72, "optimal": 68, "warningLow": 60, "warningHigh": 75, "criticalLow": 55, "criticalHigh": 80, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 8000, "optimal": 4000, "warningHigh": 12000, "criticalHigh": 18000, "unit": "ppm"},
+    "daysMin": 14, "daysMax": 21, "daysTypical": 17,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "2x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "low", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 14, "maxDays": 21, "typicalDays": 17, "colonizationPercent": 100, "visualIndicators": ["primordia bumps forming"], "autoTransition": true, "transitionAlertDays": 3, "tempTransitionHours": 72},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Prepare for cold shock phase. Consolidation important before fruiting."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 50, "max": 60, "optimal": 55, "warningLow": 45, "warningHigh": 65, "criticalLow": 40, "criticalHigh": 70, "rampRate": 3},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1500, "optimal": 800, "warningHigh": 2500, "criticalHigh": 4000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 10, "daysTypical": 7,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "4-6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 5, "maxDays": 10, "typicalDays": 7, "visualIndicators": ["pins emerging in clusters", "small caps visible"], "autoTransition": true, "transitionAlertDays": 2},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "REQUIRES COLD SHOCK (40-50°F for 3-5 days). Critical for pinning initiation.",
+    "notes": "Requires cold shock"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 65, "optimal": 60, "warningLow": 50, "warningHigh": 68, "criticalLow": 45, "criticalHigh": 72, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1500, "optimal": 800, "warningHigh": 2500, "criticalHigh": 4000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 8, "daysTypical": 6,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "4-6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 5, "maxDays": 8, "typicalDays": 6, "visualIndicators": ["caps developed", "stems firm", "cluster intact"], "autoTransition": false, "transitionAlertDays": 1},
+    "criticalParameters": ["humidity"],
+    "equipmentNotes": "Cluster integrity important for market value. Excellent shelf life."
+  }'::jsonb,
   ARRAY['supplemented hardwood sawdust', 'masters mix'],
   'Commercial production uses bottles. Brown (buna-shimeji) and white (bunapi) varieties available.',
   'Clusters of small capped mushrooms with crunchy texture. Cluster integrity important for market.',
@@ -1477,6 +2151,18 @@ VALUES (
   'Needs cold shock (40-50°F for 3-5 days) to initiate pinning.',
   'Excellent shelf life (10-14 days).',
   '0.5-0.75 lb per container', '2-3 flushes', 10, 14,
+  '{
+    "automationTested": false,
+    "automationNotes": "Requires cold shock similar to shiitake. Refrigeration capability needed. Commercial production uses bottles with collars.",
+    "requiredSensors": ["temperature", "humidity"],
+    "optionalSensors": ["co2", "light", "camera"],
+    "controllerTypes": ["climate controller", "humidifier", "exhaust fan", "refrigeration unit", "lighting timer"],
+    "alertOnTempDeviation": 5,
+    "alertOnHumidityDeviation": 8,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 300,
+    "dataRetentionDays": 365
+  }'::jsonb,
   'Clusters of small capped mushrooms. Bitter when raw, nutty and mild when cooked.',
   NULL
 );
@@ -1485,15 +2171,63 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Pioppino', 'Cyclocybe aegerita',
   ARRAY['Black Poplar', 'Velvet Pioppini', 'Swordbelt Agrocybe', 'Chestnut Mushroom'],
   'gourmet', 'intermediate',
-  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 21, "daysMax": 35, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 65, "max": 75, "optimal": 70}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 14, "daysMax": 21, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 65, "optimal": 60}, "humidityRange": {"min": 85, "max": 90}, "daysMin": 5, "daysMax": 8, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 75, "optimal": 72, "warningLow": 65, "warningHigh": 78, "criticalLow": 60, "criticalHigh": 82, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 10000, "optimal": 5000, "warningHigh": 15000, "criticalHigh": 20000, "unit": "ppm"},
+    "daysMin": 21, "daysMax": 35, "daysTypical": 28,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "1x daily during colonization",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 21, "maxDays": 35, "typicalDays": 28, "colonizationPercent": 100, "visualIndicators": ["fully colonized", "mycelium dense"], "autoTransition": true, "transitionAlertDays": 5},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Slower colonizer than oysters. Patience required."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 65, "max": 75, "optimal": 70, "warningLow": 60, "warningHigh": 78, "criticalLow": 55, "criticalHigh": 82, "rampRate": 1},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 0, "max": 6000, "optimal": 3000, "warningHigh": 10000, "criticalHigh": 15000, "unit": "ppm"},
+    "daysMin": 14, "daysMax": 21, "daysTypical": 17,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "2x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "low", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 14, "maxDays": 21, "typicalDays": 17, "colonizationPercent": 100, "visualIndicators": ["primordia forming"], "autoTransition": true, "transitionAlertDays": 3, "tempTransitionHours": 24},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Temperature fluctuation helps initiate fruiting."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 65, "optimal": 60, "warningLow": 50, "warningHigh": 68, "criticalLow": 45, "criticalHigh": 72, "rampRate": 3},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1200, "optimal": 700, "warningHigh": 2000, "criticalHigh": 3500, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 10, "daysTypical": 7,
+    "co2Tolerance": "low",
+    "faeFrequency": "4-6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 5, "maxDays": 10, "typicalDays": 7, "visualIndicators": ["pins visible", "cluster formation"], "autoTransition": true, "transitionAlertDays": 2},
+    "criticalParameters": ["temperature", "humidity", "co2"],
+    "equipmentNotes": "Temperature drop to 55-65°F helps trigger pinning."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 65, "optimal": 60, "warningLow": 50, "warningHigh": 68, "criticalLow": 45, "criticalHigh": 72, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 90, "optimal": 87, "warningLow": 80, "warningHigh": 95, "criticalLow": 75, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1200, "optimal": 700, "warningHigh": 2000, "criticalHigh": 3500, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 8, "daysTypical": 6,
+    "co2Tolerance": "low",
+    "faeFrequency": "4-6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 5, "maxDays": 8, "typicalDays": 6, "visualIndicators": ["caps flattening", "veil breaking"], "autoTransition": false, "transitionAlertDays": 1},
+    "criticalParameters": ["humidity", "co2"],
+    "equipmentNotes": "Harvest before caps fully flatten for best texture."
+  }'::jsonb,
   ARRAY['supplemented hardwood sawdust', 'straw with supplements', 'masters mix'],
   'Benefits from temperature fluctuation to initiate fruiting.',
   'Italian favorite. Forms clusters on long thin stems with brown caps. Caps often have small scales.',
@@ -1502,6 +2236,18 @@ VALUES (
   'Relatively slow colonizer. Also sold as "Agrocybe aegerita" in older literature.',
   'Benefits from temperature fluctuation.',
   '0.5-1 lb per 5lb block', '2-3 flushes', 7, 10,
+  '{
+    "automationTested": false,
+    "automationNotes": "Benefits from temperature fluctuation. Consider programming temp cycling to initiate fruiting.",
+    "requiredSensors": ["temperature", "humidity"],
+    "optionalSensors": ["co2", "light"],
+    "controllerTypes": ["climate controller", "humidifier", "exhaust fan", "lighting timer"],
+    "alertOnTempDeviation": 5,
+    "alertOnHumidityDeviation": 8,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 300,
+    "dataRetentionDays": 180
+  }'::jsonb,
   'Italian favorite with crunchy texture and nutty flavor. Popular for pasta dishes.',
   NULL
 );
@@ -1510,15 +2256,63 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Wood Ear', 'Auricularia auricula-judae',
   ARRAY['Jelly Ear', 'Judas''s Ear', 'Black Fungus', 'Cloud Ear', 'Kikurage'],
   'gourmet', 'beginner',
-  '{"tempRange": {"min": 75, "max": 80, "optimal": 77}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 14, "daysMax": 28, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 75, "max": 82, "optimal": 78}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 10, "daysMax": 18, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 70, "max": 82, "optimal": 76}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 70, "max": 85, "optimal": 78}, "humidityRange": {"min": 85, "max": 95}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 75, "max": 80, "optimal": 77, "warningLow": 70, "warningHigh": 85, "criticalLow": 65, "criticalHigh": 90, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 75, "warningHigh": 98, "criticalLow": 65, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 10000, "optimal": 5000, "warningHigh": 15000, "criticalHigh": 20000, "unit": "ppm"},
+    "daysMin": 14, "daysMax": 28, "daysTypical": 21,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "1x daily during colonization",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 14, "maxDays": 28, "typicalDays": 21, "colonizationPercent": 100, "visualIndicators": ["fully colonized"], "autoTransition": true, "transitionAlertDays": 5},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Heat-loving species. Warm colonization temps (75-80°F)."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 75, "max": 82, "optimal": 78, "warningLow": 70, "warningHigh": 85, "criticalLow": 65, "criticalHigh": 90, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 75, "warningHigh": 98, "criticalLow": 65, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 8000, "optimal": 4000, "warningHigh": 12000, "criticalHigh": 18000, "unit": "ppm"},
+    "daysMin": 10, "daysMax": 18, "daysTypical": 14,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "2x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "low", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 10, "maxDays": 18, "typicalDays": 14, "colonizationPercent": 100, "visualIndicators": ["primordia visible"], "autoTransition": true, "transitionAlertDays": 3},
+    "criticalParameters": ["temperature", "humidity"],
+    "equipmentNotes": "Tolerates humidity fluctuations better than most species."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 82, "optimal": 76, "warningLow": 65, "warningHigh": 85, "criticalLow": 60, "criticalHigh": 90, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 75, "warningHigh": 98, "criticalLow": 65, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 400, "max": 2000, "optimal": 1000, "warningHigh": 3000, "criticalHigh": 5000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 10, "daysTypical": 7,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "4x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 5, "maxDays": 10, "typicalDays": 7, "visualIndicators": ["ear shapes forming"], "autoTransition": true, "transitionAlertDays": 2},
+    "criticalParameters": ["humidity"],
+    "equipmentNotes": "More forgiving than other species. Tolerates fluctuations."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 85, "optimal": 78, "warningLow": 65, "warningHigh": 88, "criticalLow": 60, "criticalHigh": 92, "rampRate": 2},
+    "humidityRange": {"min": 85, "max": 95, "optimal": 90, "warningLow": 75, "warningHigh": 98, "criticalLow": 65, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 400, "max": 2000, "optimal": 1000, "warningHigh": 3000, "criticalHigh": 5000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 10, "daysTypical": 7,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "4x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 5, "maxDays": 10, "typicalDays": 7, "visualIndicators": ["ears fully developed", "rubbery texture"], "autoTransition": false, "transitionAlertDays": 2},
+    "criticalParameters": ["humidity"],
+    "equipmentNotes": "Multiple flushes possible (3-5). Dries very well."
+  }'::jsonb,
   ARRAY['supplemented hardwood sawdust', 'elder wood'],
   'Grows well on elder. Tolerates humidity fluctuations better than most species.',
   'Gelatinous ear-shaped fungus. Unique rubbery/crunchy texture.',
@@ -1527,6 +2321,18 @@ VALUES (
   'Don''t wash—briefly rinse if needed. Easy to grow, tolerates humidity fluctuations.',
   'Dries very well and stores for years.',
   '0.5-1 lb per 5lb block', '3-5 flushes', 7, 14,
+  '{
+    "automationTested": false,
+    "automationNotes": "Very forgiving species. Tolerates humidity fluctuations better than most. Good choice for beginners learning automation.",
+    "requiredSensors": ["temperature", "humidity"],
+    "optionalSensors": ["co2", "light"],
+    "controllerTypes": ["climate controller", "humidifier", "exhaust fan"],
+    "alertOnTempDeviation": 10,
+    "alertOnHumidityDeviation": 15,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 600,
+    "dataRetentionDays": 180
+  }'::jsonb,
   'Gelatinous ear-shaped fungus common in Asian cuisine. Easy to cultivate.',
   NULL
 );
@@ -1535,15 +2341,62 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, notes, user_id)
 VALUES (
   'Wine Cap', 'Stropharia rugosoannulata',
   ARRAY['King Stropharia', 'Garden Giant', 'Burgundy Mushroom'],
   'gourmet', 'beginner',
-  '{"tempRange": {"min": 60, "max": 75, "optimal": 68}, "humidityRange": {"min": 70, "max": 90}, "daysMin": 14, "daysMax": 28, "co2Tolerance": "high", "lightRequirement": "none", "notes": "Outdoor spawn run"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 70, "optimal": 62}, "humidityRange": {"min": 70, "max": 90}, "daysMin": 21, "daysMax": 60, "co2Tolerance": "high", "lightRequirement": "indirect", "notes": "In wood chip beds"}'::jsonb,
-  '{"tempRange": {"min": 55, "max": 70, "optimal": 62}, "humidityRange": {"min": 75, "max": 90}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "high", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 60, "max": 70, "optimal": 65}, "humidityRange": {"min": 75, "max": 90}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "high", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 60, "max": 75, "optimal": 68, "warningLow": 50, "warningHigh": 80, "criticalLow": 45, "criticalHigh": 85, "rampRate": 2},
+    "humidityRange": {"min": 70, "max": 90, "optimal": 80, "warningLow": 60, "warningHigh": 95, "criticalLow": 50, "criticalHigh": 100, "rampRate": 10},
+    "co2Range": {"min": 400, "max": 20000, "optimal": 5000, "warningHigh": 30000, "criticalHigh": 50000, "unit": "ppm"},
+    "daysMin": 14, "daysMax": 28, "daysTypical": 21,
+    "co2Tolerance": "high",
+    "faeFrequency": "outdoor - natural",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 14, "maxDays": 28, "typicalDays": 21, "colonizationPercent": 75, "visualIndicators": ["mycelium visible in wood chips", "white rhizomorphs spreading"], "autoTransition": true, "transitionAlertDays": 7},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "OUTDOOR SPECIES. Spawn run in wood chip beds 4-8 inches deep.",
+    "notes": "Outdoor spawn run"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 70, "optimal": 62, "warningLow": 45, "warningHigh": 78, "criticalLow": 40, "criticalHigh": 85, "rampRate": 2},
+    "humidityRange": {"min": 70, "max": 90, "optimal": 80, "warningLow": 60, "warningHigh": 95, "criticalLow": 50, "criticalHigh": 100, "rampRate": 10},
+    "co2Range": {"min": 400, "max": 20000, "optimal": 5000, "warningHigh": 30000, "criticalHigh": 50000, "unit": "ppm"},
+    "daysMin": 21, "daysMax": 60, "daysTypical": 40,
+    "co2Tolerance": "high",
+    "faeFrequency": "outdoor - natural",
+    "lightRequirement": "indirect",
+    "transitionCriteria": {"minDays": 21, "maxDays": 60, "typicalDays": 40, "visualIndicators": ["mycelium throughout bed", "consolidating"], "autoTransition": true, "transitionAlertDays": 14},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Colonizing wood chip beds. Keep moist but not waterlogged.",
+    "notes": "In wood chip beds"
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 55, "max": 70, "optimal": 62, "warningLow": 50, "warningHigh": 75, "criticalLow": 45, "criticalHigh": 80, "rampRate": 2},
+    "humidityRange": {"min": 75, "max": 90, "optimal": 82, "warningLow": 65, "warningHigh": 95, "criticalLow": 55, "criticalHigh": 100, "rampRate": 10},
+    "co2Range": {"min": 400, "max": 10000, "optimal": 2000, "warningHigh": 15000, "criticalHigh": 25000, "unit": "ppm"},
+    "daysMin": 7, "daysMax": 14, "daysTypical": 10,
+    "co2Tolerance": "high",
+    "faeFrequency": "outdoor - natural",
+    "lightRequirement": "indirect",
+    "transitionCriteria": {"minDays": 7, "maxDays": 14, "typicalDays": 10, "visualIndicators": ["primordia emerging from bed", "small pins visible"], "autoTransition": true, "transitionAlertDays": 3},
+    "criticalParameters": ["temperature", "humidity"],
+    "equipmentNotes": "Fruits spring/fall when ground temps 60-70°F with moisture."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 60, "max": 70, "optimal": 65, "warningLow": 55, "warningHigh": 75, "criticalLow": 50, "criticalHigh": 80, "rampRate": 2},
+    "humidityRange": {"min": 75, "max": 90, "optimal": 82, "warningLow": 65, "warningHigh": 95, "criticalLow": 55, "criticalHigh": 100, "rampRate": 10},
+    "co2Range": {"min": 400, "max": 10000, "optimal": 2000, "warningHigh": 15000, "criticalHigh": 25000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 10, "daysTypical": 7,
+    "co2Tolerance": "high",
+    "faeFrequency": "outdoor - natural",
+    "lightRequirement": "indirect",
+    "transitionCriteria": {"minDays": 5, "maxDays": 10, "typicalDays": 7, "visualIndicators": ["caps fully developed", "wine-red color", "veil intact or just breaking"], "autoTransition": false, "transitionAlertDays": 2},
+    "criticalParameters": ["humidity"],
+    "equipmentNotes": "Large caps 4-12 inches. Harvest when veil begins to break."
+  }'::jsonb,
   ARRAY['hardwood chips', 'straw', 'garden beds'],
   'Best grown outdoors in wood chip beds 4-8" deep. Establish bed and inoculate with grain/sawdust spawn.',
   'Premier outdoor garden species with wine-red caps that fade to tan with age. Large caps (4-12").',
@@ -1552,6 +2405,18 @@ VALUES (
   'Easy entry point for outdoor cultivation. Can produce for years once established.',
   'Fruits spring/fall when ground temps 60-70°F with moisture.',
   'Variable—pounds per established bed', 'Multiple years', 5, 7,
+  '{
+    "automationTested": false,
+    "automationNotes": "OUTDOOR SPECIES - automation less critical. Soil moisture sensors may be useful for irrigation triggers.",
+    "requiredSensors": ["temperature"],
+    "optionalSensors": ["humidity", "soil moisture"],
+    "controllerTypes": ["irrigation controller", "soil moisture sensor"],
+    "alertOnTempDeviation": 15,
+    "alertOnHumidityDeviation": 20,
+    "alertOnStageDuration": false,
+    "sensorPollingInterval": 3600,
+    "dataRetentionDays": 365
+  }'::jsonb,
   'Premier outdoor garden species. Large wine-red caps. Excellent for permaculture.',
   NULL
 );
@@ -1718,24 +2583,87 @@ VALUES (
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
   preferred_substrates, substrate_notes, characteristics, flavor_profile, culinary_notes,
-  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max, notes, user_id)
+  community_tips, important_facts, typical_yield, flush_count, shelf_life_days_min, shelf_life_days_max,
+  automation_config, spawn_colonization_notes, bulk_colonization_notes, pinning_notes, maturation_notes, notes, user_id)
 VALUES (
   'Psilocybe cubensis', 'Psilocybe cubensis',
-  ARRAY['Golden Teacher', 'Cubes', 'Mexican Mushroom', 'Golden Cap'],
+  ARRAY['Golden Teacher', 'B+', 'Penis Envy', 'APE', 'Jack Frost', 'Cubes', 'Mexican Mushroom', 'Golden Cap'],
   'research', 'beginner',
-  '{"tempRange": {"min": 75, "max": 80, "optimal": 77}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 10, "daysMax": 14, "co2Tolerance": "moderate", "lightRequirement": "none"}'::jsonb,
-  '{"tempRange": {"min": 72, "max": 78, "optimal": 75}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 7, "daysMax": 14, "co2Tolerance": "moderate", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 5, "daysMax": 10, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
-  '{"tempRange": {"min": 70, "max": 75, "optimal": 72}, "humidityRange": {"min": 90, "max": 95}, "daysMin": 5, "daysMax": 7, "co2Tolerance": "low", "lightRequirement": "indirect"}'::jsonb,
+  '{
+    "tempRange": {"min": 75, "max": 80, "optimal": 77, "warningLow": 70, "warningHigh": 85, "criticalLow": 65, "criticalHigh": 90, "rampRate": 2},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 92, "warningLow": 85, "warningHigh": 98, "criticalLow": 80, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 8000, "optimal": 4000, "warningHigh": 12000, "criticalHigh": 18000, "unit": "ppm"},
+    "daysMin": 10, "daysMax": 14, "daysTypical": 12,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "1x daily for gas exchange",
+    "lightRequirement": "none",
+    "transitionCriteria": {"minDays": 10, "maxDays": 14, "typicalDays": 12, "colonizationPercent": 100, "visualIndicators": ["fully colonized", "no visible grain", "mycelium consolidating"], "autoTransition": false, "transitionAlertDays": 2},
+    "criticalParameters": ["temperature"],
+    "equipmentNotes": "Dark, warm incubation. 75-80°F optimal. Break and shake at 30% colonization for faster results."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 72, "max": 78, "optimal": 75, "warningLow": 68, "warningHigh": 82, "criticalLow": 65, "criticalHigh": 85, "rampRate": 2},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 92, "warningLow": 85, "warningHigh": 98, "criticalLow": 80, "criticalHigh": 100, "rampRate": 5},
+    "co2Range": {"min": 0, "max": 5000, "optimal": 2500, "warningHigh": 8000, "criticalHigh": 12000, "unit": "ppm"},
+    "daysMin": 7, "daysMax": 14, "daysTypical": 10,
+    "co2Tolerance": "moderate",
+    "faeFrequency": "2x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "low", "spectrum": "cool", "dawnDuskRamp": 15},
+    "transitionCriteria": {"minDays": 7, "maxDays": 14, "typicalDays": 10, "colonizationPercent": 100, "visualIndicators": ["surface fully colonized", "hyphal knots forming", "primordia visible"], "autoTransition": true, "transitionAlertDays": 2, "tempTransitionHours": 12},
+    "criticalParameters": ["temperature", "humidity"],
+    "equipmentNotes": "Monotub or shoebox tek. Maintain surface conditions. Watch for primordia at day 7-10."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 75, "optimal": 72, "warningLow": 65, "warningHigh": 78, "criticalLow": 60, "criticalHigh": 82, "rampRate": 2},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 93, "warningLow": 88, "warningHigh": 98, "criticalLow": 85, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1200, "optimal": 700, "warningHigh": 2000, "criticalHigh": 3000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 10, "daysTypical": 7,
+    "co2Tolerance": "low",
+    "faeFrequency": "4-6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 5, "maxDays": 10, "typicalDays": 7, "visualIndicators": ["pins visible", "primordia elongating", "small caps forming"], "autoTransition": true, "transitionAlertDays": 2},
+    "criticalParameters": ["humidity", "co2", "fae"],
+    "equipmentNotes": "Slight temperature drop helps initiate pinning. Increase FAE. Maintain high humidity with misting."
+  }'::jsonb,
+  '{
+    "tempRange": {"min": 70, "max": 75, "optimal": 72, "warningLow": 65, "warningHigh": 78, "criticalLow": 60, "criticalHigh": 82, "rampRate": 1},
+    "humidityRange": {"min": 90, "max": 95, "optimal": 92, "warningLow": 88, "warningHigh": 98, "criticalLow": 85, "criticalHigh": 100, "rampRate": 3},
+    "co2Range": {"min": 400, "max": 1200, "optimal": 700, "warningHigh": 2000, "criticalHigh": 3000, "unit": "ppm"},
+    "daysMin": 5, "daysMax": 7, "daysTypical": 6,
+    "co2Tolerance": "low",
+    "faeFrequency": "4-6x daily",
+    "lightRequirement": "indirect",
+    "lightSchedule": {"photoperiod": 12, "intensity": "medium", "spectrum": "cool", "dawnDuskRamp": 30},
+    "transitionCriteria": {"minDays": 5, "maxDays": 7, "typicalDays": 6, "visualIndicators": ["veil stretching", "veil breaking", "caps expanding"], "autoTransition": false, "transitionAlertDays": 1},
+    "criticalParameters": ["humidity", "fae"],
+    "equipmentNotes": "Harvest just before or as veil breaks. Twist and pull. Second flush 7-14 days after rehydration."
+  }'::jsonb,
   ARRAY['brown rice flour/vermiculite (PF Tek)', 'grain spawn to coir/verm', 'manure-based substrate'],
   'Many cultivation methods: PF Tek (beginner), grain spawn to bulk substrate (intermediate). Coir/verm or manure-based.',
-  'Subtropical/tropical origin. Many cultivars exist (B+, Golden Teacher, Penis Envy, etc.) with varying characteristics.',
+  'Subtropical/tropical origin. Many cultivars exist (B+, Golden Teacher, Penis Envy, APE, Jack Frost, etc.) with varying characteristics. PE/APE strains colonize slower but are denser.',
   'Not relevant for this category.',
   'Not consumed as food.',
-  'Most widely studied and cultivated psilocybin species for research.',
+  'Most widely studied and cultivated psilocybin species for research. Strain characteristics: Golden Teacher (balanced, moderate), B+ (vigorous, large fruits), PE/APE (slow, dense, potent), Jack Frost (fast, leucistic/albino).',
   'Legal status varies by jurisdiction—federally scheduled in US, decriminalized or legal elsewhere. For microscopy and taxonomy study only where applicable.',
-  'For microscopy and taxonomy study only where applicable.',
   '1-2 oz dried per quart spawn', '3-5 flushes', 7, 14,
+  '{
+    "automationTested": false,
+    "automationNotes": "Standard monotub conditions work well. Temperature and humidity are most critical. Different strains (PE, APE, Golden Teacher) may have slightly different timing but similar conditions.",
+    "requiredSensors": ["temperature", "humidity"],
+    "optionalSensors": ["co2", "light", "camera"],
+    "controllerTypes": ["climate controller", "humidifier", "exhaust fan", "lighting timer"],
+    "alertOnTempDeviation": 5,
+    "alertOnHumidityDeviation": 8,
+    "alertOnStageDuration": true,
+    "sensorPollingInterval": 300,
+    "dataRetentionDays": 180
+  }'::jsonb,
+  'SPAWN COLONIZATION (75-80°F, 10-14 days): Inoculate grain jars with spore syringe or LC. Keep in dark at 75-80°F. No light needed. Shake at 30% colonization. Wait for 100% colonization—visible when no grain shows through mycelium. Golden Teacher/B+ colonize fast (10-12 days), PE/APE slower (14-21 days). Watch for contam—green/black colors are bad.',
+  'BULK COLONIZATION (72-78°F, 7-14 days): Spawn to bulk at 1:2-1:4 ratio with coir/verm or manure substrate. Maintain surface conditions (tiny droplets visible). Introduce indirect light 12hr/day. Keep lid closed or cracked until surface fully colonized. Watch for hyphal knots/primordia around day 7-10. PE/APE may take longer.',
+  'PINNING (70-75°F, 5-10 days): Once primordia visible, increase FAE significantly. Maintain 90%+ humidity with misting. Drop temp slightly to 70-72°F to encourage pinning. CO2 below 1200ppm critical. Pins should multiply rapidly. Aborts (dark caps that stop growing) indicate environmental stress. Fan 4-6x daily.',
+  'MATURATION (70-75°F, 5-7 days): Maintain fruiting conditions. Harvest JUST BEFORE or AS VEIL BREAKS—this is critical timing. Twist and pull fruits to remove cleanly. Spore drop after veil break is normal but messy. Dry immediately using dehydrator at 160°F or desiccant. Second flush 7-14 days after dunking substrate for 12-24 hours.',
   'Most widely studied psilocybin species. Legal status varies by jurisdiction. For microscopy/research only.',
   NULL
 );
