@@ -1720,8 +1720,114 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, [generateId]);
 
   const addCultureTransfer = useCallback((cultureId: string, transfer: Omit<CultureTransfer, 'id'>): Culture | null => {
-    return null; // TODO: Implement
-  }, []);
+    // 1. Get source culture
+    const sourceCulture = state.cultures.find(c => c.id === cultureId);
+    if (!sourceCulture) return null;
+
+    const transferId = generateId('trans');
+    const newTransfer: CultureTransfer = { ...transfer, id: transferId };
+
+    // 2. Prepare new culture object if needed
+    let newCulture: Culture | null = null;
+    const isCultureCreation = ['liquid_culture', 'agar', 'slant', 'spore_syringe'].includes(transfer.toType);
+
+    // Check if we should create a new culture (either ID provided or implied by type)
+    if (isCultureCreation && (transfer.toId || !transfer.toId)) { // Create if it's a culture type
+      const targetId = transfer.toId || generateId('cul');
+      // Update transfer with the actual target ID if we generated it
+      newTransfer.toId = targetId;
+
+      const now = new Date();
+
+      // Inherit what we can from parent, use defaults for rest
+      newCulture = {
+        id: targetId,
+        type: transfer.toType as any,
+        label: generateCultureLabel(transfer.toType as any),
+        strainId: sourceCulture.strainId,
+        status: 'colonizing',
+        parentId: sourceCulture.id,
+        generation: (sourceCulture.generation || 0) + 1,
+        locationId: sourceCulture.locationId, // Default to parent location
+        vesselId: state.vessels.find(v => v.isActive)?.id || 'default-vessel', // Needs selection
+        volumeMl: undefined,
+        fillVolumeMl: undefined,
+        prepDate: new Date().toISOString().split('T')[0],
+        sterilizationDate: undefined,
+        healthRating: 5,
+        notes: `Transferred from ${sourceCulture.label}\n${transfer.notes || ''}`,
+        cost: 0,
+        createdAt: now,
+        updatedAt: now,
+        observations: [],
+        transfers: [],
+      };
+    }
+
+    // 3. Update local state
+    setState(prev => {
+      // Update source culture transfers
+      const updatedCultures = prev.cultures.map(c =>
+        c.id === cultureId
+          ? { ...c, transfers: [...c.transfers, newTransfer], updatedAt: new Date() }
+          : c
+      );
+
+      // Add new culture if created
+      if (newCulture) {
+        updatedCultures.unshift(newCulture);
+      }
+
+      return { ...prev, cultures: updatedCultures };
+    });
+
+    // 4. Persist to Supabase (fire and forget)
+    if (supabase) {
+      (async () => {
+        try {
+          const userId = await getCurrentUserId();
+          if (!userId) return;
+
+          // Insert new culture if created
+          if (newCulture) {
+            const { error: cultureError } = await supabase
+              .from('cultures')
+              .insert({
+                ...transformCultureToDb(newCulture),
+                user_id: userId
+              });
+
+            if (cultureError) {
+              console.error('Failed to persist new culture:', cultureError);
+              return; // Stop if culture creation failed
+            }
+          }
+
+          // Insert transfer record
+          const { error: transferError } = await supabase
+            .from('culture_transfers')
+            .insert({
+              source_culture_id: cultureId,
+              target_culture_id: newTransfer.toId || null,
+              date: transfer.date.toISOString(),
+              notes: transfer.notes,
+              quantity: transfer.quantity,
+              unit: transfer.unit,
+              to_type: transfer.toType,
+              user_id: userId
+            });
+
+          if (transferError) {
+            console.error('Failed to persist transfer:', transferError);
+          }
+        } catch (err) {
+          console.error('Error in addCultureTransfer persistence:', err);
+        }
+      })();
+    }
+
+    return newCulture;
+  }, [state.cultures, state.vessels, generateId, generateCultureLabel, supabase]);
 
   // ============================================================================
   // GROW CRUD
