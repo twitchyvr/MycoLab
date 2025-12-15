@@ -1235,10 +1235,35 @@ END $$;
 -- All temperatures in Fahrenheit
 -- ============================================================================
 
--- Clear existing species to update with new comprehensive data
-DELETE FROM species WHERE user_id IS NULL;
+-- Check if we should seed species data
+-- Only seed if there are fewer than 5 global species (first run or reset)
+-- This prevents duplicate/conflict errors on re-runs
+DO $$
+DECLARE
+  species_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO species_count FROM species WHERE user_id IS NULL;
 
--- GOURMET SPECIES
+  IF species_count >= 5 THEN
+    RAISE NOTICE 'Species seed data skipped - % global species already exist', species_count;
+    RETURN;
+  END IF;
+
+  -- Clear existing global species ONLY if not referenced by strains
+  -- This prevents FK violation errors when strains reference these species
+  DELETE FROM species
+  WHERE user_id IS NULL
+  AND id NOT IN (SELECT DISTINCT species_id FROM strains WHERE species_id IS NOT NULL);
+
+  RAISE NOTICE 'Seeding species data...';
+END $$;
+
+-- Create partial unique index for global species (user_id IS NULL)
+-- This allows ON CONFLICT DO NOTHING to work for seed data
+CREATE UNIQUE INDEX IF NOT EXISTS species_name_global_unique
+ON species (name) WHERE user_id IS NULL;
+
+-- GOURMET SPECIES (will be skipped if species already exist due to unique index)
 -- Pearl Oyster
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
   spawn_colonization, bulk_colonization, pinning, maturation,
@@ -1327,7 +1352,7 @@ VALUES (
   'MATURATION (55-65°F, 3-5 days): Maintain fruiting conditions. Harvest when cap edges are still slightly curled inward before they flatten. Twist and pull to harvest. Expect 1-2lbs per 5lb block. Second flush in 1-2 weeks after soaking.',
   'The most widely cultivated oyster mushroom worldwide. Fast colonizer, aggressive, forgiving for beginners.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Blue Oyster
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -1412,7 +1437,7 @@ VALUES (
   }'::jsonb,
   'Cold-tolerant oyster variety producing blue-gray caps. Popular commercial variety.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Pink Oyster
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -1497,7 +1522,7 @@ VALUES (
   }'::jsonb,
   'Tropical species with stunning pink coloration. Needs warmth, dies below 40°F.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Golden Oyster
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -1582,7 +1607,7 @@ VALUES (
   }'::jsonb,
   'Beautiful bright yellow clusters with delicate, nutty, cashew-like flavor. Sensitive to cold.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- King Oyster
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -1667,7 +1692,7 @@ VALUES (
   }'::jsonb,
   'Premium gourmet mushroom with thick, meaty stems prized for texture. Requires supplementation.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Phoenix Oyster
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -1752,7 +1777,7 @@ VALUES (
   }'::jsonb,
   'Heat-tolerant oyster ideal for summer growing. Good choice when ambient temps exceed 70°F.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Lion's Mane
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -1838,7 +1863,7 @@ VALUES (
   }'::jsonb,
   'Unique appearance with cascading white spines. Both culinary and medicinal. Lobster-like flavor.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Shiitake
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -1926,7 +1951,7 @@ VALUES (
   }'::jsonb,
   'Second most cultivated mushroom worldwide. Rich umami flavor. Requires longer colonization, rewards patience.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Maitake
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2012,7 +2037,7 @@ VALUES (
   }'::jsonb,
   'Large cluster-forming polypore. Both culinary and medicinal value. Challenging indoor cultivation.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Enoki
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2097,7 +2122,7 @@ VALUES (
   }'::jsonb,
   'Long thin stems with tiny caps. Cold-loving species. Commercial variety differs from wild form.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Beech Mushroom / Shimeji
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2183,7 +2208,7 @@ VALUES (
   }'::jsonb,
   'Clusters of small capped mushrooms. Bitter when raw, nutty and mild when cooked.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Pioppino
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2268,7 +2293,7 @@ VALUES (
   }'::jsonb,
   'Italian favorite with crunchy texture and nutty flavor. Popular for pasta dishes.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Wood Ear
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2353,7 +2378,7 @@ VALUES (
   }'::jsonb,
   'Gelatinous ear-shaped fungus common in Asian cuisine. Easy to cultivate.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Wine Cap
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2437,7 +2462,7 @@ VALUES (
   }'::jsonb,
   'Premier outdoor garden species. Large wine-red caps. Excellent for permaculture.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Nameko
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2462,7 +2487,7 @@ VALUES (
   '0.5-0.75 lb per container', '2-3 flushes', 5, 7,
   'Amber-orange caps with distinctive gelatinous coating. Popular in Japanese cuisine, especially miso soup.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Button Mushroom (Agaricus bisporus)
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2487,7 +2512,7 @@ VALUES (
   '2-4 lbs per tray over multiple flushes', '3-5 flushes', 7, 10,
   'Most commercially cultivated mushroom worldwide. Challenging for home cultivators due to composting requirements.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- MEDICINAL SPECIES
 
@@ -2515,7 +2540,7 @@ VALUES (
   '0.25-0.5 lb per 5lb block', '1-2 flushes', 365, 730,
   'Most studied medicinal mushroom. Woody texture, used for tea/extracts. Long grow cycle (3-6 months).',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Turkey Tail
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2541,7 +2566,7 @@ VALUES (
   '0.25-0.5 lb per log/block', 'Continuous on logs', 365, 730,
   'Colorful thin bracket fungus. One of easiest medicinal mushrooms. Extensively researched for immune support.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Cordyceps militaris
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2567,7 +2592,7 @@ VALUES (
   '0.1-0.25 lb per container', '1-2 flushes', 30, 60,
   'Orange club-shaped fruiting bodies. Cultivated alternative to wild C. sinensis. Contains cordycepin.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Chaga (included for reference - cannot be cultivated)
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2593,7 +2618,7 @@ VALUES (
   'Wild harvest only', 'N/A',
   'Parasitic on birch trees. Wild-harvested sclerotia used medicinally. Cannot be conventionally cultivated.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- RESEARCH SPECIES
 
@@ -2684,7 +2709,7 @@ VALUES (
   'MATURATION (70-75°F, 5-7 days): Maintain fruiting conditions. Harvest JUST BEFORE or AS VEIL BREAKS—this is critical timing. Twist and pull fruits to remove cleanly. Spore drop after veil break is normal but messy. Dry immediately using dehydrator at 160°F or desiccant. Second flush 7-14 days after dunking substrate for 12-24 hours.',
   'Most widely studied psilocybin species. Legal status varies by jurisdiction. For microscopy/research only.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Psilocybe cyanescens
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2708,7 +2733,7 @@ VALUES (
   'Variable—outdoor bed dependent', 'Annual (fall)',
   'Potent wood-loving species. Outdoor cultivation only. Native to Pacific Northwest.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Psilocybe azurescens
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2732,7 +2757,7 @@ VALUES (
   'Variable—outdoor bed dependent', 'Annual (late fall/winter)',
   'Most potent known Psilocybe species. Native to coastal Oregon. Outdoor only, very cold-tolerant.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- Panaeolus cyanescens
 INSERT INTO species (name, scientific_name, common_names, category, difficulty,
@@ -2756,7 +2781,7 @@ VALUES (
   '0.5-1 oz dried per quart spawn', '3-5 flushes', 5, 7,
   'Tropical dung-loving species. Distinct from P. cubensis "Blue Meanie" strain. Higher potency.',
   NULL
-);
+) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- ============================================================================
 -- ROW LEVEL SECURITY
@@ -3388,12 +3413,17 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 14)
-ON CONFLICT (id) DO UPDATE SET version = 14, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 15)
+ON CONFLICT (id) DO UPDATE SET version = 15, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v15 (2024-12): Fix species seed data re-run safety:
+--               - Added conditional check to skip seeding if 5+ species exist
+--               - Added partial unique index on species.name for global species
+--               - Added ON CONFLICT DO NOTHING to all species INSERTs
+--               - Fixed DELETE to exclude species referenced by strains
 -- v14 (2024-12): Schema robustness improvements:
 --               - Fixed FK ordering issue: locations.supplier_id now added via
 --                 ALTER TABLE after suppliers table exists
