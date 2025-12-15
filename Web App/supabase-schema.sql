@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS locations (
   power_usage TEXT,
   has_air_circulation BOOLEAN DEFAULT false,
   size TEXT,
-  supplier_id UUID REFERENCES suppliers(id),
+  supplier_id UUID, -- FK constraint added via ALTER TABLE after suppliers table exists
   cost DECIMAL(10,2),
   procurement_date DATE,
   notes TEXT,
@@ -788,6 +788,19 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'suppliers' AND column_name = 'notes') THEN
     ALTER TABLE suppliers ADD COLUMN notes TEXT;
+  END IF;
+END $$;
+
+-- Add FK constraint from locations to suppliers (now that suppliers table exists)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'locations_supplier_id_fkey'
+    AND table_name = 'locations'
+  ) THEN
+    ALTER TABLE locations ADD CONSTRAINT locations_supplier_id_fkey
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id);
   END IF;
 END $$;
 
@@ -3375,12 +3388,18 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 13)
-ON CONFLICT (id) DO UPDATE SET version = 13, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 14)
+ON CONFLICT (id) DO UPDATE SET version = 14, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v14 (2024-12): Schema robustness improvements:
+--               - Fixed FK ordering issue: locations.supplier_id now added via
+--                 ALTER TABLE after suppliers table exists
+--               - Added species stage notes columns (spawn_colonization_notes,
+--                 bulk_colonization_notes, pinning_notes, maturation_notes)
+--               - Fixed recipe transforms for sourceUrl and costPerBatch
 -- v13 (2024-12): Fix inventory_items column name - add cost_per_unit migration
 --               for databases missing this column
 -- v12 (2024-12): Automation-ready species data enhancements:
