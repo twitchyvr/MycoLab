@@ -1184,6 +1184,12 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'shelf_life_days_max') THEN
     ALTER TABLE species ADD COLUMN shelf_life_days_max INTEGER;
   END IF;
+
+  -- Automation configuration (JSONB for IoT/sensor integration)
+  -- Stores: requiredSensors, controllerTypes, alertConfig, dataCollection preferences
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'automation_config') THEN
+    ALTER TABLE species ADD COLUMN automation_config JSONB;
+  END IF;
 END $$;
 
 -- ============================================================================
@@ -2436,12 +2442,21 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 11)
-ON CONFLICT (id) DO UPDATE SET version = 11, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 12)
+ON CONFLICT (id) DO UPDATE SET version = 12, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v12 (2024-12): Automation-ready species data enhancements:
+--                - automation_config JSONB column for IoT/sensor integration
+--                - JSONB grow phase columns now support extended structure:
+--                  * co2Range, lightSchedule for detailed environmental control
+--                  * transitionCriteria for automated stage advancement
+--                  * criticalParameters for prioritized monitoring
+--                  * faeFrequency, equipmentNotes for controller hints
+--                - EnvironmentalRange types now support warning/critical thresholds
+--                - Ready for future sensor polling, alerts, and data retention config
 -- v11 (2024-12): Comprehensive species data with grow cycle parameters:
 --                - spawn_colonization, bulk_colonization, pinning, maturation (JSONB)
 --                  Each contains tempRange, humidityRange, daysMin/Max, co2Tolerance, lightRequirement

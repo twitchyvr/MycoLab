@@ -978,7 +978,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         scientificName: row.scientific_name,
         commonNames: row.common_names,
         category: row.category || 'gourmet',
-        // Growing parameters by stage (JSONB from database)
+        // Growing parameters by stage (JSONB from database - automation ready)
         spawnColonization: row.spawn_colonization,
         bulkColonization: row.bulk_colonization,
         pinning: row.pinning,
@@ -1003,6 +1003,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         shelfLifeDays: row.shelf_life_days_min && row.shelf_life_days_max
           ? { min: row.shelf_life_days_min, max: row.shelf_life_days_max }
           : undefined,
+        // Automation configuration (for IoT/sensor integration)
+        automationConfig: row.automation_config,
         notes: row.notes,
         isActive: row.is_active ?? true,
       }));
@@ -1168,6 +1170,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           // Shelf life
           shelf_life_days_min: species.shelfLifeDays?.min,
           shelf_life_days_max: species.shelfLifeDays?.max,
+          // Automation configuration (JSONB for IoT/sensor integration)
+          automation_config: species.automationConfig,
           notes: species.notes,
           is_active: species.isActive ?? true,
           ...(userId && { user_id: userId }),
@@ -1201,6 +1205,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         shelfLifeDays: data.shelf_life_days_min && data.shelf_life_days_max
           ? { min: data.shelf_life_days_min, max: data.shelf_life_days_max }
           : undefined,
+        automationConfig: data.automation_config,
         notes: data.notes,
         isActive: data.is_active ?? true,
       };
@@ -1239,6 +1244,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         dbUpdates.shelf_life_days_min = updates.shelfLifeDays?.min;
         dbUpdates.shelf_life_days_max = updates.shelfLifeDays?.max;
       }
+      if (updates.automationConfig !== undefined) dbUpdates.automation_config = updates.automationConfig;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
       if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
 
