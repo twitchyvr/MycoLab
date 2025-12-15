@@ -41,6 +41,8 @@ import { RecipeBuilder } from './components/recipes/RecipeBuilder';
 import { SetupWizard } from './components/setup/SetupWizard';
 import { StockManagement } from './components/inventory/StockManagement';
 import { TodayView } from './components/today';
+import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
+import { ObservationTimeline } from './components/observations';
 
 // ============================================================================
 // CONTEXT
@@ -219,13 +221,20 @@ const Icons = {
       <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
     </svg>
   ),
+  Clipboard: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+      <path d="M9 14l2 2 4-4"/>
+    </svg>
+  ),
 };
 
 // ============================================================================
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
+type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
 
 interface NavItem {
   id: Page;
@@ -236,6 +245,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
   { id: 'today', label: 'Today', icon: Icons.Sun },
+  { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
   { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
   { id: 'stock', label: 'Lab Stock', icon: Icons.Package },
   { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
@@ -384,6 +394,7 @@ interface HeaderProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
   onMenuClick: () => void;
+  onSearchClick: () => void;
 }
 
 // Map pages to their "new" action pages
@@ -396,14 +407,14 @@ const newButtonConfig: Partial<Record<Page, { label: string; page: Page }>> = {
   inventory: { label: 'New Culture', page: 'cultures' },
 };
 
-const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigate, onMenuClick }) => {
+const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigate, onMenuClick, onSearchClick }) => {
   const newAction = newButtonConfig[currentPage];
-  
+
   return (
     <header className="h-14 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/30 flex-shrink-0">
       <div className="flex items-center gap-3 min-w-0">
         {/* Mobile menu button */}
-        <button 
+        <button
           onClick={onMenuClick}
           className="lg:hidden p-2 -ml-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
         >
@@ -419,8 +430,10 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Global Search Trigger */}
+        <SearchTrigger onClick={onSearchClick} />
         {/* Notification Bell - only show dot when there are actual notifications */}
-        <button 
+        <button
           className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors relative"
           title="Notifications coming soon"
         >
@@ -750,6 +763,7 @@ const App: React.FC = () => {
   const pageConfig: Record<Page, { title: string; subtitle?: string }> = {
     dashboard: { title: 'Dashboard', subtitle: 'Overview of your mycology lab' },
     today: { title: 'Today', subtitle: 'Daily tasks and actionable items' },
+    observations: { title: 'Observations', subtitle: 'Timeline of all culture and grow observations' },
     inventory: { title: 'Lab Inventory', subtitle: 'All cultures, spawn, and grows' },
     stock: { title: 'Lab Stock', subtitle: 'Inventory lots, purchases, and tracking' },
     cultures: { title: 'Culture Library', subtitle: 'Manage your cultures and genetics' },
@@ -774,6 +788,12 @@ const App: React.FC = () => {
         return (
           <div className="p-6">
             <TodayView onNavigate={setCurrentPage} />
+          </div>
+        );
+      case 'observations':
+        return (
+          <div className="p-6">
+            <ObservationTimeline onNavigate={setCurrentPage} />
           </div>
         );
       case 'devlog':
@@ -920,37 +940,64 @@ const AppContent: React.FC<{
   pageConfig,
 }) => {
   const { state } = useData();
-  
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
   // Calculate real stats from actual data
   const cultureCount = state.cultures.length;
   const activeGrowCount = state.grows.filter(g => g.status === 'active').length;
 
+  // Global keyboard shortcut for search (Cmd/Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Handle navigation from search results
+  const handleSearchNavigate = (page: Page, itemId?: string, itemType?: string) => {
+    setCurrentPage(page);
+    // Item selection is handled via custom event in GlobalSearch
+  };
+
   return (
     <>
       {showSetup && (
-        <SetupWizard 
-          onComplete={() => setShowSetup(false)} 
+        <SetupWizard
+          onComplete={() => setShowSetup(false)}
           onSkip={() => {
             localStorage.setItem('mycolab-setup-complete', 'true');
             setShowSetup(false);
-          }} 
+          }}
         />
       )}
+      {/* Global Search Modal */}
+      <GlobalSearch
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onNavigate={handleSearchNavigate}
+      />
       <div className="h-screen flex bg-zinc-950 text-white overflow-hidden">
-        <Sidebar 
-          currentPage={currentPage} 
-          onNavigate={setCurrentPage} 
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={setCurrentPage}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           cultureCount={cultureCount}
           activeGrowCount={activeGrowCount}
         />
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden lg:ml-0">
-          <Header 
-            {...pageConfig[currentPage]} 
-            currentPage={currentPage} 
+          <Header
+            {...pageConfig[currentPage]}
+            currentPage={currentPage}
             onNavigate={setCurrentPage}
             onMenuClick={() => setSidebarOpen(true)}
+            onSearchClick={() => setIsSearchOpen(true)}
           />
           <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
             {renderPage()}
