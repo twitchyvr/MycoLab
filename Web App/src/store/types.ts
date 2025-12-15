@@ -4,15 +4,174 @@
 // ============================================================================
 
 // ============================================================================
+// AUTOMATION-READY ENVIRONMENTAL TYPES
+// Designed for future IoT/sensor integration and automated environment control
+// ============================================================================
+
+// Environmental range with multi-level thresholds for automation alerts
+export interface EnvironmentalRange {
+  // Core range values
+  min: number;
+  max: number;
+  optimal?: number;
+
+  // Alert thresholds for automation (optional - for future use)
+  warningLow?: number;    // Below this triggers warning (yellow alert)
+  warningHigh?: number;   // Above this triggers warning (yellow alert)
+  criticalLow?: number;   // Below this triggers critical alert (red alert)
+  criticalHigh?: number;  // Above this triggers critical alert (red alert)
+}
+
+// Temperature range in Fahrenheit (extends EnvironmentalRange for backwards compatibility)
+export interface TemperatureRange extends EnvironmentalRange {
+  // Automation control hints
+  rampRate?: number;      // Degrees per hour for gradual changes between stages
+}
+
+// Humidity range as percentage
+export interface HumidityRange extends EnvironmentalRange {
+  // Automation control hints
+  rampRate?: number;      // Percentage points per hour for gradual changes
+}
+
+// CO2 range in PPM for automated ventilation control
+export interface CO2Range extends EnvironmentalRange {
+  unit?: 'ppm';           // Parts per million (standard)
+}
+
+// Light schedule for automated lighting control
+export interface LightSchedule {
+  photoperiod?: number;           // Hours of light per day (e.g., 12)
+  intensity?: 'low' | 'medium' | 'high' | number;  // Relative or lux value
+  spectrum?: 'warm' | 'cool' | 'full' | 'blue' | 'red';  // Light spectrum type
+  dawnDuskRamp?: number;          // Minutes to ramp up/down (simulate sunrise/sunset)
+}
+
+// Stage transition criteria for automation
+export interface StageTransitionCriteria {
+  // Time-based triggers
+  minDays?: number;               // Minimum days before transition allowed
+  maxDays?: number;               // Maximum days (auto-alert if exceeded)
+  typicalDays?: number;           // Expected duration for scheduling
+
+  // Condition-based triggers (for future sensor integration)
+  colonizationPercent?: number;   // e.g., 100 = fully colonized
+  visualIndicators?: string[];    // Human-readable cues to look for
+
+  // Automation behavior
+  autoTransition?: boolean;       // Whether to auto-advance or require confirmation
+  transitionAlertDays?: number;   // Days before expected transition to send reminder
+
+  // Environmental transition
+  tempTransitionHours?: number;   // Hours to ramp temperature to next stage
+  humidityTransitionHours?: number; // Hours to ramp humidity to next stage
+}
+
+// Parameters for each growth phase - automation ready
+export interface GrowPhaseParameters {
+  // Environmental targets
+  tempRange?: TemperatureRange;
+  humidityRange?: HumidityRange;
+  co2Range?: CO2Range;
+  lightSchedule?: LightSchedule;
+
+  // Duration
+  daysMin?: number;
+  daysMax?: number;
+  daysTypical?: number;           // Expected/average duration
+
+  // FAE (Fresh Air Exchange) requirements
+  co2Tolerance?: 'low' | 'moderate' | 'high';
+  faeFrequency?: string;          // e.g., "4x daily", "continuous", "passive"
+
+  // Light requirements (simple version, lightSchedule for detailed)
+  lightRequirement?: 'none' | 'indirect' | 'direct' | '12hr_cycle';
+
+  // Stage transition criteria
+  transitionCriteria?: StageTransitionCriteria;
+
+  // Automation priority (which parameters are most critical to maintain)
+  criticalParameters?: ('temperature' | 'humidity' | 'co2' | 'light' | 'fae')[];
+
+  // Equipment hints for automation systems
+  equipmentNotes?: string;        // e.g., "Requires ultrasonic humidifier", "Martha tent recommended"
+
+  notes?: string;
+}
+
+// Automation configuration for a species
+export interface SpeciesAutomationConfig {
+  // Overall automation readiness
+  automationTested?: boolean;     // Has this been validated with automation?
+  automationNotes?: string;       // General automation considerations
+
+  // Sensor requirements
+  requiredSensors?: ('temperature' | 'humidity' | 'co2' | 'light' | 'weight')[];
+  optionalSensors?: ('temperature' | 'humidity' | 'co2' | 'light' | 'weight' | 'camera')[];
+
+  // Controller compatibility
+  controllerTypes?: string[];     // e.g., ["inkbird", "ac_infinity", "custom_arduino"]
+
+  // Alert configuration defaults
+  alertOnTempDeviation?: number;  // Degrees deviation to trigger alert
+  alertOnHumidityDeviation?: number; // Percentage points deviation
+  alertOnStageDuration?: boolean; // Alert if stage takes too long
+
+  // Data collection preferences
+  sensorPollingInterval?: number; // Seconds between sensor readings
+  dataRetentionDays?: number;     // How long to keep detailed sensor data
+}
+
+// ============================================================================
 // LOOKUP TABLE TYPES
 // ============================================================================
 
 export interface Species {
   id: string;
-  name: string;
-  scientificName?: string;
-  commonNames?: string[];
+  name: string;                    // Common name (e.g., "Pearl Oyster")
+  scientificName?: string;         // e.g., "Pleurotus ostreatus"
+  commonNames?: string[];          // Alternative names
   category: 'gourmet' | 'medicinal' | 'research' | 'other';
+
+  // Growing parameters by stage (automation-ready)
+  spawnColonization?: GrowPhaseParameters;  // Stage 1: Grain/spawn colonization
+  bulkColonization?: GrowPhaseParameters;   // Stage 2: Substrate colonization
+  pinning?: GrowPhaseParameters;            // Stage 3a: Pin formation
+  maturation?: GrowPhaseParameters;         // Stage 3b: Fruit body development
+
+  // Substrate preferences
+  preferredSubstrates?: string[];  // e.g., ["hardwood sawdust", "straw", "masters mix"]
+  substrateNotes?: string;
+
+  // Growing characteristics
+  difficulty?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  characteristics?: string;        // Notable physical/growing traits
+
+  // Culinary/Usage info
+  flavorProfile?: string;
+  culinaryNotes?: string;
+  medicinalProperties?: string;
+
+  // Community knowledge
+  communityTips?: string;
+  importantFacts?: string;
+
+  // Yield expectations
+  typicalYield?: string;           // e.g., "1-2 lbs per 5lb block"
+  flushCount?: string;             // e.g., "2-3 flushes"
+
+  // Shelf life (days)
+  shelfLifeDays?: { min: number; max: number };
+
+  // Automation configuration (for future IoT integration)
+  automationConfig?: SpeciesAutomationConfig;
+
+  // Stage-specific notes (easily accessible for UI display)
+  spawnColonizationNotes?: string;  // Human-readable guidance for spawn colonization
+  bulkColonizationNotes?: string;   // Human-readable guidance for bulk colonization
+  pinningNotes?: string;            // Human-readable guidance for pinning stage
+  maturationNotes?: string;         // Human-readable guidance for maturation/harvest
+
   notes?: string;
   isActive: boolean;
 }
