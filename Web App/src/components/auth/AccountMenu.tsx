@@ -270,9 +270,15 @@ export const AccountMenu: React.FC = () => {
   // Confirm sign out
   const handleSignOutConfirm = async () => {
     setIsLoggingOut(true);
-    await signOut();
-    setIsLoggingOut(false);
-    setShowLogoutModal(false);
+    try {
+      await signOut();
+      // Force page reload to ensure clean state after sign out
+      window.location.reload();
+    } catch (err) {
+      console.error('Sign out error:', err);
+      // Even if signOut throws, force logout to clear state
+      forceLogout();
+    }
   };
 
   // Handle delete account click - show confirmation
