@@ -93,11 +93,11 @@ export const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
       try {
         const content = qrContent();
 
-        // Calculate dimensions
-        const qrSize = size - 20; // Leave some padding
+        // Calculate dimensions - use full size for QR when no label
+        const qrSize = includeLabel ? size - 20 : size;
         const totalHeight = includeLabel ? size + 40 : size;
 
-        canvas.width = size;
+        canvas.width = includeLabel ? size : qrSize;
         canvas.height = totalHeight;
 
         // White background
@@ -116,10 +116,14 @@ export const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
           },
         });
 
-        // Draw QR code centered on main canvas
-        const xOffset = (size - qrSize) / 2;
-        const yOffset = (size - qrSize) / 2;
-        ctx.drawImage(tempCanvas, xOffset, yOffset);
+        // Draw QR code (centered when includeLabel, otherwise fill)
+        if (includeLabel) {
+          const xOffset = (size - qrSize) / 2;
+          const yOffset = (size - qrSize) / 2;
+          ctx.drawImage(tempCanvas, xOffset, yOffset);
+        } else {
+          ctx.drawImage(tempCanvas, 0, 0);
+        }
 
         // Draw label
         if (includeLabel) {
@@ -195,44 +199,50 @@ export const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
     }
   };
 
+  // Calculate display dimensions
+  const displayWidth = includeLabel ? size : size;
+  const displayHeight = includeLabel ? size + 40 : size;
+
   return (
     <div className={`inline-flex flex-col items-center ${className}`}>
       {/* QR Code Canvas */}
-      <div className="bg-white p-3 rounded-lg shadow-lg">
+      <div className={includeLabel ? "bg-white p-3 rounded-lg shadow-lg" : ""}>
         <canvas
           ref={canvasRef}
           className="block"
-          style={{ width: size, height: includeLabel ? size + 40 : size }}
+          style={{ width: displayWidth, height: displayHeight }}
         />
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 mt-3">
-        <button
-          onClick={handleDownload}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-sm rounded-lg transition-colors"
-          title="Download"
-        >
-          <Icons.Download />
-          <span className="hidden sm:inline">Download</span>
-        </button>
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-sm rounded-lg transition-colors"
-          title="Print"
-        >
-          <Icons.Print />
-          <span className="hidden sm:inline">Print</span>
-        </button>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-sm rounded-lg transition-colors"
-          title="Copy"
-        >
-          <Icons.Copy />
-          <span className="hidden sm:inline">Copy</span>
-        </button>
-      </div>
+      {/* Actions - only show when standalone */}
+      {includeLabel && (
+        <div className="flex items-center gap-2 mt-3">
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-sm rounded-lg transition-colors"
+            title="Download"
+          >
+            <Icons.Download />
+            <span className="hidden sm:inline">Download</span>
+          </button>
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-sm rounded-lg transition-colors"
+            title="Print"
+          >
+            <Icons.Print />
+            <span className="hidden sm:inline">Print</span>
+          </button>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-sm rounded-lg transition-colors"
+            title="Copy"
+          >
+            <Icons.Copy />
+            <span className="hidden sm:inline">Copy</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
