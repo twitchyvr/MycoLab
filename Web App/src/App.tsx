@@ -48,6 +48,7 @@ import { ProfilePage } from './components/profile';
 import { FloatingActionButton } from './components/dashboard';
 import { LabMapping, LocationOccupancy } from './components/locations';
 import { LabelDesigner } from './components/labels';
+import { QRScanner } from './components/qr';
 
 // ============================================================================
 // CONTEXT
@@ -244,13 +245,24 @@ const Icons = {
       <line x1="7" y1="7" x2="7.01" y2="7"/>
     </svg>
   ),
+  QRScan: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <rect x="3" y="3" width="7" height="7"/>
+      <rect x="14" y="3" width="7" height="7"/>
+      <rect x="3" y="14" width="7" height="7"/>
+      <rect x="14" y="14" width="3" height="3"/>
+      <rect x="18" y="14" width="3" height="3"/>
+      <rect x="14" y="18" width="3" height="3"/>
+      <rect x="18" y="18" width="3" height="3"/>
+    </svg>
+  ),
 };
 
 // ============================================================================
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
 
 interface NavItem {
   id: Page;
@@ -270,6 +282,7 @@ const navItems: NavItem[] = [
   { id: 'labmapping', label: 'Lab Mapping', icon: Icons.Layers },
   { id: 'occupancy', label: 'Occupancy', icon: Icons.Grid },
   { id: 'labels', label: 'Labels', icon: Icons.Tag },
+  { id: 'scanner', label: 'QR Scanner', icon: Icons.QRScan },
   { id: 'recipes', label: 'Recipes', icon: Icons.Recipe },
   { id: 'calculator', label: 'Substrate Calc', icon: Icons.Calculator },
   { id: 'spawnrate', label: 'Spawn Rate', icon: Icons.Layers },
@@ -800,6 +813,7 @@ const App: React.FC = () => {
     labmapping: { title: 'Lab Mapping', subtitle: 'Manage rooms, racks, shelves, and storage locations' },
     occupancy: { title: 'Location Occupancy', subtitle: 'Track items, varieties, and yields across your lab' },
     labels: { title: 'Label Designer', subtitle: 'Design and print labels with QR codes' },
+    scanner: { title: 'QR Scanner', subtitle: 'Scan labels to access records instantly' },
     calculator: { title: 'Substrate Calculator', subtitle: 'Hydration ratio calculations' },
     spawnrate: { title: 'Spawn Rate Calculator', subtitle: 'Calculate spawn-to-substrate ratios' },
     pressure: { title: 'Pressure Cooking Calculator', subtitle: 'Sterilization times with altitude adjustment' },
@@ -901,6 +915,16 @@ const App: React.FC = () => {
         return (
           <div className="p-6">
             <LabelDesigner />
+          </div>
+        );
+      case 'scanner':
+        return (
+          <div className="p-6">
+            <div className="max-w-md mx-auto">
+              <QRScanner onNavigate={(page) => {
+                setCurrentPage(page as Page);
+              }} />
+            </div>
           </div>
         );
       case 'analytics':
