@@ -2302,26 +2302,30 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       }
       const insertData = {
         name: item.name,
-        category_id: item.categoryId || null,
+        category_id: item.categoryId && item.categoryId.length > 0 ? item.categoryId : null,
         sku: item.sku || null,
-        quantity: item.quantity || 0,
+        quantity: Number(item.quantity) || 0,
         unit: item.unit || 'units',
-        min_quantity: item.reorderPoint || 0,
-        reorder_qty: item.reorderQty || null,
-        cost_per_unit: item.unitCost || 0,
-        supplier_id: item.supplierId || null,
-        location_id: item.locationId || null,
-        notes: item.notes,
+        reorder_point: Number(item.reorderPoint) || 0,
+        reorder_qty: item.reorderQty ? Number(item.reorderQty) : null,
+        cost_per_unit: Number(item.unitCost) || 0,
+        supplier_id: item.supplierId && item.supplierId.length > 0 ? item.supplierId : null,
+        location_id: item.locationId && item.locationId.length > 0 ? item.locationId : null,
+        notes: item.notes || null,
         is_active: item.isActive ?? true,
         user_id: userId,
       };
+      console.log('[MycoLab] Inserting inventory item:', insertData);
       const { data, error } = await supabase
         .from('inventory_items')
         .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[MycoLab] Inventory insert error:', error);
+        throw new Error(`Failed to create inventory item: ${error.message || error.code || 'Unknown error'}`);
+      }
 
       const newItem: InventoryItem = {
         id: data.id,
@@ -2331,7 +2335,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         quantity: data.quantity || 0,
         unit: data.unit || 'units',
         unitCost: data.cost_per_unit || 0,
-        reorderPoint: data.min_quantity || 0,
+        reorderPoint: data.reorder_point || 0,
         reorderQty: data.reorder_qty || 0,
         supplierId: data.supplier_id,
         locationId: data.location_id,
