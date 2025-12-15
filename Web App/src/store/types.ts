@@ -220,6 +220,21 @@ export interface LocationClassification {
   isActive: boolean;
 }
 
+// Location hierarchy level for farm/lab mapping
+export type LocationLevel = 'facility' | 'room' | 'zone' | 'rack' | 'shelf' | 'slot';
+
+// Room type classifications for process steps
+export type RoomPurpose =
+  | 'pasteurization'
+  | 'inoculation'
+  | 'colonization'
+  | 'fruiting'
+  | 'storage'
+  | 'prep'
+  | 'drying'
+  | 'packaging'
+  | 'general';
+
 export interface Location {
   id: string;
   name: string;
@@ -242,6 +257,22 @@ export interface Location {
   procurementDate?: Date;
   notes?: string;
   isActive: boolean;
+
+  // Hierarchical location support for farm/lab mapping
+  parentId?: string;          // Parent location ID for hierarchy
+  level?: LocationLevel;       // Hierarchy level (facility > room > zone > rack > shelf > slot)
+  roomPurpose?: RoomPurpose;  // For room-level locations, their primary purpose
+  capacity?: number;          // Maximum items this location can hold
+  currentOccupancy?: number;  // Current number of items
+  sortOrder?: number;         // Display order among siblings
+  path?: string;              // Full path like "Facility/Room A/Rack 1/Shelf 2"
+  code?: string;              // Short code for labeling (e.g., "R1-S2-A")
+  dimensions?: {              // Physical dimensions
+    length?: number;
+    width?: number;
+    height?: number;
+    unit?: 'cm' | 'in' | 'm' | 'ft';
+  };
 }
 
 export interface Vessel {

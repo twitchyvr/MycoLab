@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS location_classifications (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- Locations (with enhanced fields for procurement tracking)
+-- Locations (with enhanced fields for procurement tracking and hierarchical organization)
 CREATE TABLE IF NOT EXISTS locations (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
@@ -112,6 +112,19 @@ CREATE TABLE IF NOT EXISTS locations (
   procurement_date DATE,
   notes TEXT,
   is_active BOOLEAN DEFAULT true,
+  -- Hierarchical location fields for farm/lab mapping
+  parent_id UUID REFERENCES locations(id) ON DELETE SET NULL,
+  level TEXT CHECK (level IN ('facility', 'room', 'zone', 'rack', 'shelf', 'slot')),
+  room_purpose TEXT CHECK (room_purpose IN ('pasteurization', 'inoculation', 'colonization', 'fruiting', 'storage', 'prep', 'drying', 'packaging', 'general')),
+  capacity INTEGER,
+  current_occupancy INTEGER DEFAULT 0,
+  sort_order INTEGER DEFAULT 0,
+  path TEXT, -- Full path like "Facility/Room A/Rack 1"
+  code TEXT, -- Short code for labeling (e.g., "R1-S2-A")
+  dimension_length DECIMAL(10,2),
+  dimension_width DECIMAL(10,2),
+  dimension_height DECIMAL(10,2),
+  dimension_unit TEXT CHECK (dimension_unit IN ('cm', 'in', 'm', 'ft')) DEFAULT 'cm',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
@@ -146,6 +159,43 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'procurement_date') THEN
     ALTER TABLE locations ADD COLUMN procurement_date DATE;
+  END IF;
+  -- Hierarchical location fields for farm/lab mapping
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'parent_id') THEN
+    ALTER TABLE locations ADD COLUMN parent_id UUID REFERENCES locations(id) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'level') THEN
+    ALTER TABLE locations ADD COLUMN level TEXT CHECK (level IN ('facility', 'room', 'zone', 'rack', 'shelf', 'slot'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'room_purpose') THEN
+    ALTER TABLE locations ADD COLUMN room_purpose TEXT CHECK (room_purpose IN ('pasteurization', 'inoculation', 'colonization', 'fruiting', 'storage', 'prep', 'drying', 'packaging', 'general'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'capacity') THEN
+    ALTER TABLE locations ADD COLUMN capacity INTEGER;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'current_occupancy') THEN
+    ALTER TABLE locations ADD COLUMN current_occupancy INTEGER DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'sort_order') THEN
+    ALTER TABLE locations ADD COLUMN sort_order INTEGER DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'path') THEN
+    ALTER TABLE locations ADD COLUMN path TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'code') THEN
+    ALTER TABLE locations ADD COLUMN code TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'dimension_length') THEN
+    ALTER TABLE locations ADD COLUMN dimension_length DECIMAL(10,2);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'dimension_width') THEN
+    ALTER TABLE locations ADD COLUMN dimension_width DECIMAL(10,2);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'dimension_height') THEN
+    ALTER TABLE locations ADD COLUMN dimension_height DECIMAL(10,2);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'dimension_unit') THEN
+    ALTER TABLE locations ADD COLUMN dimension_unit TEXT CHECK (dimension_unit IN ('cm', 'in', 'm', 'ft')) DEFAULT 'cm';
   END IF;
 END $$;
 

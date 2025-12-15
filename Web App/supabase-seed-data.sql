@@ -343,15 +343,40 @@ ON CONFLICT (id) DO UPDATE SET
 -- Function to populate default data for new users
 CREATE OR REPLACE FUNCTION populate_default_user_data()
 RETURNS TRIGGER AS $$
+DECLARE
+  facility_id UUID;
+  lab_id UUID;
+  grow_room_id UUID;
+  storage_id UUID;
 BEGIN
-  -- Create default locations for the new user
-  INSERT INTO locations (name, type, type_id, temp_min, temp_max, humidity_min, humidity_max, notes, user_id)
+  -- Create default hierarchical locations for the new user
+
+  -- Level 1: Facility (top level)
+  INSERT INTO locations (name, type, level, room_purpose, notes, user_id, sort_order)
+  VALUES ('My Lab', 'lab', 'facility', 'general', 'Main facility - customize this to match your setup', NEW.id, 1)
+  RETURNING id INTO facility_id;
+
+  -- Level 2: Rooms
+  INSERT INTO locations (name, type, type_id, level, room_purpose, parent_id, temp_min, temp_max, humidity_min, humidity_max, notes, user_id, sort_order, code, path)
   VALUES
-    ('Incubation Chamber', 'incubation', '00000000-0000-0000-0008-000000000001', 24, 28, 70, 80, 'Main incubation space - adjust temps based on species', NEW.id),
-    ('Fruiting Chamber', 'fruiting', '00000000-0000-0000-0008-000000000002', 18, 24, 85, 95, 'High humidity fruiting area - mist regularly', NEW.id),
-    ('Main Lab', 'lab', '00000000-0000-0000-0008-000000000003', 20, 25, NULL, NULL, 'Clean work area for inoculation', NEW.id),
-    ('Lab Fridge', 'storage', '00000000-0000-0000-0008-000000000004', 2, 6, NULL, NULL, 'Refrigerated culture storage (slants, LC, spore syringes)', NEW.id),
-    ('Supply Closet', 'storage', '00000000-0000-0000-0008-000000000005', NULL, NULL, NULL, NULL, 'Dry goods and supplies storage', NEW.id);
+    ('Lab/Clean Room', 'lab', '00000000-0000-0000-0008-000000000003', 'room', 'inoculation', facility_id, 20, 25, NULL, NULL, 'Clean work area for inoculation and agar work', NEW.id, 1, 'LAB', 'My Lab / Lab/Clean Room'),
+    ('Incubation Room', 'incubation', '00000000-0000-0000-0008-000000000001', 'room', 'colonization', facility_id, 24, 28, 70, 80, 'Temperature controlled space for colonization', NEW.id, 2, 'INC', 'My Lab / Incubation Room'),
+    ('Grow Room', 'fruiting', '00000000-0000-0000-0008-000000000002', 'room', 'fruiting', facility_id, 18, 24, 85, 95, 'High humidity fruiting chamber', NEW.id, 3, 'GRW', 'My Lab / Grow Room'),
+    ('Storage Area', 'storage', '00000000-0000-0000-0008-000000000005', 'room', 'storage', facility_id, NULL, NULL, NULL, NULL, 'Supplies and equipment storage', NEW.id, 4, 'STR', 'My Lab / Storage Area');
+
+  -- Get the room IDs we just created
+  SELECT id INTO lab_id FROM locations WHERE user_id = NEW.id AND code = 'LAB';
+  SELECT id INTO grow_room_id FROM locations WHERE user_id = NEW.id AND code = 'GRW';
+  SELECT id INTO storage_id FROM locations WHERE user_id = NEW.id AND code = 'STR';
+
+  -- Level 3: Equipment/Zones within rooms
+  INSERT INTO locations (name, type, type_id, level, parent_id, temp_min, temp_max, notes, user_id, sort_order, code, path, capacity)
+  VALUES
+    ('Lab Fridge', 'storage', '00000000-0000-0000-0008-000000000004', 'zone', lab_id, 2, 6, 'Refrigerated culture storage (slants, LC, spore syringes)', NEW.id, 1, 'LAB-FR', 'My Lab / Lab/Clean Room / Lab Fridge', 50),
+    ('Flow Hood', 'lab', '00000000-0000-0000-0008-000000000003', 'zone', lab_id, NULL, NULL, 'Laminar flow hood for sterile work', NEW.id, 2, 'LAB-FH', 'My Lab / Lab/Clean Room / Flow Hood', NULL),
+    ('Incubation Rack 1', 'incubation', '00000000-0000-0000-0008-000000000001', 'rack', grow_room_id, NULL, NULL, 'Wire shelving for colonizing jars/bags', NEW.id, 1, 'GRW-R1', 'My Lab / Grow Room / Incubation Rack 1', 24),
+    ('Martha Tent', 'fruiting', '00000000-0000-0000-0008-000000000002', 'zone', grow_room_id, 18, 22, 'Humidity-controlled fruiting tent', NEW.id, 2, 'GRW-MT', 'My Lab / Grow Room / Martha Tent', 12),
+    ('Supply Shelf', 'storage', '00000000-0000-0000-0008-000000000005', 'rack', storage_id, NULL, NULL, 'Dry goods and supplies', NEW.id, 1, 'STR-SH', 'My Lab / Storage Area / Supply Shelf', 100);
 
   -- Create default recipes for the new user
   -- Standard MEA Recipe
@@ -444,7 +469,10 @@ UPDATE schema_version SET version = 4, updated_at = NOW() WHERE id = 1;
 -- - 4 Location Classifications
 --
 -- New users will automatically receive:
--- - 5 starter locations
+-- - 10 hierarchical locations (facility > rooms > zones/racks)
+--   - 1 Facility (My Lab)
+--   - 4 Rooms (Lab, Incubation, Grow Room, Storage)
+--   - 5 Zones/Racks (Fridge, Flow Hood, Rack, Martha Tent, Supply Shelf)
 -- - 4 essential recipes (MEA, LC, CVG, Grain Spawn)
 -- - Default settings
 -- ============================================================================

@@ -45,6 +45,9 @@ import { TodayView } from './components/today';
 import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
 import { ObservationTimeline } from './components/observations';
 import { ProfilePage } from './components/profile';
+import { FloatingActionButton } from './components/dashboard';
+import { LabMapping } from './components/locations';
+import { LabelDesigner } from './components/labels';
 
 // ============================================================================
 // CONTEXT
@@ -230,13 +233,19 @@ const Icons = {
       <path d="M9 14l2 2 4-4"/>
     </svg>
   ),
+  Tag: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+      <line x1="7" y1="7" x2="7.01" y2="7"/>
+    </svg>
+  ),
 };
 
 // ============================================================================
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'labels' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
 
 interface NavItem {
   id: Page;
@@ -253,6 +262,8 @@ const navItems: NavItem[] = [
   { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
   { id: 'lineage', label: 'Lineage', icon: Icons.Culture },
   { id: 'grows', label: 'Grows', icon: Icons.Grow },
+  { id: 'labmapping', label: 'Lab Mapping', icon: Icons.Layers },
+  { id: 'labels', label: 'Labels', icon: Icons.Tag },
   { id: 'recipes', label: 'Recipes', icon: Icons.Recipe },
   { id: 'calculator', label: 'Substrate Calc', icon: Icons.Calculator },
   { id: 'spawnrate', label: 'Spawn Rate', icon: Icons.Layers },
@@ -780,6 +791,8 @@ const App: React.FC = () => {
     lineage: { title: 'Lineage Visualization', subtitle: 'Interactive family tree of your cultures' },
     grows: { title: 'Grow Tracking', subtitle: 'Track your active and completed grows' },
     recipes: { title: 'Recipes', subtitle: 'Agar, LC, substrate formulations' },
+    labmapping: { title: 'Lab Mapping', subtitle: 'Manage rooms, racks, shelves, and storage locations' },
+    labels: { title: 'Label Designer', subtitle: 'Design and print labels with QR codes' },
     calculator: { title: 'Substrate Calculator', subtitle: 'Hydration ratio calculations' },
     spawnrate: { title: 'Spawn Rate Calculator', subtitle: 'Calculate spawn-to-substrate ratios' },
     pressure: { title: 'Pressure Cooking Calculator', subtitle: 'Sterilization times with altitude adjustment' },
@@ -863,6 +876,18 @@ const App: React.FC = () => {
         return (
           <div className="p-6">
             <RecipeBuilder />
+          </div>
+        );
+      case 'labmapping':
+        return (
+          <div className="p-6">
+            <LabMapping />
+          </div>
+        );
+      case 'labels':
+        return (
+          <div className="p-6">
+            <LabelDesigner />
           </div>
         );
       case 'analytics':
@@ -1023,6 +1048,8 @@ const AppContent: React.FC<{
             {renderPage()}
           </div>
         </main>
+        {/* Mobile Floating Action Button */}
+        <FloatingActionButton onNavigate={(page: string) => setCurrentPage(page as Page)} />
       </div>
     </>
   );
