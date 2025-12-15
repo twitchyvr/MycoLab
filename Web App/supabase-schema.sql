@@ -1040,9 +1040,14 @@ BEGIN
     ALTER TABLE inventory_items ADD COLUMN reorder_qty DECIMAL;
   END IF;
 
-  -- Unit cost (app uses unitCost)
+  -- Unit cost (legacy column - kept for backwards compatibility)
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'unit_cost') THEN
     ALTER TABLE inventory_items ADD COLUMN unit_cost DECIMAL;
+  END IF;
+
+  -- Cost per unit (app uses this column name)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'cost_per_unit') THEN
+    ALTER TABLE inventory_items ADD COLUMN cost_per_unit DECIMAL;
   END IF;
 END $$;
 
@@ -3370,12 +3375,14 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 12)
-ON CONFLICT (id) DO UPDATE SET version = 12, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 13)
+ON CONFLICT (id) DO UPDATE SET version = 13, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v13 (2024-12): Fix inventory_items column name - add cost_per_unit migration
+--               for databases missing this column
 -- v12 (2024-12): Automation-ready species data enhancements:
 --                - automation_config JSONB column for IoT/sensor integration
 --                - JSONB grow phase columns now support extended structure:

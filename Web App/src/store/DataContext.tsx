@@ -511,6 +511,8 @@ const transformRecipeFromDb = (row: any): Recipe => ({
   ingredients: [],
   instructions: row.instructions || [],
   tips: row.tips || [],
+  sourceUrl: row.source_url,
+  costPerBatch: row.cost_per_batch,
   notes: row.notes,
   isActive: row.is_active ?? true,
   createdAt: new Date(row.created_at),
@@ -532,6 +534,8 @@ const transformRecipeToDb = (recipe: Partial<Recipe>) => {
   if (recipe.sterilizationPsi !== undefined) result.sterilization_psi = recipe.sterilizationPsi;
   if (recipe.instructions !== undefined) result.instructions = recipe.instructions;
   if (recipe.tips !== undefined) result.tips = recipe.tips;
+  if (recipe.sourceUrl !== undefined) result.source_url = recipe.sourceUrl;
+  if (recipe.costPerBatch !== undefined) result.cost_per_batch = recipe.costPerBatch;
   if (recipe.notes !== undefined) result.notes = recipe.notes;
   if (recipe.isActive !== undefined) result.is_active = recipe.isActive;
   return result;

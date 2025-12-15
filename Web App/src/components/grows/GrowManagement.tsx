@@ -141,12 +141,16 @@ export const GrowManagement: React.FC = () => {
     containerTypeId: string;
     containerCount: number;
     locationId: string;
+    inoculationDate: string; // ISO date string for the date input
     targetTempColonization: number;
     targetTempFruiting: number;
     targetHumidity: number;
     estimatedCost: number;
     notes: string;
   }
+
+  // Get today's date in YYYY-MM-DD format for date input default
+  const getTodayString = () => new Date().toISOString().split('T')[0];
 
   const defaultFormState: GrowFormState = {
     name: '',
@@ -159,6 +163,7 @@ export const GrowManagement: React.FC = () => {
     containerTypeId: '',
     containerCount: 1,
     locationId: '',
+    inoculationDate: getTodayString(),
     targetTempColonization: 24,
     targetTempFruiting: 22,
     targetHumidity: 90,
@@ -171,7 +176,13 @@ export const GrowManagement: React.FC = () => {
     const saved = localStorage.getItem(GROW_DRAFT_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Ensure inoculationDate exists (handle old drafts without this field)
+        return {
+          ...defaultFormState,
+          ...parsed,
+          inoculationDate: parsed.inoculationDate || getTodayString(),
+        };
       } catch (e) {}
     }
     return defaultFormState;
@@ -348,6 +359,11 @@ export const GrowManagement: React.FC = () => {
     const existingCount = grows.filter(g => g.strainId === newGrow.strainId && getContainerType(g.containerTypeId)?.id === newGrow.containerTypeId).length;
     const autoName = newGrow.name || `${strain?.name || 'Unknown'} ${container?.name || 'Grow'} #${existingCount + 1}`;
 
+    // Parse the inoculation date - use noon to avoid timezone issues
+    const inoculationDate = newGrow.inoculationDate
+      ? new Date(newGrow.inoculationDate + 'T12:00:00')
+      : new Date();
+
     addGrow({
       name: autoName,
       strainId: newGrow.strainId,
@@ -361,7 +377,7 @@ export const GrowManagement: React.FC = () => {
       spawnRate: calculatedSpawnRate,
       containerTypeId: newGrow.containerTypeId,
       containerCount: newGrow.containerCount,
-      spawnedAt: new Date(),
+      spawnedAt: inoculationDate,
       locationId: newGrow.locationId,
       targetTempColonization: newGrow.targetTempColonization,
       targetTempFruiting: newGrow.targetTempFruiting,
@@ -1006,16 +1022,27 @@ export const GrowManagement: React.FC = () => {
                 </div>
               </div>
 
-              <StandardDropdown
-                label="Location"
-                required
-                value={newGrow.locationId}
-                onChange={value => setNewGrow(prev => ({ ...prev, locationId: value }))}
-                options={activeLocations}
-                placeholder="Select..."
-                entityType="location"
-                fieldName="locationId"
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <StandardDropdown
+                  label="Location"
+                  required
+                  value={newGrow.locationId}
+                  onChange={value => setNewGrow(prev => ({ ...prev, locationId: value }))}
+                  options={activeLocations}
+                  placeholder="Select..."
+                  entityType="location"
+                  fieldName="locationId"
+                />
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Inoculation Date</label>
+                  <input
+                    type="date"
+                    value={newGrow.inoculationDate}
+                    onChange={e => setNewGrow(prev => ({ ...prev, inoculationDate: e.target.value }))}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white [color-scheme:dark]"
+                  />
+                </div>
+              </div>
 
               <div>
                 <label className="block text-sm text-zinc-400 mb-2">Estimated Cost ($)</label>
