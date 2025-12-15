@@ -11,6 +11,8 @@ import { createClient } from '@supabase/supabase-js';
 import { StandardDropdown } from '../common/StandardDropdown';
 import { AdminMasterData } from './AdminMasterData';
 import { AdminNotifications } from './AdminNotifications';
+import { SpeciesInfoPanel } from '../common/SpeciesInfoPanel';
+import { SpeciesName, SpeciesBadge } from '../common/SpeciesName';
 
 // ============================================================================
 // TYPES
@@ -133,6 +135,7 @@ export const SettingsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [selectedSpeciesId, setSelectedSpeciesId] = useState<string | null>(null);
 
   // Database state (read-only status display for admins)
   const [tableStatuses, setTableStatuses] = useState<TableStatus[]>([]);
@@ -1388,19 +1391,88 @@ export const SettingsPage: React.FC = () => {
         return renderDatabaseTab();
 
       case 'species':
+        const activeSpecies = (state.species || []).filter(s => s.isActive !== false);
         return (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <p className="text-zinc-400">Mushroom species for your strain library</p>
+              <p className="text-zinc-400">Mushroom species for your strain library. Click to view details.</p>
               <button onClick={() => openAddModal('species')} className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium flex items-center gap-2">
                 <Icons.Plus /> Add Species
               </button>
             </div>
-            {renderDataTable(state.species || [], [
-              { key: 'name', label: 'Name' },
-              { key: 'scientificName', label: 'Scientific Name' },
-              { key: 'category', label: 'Category', render: (item) => <span className="px-2 py-0.5 rounded text-xs bg-zinc-800 border border-zinc-700 capitalize">{item.category}</span> },
-            ])}
+
+            {/* Species List with Click-to-Expand */}
+            <div className="grid gap-3">
+              {activeSpecies.map(species => (
+                <div key={species.id} className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
+                  {/* Species Row Header - Always Visible */}
+                  <button
+                    onClick={() => setSelectedSpeciesId(selectedSpeciesId === species.id ? null : species.id)}
+                    className="w-full p-4 flex items-center justify-between hover:bg-zinc-800/30 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-8 h-8 bg-zinc-800 rounded-lg flex items-center justify-center text-lg">
+                        {species.category === 'gourmet' ? '🍄' : species.category === 'medicinal' ? '💊' : species.category === 'research' ? '🔬' : '🧬'}
+                      </div>
+                      <div>
+                        <SpeciesName species={species} className="text-white font-medium" />
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <SpeciesBadge species={species} size="sm" />
+                          {species.difficulty && (
+                            <span className={`text-xs capitalize ${
+                              species.difficulty === 'beginner' ? 'text-emerald-400' :
+                              species.difficulty === 'intermediate' ? 'text-amber-400' :
+                              species.difficulty === 'advanced' ? 'text-orange-400' :
+                              'text-red-400'
+                            }`}>
+                              {species.difficulty}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {/* Quick Stats */}
+                      {species.typicalYield && (
+                        <span className="hidden sm:block text-xs text-zinc-500">Yield: <span className="text-emerald-400">{species.typicalYield}</span></span>
+                      )}
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => openEditModal(species)} className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded" title="Edit">
+                          <Icons.Edit />
+                        </button>
+                        <button onClick={() => handleDelete(species.id, 'species')} className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 rounded" title="Delete">
+                          <Icons.Trash />
+                        </button>
+                      </div>
+                      {/* Expand Indicator */}
+                      <svg
+                        className={`w-5 h-5 text-zinc-500 transition-transform ${selectedSpeciesId === species.id ? 'rotate-180' : ''}`}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </div>
+                  </button>
+
+                  {/* Expanded Content - SpeciesInfoPanel */}
+                  {selectedSpeciesId === species.id && (
+                    <div className="border-t border-zinc-800">
+                      <SpeciesInfoPanel species={species} className="border-0 rounded-none" />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {activeSpecies.length === 0 && (
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-8 text-center text-zinc-500">
+                  No species yet. Click "Add Species" to create one.
+                </div>
+              )}
+            </div>
           </div>
         );
 
