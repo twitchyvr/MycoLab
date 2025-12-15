@@ -625,6 +625,81 @@ export interface Recipe {
 }
 
 // ============================================================================
+// NOTIFICATION TYPES
+// ============================================================================
+
+export type NotificationType = 'info' | 'success' | 'warning' | 'error';
+export type NotificationCategory =
+  | 'culture_expiring'      // Culture viability alerts
+  | 'stage_transition'      // Grow stage change reminders
+  | 'low_inventory'         // Inventory below reorder point
+  | 'harvest_ready'         // Ready to harvest
+  | 'contamination'         // Contamination detected
+  | 'lc_age'                // LC getting too old
+  | 'slow_growth'           // Item not progressing as expected
+  | 'system'                // System notifications
+  | 'user';                 // User-generated notes/reminders
+
+export interface UserNotification {
+  id: string;
+  type: NotificationType;
+  category: NotificationCategory;
+  title: string;
+  message: string;
+  // Optional references
+  entityType?: 'culture' | 'grow' | 'inventory' | 'recipe';
+  entityId?: string;
+  entityName?: string;
+  // Timestamps
+  createdAt: Date;
+  readAt?: Date;
+  dismissedAt?: Date;
+  // Auto-dismiss behavior
+  autoDismiss?: boolean;
+  autoDismissMs?: number;
+  // Actions
+  actionLabel?: string;
+  actionPage?: string;
+}
+
+export interface NotificationRule {
+  id: string;
+  name: string;
+  category: NotificationCategory;
+  enabled: boolean;
+  // Threshold settings
+  thresholdDays?: number;      // Days before expiration to alert
+  thresholdQuantity?: number;  // Inventory quantity threshold
+  thresholdPercent?: number;   // Colonization percent threshold
+  // Notification settings
+  notifyType: NotificationType;
+  repeatIntervalHours?: number; // How often to re-notify (0 = once)
+  // Filters
+  strainIds?: string[];        // Only for specific strains
+  speciesIds?: string[];       // Only for specific species
+  locationIds?: string[];      // Only for specific locations
+  isActive: boolean;
+}
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  // Category toggles
+  cultureExpiring: boolean;
+  stageTransitions: boolean;
+  lowInventory: boolean;
+  harvestReady: boolean;
+  contamination: boolean;
+  lcAge: boolean;
+  slowGrowth: boolean;
+  // Display preferences
+  showToasts: boolean;
+  toastDurationMs: number;
+  soundEnabled: boolean;
+  // Browser push notifications
+  pushEnabled: boolean;
+}
+
+// ============================================================================
 // APP SETTINGS
 // ============================================================================
 
@@ -639,6 +714,7 @@ export interface AppSettings {
     lowStockAlerts: boolean;
     contaminationAlerts: boolean;
   };
+  notificationPreferences?: NotificationPreferences;
 }
 
 // ============================================================================
@@ -668,6 +744,10 @@ export interface DataStoreState {
   cultures: Culture[];
   grows: Grow[];
   recipes: Recipe[];
+
+  // Notifications
+  notifications: UserNotification[];
+  notificationRules: NotificationRule[];
 
   // Settings
   settings: AppSettings;

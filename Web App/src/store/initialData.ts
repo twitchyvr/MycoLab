@@ -1197,5 +1197,7 @@ export const initialDataState: DataStoreState = {
   cultures: initialCultures,
   grows: initialGrows,
   recipes: initialRecipes,
+  notifications: [],
+  notificationRules: [],
   settings: initialSettings,
 };

@@ -92,6 +92,8 @@ const emptyState: DataStoreState = {
   cultures: [],
   grows: [],
   recipes: [],
+  notifications: [],
+  notificationRules: [],
   settings: {
     defaultUnits: 'metric',
     defaultCurrency: 'USD',
