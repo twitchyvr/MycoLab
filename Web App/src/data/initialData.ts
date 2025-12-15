@@ -2797,6 +2797,22 @@ Prerequisites:
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
+
+  // =============================================================================
+  // UX IMPROVEMENTS
+  // =============================================================================
+  {
+    id: 'dev-806',
+    title: 'Navigation Revamp - Mobile UX',
+    description: 'Revamp sidebar navigation to be cleaner and mobile-friendly. Currently 23+ nav items making it cluttered. Implement grouped/collapsible sections: Core (Dashboard, Today), Operations (Daily Check, Harvest, Observations), Library (Cultures, Lineage, Grows, Recipes), Lab (Mapping, Occupancy, Labels, Scanner), Tools (Calculators, Contamination, BE%), Analytics/Settings. Consider bottom nav bar for mobile with quick actions.',
+    category: 'ui',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 8,
+    notes: 'User feedback: "It\'s getting a bit crazy and it needs to be clean so using it on mobile isn\'t cumbersome". Consider accordion-style sections, bottom navigation for mobile, and hiding less-used items behind a "More" menu.',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 // ----------------------------------------------------------------------------
