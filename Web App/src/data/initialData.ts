@@ -1062,7 +1062,7 @@ export const initialDevLog: DevLogFeature[] = [
     estimatedHours: 8,
     dependencies: ['dev-090'],
     completedAt: '2024-12-15',
-    notes: 'Added QRScanner component using html5-qrcode library. Features: camera selection, QR scanning, scan history, auto-navigation to records. Supports culture/grow/location/recipe/inventory QR codes. Validates records against database and navigates directly to entity detail view.',
+    notes: 'Added QRScanner component using html5-qrcode library. Features: camera selection, QR scanning, scan history, auto-navigation to records. Supports culture/grow/location/recipe/inventory QR codes. Validates records against database and navigates directly to entity detail view. Upgraded QR generation to use qrcode library for proper support of long URLs. Fixed camera initialization timing and label layout overlap issues.',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
