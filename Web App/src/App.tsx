@@ -49,6 +49,7 @@ import { FloatingActionButton } from './components/dashboard';
 import { LabMapping, LocationOccupancy } from './components/locations';
 import { LabelDesigner } from './components/labels';
 import { QRScanner } from './components/qr';
+import { DailyCheck, HarvestWorkflow } from './components/dailycheck';
 
 // ============================================================================
 // CONTEXT
@@ -256,13 +257,18 @@ const Icons = {
       <rect x="18" y="18" width="3" height="3"/>
     </svg>
   ),
+  Scale: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M12 3v18M3 12h18M5.5 5.5l13 13M18.5 5.5l-13 13"/>
+    </svg>
+  ),
 };
 
 // ============================================================================
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'today' | 'dailycheck' | 'harvest' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
 
 interface NavItem {
   id: Page;
@@ -273,6 +279,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
   { id: 'today', label: 'Today', icon: Icons.Sun },
+  { id: 'dailycheck', label: 'Daily Check', icon: Icons.Clipboard },
+  { id: 'harvest', label: 'Harvest', icon: Icons.Scale },
   { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
   { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
   { id: 'stock', label: 'Lab Stock', icon: Icons.Package },
@@ -803,6 +811,8 @@ const App: React.FC = () => {
   const pageConfig: Record<Page, { title: string; subtitle?: string }> = {
     dashboard: { title: 'Dashboard', subtitle: 'Overview of your mycology lab' },
     today: { title: 'Today', subtitle: 'Daily tasks and actionable items' },
+    dailycheck: { title: 'Daily Room Check', subtitle: 'Growing room rounds with harvest estimates' },
+    harvest: { title: 'Harvest Workflow', subtitle: 'Quick harvest recording with auto BE% calculation' },
     observations: { title: 'Observations', subtitle: 'Timeline of all culture and grow observations' },
     inventory: { title: 'Lab Inventory', subtitle: 'All cultures, spawn, and grows' },
     stock: { title: 'Lab Stock', subtitle: 'Inventory lots, purchases, and tracking' },
@@ -833,6 +843,18 @@ const App: React.FC = () => {
         return (
           <div className="p-6">
             <TodayView onNavigate={setCurrentPage} />
+          </div>
+        );
+      case 'dailycheck':
+        return (
+          <div className="p-6">
+            <DailyCheck />
+          </div>
+        );
+      case 'harvest':
+        return (
+          <div className="p-6">
+            <HarvestWorkflow />
           </div>
         );
       case 'observations':
