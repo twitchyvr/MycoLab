@@ -198,6 +198,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
 }) => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scannedRecord, setScannedRecord] = useState<ScannedRecord | null>(null);
@@ -311,6 +312,13 @@ export const QRScanner: React.FC<QRScannerProps> = ({
     setError(null);
     setScannedRecord(null);
     setIsPaused(false);
+    setIsStarting(true);
+
+    // Set scanning true FIRST so the container div is visible
+    setIsScanning(true);
+
+    // Wait for next render cycle so the div is visible
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     try {
       const scanner = new Html5Qrcode('qr-reader');
@@ -327,10 +335,12 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         () => {} // Ignore scan failures (normal during scanning)
       );
 
-      setIsScanning(true);
+      setIsStarting(false);
     } catch (err) {
       console.error('Failed to start scanner:', err);
       setError('Failed to start camera. Please check permissions and try again.');
+      setIsScanning(false);
+      setIsStarting(false);
     }
   }, [selectedCameraId, handleScanSuccess]);
 
@@ -345,6 +355,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
       }
     }
     setIsScanning(false);
+    setIsStarting(false);
     setIsPaused(false);
   }, []);
 
@@ -440,11 +451,20 @@ export const QRScanner: React.FC<QRScannerProps> = ({
       {/* Scanner View */}
       {!showHistory && (
         <div className="relative">
-          {/* Camera preview container */}
+          {/* Camera preview container - always rendered but visibility controlled */}
           <div
             id="qr-reader"
-            className={`w-full aspect-square bg-zinc-950 ${!isScanning ? 'hidden' : ''}`}
+            className="w-full aspect-square bg-zinc-950"
+            style={{ display: isScanning ? 'block' : 'none' }}
           />
+
+          {/* Loading overlay while camera is starting */}
+          {isStarting && (
+            <div className="absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center gap-4">
+              <div className="w-12 h-12 border-4 border-zinc-700 border-t-emerald-500 rounded-full animate-spin" />
+              <p className="text-zinc-400 text-sm">Starting camera...</p>
+            </div>
+          )}
 
           {/* Placeholder when not scanning */}
           {!isScanning && (
