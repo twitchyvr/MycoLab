@@ -699,10 +699,42 @@ export const initialDevLog: DevLogFeature[] = [
     title: 'Strain Performance Analytics',
     description: 'Track success rates, average yields, contamination rates, and optimal conditions per strain based on historical grows',
     category: 'core',
-    status: 'planned',
+    status: 'completed',
     priority: 'medium',
     estimatedHours: 10,
+    actualHours: 8,
     dependencies: ['dev-020', 'dev-012'],
+    completedAt: new Date().toISOString(),
+    notes: `Added dedicated Strain Performance Analytics page (dev-021). Features:
+
+**Overview Mode:**
+- Summary KPI cards: strains tracked, total grows, total yield, avg success rate, avg BE%, top performer
+- Strain rankings by BE% with horizontal bar charts
+- Success rate rankings across strains
+- Grow distribution donut chart by strain
+- Contamination rates analysis
+
+**Detail Mode:**
+- Select individual strain for deep-dive analytics
+- Status distribution (completed, active, contaminated, aborted)
+- Key metrics: success rate, contamination rate, avg BE%, total yield
+- Yield statistics: avg per grow, avg per flush, best/worst yields, avg flushes
+- Timing analysis: days to first harvest, days to completion
+- Yield by flush number breakdown
+- Monthly performance trends
+- Substrate and container performance comparison
+
+**Compare Mode:**
+- Select up to 5 strains for side-by-side comparison
+- Compare: success rate, avg BE%, yield/grow, contamination rate, days to harvest, avg flushes
+- Visual rankings with best performer highlighted
+
+**Key Insights Section:**
+- Best biological efficiency strain
+- Most reliable strain (lowest contamination)
+- Highest yielder
+
+Navigation: Available under "Strain Analytics" in the sidebar after "Analytics"`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
