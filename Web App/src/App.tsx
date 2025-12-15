@@ -50,6 +50,7 @@ import { LabMapping, LocationOccupancy } from './components/locations';
 import { LabelDesigner } from './components/labels';
 import { QRScanner } from './components/qr';
 import { DailyCheck, HarvestWorkflow } from './components/dailycheck';
+import { HarvestForecast } from './components/forecast/HarvestForecast';
 
 // ============================================================================
 // CONTEXT
@@ -268,7 +269,7 @@ const Icons = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'dailycheck' | 'harvest' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
 
 interface NavItem {
   id: Page;
@@ -281,6 +282,7 @@ const navItems: NavItem[] = [
   { id: 'today', label: 'Today', icon: Icons.Sun },
   { id: 'dailycheck', label: 'Daily Check', icon: Icons.Clipboard },
   { id: 'harvest', label: 'Harvest', icon: Icons.Scale },
+  { id: 'forecast', label: 'Forecast', icon: Icons.TrendingUp },
   { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
   { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
   { id: 'stock', label: 'Lab Stock', icon: Icons.Package },
@@ -813,6 +815,7 @@ const App: React.FC = () => {
     today: { title: 'Today', subtitle: 'Daily tasks and actionable items' },
     dailycheck: { title: 'Daily Room Check', subtitle: 'Growing room rounds with harvest estimates' },
     harvest: { title: 'Harvest Workflow', subtitle: 'Quick harvest recording with auto BE% calculation' },
+    forecast: { title: 'Harvest Forecasting', subtitle: 'Predict stage transitions and forecast upcoming harvests' },
     observations: { title: 'Observations', subtitle: 'Timeline of all culture and grow observations' },
     inventory: { title: 'Lab Inventory', subtitle: 'All cultures, spawn, and grows' },
     stock: { title: 'Lab Stock', subtitle: 'Inventory lots, purchases, and tracking' },
@@ -855,6 +858,12 @@ const App: React.FC = () => {
         return (
           <div className="p-6">
             <HarvestWorkflow />
+          </div>
+        );
+      case 'forecast':
+        return (
+          <div className="p-6">
+            <HarvestForecast />
           </div>
         );
       case 'observations':
