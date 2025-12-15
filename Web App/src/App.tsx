@@ -46,7 +46,7 @@ import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
 import { ObservationTimeline } from './components/observations';
 import { ProfilePage } from './components/profile';
 import { FloatingActionButton } from './components/dashboard';
-import { LabMapping } from './components/locations';
+import { LabMapping, LocationOccupancy } from './components/locations';
 import { LabelDesigner } from './components/labels';
 import { QRScanner } from './components/qr';
 
@@ -214,6 +214,11 @@ const Icons = {
       <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
     </svg>
   ),
+  Grid: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+    </svg>
+  ),
   Thermometer: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
       <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
@@ -257,7 +262,7 @@ const Icons = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
 
 interface NavItem {
   id: Page;
@@ -275,6 +280,7 @@ const navItems: NavItem[] = [
   { id: 'lineage', label: 'Lineage', icon: Icons.Culture },
   { id: 'grows', label: 'Grows', icon: Icons.Grow },
   { id: 'labmapping', label: 'Lab Mapping', icon: Icons.Layers },
+  { id: 'occupancy', label: 'Occupancy', icon: Icons.Grid },
   { id: 'labels', label: 'Labels', icon: Icons.Tag },
   { id: 'scanner', label: 'QR Scanner', icon: Icons.QRScan },
   { id: 'recipes', label: 'Recipes', icon: Icons.Recipe },
@@ -805,6 +811,7 @@ const App: React.FC = () => {
     grows: { title: 'Grow Tracking', subtitle: 'Track your active and completed grows' },
     recipes: { title: 'Recipes', subtitle: 'Agar, LC, substrate formulations' },
     labmapping: { title: 'Lab Mapping', subtitle: 'Manage rooms, racks, shelves, and storage locations' },
+    occupancy: { title: 'Location Occupancy', subtitle: 'Track items, varieties, and yields across your lab' },
     labels: { title: 'Label Designer', subtitle: 'Design and print labels with QR codes' },
     scanner: { title: 'QR Scanner', subtitle: 'Scan labels to access records instantly' },
     calculator: { title: 'Substrate Calculator', subtitle: 'Hydration ratio calculations' },
@@ -896,6 +903,12 @@ const App: React.FC = () => {
         return (
           <div className="p-6">
             <LabMapping />
+          </div>
+        );
+      case 'occupancy':
+        return (
+          <div className="p-6">
+            <LocationOccupancy />
           </div>
         );
       case 'labels':
