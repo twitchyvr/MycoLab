@@ -308,36 +308,144 @@ interface NavItem {
   icon: React.FC;
 }
 
-const navItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
-  { id: 'today', label: 'Today', icon: Icons.Sun },
-  { id: 'dailycheck', label: 'Daily Check', icon: Icons.Clipboard },
-  { id: 'harvest', label: 'Harvest', icon: Icons.Scale },
-  { id: 'forecast', label: 'Forecast', icon: Icons.TrendingUp },
-  { id: 'coldstorage', label: 'Cold Storage', icon: Icons.Snowflake },
-  { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
-  { id: 'eventlog', label: 'Event Logger', icon: Icons.Pencil },
-  { id: 'library', label: 'Library', icon: Icons.Library },
-  { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
-  { id: 'stock', label: 'Lab Stock', icon: Icons.Package },
-  { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
-  { id: 'lineage', label: 'Lineage', icon: Icons.Culture },
-  { id: 'grows', label: 'Grows', icon: Icons.Grow },
-  { id: 'labmapping', label: 'Lab Mapping', icon: Icons.Layers },
-  { id: 'occupancy', label: 'Occupancy', icon: Icons.Grid },
-  { id: 'labels', label: 'Labels', icon: Icons.Tag },
-  { id: 'scanner', label: 'QR Scanner', icon: Icons.QRScan },
-  { id: 'recipes', label: 'Recipes', icon: Icons.Recipe },
-  { id: 'calculator', label: 'Substrate Calc', icon: Icons.Calculator },
-  { id: 'spawnrate', label: 'Spawn Rate', icon: Icons.Layers },
-  { id: 'pressure', label: 'Pressure Cook', icon: Icons.Thermometer },
-  { id: 'contamination', label: 'Contamination', icon: Icons.AlertTriangle },
-  { id: 'efficiency', label: 'BE Calculator', icon: Icons.TrendingUp },
-  { id: 'analytics', label: 'Analytics', icon: Icons.Chart },
-  { id: 'strainanalytics', label: 'Strain Analytics', icon: Icons.Target },
-  { id: 'settings', label: 'Settings', icon: Icons.Settings },
-  { id: 'devlog', label: 'Roadmap', icon: Icons.DevLog },
+interface NavGroup {
+  id: string;
+  label: string;
+  icon: React.FC;
+  items: NavItem[];
+  defaultOpen?: boolean;
+}
+
+// Section Icons for navigation groups
+const SectionIcons = {
+  Command: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+    </svg>
+  ),
+  Library: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+  ),
+  Inventory: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+    </svg>
+  ),
+  Genetics: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M2 15c6.667-6 13.333 0 20-6"/><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993"/><path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993"/><path d="M17 6l-2.5-2.5"/><path d="M14 8l-1.5-1.5"/><path d="M7 18l2.5 2.5"/><path d="M10 16l1.5 1.5"/>
+    </svg>
+  ),
+  Analytics: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>
+    </svg>
+  ),
+  Tools: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+    </svg>
+  ),
+  Settings: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  ),
+};
+
+// Grouped navigation structure based on design brief
+const navGroups: NavGroup[] = [
+  {
+    id: 'command',
+    label: 'Lab Command',
+    icon: SectionIcons.Command,
+    defaultOpen: true,
+    items: [
+      { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
+      { id: 'today', label: 'Today', icon: Icons.Sun },
+      { id: 'dailycheck', label: 'Daily Check', icon: Icons.Clipboard },
+      { id: 'harvest', label: 'Harvest', icon: Icons.Scale },
+      { id: 'forecast', label: 'Forecast', icon: Icons.TrendingUp },
+      { id: 'coldstorage', label: 'Cold Storage', icon: Icons.Snowflake },
+      { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
+      { id: 'eventlog', label: 'Event Logger', icon: Icons.Pencil },
+    ],
+  },
+  {
+    id: 'library',
+    label: 'Library',
+    icon: SectionIcons.Library,
+    defaultOpen: false,
+    items: [
+      { id: 'library', label: 'Species & Strains', icon: Icons.Library },
+      { id: 'recipes', label: 'Recipes', icon: Icons.Recipe },
+    ],
+  },
+  {
+    id: 'inventory',
+    label: 'Inventory',
+    icon: SectionIcons.Inventory,
+    defaultOpen: false,
+    items: [
+      { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
+      { id: 'stock', label: 'Stock & Orders', icon: Icons.Package },
+      { id: 'labmapping', label: 'Lab Mapping', icon: Icons.Layers },
+      { id: 'occupancy', label: 'Occupancy', icon: Icons.Grid },
+      { id: 'labels', label: 'Labels', icon: Icons.Tag },
+      { id: 'scanner', label: 'QR Scanner', icon: Icons.QRScan },
+    ],
+  },
+  {
+    id: 'genetics',
+    label: 'Genetics',
+    icon: SectionIcons.Genetics,
+    defaultOpen: false,
+    items: [
+      { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
+      { id: 'lineage', label: 'Lineage', icon: Icons.Lineage },
+      { id: 'grows', label: 'Grows', icon: Icons.Grow },
+    ],
+  },
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    icon: SectionIcons.Analytics,
+    defaultOpen: false,
+    items: [
+      { id: 'analytics', label: 'Dashboard', icon: Icons.Chart },
+      { id: 'strainanalytics', label: 'Strain Performance', icon: Icons.Target },
+      { id: 'contamination', label: 'Contamination', icon: Icons.AlertTriangle },
+      { id: 'efficiency', label: 'BE Calculator', icon: Icons.TrendingUp },
+    ],
+  },
+  {
+    id: 'tools',
+    label: 'Tools',
+    icon: SectionIcons.Tools,
+    defaultOpen: false,
+    items: [
+      { id: 'calculator', label: 'Substrate Calc', icon: Icons.Calculator },
+      { id: 'spawnrate', label: 'Spawn Rate', icon: Icons.Layers },
+      { id: 'pressure', label: 'Pressure Cook', icon: Icons.Thermometer },
+    ],
+  },
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: SectionIcons.Settings,
+    defaultOpen: false,
+    items: [
+      { id: 'settings', label: 'Preferences', icon: Icons.Settings },
+      { id: 'profile', label: 'Profile', icon: Icons.Dashboard },
+      { id: 'devlog', label: 'Roadmap', icon: Icons.DevLog },
+    ],
+  },
 ];
+
+// Flat list for backwards compatibility
+const navItems: NavItem[] = navGroups.flatMap(group => group.items);
 
 // ============================================================================
 // STATUS STYLING
@@ -374,10 +482,53 @@ interface SidebarProps {
   activeGrowCount: number;
 }
 
+// Helper to find which group contains the current page
+const findGroupForPage = (page: Page): string | null => {
+  for (const group of navGroups) {
+    if (group.items.some(item => item.id === page)) {
+      return group.id;
+    }
+  }
+  return null;
+};
+
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onClose, cultureCount, activeGrowCount }) => {
+  // Track which groups are expanded - initialize based on current page and defaults
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    // Add default open groups
+    navGroups.forEach(group => {
+      if (group.defaultOpen) initial.add(group.id);
+    });
+    // Add group containing current page
+    const currentGroup = findGroupForPage(currentPage);
+    if (currentGroup) initial.add(currentGroup);
+    return initial;
+  });
+
+  // When page changes, ensure its group is expanded
+  useEffect(() => {
+    const currentGroup = findGroupForPage(currentPage);
+    if (currentGroup && !expandedGroups.has(currentGroup)) {
+      setExpandedGroups(prev => new Set([...prev, currentGroup]));
+    }
+  }, [currentPage]);
+
   const handleNavigate = (page: Page) => {
     onNavigate(page);
     onClose(); // Close sidebar on mobile after navigation
+  };
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
   };
 
   return (
@@ -425,35 +576,79 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onCl
           </div>
         </div>
 
-        {/* Navigation - scrollable */}
+        {/* Navigation - scrollable with grouped structure */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = currentPage === item.id;
-            const Icon = item.icon;
+          {navGroups.map((group) => {
+            const GroupIcon = group.icon;
+            const isExpanded = expandedGroups.has(group.id);
+            const hasActivePage = group.items.some(item => item.id === currentPage);
+
             return (
-              <button
-                key={item.id}
-                onClick={() => handleNavigate(item.id)}
-                className={`
-                  w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                  transition-all duration-200 group
-                  ${isActive 
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                    : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white border border-transparent'
-                  }
-                `}
-              >
-                <Icon />
-                <span className="truncate">{item.label}</span>
-                {isActive && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
-                )}
-              </button>
+              <div key={group.id} className="mb-1">
+                {/* Group Header */}
+                <button
+                  onClick={() => toggleGroup(group.id)}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
+                    transition-all duration-200
+                    ${hasActivePage
+                      ? 'text-emerald-400'
+                      : 'text-zinc-400 hover:text-white'
+                    }
+                    hover:bg-zinc-800/50
+                  `}
+                >
+                  <GroupIcon />
+                  <span className="flex-1 text-left">{group.label}</span>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                  >
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+
+                {/* Group Items */}
+                <div className={`
+                  overflow-hidden transition-all duration-200 ease-in-out
+                  ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+                `}>
+                  <div className="ml-3 pl-3 border-l border-zinc-800 mt-1 space-y-0.5">
+                    {group.items.map((item) => {
+                      const isActive = currentPage === item.id;
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => handleNavigate(item.id)}
+                          className={`
+                            w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+                            transition-all duration-200
+                            ${isActive
+                              ? 'bg-emerald-500/10 text-emerald-400 font-medium'
+                              : 'text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300'
+                            }
+                          `}
+                        >
+                          <Icon />
+                          <span className="truncate">{item.label}</span>
+                          {isActive && (
+                            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             );
           })}
         </nav>
 
-        {/* Quick Stats - fixed at bottom, collapsible on small screens */}
+        {/* Quick Stats - fixed at bottom */}
         <div className="p-3 border-t border-zinc-800 flex-shrink-0 hidden sm:block">
           <div className="bg-zinc-800/50 rounded-lg p-3 space-y-2">
             <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Quick Stats</p>
