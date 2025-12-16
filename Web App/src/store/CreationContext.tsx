@@ -26,11 +26,10 @@ export type CreatableEntityType =
   | 'species'
   | 'strain'
   | 'location'
-  | 'vessel'
+  | 'container'  // Unified: replaces vessel and containerType
   | 'supplier'
   | 'grainType'
   | 'substrateType'
-  | 'containerType'
   | 'inventoryItem'
   | 'inventoryLot'
   | 'inventoryCategory'
@@ -115,7 +114,7 @@ export const ENTITY_CONFIGS: Record<CreatableEntityType, EntityTypeConfig> = {
   culture: {
     label: 'Culture',
     labelPlural: 'Cultures',
-    requiredFields: ['strainId', 'locationId', 'vesselId'],
+    requiredFields: ['strainId', 'locationId', 'containerId'],
     defaultValues: {
       type: 'agar',
       status: 'colonizing',
@@ -128,7 +127,7 @@ export const ENTITY_CONFIGS: Record<CreatableEntityType, EntityTypeConfig> = {
   grow: {
     label: 'Grow',
     labelPlural: 'Grows',
-    requiredFields: ['strainId', 'substrateTypeId', 'containerTypeId', 'locationId'],
+    requiredFields: ['strainId', 'substrateTypeId', 'containerId', 'locationId'],
     defaultValues: {
       status: 'active',
       currentStage: 'spawning',
@@ -197,13 +196,14 @@ export const ENTITY_CONFIGS: Record<CreatableEntityType, EntityTypeConfig> = {
       isActive: true,
     },
   },
-  vessel: {
-    label: 'Vessel',
-    labelPlural: 'Vessels',
-    requiredFields: ['name', 'type'],
+  container: {
+    label: 'Container',
+    labelPlural: 'Containers',
+    requiredFields: ['name', 'category'],
     defaultValues: {
-      type: 'jar',
+      category: 'jar',
       isReusable: true,
+      usageContext: ['culture', 'grow'],
       notes: '',
       isActive: true,
     },
@@ -237,16 +237,6 @@ export const ENTITY_CONFIGS: Record<CreatableEntityType, EntityTypeConfig> = {
     defaultValues: {
       code: '',
       category: 'bulk',
-      notes: '',
-      isActive: true,
-    },
-  },
-  containerType: {
-    label: 'Container Type',
-    labelPlural: 'Container Types',
-    requiredFields: ['name', 'category'],
-    defaultValues: {
-      category: 'tub',
       notes: '',
       isActive: true,
     },

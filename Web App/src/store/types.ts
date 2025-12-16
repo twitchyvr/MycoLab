@@ -275,25 +275,45 @@ export interface Location {
   };
 }
 
-export interface Vessel {
+// Container categories - unified from former 'vessels' and 'container_types'
+export type ContainerCategory =
+  | 'jar'      // Mason jars, LC jars (culture)
+  | 'bag'      // Spawn bags, grow bags (culture & grow)
+  | 'plate'    // Petri dishes (culture)
+  | 'tube'     // Test tubes, slants (culture)
+  | 'bottle'   // Media bottles (culture)
+  | 'syringe'  // Spore/LC syringes (culture)
+  | 'tub'      // Monotubs, shoeboxes (grow)
+  | 'bucket'   // 5-gallon buckets (grow)
+  | 'bed'      // Outdoor beds (grow)
+  | 'other';
+
+// Usage context for containers
+export type ContainerUsageContext = 'culture' | 'grow';
+
+// Unified Container interface (replaces Vessel and ContainerType)
+export interface Container {
   id: string;
   name: string;
-  type: 'jar' | 'bag' | 'plate' | 'tube' | 'bottle' | 'syringe' | 'other';
-  volumeMl?: number;
+  category: ContainerCategory;
+  volumeMl?: number;  // Volume in ml (liters stored as ml * 1000)
+  dimensions?: {
+    length: number;
+    width: number;
+    height: number;
+    unit?: 'cm' | 'in';
+  };
   isReusable: boolean;
+  usageContext: ContainerUsageContext[];  // What this container can be used for
   notes?: string;
   isActive: boolean;
 }
 
-export interface ContainerType {
-  id: string;
-  name: string;
-  category: 'tub' | 'bag' | 'jar' | 'bucket' | 'bed' | 'other';
-  volumeL?: number;
-  dimensions?: { length: number; width: number; height: number };
-  notes?: string;
-  isActive: boolean;
-}
+// Legacy type aliases for backward compatibility during migration
+/** @deprecated Use Container instead */
+export type Vessel = Container;
+/** @deprecated Use Container instead */
+export type ContainerType = Container;
 
 export interface SubstrateType {
   id: string;
@@ -509,7 +529,7 @@ export interface Culture {
   parentId?: string;
   generation: number;
   locationId: string;
-  vesselId: string;
+  containerId: string;  // Unified: was vesselId
   recipeId?: string;
   volumeMl?: number;
   fillVolumeMl?: number;
@@ -574,7 +594,7 @@ export interface Grow {
   recipeId?: string;
   
   // Container
-  containerTypeId: string;
+  containerId: string;  // Unified: was containerTypeId
   containerCount: number;
   
   // Dates
@@ -759,8 +779,7 @@ export interface DataStoreState {
   locations: Location[];
   locationTypes: LocationType[];
   locationClassifications: LocationClassification[];
-  vessels: Vessel[];
-  containerTypes: ContainerType[];
+  containers: Container[];  // Unified: replaces vessels and containerTypes
   substrateTypes: SubstrateType[];
   suppliers: Supplier[];
   inventoryCategories: InventoryCategory[];
@@ -788,7 +807,7 @@ export interface DataStoreState {
 // HELPER TYPES FOR OPERATIONS
 // ============================================================================
 
-export type EntityType = 'species' | 'strain' | 'location' | 'vessel' | 'containerType' | 'substrateType' | 'supplier' | 'inventoryCategory' | 'inventoryItem' | 'culture' | 'grow' | 'recipe';
+export type EntityType = 'species' | 'strain' | 'location' | 'container' | 'substrateType' | 'supplier' | 'inventoryCategory' | 'inventoryItem' | 'culture' | 'grow' | 'recipe';
 
 export interface LookupHelpers {
   getSpecies: (id: string) => Species | undefined;
@@ -796,8 +815,7 @@ export interface LookupHelpers {
   getLocation: (id: string) => Location | undefined;
   getLocationType: (id: string) => LocationType | undefined;
   getLocationClassification: (id: string) => LocationClassification | undefined;
-  getVessel: (id: string) => Vessel | undefined;
-  getContainerType: (id: string) => ContainerType | undefined;
+  getContainer: (id: string) => Container | undefined;  // Unified: replaces getVessel and getContainerType
   getSubstrateType: (id: string) => SubstrateType | undefined;
   getSupplier: (id: string) => Supplier | undefined;
   getInventoryCategory: (id: string) => InventoryCategory | undefined;
@@ -816,8 +834,7 @@ export interface LookupHelpers {
   activeLocations: Location[];
   activeLocationTypes: LocationType[];
   activeLocationClassifications: LocationClassification[];
-  activeVessels: Vessel[];
-  activeContainerTypes: ContainerType[];
+  activeContainers: Container[];  // Unified: replaces activeVessels and activeContainerTypes
   activeSubstrateTypes: SubstrateType[];
   activeSuppliers: Supplier[];
   activeInventoryCategories: InventoryCategory[];

@@ -15,7 +15,7 @@ import type {
   Strain,
   Vendor,
   Location,
-  VesselType,
+  Container,
   Ingredient,
   DevLogFeature,
   UserPreferences,
@@ -347,18 +347,20 @@ export const sampleLocations: Location[] = [
 ];
 
 // ----------------------------------------------------------------------------
-// SAMPLE VESSEL TYPES
+// SAMPLE CONTAINERS (Unified - replaces VesselTypes and ContainerTypes)
 // ----------------------------------------------------------------------------
 
-export const sampleVesselTypes: VesselType[] = [
+export const sampleContainers: Container[] = [
+  // Culture containers
   {
-    id: 'vessel-001',
+    id: 'container-001',
     name: 'Quart Mason Jar',
-    vesselCategory: 'jar',
+    category: 'jar',
     volumeMl: 946,
     material: 'Glass',
     reusable: true,
     sterile: false,
+    usageContext: ['culture', 'grow'],
     unitCost: 150, // $1.50
     sortOrder: 1,
     isActive: true,
@@ -366,13 +368,14 @@ export const sampleVesselTypes: VesselType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'vessel-002',
+    id: 'container-002',
     name: 'Pint Mason Jar',
-    vesselCategory: 'jar',
+    category: 'jar',
     volumeMl: 473,
     material: 'Glass',
     reusable: true,
     sterile: false,
+    usageContext: ['culture'],
     unitCost: 125,
     sortOrder: 2,
     isActive: true,
@@ -380,13 +383,14 @@ export const sampleVesselTypes: VesselType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'vessel-003',
+    id: 'container-003',
     name: '100mm Petri Dish',
-    vesselCategory: 'plate',
+    category: 'plate',
     volumeMl: 50,
     material: 'Plastic',
     reusable: false,
     sterile: true,
+    usageContext: ['culture'],
     unitCost: 35,
     sortOrder: 3,
     isActive: true,
@@ -394,13 +398,14 @@ export const sampleVesselTypes: VesselType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'vessel-004',
+    id: 'container-004',
     name: '3lb Spawn Bag',
-    vesselCategory: 'bag',
+    category: 'bag',
     volumeMl: 3000,
     material: 'Polypropylene',
     reusable: false,
     sterile: false,
+    usageContext: ['culture', 'grow'],
     unitCost: 75,
     sortOrder: 4,
     isActive: true,
@@ -408,20 +413,68 @@ export const sampleVesselTypes: VesselType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'vessel-005',
+    id: 'container-005',
     name: 'LC Bottle 250ml',
-    vesselCategory: 'bottle',
+    category: 'bottle',
     volumeMl: 250,
     material: 'Borosilicate Glass',
     reusable: true,
     sterile: false,
+    usageContext: ['culture'],
     unitCost: 500,
     sortOrder: 5,
     isActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
+  // Grow containers
+  {
+    id: 'container-006',
+    name: '66qt Monotub',
+    category: 'tub',
+    volumeMl: 62000,
+    material: 'Plastic',
+    reusable: true,
+    usageContext: ['grow'],
+    unitCost: 1500,
+    sortOrder: 6,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'container-007',
+    name: '6qt Shoebox',
+    category: 'tub',
+    volumeMl: 5700,
+    material: 'Plastic',
+    reusable: true,
+    usageContext: ['grow'],
+    unitCost: 500,
+    sortOrder: 7,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'container-008',
+    name: '5 Gallon Bucket',
+    category: 'bucket',
+    volumeMl: 19000,
+    material: 'HDPE Plastic',
+    reusable: true,
+    usageContext: ['grow'],
+    unitCost: 400,
+    sortOrder: 8,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
+
+// Legacy alias for backward compatibility
+/** @deprecated Use sampleContainers instead */
+export const sampleVesselTypes = sampleContainers;
 
 // ----------------------------------------------------------------------------
 // SAMPLE INGREDIENTS

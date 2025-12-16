@@ -769,7 +769,7 @@ const ComparisonView: React.FC<{
 // ============================================================================
 
 export const StrainPerformanceAnalytics: React.FC = () => {
-  const { state, getStrain, getSubstrateType, getContainerType, getSpecies } = useData();
+  const { state, getStrain, getSubstrateType, getContainer, getSpecies } = useData();
   const [timeRange, setTimeRange] = useState<'30d' | '90d' | '1y' | 'all'>('all');
   const [selectedStrainId, setSelectedStrainId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'overview' | 'detail' | 'compare'>('overview');
@@ -900,7 +900,7 @@ export const StrainPerformanceAnalytics: React.FC = () => {
       // Preferred containers
       const containerMap = new Map<string, { count: number; totalBE: number }>();
       growsWithBE.forEach(g => {
-        const contType = getContainerType(g.containerTypeId);
+        const contType = getContainer(g.containerId);
         const name = contType?.name || 'Unknown';
         const existing = containerMap.get(name) || { count: 0, totalBE: 0 };
         containerMap.set(name, {
@@ -983,7 +983,7 @@ export const StrainPerformanceAnalytics: React.FC = () => {
         flushBreakdown,
       };
     }).sort((a, b) => b.totalGrows - a.totalGrows);
-  }, [state.grows, timeRange, getStrain, getSubstrateType, getContainerType, getSpecies]);
+  }, [state.grows, timeRange, getStrain, getSubstrateType, getContainer, getSpecies]);
 
   // Summary statistics
   const summaryStats = useMemo(() => {

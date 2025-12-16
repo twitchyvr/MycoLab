@@ -8,8 +8,14 @@ export type { StrainFormData } from './StrainForm';
 export { LocationForm } from './LocationForm';
 export type { LocationFormData } from './LocationForm';
 
-export { VesselForm } from './VesselForm';
-export type { VesselFormData } from './VesselForm';
+export { ContainerForm } from './ContainerForm';
+export type { ContainerFormData } from './ContainerForm';
+
+// Legacy aliases for backward compatibility
+/** @deprecated Use ContainerForm instead */
+export { ContainerForm as VesselForm } from './ContainerForm';
+/** @deprecated Use ContainerFormData instead */
+export type { ContainerFormData as VesselFormData } from './ContainerForm';
 
 export { SupplierForm } from './SupplierForm';
 export type { SupplierFormData } from './SupplierForm';
@@ -20,8 +26,11 @@ export type { GrainTypeFormData } from './GrainTypeForm';
 export { SubstrateTypeForm } from './SubstrateTypeForm';
 export type { SubstrateTypeFormData } from './SubstrateTypeForm';
 
-export { ContainerTypeForm } from './ContainerTypeForm';
-export type { ContainerTypeFormData } from './ContainerTypeForm';
+// Legacy aliases for backward compatibility
+/** @deprecated Use ContainerForm instead */
+export { ContainerForm as ContainerTypeForm } from './ContainerForm';
+/** @deprecated Use ContainerFormData instead */
+export type { ContainerFormData as ContainerTypeFormData } from './ContainerForm';
 
 export { RecipeCategoryForm } from './RecipeCategoryForm';
 

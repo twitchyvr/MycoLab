@@ -750,6 +750,48 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-901',
+    title: 'Vessel/Container Table Consolidation',
+    description: 'Merged separate vessels (culture containers) and container_types (grow containers) tables into a unified containers table. Eliminates confusing dual-terminology and simplifies data model.',
+    category: 'data',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 8,
+    actualHours: 6,
+    completedAt: timestamp(),
+    notes: `Database schema consolidation:
+
+**Problem:**
+- vessels table: For culture containers (jars, plates, tubes, syringes) - volume in ml
+- container_types table: For grow containers (tubs, buckets, beds) - volume in liters
+- Confusing overlap (bags used in both), redundant code, inconsistent naming
+
+**Solution - Unified containers table:**
+- Single table with all container categories
+- usageContext[] array field: ['culture'], ['grow'], or ['culture', 'grow']
+- Volume standardized to volumeMl (liters converted to ml * 1000)
+- Added dimensions support for larger containers
+
+**Files Updated:**
+- supabase-schema.sql (new table, migration logic, FK updates)
+- store/types.ts (Container interface, updated Culture/Grow interfaces)
+- store/defaults.ts, transformations.ts
+- DataContext.tsx (addContainer replaces addVessel/addContainerType)
+- initialData.ts (combined sample data)
+- CultureManagement.tsx, GrowManagement.tsx (use containerId)
+- AdminMasterData.tsx, StandardDropdown.tsx
+- StrainPerformanceAnalytics.tsx, CreationContext.tsx
+- EntityFormModal.tsx, forms/index.ts
+- types/index.ts (extended types)
+
+**Backward Compatibility:**
+- Legacy aliases: VesselDropdown, ContainerTypeDropdown → ContainerDropdown
+- Type aliases: Vessel, ContainerType → Container
+- Database views for backward compatibility`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

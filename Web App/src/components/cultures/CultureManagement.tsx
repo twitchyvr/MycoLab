@@ -66,12 +66,12 @@ export const CultureManagement: React.FC = () => {
     state,
     activeStrains,
     activeLocations,
-    activeVessels,
+    activeContainers,
     activeSuppliers,
     activeRecipes,
     getStrain,
     getLocation,
-    getVessel,
+    getContainer,
     getSupplier,
     getRecipe,
     getCultureLineage,
@@ -102,7 +102,7 @@ export const CultureManagement: React.FC = () => {
     type: 'agar' as CultureType,
     strainId: '',
     locationId: '',
-    vesselId: '',
+    containerId: '',
     recipeId: '',
     volumeMl: undefined as number | undefined,
     fillVolumeMl: undefined as number | undefined,
@@ -219,7 +219,7 @@ export const CultureManagement: React.FC = () => {
 
   // Create culture handler
   const handleCreateCulture = () => {
-    if (!newCulture.strainId || !newCulture.locationId || !newCulture.vesselId) return;
+    if (!newCulture.strainId || !newCulture.locationId || !newCulture.containerId) return;
 
     addCulture({
       type: newCulture.type,
@@ -228,7 +228,7 @@ export const CultureManagement: React.FC = () => {
       status: 'colonizing',
       generation: 0,
       locationId: newCulture.locationId,
-      vesselId: newCulture.vesselId,
+      containerId: newCulture.containerId,
       recipeId: newCulture.recipeId || undefined,
       volumeMl: newCulture.volumeMl,
       fillVolumeMl: newCulture.fillVolumeMl,
@@ -245,7 +245,7 @@ export const CultureManagement: React.FC = () => {
       type: 'agar',
       strainId: '',
       locationId: '',
-      vesselId: '',
+      containerId: '',
       recipeId: '',
       volumeMl: undefined,
       fillVolumeMl: undefined,
@@ -600,7 +600,7 @@ export const CultureManagement: React.FC = () => {
               </div>
               <div className="flex justify-between py-2 border-b border-zinc-800">
                 <span className="text-zinc-500">Vessel</span>
-                <span className="text-white">{getVessel(selectedCulture.vesselId)?.name}</span>
+                <span className="text-white">{getContainer(selectedCulture.containerId)?.name}</span>
               </div>
               
               {/* Recipe/Media Info */}
@@ -805,16 +805,16 @@ export const CultureManagement: React.FC = () => {
                 fieldName="locationId"
               />
 
-              {/* Vessel */}
+              {/* Container */}
               <StandardDropdown
-                label="Vessel"
+                label="Container"
                 required
-                value={newCulture.vesselId}
-                onChange={value => setNewCulture(prev => ({ ...prev, vesselId: value }))}
-                options={activeVessels}
-                placeholder="Select vessel..."
-                entityType="vessel"
-                fieldName="vesselId"
+                value={newCulture.containerId}
+                onChange={value => setNewCulture(prev => ({ ...prev, containerId: value }))}
+                options={activeContainers.filter(c => c.usageContext.includes('culture'))}
+                placeholder="Select container..."
+                entityType="container"
+                fieldName="containerId"
               />
 
               {/* Recipe - filter by culture type */}
@@ -925,7 +925,7 @@ export const CultureManagement: React.FC = () => {
               </button>
               <button
                 onClick={handleCreateCulture}
-                disabled={!newCulture.strainId || !newCulture.locationId || !newCulture.vesselId}
+                disabled={!newCulture.strainId || !newCulture.locationId || !newCulture.containerId}
                 className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
               >
                 Create

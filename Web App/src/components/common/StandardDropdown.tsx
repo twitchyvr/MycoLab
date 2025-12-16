@@ -273,13 +273,13 @@ export const LocationDropdown: React.FC<Omit<StandardDropdownProps, 'entityType'
   />
 );
 
-// Pre-configured dropdown for vessels
-export const VesselDropdown: React.FC<Omit<StandardDropdownProps, 'entityType' | 'fieldName'> & { fieldName?: string }> = (props) => (
+// Pre-configured dropdown for containers (unified - replaces VesselDropdown and ContainerTypeDropdown)
+export const ContainerDropdown: React.FC<Omit<StandardDropdownProps, 'entityType' | 'fieldName'> & { fieldName?: string }> = (props) => (
   <StandardDropdown
     {...props}
-    entityType="vessel"
-    fieldName={props.fieldName || 'vesselId'}
-    addLabel="Add New Vessel"
+    entityType="container"
+    fieldName={props.fieldName || 'containerId'}
+    addLabel="Add New Container"
   />
 );
 
@@ -313,15 +313,11 @@ export const SubstrateTypeDropdown: React.FC<Omit<StandardDropdownProps, 'entity
   />
 );
 
-// Pre-configured dropdown for container types
-export const ContainerTypeDropdown: React.FC<Omit<StandardDropdownProps, 'entityType' | 'fieldName'> & { fieldName?: string }> = (props) => (
-  <StandardDropdown
-    {...props}
-    entityType="containerType"
-    fieldName={props.fieldName || 'containerTypeId'}
-    addLabel="Add New Container Type"
-  />
-);
+// Legacy aliases for backward compatibility (deprecated)
+/** @deprecated Use ContainerDropdown instead */
+export const VesselDropdown = ContainerDropdown;
+/** @deprecated Use ContainerDropdown instead */
+export const ContainerTypeDropdown = ContainerDropdown;
 
 // Pre-configured dropdown for inventory items
 export const InventoryItemDropdown: React.FC<Omit<StandardDropdownProps, 'entityType' | 'fieldName'> & { fieldName?: string }> = (props) => (

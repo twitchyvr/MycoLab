@@ -4,7 +4,7 @@
 // ============================================================================
 
 import {
-  Strain, Location, Vessel, ContainerType, SubstrateType, Supplier,
+  Strain, Location, Container, SubstrateType, Supplier,
   InventoryCategory, InventoryItem, Culture, Grow, Recipe, AppSettings,
   DataStoreState
 } from './types';
@@ -168,136 +168,151 @@ export const initialLocations: Location[] = [
 ];
 
 // ============================================================================
-// VESSELS
+// CONTAINERS (Unified - replaces former Vessels and Container Types)
 // ============================================================================
 
-export const initialVessels: Vessel[] = [
+export const initialContainers: Container[] = [
+  // Culture containers (formerly vessels)
   {
-    id: 'vessel-001',
+    id: 'container-001',
     name: 'Quart Mason Jar',
-    type: 'jar',
+    category: 'jar',
     volumeMl: 946,
     isReusable: true,
-    notes: 'Standard grain jar',
+    usageContext: ['culture', 'grow'],
+    notes: 'Standard grain jar - versatile for LC, grain spawn, and small grows',
     isActive: true,
   },
   {
-    id: 'vessel-002',
+    id: 'container-002',
     name: 'Pint Mason Jar',
-    type: 'jar',
+    category: 'jar',
     volumeMl: 473,
     isReusable: true,
+    usageContext: ['culture'],
     notes: 'Smaller grain/LC jar',
     isActive: true,
   },
   {
-    id: 'vessel-003',
+    id: 'container-003',
     name: '100mm Petri Dish',
-    type: 'plate',
+    category: 'plate',
     volumeMl: 25,
     isReusable: false,
+    usageContext: ['culture'],
     notes: 'Standard agar plate',
     isActive: true,
   },
   {
-    id: 'vessel-004',
+    id: 'container-004',
     name: 'Test Tube Slant',
-    type: 'tube',
+    category: 'tube',
     volumeMl: 15,
     isReusable: true,
+    usageContext: ['culture'],
     notes: 'Long-term storage',
     isActive: true,
   },
   {
-    id: 'vessel-005',
+    id: 'container-005',
     name: '500ml Media Bottle',
-    type: 'bottle',
+    category: 'bottle',
     volumeMl: 500,
     isReusable: true,
+    usageContext: ['culture'],
     notes: 'LC or agar media',
     isActive: true,
   },
   {
-    id: 'vessel-006',
+    id: 'container-006',
     name: '10cc Syringe',
-    type: 'syringe',
+    category: 'syringe',
     volumeMl: 10,
     isReusable: false,
+    usageContext: ['culture'],
     notes: 'Spore or LC syringe',
     isActive: true,
   },
   {
-    id: 'vessel-007',
+    id: 'container-007',
     name: '3lb Spawn Bag',
-    type: 'bag',
+    category: 'bag',
     volumeMl: 2000,
     isReusable: false,
+    usageContext: ['culture', 'grow'],
     notes: 'Grain spawn bag with filter patch',
     isActive: true,
   },
   {
-    id: 'vessel-008',
+    id: 'container-008',
     name: '5lb Spawn Bag',
-    type: 'bag',
+    category: 'bag',
     volumeMl: 3500,
     isReusable: false,
+    usageContext: ['culture', 'grow'],
     notes: 'Large grain spawn bag',
     isActive: true,
   },
-];
-
-// ============================================================================
-// CONTAINER TYPES
-// ============================================================================
-
-export const initialContainerTypes: ContainerType[] = [
+  // Grow containers (formerly container_types)
   {
-    id: 'cont-001',
+    id: 'container-009',
     name: '66qt Monotub',
     category: 'tub',
-    volumeL: 62,
-    dimensions: { length: 60, width: 40, height: 35 },
+    volumeMl: 62000,  // 62L converted to ml
+    dimensions: { length: 60, width: 40, height: 35, unit: 'cm' },
+    isReusable: true,
+    usageContext: ['grow'],
     notes: 'Standard monotub',
     isActive: true,
   },
   {
-    id: 'cont-002',
+    id: 'container-010',
     name: '6qt Shoebox',
     category: 'tub',
-    volumeL: 5.7,
-    dimensions: { length: 34, width: 21, height: 12 },
+    volumeMl: 5700,  // 5.7L converted to ml
+    dimensions: { length: 34, width: 21, height: 12, unit: 'cm' },
+    isReusable: true,
+    usageContext: ['grow'],
     notes: 'Small personal grow',
     isActive: true,
   },
   {
-    id: 'cont-003',
+    id: 'container-011',
     name: '5lb Grow Bag',
     category: 'bag',
-    volumeL: 4,
+    volumeMl: 4000,  // 4L converted to ml
+    isReusable: false,
+    usageContext: ['grow'],
     notes: 'All-in-one grow bag',
     isActive: true,
   },
   {
-    id: 'cont-004',
+    id: 'container-012',
     name: '5 Gallon Bucket',
     category: 'bucket',
-    volumeL: 19,
+    volumeMl: 19000,  // 19L converted to ml
+    isReusable: true,
+    usageContext: ['grow'],
     notes: 'Bucket tek container',
     isActive: true,
   },
   {
-    id: 'cont-005',
+    id: 'container-013',
     name: 'BRF Cake Jar',
     category: 'jar',
-    volumeL: 0.5,
+    volumeMl: 500,  // 0.5L converted to ml
+    isReusable: true,
+    usageContext: ['grow'],
     notes: 'Half pint PF tek jar',
     isActive: true,
   },
   {
-    id: 'cont-006',
+    id: 'container-014',
     name: 'Outdoor Bed',
     category: 'bed',
-    volumeL: 100,
+    volumeMl: 100000,  // 100L converted to ml
+    isReusable: false,
+    usageContext: ['grow'],
     notes: 'Garden bed for wood lovers',
     isActive: true,
   },
@@ -665,7 +680,7 @@ export const initialCultures: Culture[] = [
     updatedAt: new Date('2024-10-15'),
     generation: 0,
     locationId: 'loc-004', // Lab Fridge
-    vesselId: 'vessel-006', // 10cc Syringe
+    containerId: 'container-006', // 10cc Syringe
     volumeMl: 7,
     healthRating: 5,
     notes: 'Original B+ spore syringe from Fungi Perfecti',
@@ -690,7 +705,7 @@ export const initialCultures: Culture[] = [
     parentId: 'culture-001',
     generation: 1,
     locationId: 'loc-004',
-    vesselId: 'vessel-003', // 100mm Petri Dish
+    containerId: 'container-003', // 100mm Petri Dish
     healthRating: 5,
     notes: 'Clean sector isolation from SS-001',
     cost: 2.00,
@@ -714,7 +729,7 @@ export const initialCultures: Culture[] = [
     parentId: 'culture-002',
     generation: 2,
     locationId: 'loc-004',
-    vesselId: 'vessel-003',
+    containerId: 'container-003',
     healthRating: 5,
     notes: 'G2 transfer, excellent genetics',
     cost: 2.00,
@@ -734,7 +749,7 @@ export const initialCultures: Culture[] = [
     parentId: 'culture-002',
     generation: 2,
     locationId: 'loc-004',
-    vesselId: 'vessel-001', // Quart Mason Jar
+    containerId: 'container-001', // Quart Mason Jar
     volumeMl: 850,
     healthRating: 5,
     notes: 'Honey LC from AG-001, strong mycelial mass',
@@ -757,7 +772,7 @@ export const initialCultures: Culture[] = [
     updatedAt: new Date('2024-09-01'),
     generation: 0,
     locationId: 'loc-004',
-    vesselId: 'vessel-006',
+    containerId: 'container-006',
     volumeMl: 9,
     healthRating: 5,
     notes: 'PE spore syringe',
@@ -779,7 +794,7 @@ export const initialCultures: Culture[] = [
     parentId: 'culture-005',
     generation: 1,
     locationId: 'loc-001', // Incubation
-    vesselId: 'vessel-001',
+    containerId: 'container-001',
     volumeMl: 500,
     healthRating: 4,
     notes: 'PE LC from spore syringe direct',
@@ -800,7 +815,7 @@ export const initialCultures: Culture[] = [
     parentId: 'culture-003',
     generation: 3,
     locationId: 'loc-004',
-    vesselId: 'vessel-004', // Test Tube
+    containerId: 'container-004', // Test Tube
     healthRating: 5,
     notes: 'Long-term storage of proven B+ genetics',
     cost: 1.00,
@@ -817,7 +832,7 @@ export const initialCultures: Culture[] = [
     updatedAt: new Date('2024-10-10'),
     generation: 1,
     locationId: 'loc-005', // Disposed
-    vesselId: 'vessel-003',
+    containerId: 'container-003',
     healthRating: 0,
     notes: 'Contaminated with bacteria',
     cost: 2.00,
@@ -845,7 +860,7 @@ export const initialGrows: Grow[] = [
     substrateTypeId: 'sub-001', // CVG
     substrateWeight: 3600,
     spawnRate: 20,
-    containerTypeId: 'cont-001', // 66qt Monotub
+    containerId: 'container-009', // 66qt Monotub
     containerCount: 1,
     createdAt: new Date('2024-10-25'),
     spawnedAt: new Date('2024-10-25'),
@@ -883,7 +898,7 @@ export const initialGrows: Grow[] = [
     substrateTypeId: 'sub-001',
     substrateWeight: 1200,
     spawnRate: 25,
-    containerTypeId: 'cont-002', // Shoebox
+    containerId: 'container-010', // Shoebox
     containerCount: 2,
     createdAt: new Date('2024-11-08'),
     spawnedAt: new Date('2024-11-08'),
@@ -912,7 +927,7 @@ export const initialGrows: Grow[] = [
     substrateTypeId: 'sub-001',
     substrateWeight: 2000,
     spawnRate: 20,
-    containerTypeId: 'cont-001',
+    containerId: 'container-009',
     containerCount: 1,
     createdAt: new Date('2024-10-15'),
     spawnedAt: new Date('2024-10-15'),
@@ -944,7 +959,7 @@ export const initialGrows: Grow[] = [
     substrateTypeId: 'sub-003', // Straw
     substrateWeight: 8000,
     spawnRate: 16,
-    containerTypeId: 'cont-004', // Bucket
+    containerId: 'container-012', // Bucket
     containerCount: 1,
     createdAt: new Date('2024-09-20'),
     spawnedAt: new Date('2024-09-20'),
@@ -978,7 +993,7 @@ export const initialGrows: Grow[] = [
     substrateTypeId: 'sub-005', // Master's Mix
     substrateWeight: 2400,
     spawnRate: 20,
-    containerTypeId: 'cont-003', // Grow Bag
+    containerId: 'container-011', // Grow Bag
     containerCount: 3,
     createdAt: new Date('2024-11-15'),
     spawnedAt: new Date('2024-11-15'),
@@ -1183,8 +1198,7 @@ export const initialDataState: DataStoreState = {
   locations: initialLocations,
   locationTypes: [],
   locationClassifications: [],
-  vessels: initialVessels,
-  containerTypes: initialContainerTypes,
+  containers: initialContainers,
   substrateTypes: initialSubstrateTypes,
   suppliers: initialSuppliers,
   inventoryCategories: initialInventoryCategories,
