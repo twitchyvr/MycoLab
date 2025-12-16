@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useData, useTheme, ThemeSelector } from '../../store';
 import { useAuth } from '../../lib/AuthContext';
-import type { Species, Strain, Location, LocationType, LocationClassification, Vessel, ContainerType, SubstrateType, Supplier, InventoryCategory, AppSettings } from '../../store/types';
+import type { Species, Strain, Location, LocationType, LocationClassification, Container, SubstrateType, Supplier, InventoryCategory, AppSettings } from '../../store/types';
 import { createClient } from '@supabase/supabase-js';
 import { StandardDropdown } from '../common/StandardDropdown';
 import { AdminMasterData } from './AdminMasterData';
@@ -19,7 +19,7 @@ import { SpeciesName, SpeciesBadge } from '../common/SpeciesName';
 // ============================================================================
 
 
-type SettingsTab = 'admin' | 'database' | 'species' | 'strains' | 'locations' | 'locationTypes' | 'locationClassifications' | 'vessels' | 'containers' | 'substrates' | 'suppliers' | 'categories' | 'preferences';
+type SettingsTab = 'admin' | 'database' | 'species' | 'strains' | 'locations' | 'locationTypes' | 'locationClassifications' | 'containers' | 'substrates' | 'suppliers' | 'categories' | 'preferences';
 
 interface AdminUser {
   id: string;
@@ -81,7 +81,6 @@ const tabConfig: Record<SettingsTab, { label: string; icon: string }> = {
   locations: { label: 'Locations', icon: '📍' },
   locationTypes: { label: 'Loc Types', icon: '🏷️' },
   locationClassifications: { label: 'Loc Classes', icon: '📂' },
-  vessels: { label: 'Vessels', icon: '🧪' },
   containers: { label: 'Containers', icon: '📦' },
   substrates: { label: 'Substrates', icon: '🌱' },
   suppliers: { label: 'Suppliers', icon: '🏪' },
@@ -91,7 +90,7 @@ const tabConfig: Record<SettingsTab, { label: string; icon: string }> = {
 
 // All database tables
 const ALL_TABLES = [
-  'species', 'strains', 'locations', 'vessels', 'container_types', 'substrate_types',
+  'species', 'strains', 'locations', 'containers', 'substrate_types',
   'suppliers', 'inventory_categories', 'inventory_items', 'cultures', 'culture_observations',
   'culture_transfers', 'grows', 'grow_observations', 'flushes', 'recipes', 'recipe_ingredients'
 ];
@@ -112,8 +111,7 @@ export const SettingsPage: React.FC = () => {
     addLocationType, updateLocationType, deleteLocationType,
     addLocationClassification, updateLocationClassification, deleteLocationClassification,
     addSupplier, updateSupplier, deleteSupplier,
-    addVessel, updateVessel, deleteVessel,
-    addContainerType, updateContainerType, deleteContainerType,
+    addContainer, updateContainer, deleteContainer,
     addSubstrateType, updateSubstrateType, deleteSubstrateType,
     addInventoryCategory, updateInventoryCategory, deleteInventoryCategory,
     activeLocationTypes,
@@ -462,10 +460,8 @@ export const SettingsPage: React.FC = () => {
         return { name: '', code: '', description: '', notes: '' };
       case 'locationClassifications':
         return { name: '', code: '', description: '', notes: '' };
-      case 'vessels':
-        return { name: '', type: 'jar', volumeMl: '', isReusable: true, notes: '' };
       case 'containers':
-        return { name: '', category: 'tub', volumeL: '', notes: '' };
+        return { name: '', category: 'jar', volumeMl: '', isReusable: true, usageContext: ['culture', 'grow'], notes: '' };
       case 'substrates':
         return { name: '', code: '', category: 'bulk', spawnRateMin: 10, spawnRateOptimal: 20, spawnRateMax: 30, fieldCapacity: 65, notes: '' };
       case 'suppliers':
@@ -514,10 +510,8 @@ export const SettingsPage: React.FC = () => {
         return { name: item.name || '', code: item.code || '', description: item.description || '', notes: item.notes || '' };
       case 'locationClassifications':
         return { name: item.name || '', code: item.code || '', description: item.description || '', notes: item.notes || '' };
-      case 'vessels':
-        return { name: item.name || '', type: item.type || 'jar', volumeMl: item.volumeMl || '', isReusable: item.isReusable ?? true, notes: item.notes || '' };
       case 'containers':
-        return { name: item.name || '', category: item.category || 'tub', volumeL: item.volumeL || '', notes: item.notes || '' };
+        return { name: item.name || '', category: item.category || 'jar', volumeMl: item.volumeMl || '', isReusable: item.isReusable ?? true, usageContext: item.usageContext || ['culture', 'grow'], notes: item.notes || '' };
       case 'substrates':
         return { name: item.name || '', code: item.code || '', category: item.category || 'bulk', spawnRateMin: item.spawnRateRange?.min || 10, spawnRateOptimal: item.spawnRateRange?.optimal || 20, spawnRateMax: item.spawnRateRange?.max || 30, fieldCapacity: item.fieldCapacity || 65, notes: item.notes || '' };
       case 'suppliers':
@@ -658,35 +652,20 @@ export const SettingsPage: React.FC = () => {
           }
           break;
 
-        case 'vessels':
-          const vesselData = {
-            name: formData.name.trim(),
-            type: formData.type as Vessel['type'],
-            volumeMl: formData.volumeMl ? Number(formData.volumeMl) : undefined,
-            isReusable: formData.isReusable ?? true,
-            notes: formData.notes?.trim() || undefined,
-            isActive: true,
-          };
-          if (editingItem) {
-            await updateVessel(editingItem.id, vesselData);
-          } else {
-            await addVessel(vesselData);
-          }
-          setSuccess('Vessel saved');
-          break;
-
         case 'containers':
           const containerData = {
             name: formData.name.trim(),
-            category: formData.category as ContainerType['category'],
-            volumeL: formData.volumeL ? Number(formData.volumeL) : undefined,
+            category: formData.category as Container['category'],
+            volumeMl: formData.volumeMl ? Number(formData.volumeMl) : undefined,
+            isReusable: formData.isReusable ?? true,
+            usageContext: formData.usageContext || ['culture', 'grow'],
             notes: formData.notes?.trim() || undefined,
             isActive: true,
           };
           if (editingItem) {
-            await updateContainerType(editingItem.id, containerData);
+            await updateContainer(editingItem.id, containerData);
           } else {
-            await addContainerType(containerData);
+            await addContainer(containerData);
           }
           setSuccess('Container saved');
           break;
@@ -753,8 +732,7 @@ export const SettingsPage: React.FC = () => {
         case 'locationTypes': await deleteLocationType(id); break;
         case 'locationClassifications': await deleteLocationClassification(id); break;
         case 'suppliers': await deleteSupplier(id); break;
-        case 'vessels': deleteVessel(id); break;
-        case 'containers': deleteContainerType(id); break;
+        case 'containers': await deleteContainer(id); break;
         case 'substrates': deleteSubstrateType(id); break;
         case 'categories': deleteInventoryCategory(id); break;
       }
@@ -1556,37 +1534,20 @@ export const SettingsPage: React.FC = () => {
           </div>
         );
 
-      case 'vessels':
-        return (
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <p className="text-zinc-400">Culture containers: jars, bags, plates, syringes</p>
-              <button onClick={() => openAddModal('vessels')} className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                <Icons.Plus /> Add Vessel
-              </button>
-            </div>
-            {renderDataTable(state.vessels, [
-              { key: 'name', label: 'Name' },
-              { key: 'type', label: 'Type', render: (item) => <span className="capitalize">{item.type}</span> },
-              { key: 'volumeMl', label: 'Volume', render: (item) => item.volumeMl ? `${item.volumeMl}ml` : '-' },
-              { key: 'isReusable', label: 'Reusable', render: (item) => item.isReusable ? <span className="text-emerald-400">✓</span> : <span className="text-zinc-500">✗</span> },
-            ])}
-          </div>
-        );
-
       case 'containers':
         return (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <p className="text-zinc-400">Grow containers: monotubs, buckets, bags</p>
+              <p className="text-zinc-400">All containers: jars, plates, bags, tubs, buckets</p>
               <button onClick={() => openAddModal('containers')} className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium flex items-center gap-2">
                 <Icons.Plus /> Add Container
               </button>
             </div>
-            {renderDataTable(state.containerTypes, [
+            {renderDataTable(state.containers, [
               { key: 'name', label: 'Name' },
               { key: 'category', label: 'Category', render: (item) => <span className="capitalize">{item.category}</span> },
-              { key: 'volumeL', label: 'Volume', render: (item) => item.volumeL ? `${item.volumeL}L` : '-' },
+              { key: 'volumeMl', label: 'Volume', render: (item) => item.volumeMl ? (item.volumeMl >= 1000 ? `${(item.volumeMl / 1000).toFixed(1)}L` : `${item.volumeMl}ml`) : '-' },
+              { key: 'usageContext', label: 'Usage', render: (item) => item.usageContext?.join(', ') || '-' },
             ])}
           </div>
         );
@@ -1953,36 +1914,6 @@ export const SettingsPage: React.FC = () => {
             </div>
           );
 
-        case 'vessels':
-          return (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-zinc-400 mb-1">Name *</label>
-                <input type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" autoFocus />
-              </div>
-              <div>
-                <label className="block text-sm text-zinc-400 mb-1">Type</label>
-                <select value={formData.type || 'jar'} onChange={e => setFormData({ ...formData, type: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white">
-                  <option value="jar">Jar</option>
-                  <option value="bag">Bag</option>
-                  <option value="plate">Plate</option>
-                  <option value="tube">Tube</option>
-                  <option value="bottle">Bottle</option>
-                  <option value="syringe">Syringe</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-zinc-400 mb-1">Volume (ml)</label>
-                <input type="number" value={formData.volumeMl || ''} onChange={e => setFormData({ ...formData, volumeMl: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
-              </div>
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="isReusable" checked={formData.isReusable ?? true} onChange={e => setFormData({ ...formData, isReusable: e.target.checked })} className="w-4 h-4 rounded" />
-                <label htmlFor="isReusable" className="text-sm text-zinc-400">Reusable</label>
-              </div>
-            </div>
-          );
-
         case 'containers':
           return (
             <div className="space-y-4">
@@ -1992,18 +1923,51 @@ export const SettingsPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm text-zinc-400 mb-1">Category</label>
-                <select value={formData.category || 'tub'} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white">
-                  <option value="tub">Tub</option>
-                  <option value="bag">Bag</option>
-                  <option value="bucket">Bucket</option>
-                  <option value="bed">Bed</option>
-                  <option value="jar">Jar</option>
-                  <option value="other">Other</option>
+                <select value={formData.category || 'jar'} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white">
+                  <optgroup label="Culture Containers">
+                    <option value="jar">Jar</option>
+                    <option value="plate">Plate</option>
+                    <option value="tube">Tube</option>
+                    <option value="bottle">Bottle</option>
+                    <option value="syringe">Syringe</option>
+                  </optgroup>
+                  <optgroup label="Grow Containers">
+                    <option value="tub">Tub</option>
+                    <option value="bucket">Bucket</option>
+                    <option value="bed">Bed</option>
+                  </optgroup>
+                  <optgroup label="Both">
+                    <option value="bag">Bag</option>
+                    <option value="other">Other</option>
+                  </optgroup>
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-zinc-400 mb-1">Volume (L)</label>
-                <input type="number" value={formData.volumeL || ''} onChange={e => setFormData({ ...formData, volumeL: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
+                <label className="block text-sm text-zinc-400 mb-1">Volume (ml)</label>
+                <input type="number" value={formData.volumeMl || ''} onChange={e => setFormData({ ...formData, volumeMl: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" placeholder="e.g., 946 for quart jar" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="isReusable" checked={formData.isReusable ?? true} onChange={e => setFormData({ ...formData, isReusable: e.target.checked })} className="w-4 h-4 rounded" />
+                <label htmlFor="isReusable" className="text-sm text-zinc-400">Reusable</label>
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Usage Context</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={formData.usageContext?.includes('culture') ?? true} onChange={e => {
+                      const contexts = formData.usageContext || ['culture', 'grow'];
+                      setFormData({ ...formData, usageContext: e.target.checked ? [...contexts.filter((c: string) => c !== 'culture'), 'culture'] : contexts.filter((c: string) => c !== 'culture') });
+                    }} className="w-4 h-4 rounded" />
+                    <span className="text-sm text-zinc-400">Culture Work</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={formData.usageContext?.includes('grow') ?? true} onChange={e => {
+                      const contexts = formData.usageContext || ['culture', 'grow'];
+                      setFormData({ ...formData, usageContext: e.target.checked ? [...contexts.filter((c: string) => c !== 'grow'), 'grow'] : contexts.filter((c: string) => c !== 'grow') });
+                    }} className="w-4 h-4 rounded" />
+                    <span className="text-sm text-zinc-400">Growing</span>
+                  </label>
+                </div>
               </div>
             </div>
           );

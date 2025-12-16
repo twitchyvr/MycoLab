@@ -29,8 +29,7 @@ type MasterDataTable =
   | 'strains'
   | 'location_types'
   | 'location_classifications'
-  | 'vessels'
-  | 'container_types'
+  | 'containers'  // Unified: replaces vessels and container_types
   | 'substrate_types'
   | 'suppliers'
   | 'inventory_categories'
@@ -87,25 +86,15 @@ const tableConfigs: Record<MasterDataTable, TableConfig> = {
       { key: 'description', label: 'Description', type: 'text' },
     ],
   },
-  vessels: {
-    name: 'vessels',
-    displayName: 'Vessels',
-    icon: '🧪',
-    fields: [
-      { key: 'name', label: 'Name', type: 'text' },
-      { key: 'type', label: 'Type', type: 'select' },
-      { key: 'volume_ml', label: 'Volume (ml)', type: 'number' },
-      { key: 'is_reusable', label: 'Reusable', type: 'boolean' },
-    ],
-  },
-  container_types: {
-    name: 'container_types',
-    displayName: 'Container Types',
+  containers: {
+    name: 'containers',
+    displayName: 'Containers',
     icon: '📦',
     fields: [
       { key: 'name', label: 'Name', type: 'text' },
       { key: 'category', label: 'Category', type: 'select' },
-      { key: 'volume_l', label: 'Volume (L)', type: 'number' },
+      { key: 'volume_ml', label: 'Volume (ml)', type: 'number' },
+      { key: 'is_reusable', label: 'Reusable', type: 'boolean' },
     ],
   },
   substrate_types: {
@@ -744,7 +733,7 @@ export const AdminMasterData: React.FC<AdminMasterDataProps> = ({ isConnected })
                             <option value="advanced">Advanced</option>
                           </>
                         )}
-                        {field.key === 'type' && selectedTable === 'vessels' && (
+                        {field.key === 'category' && selectedTable === 'containers' && (
                           <>
                             <option value="jar">Jar</option>
                             <option value="bag">Bag</option>
@@ -752,16 +741,9 @@ export const AdminMasterData: React.FC<AdminMasterDataProps> = ({ isConnected })
                             <option value="tube">Tube</option>
                             <option value="bottle">Bottle</option>
                             <option value="syringe">Syringe</option>
-                            <option value="other">Other</option>
-                          </>
-                        )}
-                        {field.key === 'category' && selectedTable === 'container_types' && (
-                          <>
                             <option value="tub">Tub</option>
-                            <option value="bag">Bag</option>
                             <option value="bucket">Bucket</option>
                             <option value="bed">Bed</option>
-                            <option value="jar">Jar</option>
                             <option value="other">Other</option>
                           </>
                         )}

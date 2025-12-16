@@ -7,7 +7,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { SupabaseClient } from '@supabase/supabase-js';
 import {
   DataStoreState, LookupHelpers,
-  Species, Strain, Location, LocationType, LocationClassification, Vessel, ContainerType, SubstrateType, Supplier,
+  Species, Strain, Location, LocationType, LocationClassification, Container, SubstrateType, Supplier,
   InventoryCategory, InventoryItem, InventoryLot, InventoryUsage, PurchaseOrder,
   Culture, Grow, Recipe, AppSettings,
   CultureObservation, CultureTransfer, GrowObservation, Flush, GrowStage,
@@ -33,10 +33,8 @@ import {
   transformLocationClassificationToDb,
   transformLocationFromDb,
   transformLocationToDb,
-  transformVesselFromDb,
-  transformVesselToDb,
-  transformContainerTypeFromDb,
-  transformContainerTypeToDb,
+  transformContainerFromDb,
+  transformContainerToDb,
   transformSubstrateTypeFromDb,
   transformSubstrateTypeToDb,
   transformInventoryCategoryFromDb,
@@ -106,15 +104,10 @@ interface DataContextValue extends LookupHelpers {
   updateLocationClassification: (id: string, updates: Partial<LocationClassification>) => Promise<void>;
   deleteLocationClassification: (id: string) => Promise<void>;
 
-  // Vessel CRUD
-  addVessel: (vessel: Omit<Vessel, 'id'>) => Promise<Vessel>;
-  updateVessel: (id: string, updates: Partial<Vessel>) => Promise<void>;
-  deleteVessel: (id: string) => Promise<void>;
-  
-  // Container Type CRUD
-  addContainerType: (containerType: Omit<ContainerType, 'id'>) => Promise<ContainerType>;
-  updateContainerType: (id: string, updates: Partial<ContainerType>) => Promise<void>;
-  deleteContainerType: (id: string) => Promise<void>;
+  // Container CRUD (unified - replaces Vessel and ContainerType)
+  addContainer: (container: Omit<Container, 'id'>) => Promise<Container>;
+  updateContainer: (id: string, updates: Partial<Container>) => Promise<void>;
+  deleteContainer: (id: string) => Promise<void>;
   
   // Substrate Type CRUD
   addSubstrateType: (substrateType: Omit<SubstrateType, 'id'>) => Promise<SubstrateType>;
@@ -252,19 +245,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .order('name');
       if (suppliersError) throw suppliersError;
       
-      // Load vessels
-      const { data: vesselsData, error: vesselsError } = await client
-        .from('vessels')
+      // Load containers (unified - replaces vessels and container_types)
+      const { data: containersData, error: containersError } = await client
+        .from('containers')
         .select('*')
         .order('name');
-      if (vesselsError) console.warn('Vessels table error:', vesselsError);
-      
-      // Load container types
-      const { data: containerTypesData, error: containerTypesError } = await client
-        .from('container_types')
-        .select('*')
-        .order('name');
-      if (containerTypesError) console.warn('Container types error:', containerTypesError);
+      if (containersError) console.warn('Containers table error:', containersError);
       
       // Load substrate types
       const { data: substrateTypesData, error: substrateTypesError } = await client
@@ -408,8 +394,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         strains: (strainsData || []).map(transformStrainFromDb),
         locations: (locationsData || []).map(transformLocationFromDb),
         suppliers: (suppliersData || []).map(transformSupplierFromDb),
-        vessels: (vesselsData || []).map(transformVesselFromDb),
-        containerTypes: (containerTypesData || []).map(transformContainerTypeFromDb),
+        containers: (containersData || []).map(transformContainerFromDb),  // Unified
         substrateTypes: (substrateTypesData || []).map(transformSubstrateTypeFromDb),
         inventoryCategories: (inventoryCategoriesData || []).map(transformInventoryCategoryFromDb),
         recipeCategories: allRecipeCategories,
@@ -478,8 +463,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const getLocation = useCallback((id: string) => state.locations.find(l => l.id === id), [state.locations]);
   const getLocationType = useCallback((id: string) => state.locationTypes.find(lt => lt.id === id), [state.locationTypes]);
   const getLocationClassification = useCallback((id: string) => state.locationClassifications.find(lc => lc.id === id), [state.locationClassifications]);
-  const getVessel = useCallback((id: string) => state.vessels.find(v => v.id === id), [state.vessels]);
-  const getContainerType = useCallback((id: string) => state.containerTypes.find(c => c.id === id), [state.containerTypes]);
+  const getContainer = useCallback((id: string) => state.containers.find(c => c.id === id), [state.containers]);
   const getSubstrateType = useCallback((id: string) => state.substrateTypes.find(s => s.id === id), [state.substrateTypes]);
   const getSupplier = useCallback((id: string) => state.suppliers.find(s => s.id === id), [state.suppliers]);
   const getInventoryCategory = useCallback((id: string) => state.inventoryCategories.find(c => c.id === id), [state.inventoryCategories]);
@@ -498,8 +482,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const activeLocations = useMemo(() => state.locations.filter(l => l.isActive), [state.locations]);
   const activeLocationTypes = useMemo(() => state.locationTypes.filter(lt => lt.isActive), [state.locationTypes]);
   const activeLocationClassifications = useMemo(() => state.locationClassifications.filter(lc => lc.isActive), [state.locationClassifications]);
-  const activeVessels = useMemo(() => state.vessels.filter(v => v.isActive), [state.vessels]);
-  const activeContainerTypes = useMemo(() => state.containerTypes.filter(c => c.isActive), [state.containerTypes]);
+  const activeContainers = useMemo(() => state.containers.filter(c => c.isActive), [state.containers]);
   const activeSubstrateTypes = useMemo(() => state.substrateTypes.filter(s => s.isActive), [state.substrateTypes]);
   const activeSuppliers = useMemo(() => state.suppliers.filter(s => s.isActive), [state.suppliers]);
   const activeInventoryCategories = useMemo(() => state.inventoryCategories.filter(c => c.isActive), [state.inventoryCategories]);
@@ -1117,7 +1100,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         parentId: sourceCulture.id,
         generation: (sourceCulture.generation || 0) + 1,
         locationId: sourceCulture.locationId, // Default to parent location
-        vesselId: state.vessels.find(v => v.isActive)?.id || 'default-vessel', // Needs selection
+        containerId: state.containers.find(c => c.isActive && c.usageContext.includes('culture'))?.id || 'default-container', // Needs selection
         volumeMl: undefined,
         fillVolumeMl: undefined,
         prepDate: new Date().toISOString().split('T')[0],
@@ -1195,7 +1178,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
 
     return newCulture;
-  }, [state.cultures, state.vessels, generateId, generateCultureLabel, supabase]);
+  }, [state.cultures, state.containers, generateId, generateCultureLabel, supabase]);
 
   // ============================================================================
   // GROW CRUD
@@ -1466,98 +1449,52 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // CRUD: Vessels, ContainerTypes, SubstrateTypes, Inventory - NOW WITH DATABASE
   // ============================================================================
 
-  const addVessel = useCallback(async (vessel: Omit<Vessel, 'id'>): Promise<Vessel> => {
+  // Container CRUD (unified - replaces addVessel/addContainerType)
+  const addContainer = useCallback(async (container: Omit<Container, 'id'>): Promise<Container> => {
     if (supabase) {
       // Get current user ID to save as personal item
       const userId = await getCurrentUserId();
       const { data, error } = await supabase
-        .from('vessels')
-        .insert(transformVesselToDb(vessel, userId))
+        .from('containers')
+        .insert(transformContainerToDb(container, userId))
         .select()
         .single();
       if (error) throw error;
-      const newVessel = transformVesselFromDb(data);
-      setState(prev => ({ ...prev, vessels: [...prev.vessels, newVessel] }));
-      return newVessel;
+      const newContainer = transformContainerFromDb(data);
+      setState(prev => ({ ...prev, containers: [...prev.containers, newContainer] }));
+      return newContainer;
     }
     // Fallback for offline
-    const newVessel = { ...vessel, id: generateId('vessel') } as Vessel;
-    setState(prev => ({ ...prev, vessels: [...prev.vessels, newVessel] }));
-    return newVessel;
+    const newContainer = { ...container, id: generateId('container') } as Container;
+    setState(prev => ({ ...prev, containers: [...prev.containers, newContainer] }));
+    return newContainer;
   }, [supabase, generateId]);
 
-  const updateVessel = useCallback(async (id: string, updates: Partial<Vessel>) => {
+  const updateContainer = useCallback(async (id: string, updates: Partial<Container>) => {
     if (supabase) {
       const { error } = await supabase
-        .from('vessels')
-        .update(transformVesselToDb(updates))
+        .from('containers')
+        .update(transformContainerToDb(updates))
         .eq('id', id);
       if (error) throw error;
     }
     setState(prev => ({
       ...prev,
-      vessels: prev.vessels.map(v => v.id === id ? { ...v, ...updates } : v)
+      containers: prev.containers.map(c => c.id === id ? { ...c, ...updates } : c)
     }));
   }, [supabase]);
 
-  const deleteVessel = useCallback(async (id: string) => {
+  const deleteContainer = useCallback(async (id: string) => {
     if (supabase) {
       const { error } = await supabase
-        .from('vessels')
+        .from('containers')
         .update({ is_active: false })
         .eq('id', id);
       if (error) throw error;
     }
     setState(prev => ({
       ...prev,
-      vessels: prev.vessels.map(v => v.id === id ? { ...v, isActive: false } : v)
-    }));
-  }, [supabase]);
-
-  const addContainerType = useCallback(async (containerType: Omit<ContainerType, 'id'>): Promise<ContainerType> => {
-    if (supabase) {
-      // Get current user ID to save as personal item
-      const userId = await getCurrentUserId();
-      const { data, error } = await supabase
-        .from('container_types')
-        .insert(transformContainerTypeToDb(containerType, userId))
-        .select()
-        .single();
-      if (error) throw error;
-      const newCT = transformContainerTypeFromDb(data);
-      setState(prev => ({ ...prev, containerTypes: [...prev.containerTypes, newCT] }));
-      return newCT;
-    }
-    const newCT = { ...containerType, id: generateId('ct') } as ContainerType;
-    setState(prev => ({ ...prev, containerTypes: [...prev.containerTypes, newCT] }));
-    return newCT;
-  }, [supabase, generateId]);
-
-  const updateContainerType = useCallback(async (id: string, updates: Partial<ContainerType>) => {
-    if (supabase) {
-      const { error } = await supabase
-        .from('container_types')
-        .update(transformContainerTypeToDb(updates))
-        .eq('id', id);
-      if (error) throw error;
-    }
-    setState(prev => ({
-      ...prev,
-      containerTypes: prev.containerTypes.map(c => c.id === id ? { ...c, ...updates } : c)
-    }));
-  }, [supabase]);
-
-  const deleteContainerType = useCallback(async (id: string) => {
-    if (supabase) {
-      const { error } = await supabase
-        .from('container_types')
-        .update({ is_active: false })
-        .eq('id', id);
-      if (error) throw error;
-    }
-    setState(prev => ({
-      ...prev,
-      containerTypes: prev.containerTypes.map(c => c.id === id ? { ...c, isActive: false } : c)
+      containers: prev.containers.map(c => c.id === id ? { ...c, isActive: false } : c)
     }));
   }, [supabase]);
 
@@ -2237,10 +2174,10 @@ const loadSettings = async (): Promise<AppSettings> => {
     error,
 
     // Lookup helpers
-    getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getVessel, getContainerType, getSubstrateType,
+    getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
     getInventoryLot, getPurchaseOrder, getCulture, getGrow, getRecipe,
-    activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeVessels, activeContainerTypes,
+    activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeContainers,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes,
 
@@ -2250,8 +2187,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addLocation, updateLocation, deleteLocation,
     addLocationType, updateLocationType, deleteLocationType,
     addLocationClassification, updateLocationClassification, deleteLocationClassification,
-    addVessel, updateVessel, deleteVessel,
-    addContainerType, updateContainerType, deleteContainerType,
+    addContainer, updateContainer, deleteContainer,
     addSubstrateType, updateSubstrateType, deleteSubstrateType,
     addSupplier, updateSupplier, deleteSupplier,
     addInventoryCategory, updateInventoryCategory, deleteInventoryCategory,
@@ -2270,10 +2206,10 @@ const loadSettings = async (): Promise<AppSettings> => {
     refreshData,
   }), [
     state, isLoading, isConnected, error,
-    getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getVessel, getContainerType, getSubstrateType,
+    getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
     getInventoryLot, getPurchaseOrder, getCulture, getGrow, getRecipe,
-    activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeVessels, activeContainerTypes,
+    activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeContainers,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes,
     addSpecies, updateSpecies, deleteSpecies,
@@ -2281,8 +2217,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addLocation, updateLocation, deleteLocation,
     addLocationType, updateLocationType, deleteLocationType,
     addLocationClassification, updateLocationClassification, deleteLocationClassification,
-    addVessel, updateVessel, deleteVessel,
-    addContainerType, updateContainerType, deleteContainerType,
+    addContainer, updateContainer, deleteContainer,
     addSubstrateType, updateSubstrateType, deleteSubstrateType,
     addSupplier, updateSupplier, deleteSupplier,
     addInventoryCategory, updateInventoryCategory, deleteInventoryCategory,

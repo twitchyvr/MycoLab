@@ -199,13 +199,28 @@ BEGIN
   END IF;
 END $$;
 
--- Vessels (culture containers)
-CREATE TABLE IF NOT EXISTS vessels (
+-- Containers (unified table for all container types - cultures and grows)
+-- Consolidates the former 'vessels' and 'container_types' tables
+CREATE TABLE IF NOT EXISTS containers (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
-  type TEXT CHECK (type IN ('jar', 'bag', 'plate', 'tube', 'bottle', 'syringe', 'other')) DEFAULT 'jar',
+  -- Unified category combining vessel types and container categories
+  category TEXT CHECK (category IN (
+    'jar', 'bag', 'plate', 'tube', 'bottle', 'syringe',  -- culture containers (formerly vessels)
+    'tub', 'bucket', 'bed',                              -- grow containers (formerly container_types)
+    'other'
+  )) DEFAULT 'jar',
+  -- Volume stored in ml (liters converted to ml for consistency)
   volume_ml INTEGER,
+  -- Physical dimensions (optional, useful for larger grow containers)
+  dimension_length DECIMAL(10,2),
+  dimension_width DECIMAL(10,2),
+  dimension_height DECIMAL(10,2),
+  dimension_unit TEXT CHECK (dimension_unit IN ('cm', 'in')) DEFAULT 'cm',
+  -- Reusability (glass jars = true, bags = false, etc.)
   is_reusable BOOLEAN DEFAULT true,
+  -- Usage context - what this container can be used for
+  usage_context TEXT[] DEFAULT ARRAY['culture', 'grow'],
   notes TEXT,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -213,18 +228,45 @@ CREATE TABLE IF NOT EXISTS vessels (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- Container types (grow containers)
-CREATE TABLE IF NOT EXISTS container_types (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  name TEXT NOT NULL,
-  category TEXT CHECK (category IN ('tub', 'bag', 'bucket', 'bed', 'jar', 'other')) DEFAULT 'tub',
-  volume_l DECIMAL,
-  notes TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
-);
+-- Migration: If old tables exist, migrate data to new containers table
+-- This is idempotent and safe to run multiple times
+DO $$
+BEGIN
+  -- Migrate vessels data if vessels table exists and containers doesn't have the data
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels') THEN
+    INSERT INTO containers (id, name, category, volume_ml, is_reusable, notes, is_active, created_at, updated_at, user_id, usage_context)
+    SELECT id, name, type, volume_ml, is_reusable, notes, is_active, created_at, updated_at, user_id, ARRAY['culture']
+    FROM vessels
+    WHERE NOT EXISTS (SELECT 1 FROM containers WHERE containers.id = vessels.id)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+
+  -- Migrate container_types data if table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types') THEN
+    INSERT INTO containers (id, name, category, volume_ml, is_reusable, notes, is_active, created_at, updated_at, user_id, usage_context)
+    SELECT id, name, category,
+           CASE WHEN volume_l IS NOT NULL THEN (volume_l * 1000)::INTEGER ELSE NULL END,
+           CASE WHEN category IN ('tub', 'bucket', 'bed') THEN false ELSE true END,
+           notes, is_active, created_at, updated_at, user_id, ARRAY['grow']
+    FROM container_types
+    WHERE NOT EXISTS (SELECT 1 FROM containers WHERE containers.id = container_types.id)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END $$;
+
+-- Legacy view: vessels (for backward compatibility during migration)
+-- Maps to containers table for culture-context items
+CREATE OR REPLACE VIEW vessels AS
+SELECT id, name, category as type, volume_ml, is_reusable, notes, is_active, created_at, updated_at, user_id
+FROM containers
+WHERE 'culture' = ANY(usage_context) OR category IN ('jar', 'bag', 'plate', 'tube', 'bottle', 'syringe');
+
+-- Legacy view: container_types (for backward compatibility during migration)
+-- Maps to containers table for grow-context items
+CREATE OR REPLACE VIEW container_types AS
+SELECT id, name, category, (volume_ml::DECIMAL / 1000) as volume_l, notes, is_active, created_at, updated_at, user_id
+FROM containers
+WHERE 'grow' = ANY(usage_context) OR category IN ('tub', 'bucket', 'bed', 'bag', 'jar');
 
 -- Substrate types
 CREATE TABLE IF NOT EXISTS substrate_types (
@@ -413,7 +455,7 @@ CREATE TABLE IF NOT EXISTS cultures (
   type TEXT CHECK (type IN ('spore_syringe', 'liquid_culture', 'agar', 'slant', 'grain_master', 'grain_spawn', 'other')) DEFAULT 'agar',
   generation INTEGER DEFAULT 0,
   parent_id UUID REFERENCES cultures(id),
-  vessel_id UUID REFERENCES vessels(id),
+  container_id UUID REFERENCES containers(id),  -- Unified: was vessel_id
   location_id UUID REFERENCES locations(id),
   recipe_id UUID REFERENCES recipes(id),
   volume_ml INTEGER,
@@ -458,7 +500,7 @@ CREATE TABLE IF NOT EXISTS grows (
   name TEXT NOT NULL,
   strain_id UUID REFERENCES strains(id),
   source_culture_id UUID REFERENCES cultures(id),
-  container_type_id UUID REFERENCES container_types(id),
+  container_id UUID REFERENCES containers(id),  -- Unified: was container_type_id
   substrate_type_id UUID REFERENCES substrate_types(id),
   location_id UUID REFERENCES locations(id),
   stage TEXT CHECK (stage IN ('spawning', 'colonizing', 'fruiting', 'harvesting', 'completed', 'contaminated')) DEFAULT 'spawning',

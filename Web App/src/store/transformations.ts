@@ -10,8 +10,7 @@ import {
   Location,
   LocationType,
   LocationClassification,
-  Vessel,
-  ContainerType,
+  Container,
   SubstrateType,
   Supplier,
   InventoryCategory,
@@ -192,50 +191,52 @@ export const transformLocationToDb = (location: Partial<Location>, userId?: stri
 });
 
 // ============================================================================
-// VESSEL TRANSFORMATIONS
+// CONTAINER TRANSFORMATIONS (Unified - replaces Vessel and ContainerType)
 // ============================================================================
 
-export const transformVesselFromDb = (row: any): Vessel => ({
+export const transformContainerFromDb = (row: any): Container => ({
   id: row.id,
   name: row.name,
-  type: row.type || 'jar',
+  category: row.category || 'jar',
   volumeMl: row.volume_ml,
+  dimensions: row.dimension_length || row.dimension_width || row.dimension_height
+    ? {
+        length: row.dimension_length ? parseFloat(row.dimension_length) : 0,
+        width: row.dimension_width ? parseFloat(row.dimension_width) : 0,
+        height: row.dimension_height ? parseFloat(row.dimension_height) : 0,
+        unit: row.dimension_unit || 'cm',
+      }
+    : undefined,
   isReusable: row.is_reusable ?? true,
+  usageContext: row.usage_context || ['culture', 'grow'],
   notes: row.notes,
   isActive: row.is_active ?? true,
 });
 
-export const transformVesselToDb = (vessel: Partial<Vessel>, userId?: string | null) => ({
-  name: vessel.name,
-  type: vessel.type,
-  volume_ml: vessel.volumeMl,
-  is_reusable: vessel.isReusable,
-  notes: vessel.notes,
-  is_active: vessel.isActive,
+export const transformContainerToDb = (container: Partial<Container>, userId?: string | null) => ({
+  name: container.name,
+  category: container.category,
+  volume_ml: container.volumeMl,
+  dimension_length: container.dimensions?.length,
+  dimension_width: container.dimensions?.width,
+  dimension_height: container.dimensions?.height,
+  dimension_unit: container.dimensions?.unit || 'cm',
+  is_reusable: container.isReusable,
+  usage_context: container.usageContext,
+  notes: container.notes,
+  is_active: container.isActive,
   ...(userId && { user_id: userId }),
 });
 
-// ============================================================================
-// CONTAINER TYPE TRANSFORMATIONS
-// ============================================================================
-
-export const transformContainerTypeFromDb = (row: any): ContainerType => ({
-  id: row.id,
-  name: row.name,
-  category: row.category || 'tub',
-  volumeL: row.volume_l ? parseFloat(row.volume_l) : undefined,
-  notes: row.notes,
-  isActive: row.is_active ?? true,
-});
-
-export const transformContainerTypeToDb = (ct: Partial<ContainerType>, userId?: string | null) => ({
-  name: ct.name,
-  category: ct.category,
-  volume_l: ct.volumeL,
-  notes: ct.notes,
-  is_active: ct.isActive,
-  ...(userId && { user_id: userId }),
-});
+// Legacy transformation aliases for backward compatibility
+/** @deprecated Use transformContainerFromDb instead */
+export const transformVesselFromDb = transformContainerFromDb;
+/** @deprecated Use transformContainerToDb instead */
+export const transformVesselToDb = transformContainerToDb;
+/** @deprecated Use transformContainerFromDb instead */
+export const transformContainerTypeFromDb = transformContainerFromDb;
+/** @deprecated Use transformContainerToDb instead */
+export const transformContainerTypeToDb = transformContainerToDb;
 
 // ============================================================================
 // SUBSTRATE TYPE TRANSFORMATIONS
@@ -324,7 +325,7 @@ export const transformCultureFromDb = (row: any): Culture => ({
   parentId: row.parent_id,
   generation: row.generation || 0,
   locationId: row.location_id,
-  vesselId: row.vessel_id,
+  containerId: row.container_id,  // Unified: was vessel_id
   recipeId: row.recipe_id,
   volumeMl: row.volume_ml,
   fillVolumeMl: row.fill_volume_ml,
@@ -351,7 +352,7 @@ export const transformCultureToDb = (culture: Partial<Culture>) => {
   if (culture.parentId !== undefined) result.parent_id = culture.parentId;
   if (culture.generation !== undefined) result.generation = culture.generation;
   if (culture.locationId !== undefined) result.location_id = culture.locationId;
-  if (culture.vesselId !== undefined) result.vessel_id = culture.vesselId;
+  if (culture.containerId !== undefined) result.container_id = culture.containerId;  // Unified: was vessel_id
   if (culture.recipeId !== undefined) result.recipe_id = culture.recipeId;
   if (culture.volumeMl !== undefined) result.volume_ml = culture.volumeMl;
   if (culture.fillVolumeMl !== undefined) result.fill_volume_ml = culture.fillVolumeMl;
@@ -382,7 +383,7 @@ export const transformGrowFromDb = (row: any): Grow => ({
   substrateTypeId: row.substrate_type_id,
   substrateWeight: row.substrate_weight || 0,
   spawnRate: row.spawn_rate || 20,
-  containerTypeId: row.container_type_id,
+  containerId: row.container_id,  // Unified: was container_type_id
   containerCount: row.container_count || 1,
   spawnedAt: new Date(row.spawned_at),
   colonizationStartedAt: row.colonization_started_at ? new Date(row.colonization_started_at) : undefined,
@@ -412,7 +413,7 @@ export const transformGrowToDb = (grow: Partial<Grow>) => {
   if (grow.substrateTypeId !== undefined) result.substrate_type_id = grow.substrateTypeId;
   if (grow.substrateWeight !== undefined) result.substrate_weight = grow.substrateWeight;
   if (grow.spawnRate !== undefined) result.spawn_rate = grow.spawnRate;
-  if (grow.containerTypeId !== undefined) result.container_type_id = grow.containerTypeId;
+  if (grow.containerId !== undefined) result.container_id = grow.containerId;  // Unified: was container_type_id
   if (grow.containerCount !== undefined) result.container_count = grow.containerCount;
   if (grow.spawnedAt !== undefined) result.spawned_at = grow.spawnedAt instanceof Date ? grow.spawnedAt.toISOString() : grow.spawnedAt;
   if (grow.colonizationStartedAt !== undefined) result.colonization_started_at = grow.colonizationStartedAt instanceof Date ? grow.colonizationStartedAt.toISOString() : grow.colonizationStartedAt;

@@ -17,12 +17,12 @@ import type {
   FeatureStatus,
   FeaturePriority 
 } from './types';
-import { 
-  defaultPreferences, 
-  sampleStrains, 
-  sampleVendors, 
+import {
+  defaultPreferences,
+  sampleStrains,
+  sampleVendors,
   sampleLocations,
-  sampleVesselTypes,
+  sampleContainers,
   sampleIngredients,
   initialDevLog,
   projectScope
@@ -83,7 +83,7 @@ const initialState: AppState = {
   strains: sampleStrains,
   vendors: sampleVendors,
   locations: sampleLocations,
-  vesselTypes: sampleVesselTypes,
+  containers: sampleContainers,
   ingredients: sampleIngredients,
   tools: [],
   procedures: [],

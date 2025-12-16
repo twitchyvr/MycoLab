@@ -167,14 +167,31 @@ export interface RoomStatus extends Timestamped {
   notes?: string;
 }
 
-export interface VesselType extends LookupItem {
-  vesselCategory: 'jar' | 'bag' | 'plate' | 'tube' | 'bottle' | 'tub' | 'tray' | 'other';
-  volumeMl?: number;
+// Unified Container type (replaces separate VesselType and ContainerType)
+export type ContainerCategory =
+  | 'jar' | 'bag' | 'plate' | 'tube' | 'bottle' | 'syringe'   // Culture containers
+  | 'tub' | 'bucket' | 'bed' | 'other';                        // Grow containers
+
+export type ContainerUsageContext = 'culture' | 'grow';
+
+export interface Container extends LookupItem {
+  category: ContainerCategory;
+  volumeMl?: number;                         // Volume in milliliters (unified unit)
+  dimensions?: {
+    length: number;
+    width: number;
+    height: number;
+    unit?: 'cm' | 'in';
+  };
   material?: string;
   reusable: boolean;
-  sterile: boolean;
+  sterile?: boolean;
+  usageContext: ContainerUsageContext[];     // Whether for culture, grow, or both
   unitCost?: Currency;
 }
+
+/** @deprecated Use Container instead */
+export type VesselType = Container;
 
 export interface Ingredient extends LookupItem {
   ingredientCategory: 'grain' | 'substrate' | 'supplement' | 'agar' | 'liquid_culture' | 'chemical' | 'other';
@@ -248,8 +265,8 @@ export interface Culture extends Auditable, SoftDeletable {
   
   // Physical Properties
   cultureType: CultureType;
-  vesselTypeId: UUID;
-  vesselType?: VesselType;
+  containerId: UUID;
+  container?: Container;
   volumeMl?: number;        // Container's total capacity
   fillVolumeMl?: number;    // Actual amount of media in container
   
@@ -418,7 +435,7 @@ export interface BulkColonizationData {
   substrateType: string;
   substrateIngredients: RecipeIngredient[];
   substrateWeightGrams: number;
-  containerTypeId: UUID;
+  containerId: UUID;
   surfaceConditions: string;
   colonizationPercentage: number;
   targetTemperature: number;
@@ -740,7 +757,7 @@ export interface AppState {
   strains: Strain[];
   vendors: Vendor[];
   locations: Location[];
-  vesselTypes: VesselType[];
+  containers: Container[];
   ingredients: Ingredient[];
   tools: Tool[];
   procedures: Procedure[];

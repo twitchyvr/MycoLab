@@ -94,12 +94,12 @@ export const GrowManagement: React.FC = () => {
     state,
     activeStrains,
     activeLocations,
-    activeContainerTypes,
+    activeContainers,
     activeSubstrateTypes,
     activeGrainTypes,
     getStrain,
     getLocation,
-    getContainerType,
+    getContainer,
     getSubstrateType,
     getGrainType,
     getCulture,
@@ -138,7 +138,7 @@ export const GrowManagement: React.FC = () => {
     spawnWeight: number;
     substrateTypeId: string;
     substrateWeight: number;
-    containerTypeId: string;
+    containerId: string;
     containerCount: number;
     locationId: string;
     inoculationDate: string; // ISO date string for the date input
@@ -160,7 +160,7 @@ export const GrowManagement: React.FC = () => {
     spawnWeight: 500,
     substrateTypeId: '',
     substrateWeight: 2000,
-    containerTypeId: '',
+    containerId: '',
     containerCount: 1,
     locationId: '',
     inoculationDate: getTodayString(),
@@ -200,7 +200,7 @@ export const GrowManagement: React.FC = () => {
   // Auto-save draft when form changes
   useEffect(() => {
     if (showCreateModal) {
-      const hasData = newGrow.strainId || newGrow.name || newGrow.substrateTypeId || newGrow.containerTypeId;
+      const hasData = newGrow.strainId || newGrow.name || newGrow.substrateTypeId || newGrow.containerId;
       if (hasData) {
         localStorage.setItem(GROW_DRAFT_KEY, JSON.stringify(newGrow));
         setHasDraft(true);
@@ -351,12 +351,12 @@ export const GrowManagement: React.FC = () => {
 
   // Create grow handler
   const handleCreateGrow = () => {
-    if (!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerTypeId || !newGrow.locationId) return;
+    if (!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerId || !newGrow.locationId) return;
 
     const strain = getStrain(newGrow.strainId);
-    const container = getContainerType(newGrow.containerTypeId);
+    const container = getContainer(newGrow.containerId);
     const grainType = getGrainType(newGrow.grainTypeId);
-    const existingCount = grows.filter(g => g.strainId === newGrow.strainId && getContainerType(g.containerTypeId)?.id === newGrow.containerTypeId).length;
+    const existingCount = grows.filter(g => g.strainId === newGrow.strainId && getContainer(g.containerId)?.id === newGrow.containerId).length;
     const autoName = newGrow.name || `${strain?.name || 'Unknown'} ${container?.name || 'Grow'} #${existingCount + 1}`;
 
     // Parse the inoculation date - use noon to avoid timezone issues
@@ -375,7 +375,7 @@ export const GrowManagement: React.FC = () => {
       substrateTypeId: newGrow.substrateTypeId,
       substrateWeight: newGrow.substrateWeight,
       spawnRate: calculatedSpawnRate,
-      containerTypeId: newGrow.containerTypeId,
+      containerId: newGrow.containerId,
       containerCount: newGrow.containerCount,
       spawnedAt: inoculationDate,
       locationId: newGrow.locationId,
@@ -597,7 +597,7 @@ export const GrowManagement: React.FC = () => {
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredGrows.map(grow => {
                 const strain = getStrain(grow.strainId);
-                const container = getContainerType(grow.containerTypeId);
+                const container = getContainer(grow.containerId);
                 const days = daysActive(grow.spawnedAt, grow.completedAt);
 
                 return (
@@ -742,7 +742,7 @@ export const GrowManagement: React.FC = () => {
                 <div className="text-sm space-y-2">
                   <div className="flex justify-between py-2 border-b border-zinc-800">
                     <span className="text-zinc-500">Container</span>
-                    <span className="text-white">{getContainerType(selectedGrow.containerTypeId)?.name} x{selectedGrow.containerCount}</span>
+                    <span className="text-white">{getContainer(selectedGrow.containerId)?.name} x{selectedGrow.containerCount}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-zinc-800">
                     <span className="text-zinc-500">Substrate</span>
@@ -1003,12 +1003,12 @@ export const GrowManagement: React.FC = () => {
                 <StandardDropdown
                   label="Container"
                   required
-                  value={newGrow.containerTypeId}
-                  onChange={value => setNewGrow(prev => ({ ...prev, containerTypeId: value }))}
-                  options={activeContainerTypes}
+                  value={newGrow.containerId}
+                  onChange={value => setNewGrow(prev => ({ ...prev, containerId: value }))}
+                  options={activeContainers.filter(c => c.usageContext.includes('grow'))}
                   placeholder="Select..."
-                  entityType="containerType"
-                  fieldName="containerTypeId"
+                  entityType="container"
+                  fieldName="containerId"
                 />
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Count</label>
@@ -1088,7 +1088,7 @@ export const GrowManagement: React.FC = () => {
               </button>
               <button
                 onClick={handleCreateGrow}
-                disabled={!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerTypeId || !newGrow.locationId}
+                disabled={!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerId || !newGrow.locationId}
                 className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
               >
                 Create Grow

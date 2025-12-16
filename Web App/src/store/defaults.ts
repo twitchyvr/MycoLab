@@ -79,8 +79,7 @@ export const emptyState: DataStoreState = {
   locations: [],
   locationTypes: [...defaultLocationTypes],
   locationClassifications: [...defaultLocationClassifications],
-  vessels: [],
-  containerTypes: [],
+  containers: [],  // Unified: replaces vessels and containerTypes
   substrateTypes: [],
   suppliers: [],
   inventoryCategories: [],

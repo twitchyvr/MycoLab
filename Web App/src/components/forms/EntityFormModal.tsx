@@ -7,11 +7,10 @@ import { useCreation, useEntityForm, CreatableEntityType, CreationResult, ENTITY
 import { useData } from '../../store';
 import { StrainForm } from './StrainForm';
 import { LocationForm } from './LocationForm';
-import { VesselForm } from './VesselForm';
+import { ContainerForm } from './ContainerForm';
 import { SupplierForm } from './SupplierForm';
 import { GrainTypeForm } from './GrainTypeForm';
 import { SubstrateTypeForm } from './SubstrateTypeForm';
-import { ContainerTypeForm } from './ContainerTypeForm';
 import { RecipeCategoryForm } from './RecipeCategoryForm';
 import { LocationTypeForm } from './LocationTypeForm';
 import { LocationClassificationForm } from './LocationClassificationForm';
@@ -117,16 +116,18 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
           break;
         }
 
-        case 'vessel': {
-          const newEntity = await data.addVessel({
+        case 'container': {
+          const newEntity = await data.addContainer({
             name: formData.name,
-            type: formData.type || 'jar',
+            category: formData.category || 'jar',
             volumeMl: formData.volumeMl,
+            dimensions: formData.dimensions,
             isReusable: formData.isReusable ?? true,
+            usageContext: formData.usageContext || ['culture', 'grow'],
             notes: formData.notes,
             isActive: true,
           });
-          result = { id: newEntity.id, name: newEntity.name, entityType: 'vessel' };
+          result = { id: newEntity.id, name: newEntity.name, entityType: 'container' };
           break;
         }
 
@@ -168,18 +169,6 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
           break;
         }
 
-        case 'containerType': {
-          const newEntity = await data.addContainerType({
-            name: formData.name,
-            category: formData.category || 'tub',
-            volumeL: formData.volumeL,
-            dimensions: formData.dimensions,
-            notes: formData.notes,
-            isActive: true,
-          });
-          result = { id: newEntity.id, name: newEntity.name, entityType: 'containerType' };
-          break;
-        }
 
         case 'recipeCategory': {
           const newEntity = await data.addRecipeCategory({
@@ -319,9 +308,9 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
             errors={validationErrors}
           />
         );
-      case 'vessel':
+      case 'container':
         return (
-          <VesselForm
+          <ContainerForm
             data={formData as any}
             onChange={handleFormChange}
             errors={validationErrors}
@@ -346,14 +335,6 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
       case 'substrateType':
         return (
           <SubstrateTypeForm
-            data={formData as any}
-            onChange={handleFormChange}
-            errors={validationErrors}
-          />
-        );
-      case 'containerType':
-        return (
-          <ContainerTypeForm
             data={formData as any}
             onChange={handleFormChange}
             errors={validationErrors}
