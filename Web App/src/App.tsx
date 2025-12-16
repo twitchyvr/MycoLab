@@ -10,6 +10,7 @@ import { EntityFormModal } from './components/forms';
 import { AuthModal, AccountMenu } from './components/auth';
 import { ToastContainer, NotificationBell } from './components/notifications';
 import DevLogPage from './components/devlog/DevLogPage';
+import { PrivacyPolicy, TermsOfService } from './components/legal';
 import type { 
   AppState, 
   Culture, 
@@ -1036,6 +1037,14 @@ const App: React.FC = () => {
 const AppWithRouter: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Handle standalone legal pages (render without app shell)
+  if (location.pathname === '/privacy') {
+    return <PrivacyPolicy />;
+  }
+  if (location.pathname === '/terms') {
+    return <TermsOfService />;
+  }
 
   // Derive current page from URL
   const currentPage = useMemo(() => getPageFromPath(location.pathname), [location.pathname]);
