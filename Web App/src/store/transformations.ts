@@ -14,6 +14,7 @@ import {
   SubstrateType,
   Supplier,
   InventoryCategory,
+  InventoryItem,
   InventoryLot,
   PurchaseOrder,
   Culture,
@@ -319,6 +320,48 @@ export const transformInventoryCategoryToDb = (cat: Partial<InventoryCategory>, 
   color: cat.color,
   icon: cat.icon,
   is_active: cat.isActive,
+  ...(userId && { user_id: userId }),
+});
+
+// ============================================================================
+// INVENTORY ITEM TRANSFORMATIONS
+// ============================================================================
+
+export const transformInventoryItemFromDb = (row: any): InventoryItem => ({
+  id: row.id,
+  name: row.name,
+  categoryId: row.category_id || '',
+  sku: row.sku,
+  quantity: parseFloat(row.quantity) || 0,
+  unit: row.unit || 'units',
+  unitCost: parseFloat(row.cost_per_unit) || 0,
+  reorderPoint: row.reorder_point || 0,
+  reorderQty: row.reorder_qty || 0,
+  supplierId: row.supplier_id,
+  locationId: row.location_id,
+  expiresAt: row.expires_at ? new Date(row.expires_at) : undefined,
+  lotNumber: row.lot_number,
+  notes: row.notes,
+  createdAt: new Date(row.created_at),
+  updatedAt: new Date(row.updated_at),
+  isActive: row.is_active ?? true,
+});
+
+export const transformInventoryItemToDb = (item: Partial<InventoryItem>, userId?: string | null) => ({
+  name: item.name,
+  category_id: item.categoryId || null,
+  sku: item.sku,
+  quantity: item.quantity,
+  unit: item.unit,
+  cost_per_unit: item.unitCost,
+  reorder_point: item.reorderPoint,
+  reorder_qty: item.reorderQty,
+  supplier_id: item.supplierId || null,
+  location_id: item.locationId || null,
+  expires_at: item.expiresAt instanceof Date ? item.expiresAt.toISOString() : item.expiresAt,
+  lot_number: item.lotNumber,
+  notes: item.notes,
+  is_active: item.isActive,
   ...(userId && { user_id: userId }),
 });
 

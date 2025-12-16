@@ -39,6 +39,7 @@ import {
   transformSubstrateTypeToDb,
   transformInventoryCategoryFromDb,
   transformInventoryCategoryToDb,
+  transformInventoryItemFromDb,
   transformRecipeCategoryFromDb,
   transformRecipeCategoryToDb,
   transformCultureFromDb,
@@ -266,6 +267,13 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .order('name');
       if (inventoryCategoriesError) console.warn('Inventory categories error:', inventoryCategoriesError);
 
+      // Load inventory items
+      const { data: inventoryItemsData, error: inventoryItemsError } = await client
+        .from('inventory_items')
+        .select('*')
+        .order('name');
+      if (inventoryItemsError) console.warn('Inventory items error:', inventoryItemsError);
+
       // Load custom recipe categories (personal items from database)
       const { data: recipeCategoriesData, error: recipeCategoriesError } = await client
         .from('recipe_categories')
@@ -397,6 +405,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         containers: (containersData || []).map(transformContainerFromDb),  // Unified
         substrateTypes: (substrateTypesData || []).map(transformSubstrateTypeFromDb),
         inventoryCategories: (inventoryCategoriesData || []).map(transformInventoryCategoryFromDb),
+        inventoryItems: (inventoryItemsData || []).map(transformInventoryItemFromDb),
         recipeCategories: allRecipeCategories,
         cultures: (culturesData || []).map(transformCultureFromDb),
         grows: growsWithFlushes,

@@ -1042,6 +1042,40 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-908',
+    title: 'Inventory Items Not Loading from Supabase',
+    description: 'Fixed bug where inventory items were not appearing in recipe ingredient dropdowns. The loadDataFromSupabase function was missing the fetch for inventory_items table.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: `Data loading bug fix:
+
+**Problem:**
+- Recipe "From Inventory" dropdown only showed "Manual entry..."
+- User's inventory items were not appearing in the list
+- Items were being saved to Supabase but never loaded back
+
+**Root Cause:**
+- loadDataFromSupabase in DataContext.tsx was missing:
+  1. The fetch query for inventory_items table
+  2. The transformInventoryItemFromDb function
+  3. inventoryItems in the setState call
+
+**Solution:**
+- Added transformInventoryItemFromDb/ToDb to transformations.ts
+- Added inventory_items fetch in loadDataFromSupabase
+- Added inventoryItems to setState with proper transformation
+
+**Files Updated:**
+- store/transformations.ts (new transform functions)
+- store/DataContext.tsx (fetch + setState)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
