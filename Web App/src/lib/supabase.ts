@@ -39,13 +39,13 @@ if (!isSupabaseConfigured) {
 }
 
 // Create client (will be null if not configured)
-export const supabase: SupabaseClient | null = isSupabaseConfigured 
+export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         storageKey: 'mycolab-auth',
         autoRefreshToken: true,
-        detectSessionInUrl: false,
+        detectSessionInUrl: true, // Required for OAuth redirects to work
       }
     })
   : null;
