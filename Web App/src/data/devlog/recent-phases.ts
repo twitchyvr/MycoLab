@@ -792,6 +792,36 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-902',
+    title: 'Species/Strains Data Extraction',
+    description: 'Extracted species and strains seed data into a separate SQL file to reduce main seed file size and improve maintainability.',
+    category: 'data',
+    status: 'completed',
+    priority: 'low',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: `SQL file reorganization:
+
+**New File Structure:**
+- supabase-schema.sql - Database schema (idempotent)
+- supabase-species-data.sql - Species & strains reference data (NEW)
+- supabase-seed-data.sql - Containers, substrates, categories, etc.
+
+**Benefits:**
+- Smaller, more focused SQL files
+- Easier to maintain species/strain data separately
+- Faster editing and review of seed data
+- All files remain idempotent (safe to re-run)
+
+**Run Order:**
+1. supabase-schema.sql
+2. supabase-species-data.sql
+3. supabase-seed-data.sql`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
