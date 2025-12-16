@@ -254,19 +254,39 @@ BEGIN
   END IF;
 END $$;
 
--- Legacy view: vessels (for backward compatibility during migration)
--- Maps to containers table for culture-context items
-CREATE OR REPLACE VIEW vessels AS
-SELECT id, name, category as type, volume_ml, is_reusable, notes, is_active, created_at, updated_at, user_id
-FROM containers
-WHERE 'culture' = ANY(usage_context) OR category IN ('jar', 'bag', 'plate', 'tube', 'bottle', 'syringe');
+-- Legacy views: vessels and container_types (for backward compatibility)
+-- Only create these views if the old tables don't exist as BASE TABLEs
+-- This allows both fresh installs and migrations to work
+DO $$
+BEGIN
+  -- Only create vessels view if 'vessels' doesn't exist as a base table
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = 'vessels' AND table_type = 'BASE TABLE'
+  ) THEN
+    -- Drop any existing view first
+    DROP VIEW IF EXISTS vessels;
+    -- Create the view
+    EXECUTE 'CREATE VIEW vessels AS
+      SELECT id, name, category as type, volume_ml, is_reusable, notes, is_active, created_at, updated_at, user_id
+      FROM containers
+      WHERE ''culture'' = ANY(usage_context) OR category IN (''jar'', ''bag'', ''plate'', ''tube'', ''bottle'', ''syringe'')';
+  END IF;
 
--- Legacy view: container_types (for backward compatibility during migration)
--- Maps to containers table for grow-context items
-CREATE OR REPLACE VIEW container_types AS
-SELECT id, name, category, (volume_ml::DECIMAL / 1000) as volume_l, notes, is_active, created_at, updated_at, user_id
-FROM containers
-WHERE 'grow' = ANY(usage_context) OR category IN ('tub', 'bucket', 'bed', 'bag', 'jar');
+  -- Only create container_types view if 'container_types' doesn't exist as a base table
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = 'container_types' AND table_type = 'BASE TABLE'
+  ) THEN
+    -- Drop any existing view first
+    DROP VIEW IF EXISTS container_types;
+    -- Create the view
+    EXECUTE 'CREATE VIEW container_types AS
+      SELECT id, name, category, (volume_ml::DECIMAL / 1000) as volume_l, notes, is_active, created_at, updated_at, user_id
+      FROM containers
+      WHERE ''grow'' = ANY(usage_context) OR category IN (''tub'', ''bucket'', ''bed'', ''bag'', ''jar'')';
+  END IF;
+END $$;
 
 -- Substrate types
 CREATE TABLE IF NOT EXISTS substrate_types (
@@ -2888,8 +2908,17 @@ ALTER TABLE strains ENABLE ROW LEVEL SECURITY;
 ALTER TABLE location_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE location_classifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE vessels ENABLE ROW LEVEL SECURITY;
-ALTER TABLE container_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE containers ENABLE ROW LEVEL SECURITY;
+-- Legacy: Enable RLS on vessels/container_types only if they exist as tables
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels' AND table_type = 'BASE TABLE') THEN
+    ALTER TABLE vessels ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types' AND table_type = 'BASE TABLE') THEN
+    ALTER TABLE container_types ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 ALTER TABLE substrate_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_categories ENABLE ROW LEVEL SECURITY;
@@ -3001,25 +3030,37 @@ DROP POLICY IF EXISTS "locations_insert" ON locations;
 DROP POLICY IF EXISTS "locations_update" ON locations;
 DROP POLICY IF EXISTS "locations_delete" ON locations;
 
--- Vessels
-DROP POLICY IF EXISTS "anon_vessels_select" ON vessels;
-DROP POLICY IF EXISTS "anon_vessels_insert" ON vessels;
-DROP POLICY IF EXISTS "anon_vessels_update" ON vessels;
-DROP POLICY IF EXISTS "anon_vessels_delete" ON vessels;
-DROP POLICY IF EXISTS "vessels_select" ON vessels;
-DROP POLICY IF EXISTS "vessels_insert" ON vessels;
-DROP POLICY IF EXISTS "vessels_update" ON vessels;
-DROP POLICY IF EXISTS "vessels_delete" ON vessels;
+-- Containers (unified table - replaces vessels and container_types)
+DROP POLICY IF EXISTS "containers_select" ON containers;
+DROP POLICY IF EXISTS "containers_insert" ON containers;
+DROP POLICY IF EXISTS "containers_update" ON containers;
+DROP POLICY IF EXISTS "containers_delete" ON containers;
 
--- Container types
-DROP POLICY IF EXISTS "anon_container_types_select" ON container_types;
-DROP POLICY IF EXISTS "anon_container_types_insert" ON container_types;
-DROP POLICY IF EXISTS "anon_container_types_update" ON container_types;
-DROP POLICY IF EXISTS "anon_container_types_delete" ON container_types;
-DROP POLICY IF EXISTS "container_types_select" ON container_types;
-DROP POLICY IF EXISTS "container_types_insert" ON container_types;
-DROP POLICY IF EXISTS "container_types_update" ON container_types;
-DROP POLICY IF EXISTS "container_types_delete" ON container_types;
+-- Legacy: Drop vessel/container_types policies only if they exist as tables (not views)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels' AND table_type = 'BASE TABLE') THEN
+    DROP POLICY IF EXISTS "anon_vessels_select" ON vessels;
+    DROP POLICY IF EXISTS "anon_vessels_insert" ON vessels;
+    DROP POLICY IF EXISTS "anon_vessels_update" ON vessels;
+    DROP POLICY IF EXISTS "anon_vessels_delete" ON vessels;
+    DROP POLICY IF EXISTS "vessels_select" ON vessels;
+    DROP POLICY IF EXISTS "vessels_insert" ON vessels;
+    DROP POLICY IF EXISTS "vessels_update" ON vessels;
+    DROP POLICY IF EXISTS "vessels_delete" ON vessels;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types' AND table_type = 'BASE TABLE') THEN
+    DROP POLICY IF EXISTS "anon_container_types_select" ON container_types;
+    DROP POLICY IF EXISTS "anon_container_types_insert" ON container_types;
+    DROP POLICY IF EXISTS "anon_container_types_update" ON container_types;
+    DROP POLICY IF EXISTS "anon_container_types_delete" ON container_types;
+    DROP POLICY IF EXISTS "container_types_select" ON container_types;
+    DROP POLICY IF EXISTS "container_types_insert" ON container_types;
+    DROP POLICY IF EXISTS "container_types_update" ON container_types;
+    DROP POLICY IF EXISTS "container_types_delete" ON container_types;
+  END IF;
+END $$;
 
 -- Substrate types
 DROP POLICY IF EXISTS "anon_substrate_types_select" ON substrate_types;
@@ -3251,17 +3292,29 @@ CREATE POLICY "locations_insert" ON locations FOR INSERT WITH CHECK (user_id = a
 CREATE POLICY "locations_update" ON locations FOR UPDATE USING (user_id = auth.uid() OR is_admin());
 CREATE POLICY "locations_delete" ON locations FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Vessels policies (shared defaults + user's own)
-CREATE POLICY "vessels_select" ON vessels FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "vessels_insert" ON vessels FOR INSERT WITH CHECK (user_id = auth.uid());
-CREATE POLICY "vessels_update" ON vessels FOR UPDATE USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "vessels_delete" ON vessels FOR DELETE USING (user_id = auth.uid() OR is_admin());
+-- Containers policies (unified table - replaces vessels and container_types)
+CREATE POLICY "containers_select" ON containers FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "containers_insert" ON containers FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "containers_update" ON containers FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "containers_delete" ON containers FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Container types policies (shared defaults + user's own)
-CREATE POLICY "container_types_select" ON container_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "container_types_insert" ON container_types FOR INSERT WITH CHECK (user_id = auth.uid());
-CREATE POLICY "container_types_update" ON container_types FOR UPDATE USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "container_types_delete" ON container_types FOR DELETE USING (user_id = auth.uid() OR is_admin());
+-- Legacy: Create vessel/container_types policies only if they exist as base tables (not views)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels' AND table_type = 'BASE TABLE') THEN
+    CREATE POLICY "vessels_select" ON vessels FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+    CREATE POLICY "vessels_insert" ON vessels FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY "vessels_update" ON vessels FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+    CREATE POLICY "vessels_delete" ON vessels FOR DELETE USING (user_id = auth.uid() OR is_admin());
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types' AND table_type = 'BASE TABLE') THEN
+    CREATE POLICY "container_types_select" ON container_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+    CREATE POLICY "container_types_insert" ON container_types FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY "container_types_update" ON container_types FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+    CREATE POLICY "container_types_delete" ON container_types FOR DELETE USING (user_id = auth.uid() OR is_admin());
+  END IF;
+END $$;
 
 -- Substrate types policies (shared defaults + user's own)
 CREATE POLICY "substrate_types_select" ON substrate_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
