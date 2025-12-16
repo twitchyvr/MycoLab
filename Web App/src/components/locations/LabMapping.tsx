@@ -7,6 +7,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../store';
 import { useNotifications } from '../../store/NotificationContext';
 import type { Location, LocationLevel, RoomPurpose } from '../../store/types';
+import { formatTemperatureRange, getTemperatureUnit, type TemperatureUnit } from '../../utils/temperature';
 
 // ============================================================================
 // TYPES
@@ -396,6 +397,7 @@ interface LocationFormModalProps {
   initialData?: Partial<LocationFormData>;
   parentLocation?: Location;
   locations: Location[];
+  temperatureUnit: TemperatureUnit;
 }
 
 const LocationFormModal: React.FC<LocationFormModalProps> = ({
@@ -405,6 +407,7 @@ const LocationFormModal: React.FC<LocationFormModalProps> = ({
   initialData,
   parentLocation,
   locations,
+  temperatureUnit,
 }) => {
   const [formData, setFormData] = useState<LocationFormData>({
     name: initialData?.name || '',
@@ -550,7 +553,7 @@ const LocationFormModal: React.FC<LocationFormModalProps> = ({
             <div className="space-y-3 p-3 bg-zinc-800/50 rounded-lg">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-500 mb-1">Temp Min (°F)</label>
+                  <label className="block text-xs font-medium text-zinc-500 mb-1">Temp Min ({getTemperatureUnit(temperatureUnit)})</label>
                   <input
                     type="number"
                     value={formData.tempRange?.min || ''}
@@ -562,7 +565,7 @@ const LocationFormModal: React.FC<LocationFormModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-500 mb-1">Temp Max (°F)</label>
+                  <label className="block text-xs font-medium text-zinc-500 mb-1">Temp Max ({getTemperatureUnit(temperatureUnit)})</label>
                   <input
                     type="number"
                     value={formData.tempRange?.max || ''}
@@ -652,6 +655,7 @@ interface LocationDetailsPanelProps {
   onClose: () => void;
   cultures: { id: string; label: string; locationId: string }[];
   grows: { id: string; name: string; locationId: string }[];
+  temperatureUnit: TemperatureUnit;
 }
 
 const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
@@ -661,6 +665,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   onClose,
   cultures,
   grows,
+  temperatureUnit,
 }) => {
   const level = location.level || 'room';
   const colors = levelColors[level];
@@ -736,7 +741,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             <div>
               <p className="text-xs text-zinc-500">Temperature</p>
               <p className="text-white">
-                {location.tempRange.min}° - {location.tempRange.max}°F
+                {formatTemperatureRange(location.tempRange.min, location.tempRange.max, temperatureUnit)}
               </p>
             </div>
           )}
@@ -833,6 +838,7 @@ export const LabMapping: React.FC<LabMappingProps> = ({
 }) => {
   const { state, addLocation, updateLocation, deleteLocation, generateId } = useData();
   const { toast } = useNotifications();
+  const temperatureUnit: TemperatureUnit = state.settings?.defaultUnits || 'imperial';
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
@@ -1108,6 +1114,7 @@ export const LabMapping: React.FC<LabMappingProps> = ({
             onClose={() => setSelectedLocation(null)}
             cultures={state.cultures.map(c => ({ id: c.id, label: c.label, locationId: c.locationId }))}
             grows={state.grows.map(g => ({ id: g.id, name: g.name, locationId: g.locationId }))}
+            temperatureUnit={temperatureUnit}
           />
         ) : (
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-8 text-center">
@@ -1160,6 +1167,7 @@ export const LabMapping: React.FC<LabMappingProps> = ({
         } : undefined}
         parentLocation={parentForNew ? state.locations.find(l => l.id === parentForNew) : undefined}
         locations={state.locations}
+        temperatureUnit={temperatureUnit}
       />
     </div>
   );

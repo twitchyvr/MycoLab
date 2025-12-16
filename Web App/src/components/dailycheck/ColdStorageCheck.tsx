@@ -7,6 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../../store';
 import { format, differenceInDays, addDays } from 'date-fns';
 import type { Culture, Location } from '../../store/types';
+import { formatTemperatureRange, type TemperatureUnit } from '../../utils/temperature';
 
 // ============================================================================
 // TYPES
@@ -286,7 +287,8 @@ const ColdStorageSection: React.FC<{
   onCheck: (itemId: string, status: 'good' | 'attention' | 'remove', notes?: string) => void;
   expandedItem: string | null;
   onToggleItem: (itemId: string) => void;
-}> = ({ location, items, checkResults, onCheck, expandedItem, onToggleItem }) => {
+  temperatureUnit: TemperatureUnit;
+}> = ({ location, items, checkResults, onCheck, expandedItem, onToggleItem, temperatureUnit }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const checkedCount = items.filter(i => checkResults.has(i.id)).length;
@@ -320,7 +322,7 @@ const ColdStorageSection: React.FC<{
           {location.tempRange && (
             <p className="text-xs text-zinc-500 flex items-center gap-1">
               <Icons.Thermometer />
-              {location.tempRange.min}°-{location.tempRange.max}°F
+              {formatTemperatureRange(location.tempRange.min, location.tempRange.max, temperatureUnit)}
             </p>
           )}
         </div>
@@ -373,6 +375,7 @@ const ColdStorageSection: React.FC<{
 
 export const ColdStorageCheck: React.FC = () => {
   const { state, getLocation, getStrain, updateCulture } = useData();
+  const temperatureUnit: TemperatureUnit = state.settings?.defaultUnits || 'imperial';
 
   // State
   const [checkResults, setCheckResults] = useState<Map<string, CheckResult>>(new Map());
@@ -628,6 +631,7 @@ export const ColdStorageCheck: React.FC = () => {
               onCheck={handleCheck}
               expandedItem={expandedItem}
               onToggleItem={handleToggleItem}
+              temperatureUnit={temperatureUnit}
             />
           ))}
         </div>

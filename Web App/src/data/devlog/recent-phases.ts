@@ -599,13 +599,117 @@ export const recentPhases: DevLogFeature[] = [
   // =============================================================================
   {
     id: 'dev-806',
-    title: 'Navigation Revamp - Mobile UX',
-    description: 'Revamp sidebar navigation to be cleaner and mobile-friendly. Currently 23+ nav items making it cluttered. Implement grouped/collapsible sections: Core (Dashboard, Today), Operations (Daily Check, Harvest, Observations), Library (Cultures, Lineage, Grows, Recipes), Lab (Mapping, Occupancy, Labels, Scanner), Tools (Calculators, Contamination, BE%), Analytics/Settings. Consider bottom nav bar for mobile with quick actions.',
+    title: 'Navigation Revamp - Grouped Collapsible Sections',
+    description: 'Revamped sidebar navigation from 28 flat items to 7 grouped collapsible sections. Implemented accordion-style navigation with section icons and expand/collapse functionality.',
     category: 'ui',
-    status: 'planned',
+    status: 'completed',
     priority: 'high',
     estimatedHours: 8,
-    notes: 'User feedback: "It\'s getting a bit crazy and it needs to be clean so using it on mobile isn\'t cumbersome". Consider accordion-style sections, bottom navigation for mobile, and hiding less-used items behind a "More" menu.',
+    actualHours: 6,
+    completedAt: timestamp(),
+    notes: `Implemented grouped navigation with collapsible sections:
+
+**Navigation Groups:**
+- Command (Dashboard, Today, Daily Check, Harvest Forecast)
+- Library (Species Library, Cultures, Lineage, Grows, Recipes)
+- Inventory (Lab Inventory, Stock, Cold Storage)
+- Lab Setup (Lab Mapping, Occupancy, Labels, Scanner)
+- Analytics (Analytics Dashboard, Strain Analytics, Contamination, Efficiency)
+- Tools (Substrate Calculator, Spawn Rate, Pressure Cooking)
+- Settings (Settings, Profile, Dev Roadmap)
+
+**Features:**
+- Each section has an icon and expand/collapse chevron
+- Sections remember expanded state
+- Cleaner visual hierarchy
+- Active page highlighted within section
+- Much improved mobile navigation experience`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-807',
+    title: 'Theming System with 4 Visual Variants',
+    description: 'Implemented comprehensive theming system with 4 distinct visual variants: Mycelium (default bioluminescent blue/cyan), Fruiting (earthy warm tones), Spore (light mode with organic feel), and Substrate (rich warm browns).',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 10,
+    actualHours: 8,
+    completedAt: timestamp(),
+    notes: `Full theming implementation:
+
+**Theme Variants:**
+- Mycelium: Bioluminescent blue/cyan (default dark theme)
+- Fruiting: Warm earthy tones with forest greens
+- Spore: Light mode with organic cream/sage colors
+- Substrate: Rich warm browns and earth tones
+
+**Technical Implementation:**
+- ThemeContext with CSS custom properties injection
+- Theme selector in Settings > Preferences
+- localStorage persistence for theme preference
+- CSS variables in globals.css for all theme tokens
+- Smooth transitions between themes`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-808',
+    title: 'Lab Command Center Dashboard',
+    description: 'New operational hub dashboard replacing simple stats. Shows lab health score, active cultivation timeline, alerts/notifications, quick actions, and upcoming milestones.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 12,
+    actualHours: 10,
+    completedAt: timestamp(),
+    notes: `Comprehensive operational dashboard:
+
+**Status Cards:**
+- Active Cultures count with health indicator
+- Active Grows with stage breakdown
+- Ready to Harvest count
+- Lab Health Score (calculated from contamination rate, expiring cultures, overdue tasks)
+
+**Features:**
+- Health score ring visualization with color coding
+- Active Cultivation Timeline showing current grows by stage
+- Alerts & Notifications panel with severity levels
+- Quick Actions bar for common tasks (new culture, new grow, log observation)
+- Upcoming Milestones section for anticipated transitions
+
+**Implementation:**
+- Smart alert generation from grow and culture data
+- Dismissable alerts with state persistence
+- Navigation integration for quick actions`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-809',
+    title: 'Temperature Unit Settings Consistency',
+    description: 'Fixed temperature unit settings to properly reflect throughout the app. When user changes from Celsius to Fahrenheit (or vice versa), all temperature displays update accordingly.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    actualHours: 3,
+    completedAt: timestamp(),
+    notes: `Temperature unit fix:
+
+**New Utilities (src/utils/temperature.ts):**
+- formatTemperatureRange() - formats temp range with unit conversion
+- fahrenheitToCelsius() / celsiusToFahrenheit()
+- getTemperatureUnit() - returns °F or °C symbol
+
+**Updated Components:**
+- SpeciesInfoPanel - all phase temperatures
+- SpeciesLibrary - species and strain temperature displays
+- ColdStorageCheck - location temperatures
+- LabMapping - location details and form labels
+
+All temperatures stored in Fahrenheit, converted on display based on user preference.`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
