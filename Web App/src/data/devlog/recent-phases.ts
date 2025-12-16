@@ -981,6 +981,67 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-906',
+    title: 'Location Form Modal State Reset Fix',
+    description: 'Fixed bug where LocationFormModal in Lab Mapping would show stale data from previous sessions. Creating a new room showed old values, and editing showed incorrect data.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: `Form state reset bug fix:
+
+**Problem:**
+- React useState only initializes on first render
+- When modal reopened with different props, old formData persisted
+- Creating new location showed previous values
+- Editing location showed wrong data (from last create)
+
+**Solution:**
+- Added useEffect to reset form state when modal opens
+- useCallback helper creates fresh form data from props
+- Resets both formData and showEnvironmental when isOpen changes
+- Properly derives initial state from initialData and parentLocation props
+
+**File Updated:**
+- components/locations/LabMapping.tsx (LocationFormModal)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-907',
+    title: 'Selected Item State Sync Fix',
+    description: 'Fixed bug where detail panels in GrowManagement and CultureManagement did not update after adding observations, marking contaminated, or other changes. Required page refresh to see updates.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 2,
+    actualHours: 1,
+    completedAt: timestamp(),
+    notes: `UI state sync bug fix:
+
+**Problem:**
+- selectedGrow/selectedCulture stored in local useState
+- When state.grows/state.cultures updated, local selection didn't sync
+- setTimeout(0) hacks didn't work for async operations
+- Adding observations, harvests, or changing status didn't reflect in UI
+
+**Solution:**
+- Added useEffect that syncs selectedGrow/selectedCulture with store data
+- Watches for changes to grows/cultures arrays
+- Updates local selection when underlying data changes
+- Properly handles deletion (clears selection if item deleted)
+- Made async handlers properly await operations (advanceGrowStage, markGrowContaminated, addFlush)
+- Removed obsolete setTimeout hacks
+
+**Files Updated:**
+- components/grows/GrowManagement.tsx
+- components/cultures/CultureManagement.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
