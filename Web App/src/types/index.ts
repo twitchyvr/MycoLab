@@ -97,7 +97,8 @@ export interface Location extends LookupItem {
   // Hierarchical location support for farm/lab mapping
   parentId?: UUID;             // Parent location ID for hierarchy
   level?: LocationLevel;       // Hierarchy level (facility > room > zone > rack > shelf > slot)
-  roomPurpose?: RoomPurpose;   // For room-level locations, their primary purpose
+  roomPurpose?: RoomPurpose;   // @deprecated Use roomPurposes instead - kept for backwards compatibility
+  roomPurposes?: RoomPurpose[]; // Multiple purposes for multi-use rooms (e.g., colonization + fruiting)
   // sortOrder inherited from LookupItem - Display order among siblings
   path?: string;               // Full path like "Facility/Room A/Rack 1/Shelf 2"
   code?: string;               // Short code for labeling (e.g., "R1-S2-A")

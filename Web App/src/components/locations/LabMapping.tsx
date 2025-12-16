@@ -29,7 +29,7 @@ interface LocationFormData {
   name: string;
   level: LocationLevel;
   parentId: string | null;
-  roomPurpose?: RoomPurpose;
+  roomPurposes?: RoomPurpose[];
   capacity?: number;
   code?: string;
   notes?: string;
@@ -309,10 +309,15 @@ const TreeItem: React.FC<TreeItemProps> = ({
               </span>
             )}
           </div>
-          {node.roomPurpose && (
-            <span className={`text-xs ${roomPurposeConfig[node.roomPurpose].color}`}>
-              {roomPurposeConfig[node.roomPurpose].label}
-            </span>
+          {/* Display multiple room purposes */}
+          {(node.roomPurposes?.length || node.roomPurpose) && (
+            <div className="flex flex-wrap gap-1">
+              {(node.roomPurposes || (node.roomPurpose ? [node.roomPurpose] : [])).map(purpose => (
+                <span key={purpose} className={`text-xs ${roomPurposeConfig[purpose].color}`}>
+                  {roomPurposeConfig[purpose].label}
+                </span>
+              ))}
+            </div>
           )}
         </div>
 
@@ -413,7 +418,7 @@ const LocationFormModal: React.FC<LocationFormModalProps> = ({
     name: initialData?.name || '',
     level: initialData?.level || (parentLocation ? getNextLevel(parentLocation.level) : 'facility'),
     parentId: initialData?.parentId || parentLocation?.id || null,
-    roomPurpose: initialData?.roomPurpose,
+    roomPurposes: initialData?.roomPurposes || [],
     capacity: initialData?.capacity,
     code: initialData?.code || '',
     notes: initialData?.notes || '',
@@ -495,23 +500,48 @@ const LocationFormModal: React.FC<LocationFormModalProps> = ({
             </select>
           </div>
 
-          {/* Room Purpose (only for room level) */}
+          {/* Room Purpose Multi-Select (for room and zone levels) */}
           {(formData.level === 'room' || formData.level === 'zone') && (
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">Purpose</label>
-              <select
-                value={formData.roomPurpose || ''}
-                onChange={(e) => setFormData(d => ({
-                  ...d,
-                  roomPurpose: (e.target.value || undefined) as RoomPurpose | undefined
-                }))}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-              >
-                <option value="">Select purpose...</option>
-                {Object.entries(roomPurposeConfig).map(([key, { label }]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">
+                Purposes <span className="text-zinc-500 text-xs">(select all that apply)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2 p-3 bg-zinc-800/50 border border-zinc-700 rounded-lg">
+                {Object.entries(roomPurposeConfig).map(([key, { label, color }]) => {
+                  const purpose = key as RoomPurpose;
+                  const isSelected = formData.roomPurposes?.includes(purpose) || false;
+                  return (
+                    <label
+                      key={key}
+                      className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                        isSelected
+                          ? 'bg-zinc-700/50 border border-zinc-600'
+                          : 'hover:bg-zinc-700/30'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          setFormData(d => ({
+                            ...d,
+                            roomPurposes: e.target.checked
+                              ? [...(d.roomPurposes || []), purpose]
+                              : (d.roomPurposes || []).filter(p => p !== purpose)
+                          }));
+                        }}
+                        className="w-4 h-4 rounded border-zinc-600 bg-zinc-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-zinc-900"
+                      />
+                      <span className={`text-sm ${isSelected ? color : 'text-zinc-400'}`}>
+                        {label}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="mt-1 text-xs text-zinc-500">
+                Rooms with Fruiting, Colonization, or Inoculation will appear in Daily Room Check
+              </p>
             </div>
           )}
 
@@ -721,12 +751,19 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
               <p className="font-mono text-white">{location.code}</p>
             </div>
           )}
-          {location.roomPurpose && (
-            <div>
-              <p className="text-xs text-zinc-500">Purpose</p>
-              <p className={roomPurposeConfig[location.roomPurpose].color}>
-                {roomPurposeConfig[location.roomPurpose].label}
-              </p>
+          {(location.roomPurposes?.length || location.roomPurpose) && (
+            <div className="col-span-2">
+              <p className="text-xs text-zinc-500 mb-1">Purposes</p>
+              <div className="flex flex-wrap gap-1">
+                {(location.roomPurposes || (location.roomPurpose ? [location.roomPurpose] : [])).map(purpose => (
+                  <span
+                    key={purpose}
+                    className={`px-2 py-0.5 rounded text-xs ${roomPurposeConfig[purpose].color} bg-zinc-800/50`}
+                  >
+                    {roomPurposeConfig[purpose].label}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
           {location.capacity && (
@@ -955,7 +992,8 @@ export const LabMapping: React.FC<LabMappingProps> = ({
           name: data.name,
           level: data.level,
           parentId: data.parentId || undefined,
-          roomPurpose: data.roomPurpose,
+          roomPurposes: data.roomPurposes,
+          roomPurpose: data.roomPurposes?.[0], // Keep legacy field populated with first purpose
           capacity: data.capacity,
           code: data.code,
           notes: data.notes,
@@ -970,7 +1008,8 @@ export const LabMapping: React.FC<LabMappingProps> = ({
           name: data.name,
           level: data.level,
           parentId: data.parentId || undefined,
-          roomPurpose: data.roomPurpose,
+          roomPurposes: data.roomPurposes,
+          roomPurpose: data.roomPurposes?.[0], // Keep legacy field populated with first purpose
           capacity: data.capacity,
           currentOccupancy: 0,
           code: data.code,
@@ -1158,7 +1197,7 @@ export const LabMapping: React.FC<LabMappingProps> = ({
           name: editingLocation.name,
           level: editingLocation.level,
           parentId: editingLocation.parentId || null,
-          roomPurpose: editingLocation.roomPurpose,
+          roomPurposes: editingLocation.roomPurposes || (editingLocation.roomPurpose ? [editingLocation.roomPurpose] : []),
           capacity: editingLocation.capacity,
           code: editingLocation.code,
           notes: editingLocation.notes,

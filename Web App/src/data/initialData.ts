@@ -216,7 +216,8 @@ export const sampleLocations: Location[] = [
     name: 'Clean Room',
     parentId: 'loc-facility',
     level: 'room',
-    roomPurpose: 'inoculation',
+    roomPurpose: 'inoculation', // Legacy single field
+    roomPurposes: ['inoculation'], // New multi-purpose array
     code: 'CLN',
     path: 'My Lab/Clean Room',
     tempRange: { min: 20, max: 24 },
@@ -231,7 +232,8 @@ export const sampleLocations: Location[] = [
     name: 'Incubation Room',
     parentId: 'loc-facility',
     level: 'room',
-    roomPurpose: 'colonization',
+    roomPurpose: 'colonization', // Legacy single field
+    roomPurposes: ['colonization'], // New multi-purpose array
     code: 'INC',
     path: 'My Lab/Incubation Room',
     tempRange: { min: 24, max: 27 },
@@ -246,7 +248,8 @@ export const sampleLocations: Location[] = [
     name: 'Grow Room',
     parentId: 'loc-facility',
     level: 'room',
-    roomPurpose: 'fruiting',
+    roomPurpose: 'fruiting', // Legacy single field (primary purpose)
+    roomPurposes: ['fruiting', 'colonization'], // Multi-purpose: both fruiting AND colonization
     code: 'GRW',
     path: 'My Lab/Grow Room',
     tempRange: { min: 18, max: 22 },
@@ -261,7 +264,8 @@ export const sampleLocations: Location[] = [
     name: 'Storage Area',
     parentId: 'loc-facility',
     level: 'room',
-    roomPurpose: 'storage',
+    roomPurpose: 'storage', // Legacy single field
+    roomPurposes: ['storage'], // New multi-purpose array
     code: 'STR',
     path: 'My Lab/Storage Area',
     sortOrder: 4,

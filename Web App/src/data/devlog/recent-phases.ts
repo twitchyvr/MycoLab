@@ -942,6 +942,45 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-905',
+    title: 'Multi-Purpose Room Support',
+    description: 'Locations/rooms can now have multiple purposes (e.g., both Colonization and Fruiting). Changed roomPurpose from single value to roomPurposes array. Daily Room Check now shows rooms with ANY growing-related purpose.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    actualHours: 3,
+    completedAt: timestamp(),
+    notes: `Multi-purpose room implementation:
+
+**Problem:**
+- Rooms could only have one purpose (e.g., "general" or "fruiting")
+- Selecting "general" meant room didn't appear in Daily Room Check
+- Many labs use multi-purpose rooms (colonization + fruiting in same space)
+
+**Solution - roomPurposes array:**
+- Location type now has roomPurposes: RoomPurpose[] (array of purposes)
+- Legacy roomPurpose field kept for backwards compatibility
+- UI changed from dropdown to checkbox grid for purpose selection
+
+**Files Updated:**
+- store/types.ts (added roomPurposes field)
+- store/transformations.ts (transform functions for DB)
+- components/locations/LabMapping.tsx (multi-select UI)
+- components/dailycheck/DailyCheck.tsx (filter logic)
+- supabase-schema.sql (room_purposes TEXT[] column)
+- supabase-seed-data.sql (updated seed with arrays)
+- data/initialData.ts (sample locations with arrays)
+
+**Key Behavior:**
+- Rooms appear in Daily Check if ANY purpose is fruiting, colonization, or inoculation
+- Form shows checkboxes for all 9 purpose types
+- Helpful note shows which purposes trigger Daily Check inclusion
+- Backwards compatible: old single roomPurpose data still works`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
