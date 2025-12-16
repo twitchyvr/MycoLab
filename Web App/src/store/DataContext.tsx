@@ -23,7 +23,7 @@ import {
 } from '../lib/supabase';
 
 // Import modularized defaults and transformations
-import { emptyState, defaultRecipeCategories } from './defaults';
+import { emptyState } from './defaults';
 import {
   transformStrainFromDb,
   transformStrainToDb,
@@ -238,7 +238,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .select('*')
         .order('name');
       if (locationsError) throw locationsError;
-      
+
+      // Load location types
+      const { data: locationTypesData, error: locationTypesError } = await client
+        .from('location_types')
+        .select('*')
+        .order('name');
+      if (locationTypesError) console.warn('Location types error:', locationTypesError);
+
+      // Load location classifications
+      const { data: locationClassificationsData, error: locationClassificationsError } = await client
+        .from('location_classifications')
+        .select('*')
+        .order('name');
+      if (locationClassificationsError) console.warn('Location classifications error:', locationClassificationsError);
+
       // Load suppliers
       const { data: suppliersData, error: suppliersError } = await client
         .from('suppliers')
@@ -274,12 +288,19 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .order('name');
       if (inventoryItemsError) console.warn('Inventory items error:', inventoryItemsError);
 
-      // Load custom recipe categories (personal items from database)
+      // Load recipe categories
       const { data: recipeCategoriesData, error: recipeCategoriesError } = await client
         .from('recipe_categories')
         .select('*')
         .order('name');
       if (recipeCategoriesError) console.warn('Recipe categories error:', recipeCategoriesError);
+
+      // Load grain types
+      const { data: grainTypesData, error: grainTypesError } = await client
+        .from('grain_types')
+        .select('*')
+        .order('name');
+      if (grainTypesError) console.warn('Grain types error:', grainTypesError);
 
       // Load cultures
       const { data: culturesData, error: culturesError } = await client
@@ -392,21 +413,20 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         return grow;
       });
 
-      // Merge default recipe categories with custom ones from database
-      const customRecipeCategories = (recipeCategoriesData || []).map(transformRecipeCategoryFromDb);
-      const allRecipeCategories = [...defaultRecipeCategories, ...customRecipeCategories];
-
       setState(prev => ({
         ...prev,
         species,
         strains: (strainsData || []).map(transformStrainFromDb),
         locations: (locationsData || []).map(transformLocationFromDb),
+        locationTypes: (locationTypesData || []).map(transformLocationTypeFromDb),
+        locationClassifications: (locationClassificationsData || []).map(transformLocationClassificationFromDb),
         suppliers: (suppliersData || []).map(transformSupplierFromDb),
-        containers: (containersData || []).map(transformContainerFromDb),  // Unified
+        containers: (containersData || []).map(transformContainerFromDb),
         substrateTypes: (substrateTypesData || []).map(transformSubstrateTypeFromDb),
         inventoryCategories: (inventoryCategoriesData || []).map(transformInventoryCategoryFromDb),
         inventoryItems: (inventoryItemsData || []).map(transformInventoryItemFromDb),
-        recipeCategories: allRecipeCategories,
+        recipeCategories: (recipeCategoriesData || []).map(transformRecipeCategoryFromDb),
+        grainTypes: (grainTypesData || []).map(transformGrainTypeFromDb),
         cultures: (culturesData || []).map(transformCultureFromDb),
         grows: growsWithFlushes,
         recipes: (recipesData || []).map(transformRecipeFromDb),

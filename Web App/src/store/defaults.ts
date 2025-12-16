@@ -71,20 +71,21 @@ export const defaultLocationClassifications: LocationClassification[] = [
 
 // ============================================================================
 // EMPTY INITIAL STATE (no sample data)
+// All lookup data should come from the database via seed data
 // ============================================================================
 
 export const emptyState: DataStoreState = {
   species: [],
   strains: [],
   locations: [],
-  locationTypes: [...defaultLocationTypes],
-  locationClassifications: [...defaultLocationClassifications],
-  containers: [],  // Unified: replaces vessels and containerTypes
+  locationTypes: [],
+  locationClassifications: [],
+  containers: [],
   substrateTypes: [],
   suppliers: [],
   inventoryCategories: [],
-  recipeCategories: [...defaultRecipeCategories],
-  grainTypes: [...defaultGrainTypes],
+  recipeCategories: [],
+  grainTypes: [],
   inventoryItems: [],
   inventoryLots: [],
   inventoryUsages: [],
