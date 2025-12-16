@@ -418,7 +418,7 @@ export interface SpawnColonizationData {
   inoculantCultureId: UUID;
   spawnMediumType: string; // grain type, etc.
   spawnIngredients: RecipeIngredient[];
-  spawnVesselTypeId: UUID;
+  spawnContainerId: UUID;  // Unified: was spawnVesselTypeId
   spawnQuantity: number;
   spawnWeightGrams: number;
   colonizationPercentage: number;

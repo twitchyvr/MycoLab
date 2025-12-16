@@ -599,7 +599,7 @@ export const CultureManagement: React.FC = () => {
                 <span className="text-white">{getLocation(selectedCulture.locationId)?.name}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-500">Vessel</span>
+                <span className="text-zinc-500">Container</span>
                 <span className="text-white">{getContainer(selectedCulture.containerId)?.name}</span>
               </div>
               
@@ -844,7 +844,7 @@ export const CultureManagement: React.FC = () => {
                   <div>
                     <label className="block text-sm text-zinc-400 mb-2">
                       Container Capacity (ml)
-                      <span className="text-zinc-500 text-xs block">Total vessel volume</span>
+                      <span className="text-zinc-500 text-xs block">Total container volume</span>
                     </label>
                     <input
                       type="number"
