@@ -822,6 +822,42 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-903',
+    title: 'Version Reset & Versioning Policy',
+    description: 'Reset version from v0.9.0 to v0.2.0 to accurately reflect early alpha/beta status. Established versioning policy in CLAUDE.md.',
+    category: 'docs',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 0.5,
+    actualHours: 0.25,
+    completedAt: timestamp(),
+    notes: `Version management update:
+
+**Problem:**
+- App was at v0.9.0 implying near-production readiness
+- Reality: 2-day rapid prototype with no tests or security audit
+- Risk of AI assistants auto-bumping to v1.0 in future sessions
+
+**Solution:**
+- Reset to v0.2.0 (early alpha/beta)
+- Added Versioning Policy section to CLAUDE.md
+- Clear guidelines for AI assistants: NEVER bump version without explicit user approval
+
+**Version Guidelines (documented in CLAUDE.md):**
+- v0.1.x - v0.4.x: Early development
+- v0.5.x - v0.7.x: Feature complete but untested
+- v0.8.x - v0.9.x: Beta testing, bug fixes, security audits
+- v1.0.0: Production ready (requires thorough testing + security review)
+
+**Current Status:**
+- No automated tests
+- No security audit
+- No real-world testing
+- Many potential bugs and vulnerabilities`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
