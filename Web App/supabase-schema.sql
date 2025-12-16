@@ -254,6 +254,110 @@ BEGIN
   END IF;
 END $$;
 
+-- ============================================================================
+-- COLUMN RENAME MIGRATIONS
+-- Migrate old column names to new unified names
+-- This is idempotent - safe to run multiple times
+-- ============================================================================
+DO $$
+BEGIN
+  -- Cultures: vessel_id -> container_id
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'cultures' AND column_name = 'vessel_id'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'cultures' AND column_name = 'container_id'
+  ) THEN
+    ALTER TABLE cultures RENAME COLUMN vessel_id TO container_id;
+    RAISE NOTICE 'Renamed cultures.vessel_id to container_id';
+  END IF;
+
+  -- Grows: container_type_id -> container_id
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'container_type_id'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'container_id'
+  ) THEN
+    ALTER TABLE grows RENAME COLUMN container_type_id TO container_id;
+    RAISE NOTICE 'Renamed grows.container_type_id to container_id';
+  END IF;
+END $$;
+
+-- ============================================================================
+-- FOREIGN KEY MIGRATIONS
+-- Update FK references to point to unified containers table
+-- ============================================================================
+DO $$
+BEGIN
+  -- Only proceed if containers table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'containers') THEN
+
+    -- Drop old FK constraints on cultures (if they exist)
+    IF EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_name = 'cultures_vessel_id_fkey' AND table_name = 'cultures'
+    ) THEN
+      ALTER TABLE cultures DROP CONSTRAINT cultures_vessel_id_fkey;
+      RAISE NOTICE 'Dropped cultures_vessel_id_fkey';
+    END IF;
+
+    IF EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_name = 'cultures_container_id_fkey' AND table_name = 'cultures'
+    ) THEN
+      ALTER TABLE cultures DROP CONSTRAINT cultures_container_id_fkey;
+    END IF;
+
+    -- Add new FK constraint on cultures.container_id -> containers.id
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'cultures' AND column_name = 'container_id'
+    ) THEN
+      BEGIN
+        ALTER TABLE cultures ADD CONSTRAINT cultures_container_id_fkey
+          FOREIGN KEY (container_id) REFERENCES containers(id);
+        RAISE NOTICE 'Added cultures_container_id_fkey';
+      EXCEPTION WHEN duplicate_object THEN
+        NULL; -- Constraint already exists
+      END;
+    END IF;
+
+    -- Drop old FK constraints on grows (if they exist)
+    IF EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_name = 'grows_container_type_id_fkey' AND table_name = 'grows'
+    ) THEN
+      ALTER TABLE grows DROP CONSTRAINT grows_container_type_id_fkey;
+      RAISE NOTICE 'Dropped grows_container_type_id_fkey';
+    END IF;
+
+    IF EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_name = 'grows_container_id_fkey' AND table_name = 'grows'
+    ) THEN
+      ALTER TABLE grows DROP CONSTRAINT grows_container_id_fkey;
+    END IF;
+
+    -- Add new FK constraint on grows.container_id -> containers.id
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'grows' AND column_name = 'container_id'
+    ) THEN
+      BEGIN
+        ALTER TABLE grows ADD CONSTRAINT grows_container_id_fkey
+          FOREIGN KEY (container_id) REFERENCES containers(id);
+        RAISE NOTICE 'Added grows_container_id_fkey';
+      EXCEPTION WHEN duplicate_object THEN
+        NULL; -- Constraint already exists
+      END;
+    END IF;
+
+  END IF;
+END $$;
+
 -- Legacy views: vessels and container_types (for backward compatibility)
 -- Only create these views if the old tables don't exist as BASE TABLEs
 -- This allows both fresh installs and migrations to work
