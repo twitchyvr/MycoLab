@@ -1042,6 +1042,75 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-908',
+    title: 'Inventory Items Not Loading from Supabase',
+    description: 'Fixed bug where inventory items were not appearing in recipe ingredient dropdowns. The loadDataFromSupabase function was missing the fetch for inventory_items table.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: `Data loading bug fix:
+
+**Problem:**
+- Recipe "From Inventory" dropdown only showed "Manual entry..."
+- User's inventory items were not appearing in the list
+- Items were being saved to Supabase but never loaded back
+
+**Root Cause:**
+- loadDataFromSupabase in DataContext.tsx was missing:
+  1. The fetch query for inventory_items table
+  2. The transformInventoryItemFromDb function
+  3. inventoryItems in the setState call
+
+**Solution:**
+- Added transformInventoryItemFromDb/ToDb to transformations.ts
+- Added inventory_items fetch in loadDataFromSupabase
+- Added inventoryItems to setState with proper transformation
+
+**Files Updated:**
+- store/transformations.ts (new transform functions)
+- store/DataContext.tsx (fetch + setState)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-909',
+    title: 'Remove Hardcoded Defaults - Database as Single Source of Truth',
+    description: 'Fixed duplicate entries in dropdowns by removing all hardcoded defaults. All lookup data now comes exclusively from the database seed data.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 2,
+    actualHours: 1,
+    completedAt: timestamp(),
+    notes: `Removed hardcoded defaults from app state:
+
+**Problem:**
+- Recipe category dropdown showed duplicates (e.g., "Agar Media" twice)
+- Code was merging hardcoded defaults with database data
+- emptyState initialized with default arrays for lookup tables
+- location_types, location_classifications, grain_types not being loaded from DB
+
+**Root Cause:**
+- loadDataFromSupabase was merging defaultRecipeCategories with DB data
+- emptyState had [...defaultLocationTypes], [...defaultGrainTypes], etc.
+- Missing fetch queries for location_types, location_classifications, grain_types
+
+**Solution - Database as Single Source of Truth:**
+1. Updated emptyState to use empty arrays for all lookup tables
+2. Added fetch queries for location_types, location_classifications, grain_types
+3. Removed defaultRecipeCategories merge - now uses only DB data
+4. All lookup data now comes from supabase-seed-data.sql
+
+**Files Updated:**
+- store/defaults.ts (emptyState with empty arrays)
+- store/DataContext.tsx (added fetches, removed merging)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
