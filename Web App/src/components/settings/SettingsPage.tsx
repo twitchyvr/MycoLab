@@ -4,7 +4,7 @@
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
-import { useData } from '../../store';
+import { useData, useTheme, ThemeSelector } from '../../store';
 import { useAuth } from '../../lib/AuthContext';
 import type { Species, Strain, Location, LocationType, LocationClassification, Vessel, ContainerType, SubstrateType, Supplier, InventoryCategory, AppSettings } from '../../store/types';
 import { createClient } from '@supabase/supabase-js';
@@ -1645,6 +1645,15 @@ export const SettingsPage: React.FC = () => {
       case 'preferences':
         return (
           <div className="space-y-6">
+            {/* Theme / Appearance Section */}
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-2">Appearance</h3>
+              <p className="text-sm text-zinc-400 mb-4">
+                Choose a visual theme that matches your workflow and aesthetic preferences.
+              </p>
+              <ThemeSelector />
+            </div>
+
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
               <h3 className="text-lg font-semibold text-white mb-4">General Settings</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

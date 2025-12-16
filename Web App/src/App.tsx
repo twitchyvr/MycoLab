@@ -3,7 +3,7 @@
 // ============================================================================
 
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { DataProvider, useData, CreationProvider, useCreation, NotificationProvider } from './store';
+import { DataProvider, useData, CreationProvider, useCreation, NotificationProvider, ThemeProvider } from './store';
 import { AuthProvider } from './lib/AuthContext';
 import { EntityFormModal } from './components/forms';
 import { AuthModal, AccountMenu } from './components/auth';
@@ -46,7 +46,7 @@ import { TodayView } from './components/today';
 import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
 import { ObservationTimeline, EventLogger } from './components/observations';
 import { ProfilePage } from './components/profile';
-import { FloatingActionButton } from './components/dashboard';
+import { FloatingActionButton, LabCommandCenter } from './components/dashboard';
 import { LabMapping, LocationOccupancy } from './components/locations';
 import { LabelDesigner } from './components/labels';
 import { QRScanner } from './components/qr';
@@ -1041,7 +1041,7 @@ const App: React.FC = () => {
   };
 
   const pageConfig: Record<Page, { title: string; subtitle?: string }> = {
-    dashboard: { title: 'Dashboard', subtitle: 'Overview of your mycology lab' },
+    dashboard: { title: 'Lab Command Center', subtitle: 'Real-time operational hub for your mycology lab' },
     today: { title: 'Today', subtitle: 'Daily tasks and actionable items' },
     dailycheck: { title: 'Daily Room Check', subtitle: 'Growing room rounds with harvest estimates' },
     harvest: { title: 'Harvest Workflow', subtitle: 'Quick harvest recording with auto BE% calculation' },
@@ -1075,7 +1075,7 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <DashboardPage onNavigate={setCurrentPage} />;
+        return <LabCommandCenter onNavigate={setCurrentPage} />;
       case 'today':
         return (
           <div className="p-6">
@@ -1248,29 +1248,31 @@ const App: React.FC = () => {
   };
 
   return (
-    <AuthProvider>
-      <DataProvider>
-        <NotificationProvider>
-          <CreationProvider>
-            <AppContext.Provider value={contextValue}>
-              <AuthModal />
-              <CreationModalManager />
-              <ToastContainer />
-              <AppContent
-                showSetup={showSetup}
-                setShowSetup={setShowSetup}
-                currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
-                sidebarOpen={sidebarOpen}
-                setSidebarOpen={setSidebarOpen}
-                renderPage={renderPage}
-                pageConfig={pageConfig}
-              />
-            </AppContext.Provider>
-          </CreationProvider>
-        </NotificationProvider>
-      </DataProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <DataProvider>
+          <NotificationProvider>
+            <CreationProvider>
+              <AppContext.Provider value={contextValue}>
+                <AuthModal />
+                <CreationModalManager />
+                <ToastContainer />
+                <AppContent
+                  showSetup={showSetup}
+                  setShowSetup={setShowSetup}
+                  currentPage={currentPage}
+                  setCurrentPage={setCurrentPage}
+                  sidebarOpen={sidebarOpen}
+                  setSidebarOpen={setSidebarOpen}
+                  renderPage={renderPage}
+                  pageConfig={pageConfig}
+                />
+              </AppContext.Provider>
+            </CreationProvider>
+          </NotificationProvider>
+        </DataProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 
