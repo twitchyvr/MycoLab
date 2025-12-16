@@ -5,7 +5,9 @@
 
 import React, { useState } from 'react';
 import type { Species, GrowPhaseParameters } from '../../store/types';
+import { useData } from '../../store';
 import { SpeciesName, SpeciesBadge } from './SpeciesName';
+import { formatTemperatureRange, getTemperatureUnit, type TemperatureUnit } from '../../utils/temperature';
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -107,10 +109,36 @@ interface RangeDisplayProps {
   unit: string;
   icon: React.ReactNode;
   colorClass?: string;
+  isTemperature?: boolean;
+  temperatureUnit?: TemperatureUnit;
 }
 
-const RangeDisplay: React.FC<RangeDisplayProps> = ({ label, range, unit, icon, colorClass = 'text-emerald-400' }) => {
+const RangeDisplay: React.FC<RangeDisplayProps> = ({
+  label,
+  range,
+  unit,
+  icon,
+  colorClass = 'text-emerald-400',
+  isTemperature = false,
+  temperatureUnit = 'imperial'
+}) => {
   if (!range) return null;
+
+  // Format values based on whether this is a temperature display
+  let displayMin: string | number = range.min;
+  let displayMax: string | number = range.max;
+  let displayOptimal: string | number | undefined = range.optimal;
+  let displayUnit = unit;
+
+  if (isTemperature) {
+    displayUnit = getTemperatureUnit(temperatureUnit);
+    if (temperatureUnit === 'metric') {
+      // Convert from Fahrenheit (stored) to Celsius
+      displayMin = Math.round(((range.min - 32) * 5) / 9);
+      displayMax = Math.round(((range.max - 32) * 5) / 9);
+      displayOptimal = range.optimal ? Math.round(((range.optimal - 32) * 5) / 9) : undefined;
+    }
+  }
 
   return (
     <div className="flex items-center gap-3 py-2">
@@ -120,11 +148,11 @@ const RangeDisplay: React.FC<RangeDisplayProps> = ({ label, range, unit, icon, c
       </div>
       <div className="text-right">
         <span className="text-white font-medium">
-          {range.min}-{range.max}{unit}
+          {displayMin}-{displayMax}{displayUnit}
         </span>
-        {range.optimal && (
+        {displayOptimal !== undefined && (
           <Tooltip text="Optimal value for best results">
-            <span className="ml-2 text-xs text-emerald-400">(optimal: {range.optimal}{unit})</span>
+            <span className="ml-2 text-xs text-emerald-400">(optimal: {displayOptimal}{displayUnit})</span>
           </Tooltip>
         )}
       </div>
@@ -141,9 +169,10 @@ interface PhaseCardProps {
   phase?: GrowPhaseParameters;
   notes?: string;
   colorClass: string;
+  temperatureUnit?: TemperatureUnit;
 }
 
-const PhaseCard: React.FC<PhaseCardProps> = ({ title, phase, notes, colorClass }) => {
+const PhaseCard: React.FC<PhaseCardProps> = ({ title, phase, notes, colorClass, temperatureUnit = 'imperial' }) => {
   if (!phase && !notes) return null;
 
   return (
@@ -180,6 +209,8 @@ const PhaseCard: React.FC<PhaseCardProps> = ({ title, phase, notes, colorClass }
               unit="°F"
               icon={<Icons.Thermometer />}
               colorClass="text-orange-400"
+              isTemperature={true}
+              temperatureUnit={temperatureUnit}
             />
           )}
 
@@ -267,7 +298,11 @@ export const SpeciesInfoPanel: React.FC<SpeciesInfoPanelProps> = ({
   defaultTab = 'overview',
   compact = false,
 }) => {
+  const { state } = useData();
   const [activeTab, setActiveTab] = useState<InfoTab>(defaultTab);
+
+  // Get temperature unit from settings
+  const temperatureUnit: TemperatureUnit = state.settings?.defaultUnits || 'imperial';
 
   // Check if species has grow phase data
   const hasGrowData = species.spawnColonization || species.bulkColonization || species.pinning || species.maturation;
@@ -435,21 +470,25 @@ export const SpeciesInfoPanel: React.FC<SpeciesInfoPanelProps> = ({
               title="Spawn Colonization"
               phase={species.spawnColonization}
               colorClass="border-purple-800"
+              temperatureUnit={temperatureUnit}
             />
             <PhaseCard
               title="Bulk Colonization"
               phase={species.bulkColonization}
               colorClass="border-blue-800"
+              temperatureUnit={temperatureUnit}
             />
             <PhaseCard
               title="Pinning"
               phase={species.pinning}
               colorClass="border-emerald-800"
+              temperatureUnit={temperatureUnit}
             />
             <PhaseCard
               title="Maturation & Harvest"
               phase={species.maturation}
               colorClass="border-amber-800"
+              temperatureUnit={temperatureUnit}
             />
           </div>
         )}
@@ -561,7 +600,12 @@ export const SpeciesInfoPanel: React.FC<SpeciesInfoPanelProps> = ({
                   {species.automationConfig.alertOnTempDeviation && (
                     <div className="bg-zinc-800/50 rounded-lg p-3">
                       <p className="text-xs text-zinc-500">Temp Alert Threshold</p>
-                      <p className="text-sm text-white font-medium">±{species.automationConfig.alertOnTempDeviation}°F</p>
+                      <p className="text-sm text-white font-medium">
+                        ±{temperatureUnit === 'metric'
+                          ? Math.round((species.automationConfig.alertOnTempDeviation * 5) / 9)
+                          : species.automationConfig.alertOnTempDeviation
+                        }{getTemperatureUnit(temperatureUnit)}
+                      </p>
                     </div>
                   )}
                   {species.automationConfig.alertOnHumidityDeviation && (
@@ -596,6 +640,9 @@ interface SpeciesPreviewProps {
 }
 
 export const SpeciesPreview: React.FC<SpeciesPreviewProps> = ({ species, className = '' }) => {
+  const { state } = useData();
+  const temperatureUnit: TemperatureUnit = state.settings?.defaultUnits || 'imperial';
+
   return (
     <div className={`bg-zinc-900 border border-zinc-700 rounded-lg p-3 shadow-xl max-w-sm ${className}`}>
       <div className="flex items-start gap-3">
@@ -631,12 +678,20 @@ export const SpeciesPreview: React.FC<SpeciesPreviewProps> = ({ species, classNa
       {/* Quick Environment Info */}
       {species.spawnColonization?.tempRange && (
         <div className="mt-2 text-xs text-zinc-400">
-          Colonization: {species.spawnColonization.tempRange.min}-{species.spawnColonization.tempRange.max}°F
+          Colonization: {formatTemperatureRange(
+            species.spawnColonization.tempRange.min,
+            species.spawnColonization.tempRange.max,
+            temperatureUnit
+          )}
         </div>
       )}
       {species.pinning?.tempRange && (
         <div className="text-xs text-zinc-400">
-          Fruiting: {species.pinning.tempRange.min}-{species.pinning.tempRange.max}°F
+          Fruiting: {formatTemperatureRange(
+            species.pinning.tempRange.min,
+            species.pinning.tempRange.max,
+            temperatureUnit
+          )}
         </div>
       )}
     </div>

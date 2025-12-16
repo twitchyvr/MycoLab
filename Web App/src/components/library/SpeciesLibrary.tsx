@@ -6,6 +6,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../store';
 import type { Species, Strain } from '../../store/types';
+import { formatTemperatureRange, type TemperatureUnit } from '../../utils/temperature';
 
 // ============================================================================
 // TYPES
@@ -247,6 +248,9 @@ const StrainCard: React.FC<{
   onClick: () => void;
   compact?: boolean;
 }> = ({ strain, species, onClick, compact }) => {
+  const { state } = useData();
+  const temperatureUnit: TemperatureUnit = state.settings?.defaultUnits || 'imperial';
+
   if (compact) {
     return (
       <div
@@ -295,13 +299,13 @@ const StrainCard: React.FC<{
         {strain.optimalTempColonization && (
           <div className="flex items-center gap-1">
             <Icons.Thermometer />
-            <span>Col Temp: {strain.optimalTempColonization.min}-{strain.optimalTempColonization.max}°</span>
+            <span>Col: {formatTemperatureRange(strain.optimalTempColonization.min, strain.optimalTempColonization.max, temperatureUnit)}</span>
           </div>
         )}
         {strain.optimalTempFruiting && (
           <div className="flex items-center gap-1">
             <Icons.Thermometer />
-            <span>Fruit Temp: {strain.optimalTempFruiting.min}-{strain.optimalTempFruiting.max}°</span>
+            <span>Fruit: {formatTemperatureRange(strain.optimalTempFruiting.min, strain.optimalTempFruiting.max, temperatureUnit)}</span>
           </div>
         )}
       </div>
@@ -323,6 +327,8 @@ const SpeciesDetailView: React.FC<{
   onBack: () => void;
   onSelectStrain: (strain: Strain) => void;
 }> = ({ species, strains, onBack, onSelectStrain }) => {
+  const { state } = useData();
+  const temperatureUnit: TemperatureUnit = state.settings?.defaultUnits || 'imperial';
   const [activeTab, setActiveTab] = useState<'overview' | 'growing' | 'culinary' | 'strains'>('overview');
 
   const speciesStrains = strains.filter(s => s.speciesId === species.id);
@@ -453,7 +459,7 @@ const SpeciesDetailView: React.FC<{
                     {phase.params.tempRange && (
                       <div className="text-sm">
                         <p className="text-zinc-500 text-xs">Temperature</p>
-                        <p className="text-zinc-300">{phase.params.tempRange.min}-{phase.params.tempRange.max}°F</p>
+                        <p className="text-zinc-300">{formatTemperatureRange(phase.params.tempRange.min, phase.params.tempRange.max, temperatureUnit)}</p>
                       </div>
                     )}
                     {phase.params.humidityRange && (
@@ -569,6 +575,9 @@ const StrainDetailView: React.FC<{
   species?: Species;
   onBack: () => void;
 }> = ({ strain, species, onBack }) => {
+  const { state } = useData();
+  const temperatureUnit: TemperatureUnit = state.settings?.defaultUnits || 'imperial';
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -615,11 +624,11 @@ const StrainDetailView: React.FC<{
               </div>
               <div className="bg-zinc-800/50 rounded-lg p-3">
                 <p className="text-xs text-zinc-500 mb-1">Colonization Temp</p>
-                <p className="text-white font-medium">{strain.optimalTempColonization?.min}-{strain.optimalTempColonization?.max}°F</p>
+                <p className="text-white font-medium">{strain.optimalTempColonization ? formatTemperatureRange(strain.optimalTempColonization.min, strain.optimalTempColonization.max, temperatureUnit) : 'N/A'}</p>
               </div>
               <div className="bg-zinc-800/50 rounded-lg p-3">
                 <p className="text-xs text-zinc-500 mb-1">Fruiting Temp</p>
-                <p className="text-white font-medium">{strain.optimalTempFruiting?.min}-{strain.optimalTempFruiting?.max}°F</p>
+                <p className="text-white font-medium">{strain.optimalTempFruiting ? formatTemperatureRange(strain.optimalTempFruiting.min, strain.optimalTempFruiting.max, temperatureUnit) : 'N/A'}</p>
               </div>
             </div>
           </div>
