@@ -414,28 +414,39 @@ const LocationFormModal: React.FC<LocationFormModalProps> = ({
   locations,
   temperatureUnit,
 }) => {
-  const [formData, setFormData] = useState<LocationFormData>({
-    name: initialData?.name || '',
-    level: initialData?.level || (parentLocation ? getNextLevel(parentLocation.level) : 'facility'),
-    parentId: initialData?.parentId || parentLocation?.id || null,
-    roomPurposes: initialData?.roomPurposes || [],
-    capacity: initialData?.capacity,
-    code: initialData?.code || '',
-    notes: initialData?.notes || '',
-    tempRange: initialData?.tempRange,
-    humidityRange: initialData?.humidityRange,
-  });
-
-  const [showEnvironmental, setShowEnvironmental] = useState(
-    !!(initialData?.tempRange || initialData?.humidityRange)
-  );
-
   function getNextLevel(parentLevel?: LocationLevel): LocationLevel {
     const levelOrder: LocationLevel[] = ['facility', 'room', 'zone', 'rack', 'shelf', 'slot'];
     if (!parentLevel) return 'facility';
     const idx = levelOrder.indexOf(parentLevel);
     return levelOrder[Math.min(idx + 1, levelOrder.length - 1)];
   }
+
+  // Helper to create fresh form data from props
+  const createFormData = useCallback((): LocationFormData => ({
+    name: initialData?.name || '',
+    level: initialData?.level || (parentLocation ? getNextLevel(parentLocation.level) : 'facility'),
+    parentId: initialData?.parentId ?? parentLocation?.id ?? null,
+    roomPurposes: initialData?.roomPurposes || [],
+    capacity: initialData?.capacity,
+    code: initialData?.code || '',
+    notes: initialData?.notes || '',
+    tempRange: initialData?.tempRange,
+    humidityRange: initialData?.humidityRange,
+  }), [initialData, parentLocation]);
+
+  const [formData, setFormData] = useState<LocationFormData>(createFormData);
+
+  const [showEnvironmental, setShowEnvironmental] = useState(
+    !!(initialData?.tempRange || initialData?.humidityRange)
+  );
+
+  // Reset form data when modal opens or when initialData/parentLocation changes
+  React.useEffect(() => {
+    if (isOpen) {
+      setFormData(createFormData());
+      setShowEnvironmental(!!(initialData?.tempRange || initialData?.humidityRange));
+    }
+  }, [isOpen, createFormData, initialData?.tempRange, initialData?.humidityRange]);
 
   if (!isOpen) return null;
 
