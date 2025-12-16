@@ -3,7 +3,7 @@
 // ============================================================================
 
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { DataProvider, useData, CreationProvider, useCreation, NotificationProvider } from './store';
+import { DataProvider, useData, CreationProvider, useCreation, NotificationProvider, ThemeProvider } from './store';
 import { AuthProvider } from './lib/AuthContext';
 import { EntityFormModal } from './components/forms';
 import { AuthModal, AccountMenu } from './components/auth';
@@ -1248,29 +1248,31 @@ const App: React.FC = () => {
   };
 
   return (
-    <AuthProvider>
-      <DataProvider>
-        <NotificationProvider>
-          <CreationProvider>
-            <AppContext.Provider value={contextValue}>
-              <AuthModal />
-              <CreationModalManager />
-              <ToastContainer />
-              <AppContent
-                showSetup={showSetup}
-                setShowSetup={setShowSetup}
-                currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
-                sidebarOpen={sidebarOpen}
-                setSidebarOpen={setSidebarOpen}
-                renderPage={renderPage}
-                pageConfig={pageConfig}
-              />
-            </AppContext.Provider>
-          </CreationProvider>
-        </NotificationProvider>
-      </DataProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <DataProvider>
+          <NotificationProvider>
+            <CreationProvider>
+              <AppContext.Provider value={contextValue}>
+                <AuthModal />
+                <CreationModalManager />
+                <ToastContainer />
+                <AppContent
+                  showSetup={showSetup}
+                  setShowSetup={setShowSetup}
+                  currentPage={currentPage}
+                  setCurrentPage={setCurrentPage}
+                  sidebarOpen={sidebarOpen}
+                  setSidebarOpen={setSidebarOpen}
+                  renderPage={renderPage}
+                  pageConfig={pageConfig}
+                />
+              </AppContext.Provider>
+            </CreationProvider>
+          </NotificationProvider>
+        </DataProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 
