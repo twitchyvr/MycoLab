@@ -826,7 +826,7 @@ Benefits:
     id: 'dev-903',
     title: 'Version Reset & Versioning Policy',
     description: 'Reset version from v0.9.0 to v0.2.0 to accurately reflect early alpha/beta status. Established versioning policy in CLAUDE.md.',
-    category: 'docs',
+    category: 'enhancement',
     status: 'completed',
     priority: 'medium',
     estimatedHours: 0.5,
@@ -855,6 +855,51 @@ Benefits:
 - No security audit
 - No real-world testing
 - Many potential bugs and vulnerabilities`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-904',
+    title: 'URL Deep-Linking Support',
+    description: 'Implemented React Router for URL-based navigation. Users can now copy/paste URLs to navigate directly to specific pages or items.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 2,
+    actualHours: 1.5,
+    completedAt: timestamp(),
+    notes: `Implemented comprehensive deep-linking support using React Router DOM v6.
+
+**What Changed:**
+- App now uses BrowserRouter for URL-based navigation
+- URLs update when navigating between pages (e.g., /cultures, /grows, /settings)
+- Item-specific URLs supported (e.g., /cultures/uuid, /grows/uuid)
+- Browser back/forward navigation works correctly
+
+**Route Examples:**
+- / → Dashboard
+- /cultures → Culture Management
+- /cultures/abc-123 → Culture Management with specific culture selected
+- /grows/xyz-456 → Grow Management with specific grow selected
+- /settings → Settings page
+- /devlog → Dev Roadmap
+
+**Technical Implementation:**
+- Added routeConfig mapping Page types to URL paths
+- Added pathToPage reverse lookup for URL parsing
+- Updated App component to use BrowserRouter
+- Created AppWithRouter inner component with useNavigate/useLocation
+- onNavigate prop updated across components to support optional itemId
+- Existing mycolab:select-item events work seamlessly with URL navigation
+
+**Components Updated:**
+- App.tsx (main routing)
+- UnifiedItemView (Lab Inventory)
+- ObservationTimeline
+- TodayView
+- LabCommandCenter
+- CultureManagement (already had listeners)
+- GrowManagement (already had listeners)`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },

@@ -2,7 +2,8 @@
 // MYCOLAB - Main Application Component
 // ============================================================================
 
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React, { useState, createContext, useContext, useEffect, useMemo } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
 import { DataProvider, useData, CreationProvider, useCreation, NotificationProvider, ThemeProvider } from './store';
 import { AuthProvider } from './lib/AuthContext';
 import { EntityFormModal } from './components/forms';
@@ -302,6 +303,56 @@ const Icons = {
 
 type Page = 'dashboard' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
 
+// Route configuration: maps Page to URL paths
+// Routes with :id support deep-linking to specific items
+const routeConfig: Record<Page, string> = {
+  dashboard: '/',
+  today: '/today',
+  dailycheck: '/daily-check',
+  harvest: '/harvest',
+  forecast: '/forecast',
+  coldstorage: '/cold-storage',
+  observations: '/observations',
+  eventlog: '/event-log',
+  library: '/library',
+  inventory: '/inventory',
+  stock: '/stock',
+  cultures: '/cultures',
+  lineage: '/lineage',
+  grows: '/grows',
+  recipes: '/recipes',
+  labmapping: '/lab-mapping',
+  occupancy: '/occupancy',
+  labels: '/labels',
+  scanner: '/scanner',
+  calculator: '/calculator',
+  spawnrate: '/spawn-rate',
+  pressure: '/pressure-cooking',
+  contamination: '/contamination',
+  efficiency: '/efficiency',
+  analytics: '/analytics',
+  strainanalytics: '/strain-analytics',
+  settings: '/settings',
+  profile: '/profile',
+  devlog: '/devlog',
+};
+
+// Reverse lookup: URL path to Page
+const pathToPage: Record<string, Page> = Object.entries(routeConfig).reduce(
+  (acc, [page, path]) => ({ ...acc, [path]: page as Page }),
+  {} as Record<string, Page>
+);
+
+// Helper to get route path for a page
+const getRoutePath = (page: Page): string => routeConfig[page] || '/';
+
+// Helper to get page from current path
+const getPageFromPath = (pathname: string): Page => {
+  // Handle base paths (e.g., /cultures from /cultures/abc123)
+  const basePath = '/' + pathname.split('/').filter(Boolean)[0] || '';
+  return pathToPage[pathname] || pathToPage[basePath] || 'dashboard';
+};
+
 interface NavItem {
   id: Page;
   label: string;
@@ -475,7 +526,7 @@ const priorityColors: Record<FeaturePriority, string> = {
 
 interface SidebarProps {
   currentPage: Page;
-  onNavigate: (page: Page) => void;
+  onNavigate: (page: Page, itemId?: string) => void;
   isOpen: boolean;
   onClose: () => void;
   cultureCount: number;
@@ -677,7 +728,7 @@ interface HeaderProps {
   title: string;
   subtitle?: string;
   currentPage: Page;
-  onNavigate: (page: Page) => void;
+  onNavigate: (page: Page, itemId?: string) => void;
   onMenuClick: () => void;
   onSearchClick: () => void;
 }
@@ -751,7 +802,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
 // DASHBOARD PAGE
 // ============================================================================
 
-const DashboardPage: React.FC<{ onNavigate: (page: Page) => void }> = ({ onNavigate }) => {
+const DashboardPage: React.FC<{ onNavigate: (page: Page, itemId?: string) => void }> = ({ onNavigate }) => {
   const { state, isLoading, isConnected, activeStrains } = useData();
   
   // Calculate real stats
@@ -974,7 +1025,34 @@ const PlaceholderPage: React.FC<{ title: string; description: string }> = ({ tit
 // ============================================================================
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+  return (
+    <BrowserRouter>
+      <AppWithRouter />
+    </BrowserRouter>
+  );
+};
+
+// Inner component that has access to React Router hooks
+const AppWithRouter: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Derive current page from URL
+  const currentPage = useMemo(() => getPageFromPath(location.pathname), [location.pathname]);
+
+  // Extract item ID from URL if present (e.g., /cultures/abc123)
+  const selectedItemId = useMemo(() => {
+    const parts = location.pathname.split('/').filter(Boolean);
+    return parts.length > 1 ? parts[1] : undefined;
+  }, [location.pathname]);
+
+  // Navigation function that updates URL
+  const setCurrentPage = (page: Page, itemId?: string) => {
+    const basePath = getRoutePath(page);
+    const fullPath = itemId ? `${basePath}/${itemId}` : basePath;
+    navigate(fullPath);
+  };
+
   const [state, setState] = useState<AppState>(initialState);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Never show setup wizard - users don't need to configure database credentials
@@ -1262,6 +1340,7 @@ const App: React.FC = () => {
                   setShowSetup={setShowSetup}
                   currentPage={currentPage}
                   setCurrentPage={setCurrentPage}
+                  selectedItemId={selectedItemId}
                   sidebarOpen={sidebarOpen}
                   setSidebarOpen={setSidebarOpen}
                   renderPage={renderPage}
@@ -1293,7 +1372,8 @@ const AppContent: React.FC<{
   showSetup: boolean;
   setShowSetup: (v: boolean) => void;
   currentPage: Page;
-  setCurrentPage: (page: Page) => void;
+  setCurrentPage: (page: Page, itemId?: string) => void;
+  selectedItemId?: string;
   sidebarOpen: boolean;
   setSidebarOpen: (v: boolean) => void;
   renderPage: () => React.ReactNode;
@@ -1303,6 +1383,7 @@ const AppContent: React.FC<{
   setShowSetup,
   currentPage,
   setCurrentPage,
+  selectedItemId,
   sidebarOpen,
   setSidebarOpen,
   renderPage,
@@ -1314,6 +1395,33 @@ const AppContent: React.FC<{
   // Calculate real stats from actual data
   const cultureCount = state.cultures.length;
   const activeGrowCount = state.grows.filter(g => g.status === 'active').length;
+
+  // Dispatch event when a deep-linked item ID is present in URL
+  // This allows pages like CultureManagement/GrowManagement to auto-select the item
+  useEffect(() => {
+    if (selectedItemId) {
+      // Map page to item type for the event
+      const pageToType: Partial<Record<Page, string>> = {
+        cultures: 'culture',
+        grows: 'grow',
+        recipes: 'recipe',
+        lineage: 'culture',
+      };
+      const itemType = pageToType[currentPage];
+
+      if (itemType) {
+        // Small delay to ensure the page component has mounted
+        const timer = setTimeout(() => {
+          window.dispatchEvent(
+            new CustomEvent('mycolab:select-item', {
+              detail: { id: selectedItemId, type: itemType },
+            })
+          );
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [selectedItemId, currentPage]);
 
   // Global keyboard shortcut for search (Cmd/Ctrl + K)
   useEffect(() => {
@@ -1330,8 +1438,8 @@ const AppContent: React.FC<{
 
   // Handle navigation from search results
   const handleSearchNavigate = (page: Page, itemId?: string, itemType?: string) => {
-    setCurrentPage(page);
-    // Item selection is handled via custom event in GlobalSearch
+    // Navigate with item ID for deep-linking support
+    setCurrentPage(page, itemId);
   };
 
   return (

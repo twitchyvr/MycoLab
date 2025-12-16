@@ -14,7 +14,7 @@ import type { Culture, Grow, GrowStage } from '../../store/types';
 type Page = 'dashboard' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
 
 interface LabCommandCenterProps {
-  onNavigate: (page: Page) => void;
+  onNavigate: (page: Page, itemId?: string) => void;
 }
 
 interface StatusCardProps {
@@ -673,7 +673,7 @@ export const LabCommandCenter: React.FC<LabCommandCenterProps> = ({ onNavigate }
                 <AlertCard
                   key={alert.id}
                   alert={alert}
-                  onAction={() => alert.actionPage && onNavigate(alert.actionPage)}
+                  onAction={() => alert.actionPage && onNavigate(alert.actionPage, alert.itemId)}
                   onDismiss={() => handleDismissAlert(alert.id)}
                 />
               ))
