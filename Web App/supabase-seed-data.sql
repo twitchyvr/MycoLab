@@ -258,17 +258,17 @@ BEGIN
   -- Create default hierarchical locations for the new user
 
   -- Level 1: Facility (top level)
-  INSERT INTO locations (name, type, level, room_purpose, notes, user_id, sort_order)
-  VALUES ('My Lab', 'lab', 'facility', 'general', 'Main facility - customize this to match your setup', NEW.id, 1)
+  INSERT INTO locations (name, type, level, room_purpose, room_purposes, notes, user_id, sort_order)
+  VALUES ('My Lab', 'lab', 'facility', 'general', ARRAY['general']::TEXT[], 'Main facility - customize this to match your setup', NEW.id, 1)
   RETURNING id INTO facility_id;
 
-  -- Level 2: Rooms
-  INSERT INTO locations (name, type, type_id, level, room_purpose, parent_id, temp_min, temp_max, humidity_min, humidity_max, notes, user_id, sort_order, code, path)
+  -- Level 2: Rooms (with multi-purpose support via room_purposes array)
+  INSERT INTO locations (name, type, type_id, level, room_purpose, room_purposes, parent_id, temp_min, temp_max, humidity_min, humidity_max, notes, user_id, sort_order, code, path)
   VALUES
-    ('Lab/Clean Room', 'lab', '00000000-0000-0000-0008-000000000003', 'room', 'inoculation', facility_id, 20, 25, NULL, NULL, 'Clean work area for inoculation and agar work', NEW.id, 1, 'LAB', 'My Lab / Lab/Clean Room'),
-    ('Incubation Room', 'incubation', '00000000-0000-0000-0008-000000000001', 'room', 'colonization', facility_id, 24, 28, 70, 80, 'Temperature controlled space for colonization', NEW.id, 2, 'INC', 'My Lab / Incubation Room'),
-    ('Grow Room', 'fruiting', '00000000-0000-0000-0008-000000000002', 'room', 'fruiting', facility_id, 18, 24, 85, 95, 'High humidity fruiting chamber', NEW.id, 3, 'GRW', 'My Lab / Grow Room'),
-    ('Storage Area', 'storage', '00000000-0000-0000-0008-000000000005', 'room', 'storage', facility_id, NULL, NULL, NULL, NULL, 'Supplies and equipment storage', NEW.id, 4, 'STR', 'My Lab / Storage Area');
+    ('Lab/Clean Room', 'lab', '00000000-0000-0000-0008-000000000003', 'room', 'inoculation', ARRAY['inoculation']::TEXT[], facility_id, 20, 25, NULL, NULL, 'Clean work area for inoculation and agar work', NEW.id, 1, 'LAB', 'My Lab / Lab/Clean Room'),
+    ('Incubation Room', 'incubation', '00000000-0000-0000-0008-000000000001', 'room', 'colonization', ARRAY['colonization']::TEXT[], facility_id, 24, 28, 70, 80, 'Temperature controlled space for colonization', NEW.id, 2, 'INC', 'My Lab / Incubation Room'),
+    ('Grow Room', 'fruiting', '00000000-0000-0000-0008-000000000002', 'room', 'fruiting', ARRAY['fruiting', 'colonization']::TEXT[], facility_id, 18, 24, 85, 95, 'Multi-purpose room for fruiting and colonization', NEW.id, 3, 'GRW', 'My Lab / Grow Room'),
+    ('Storage Area', 'storage', '00000000-0000-0000-0008-000000000005', 'room', 'storage', ARRAY['storage']::TEXT[], facility_id, NULL, NULL, NULL, NULL, 'Supplies and equipment storage', NEW.id, 4, 'STR', 'My Lab / Storage Area');
 
   -- Get the room IDs we just created
   SELECT id INTO lab_id FROM locations WHERE user_id = NEW.id AND code = 'LAB';

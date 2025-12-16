@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS locations (
   parent_id UUID REFERENCES locations(id) ON DELETE SET NULL,
   level TEXT CHECK (level IN ('facility', 'room', 'zone', 'rack', 'shelf', 'slot')),
   room_purpose TEXT CHECK (room_purpose IN ('pasteurization', 'inoculation', 'colonization', 'fruiting', 'storage', 'prep', 'drying', 'packaging', 'general')),
+  room_purposes TEXT[], -- Array of purposes for multi-use rooms (e.g., both colonization and fruiting)
   capacity INTEGER,
   current_occupancy INTEGER DEFAULT 0,
   sort_order INTEGER DEFAULT 0,
@@ -169,6 +170,9 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'room_purpose') THEN
     ALTER TABLE locations ADD COLUMN room_purpose TEXT CHECK (room_purpose IN ('pasteurization', 'inoculation', 'colonization', 'fruiting', 'storage', 'prep', 'drying', 'packaging', 'general'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'room_purposes') THEN
+    ALTER TABLE locations ADD COLUMN room_purposes TEXT[];
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'capacity') THEN
     ALTER TABLE locations ADD COLUMN capacity INTEGER;

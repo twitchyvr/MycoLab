@@ -261,7 +261,8 @@ export interface Location {
   // Hierarchical location support for farm/lab mapping
   parentId?: string;          // Parent location ID for hierarchy
   level?: LocationLevel;       // Hierarchy level (facility > room > zone > rack > shelf > slot)
-  roomPurpose?: RoomPurpose;  // For room-level locations, their primary purpose
+  roomPurpose?: RoomPurpose;  // @deprecated Use roomPurposes instead - kept for backwards compatibility
+  roomPurposes?: RoomPurpose[]; // Multiple purposes for multi-use rooms (e.g., colonization + fruiting)
   capacity?: number;          // Maximum items this location can hold
   currentOccupancy?: number;  // Current number of items
   sortOrder?: number;         // Display order among siblings

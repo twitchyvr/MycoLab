@@ -304,13 +304,21 @@ export const DailyCheck: React.FC = () => {
   const grows = state.grows;
   const locations = state.locations;
 
-  // Get fruiting/growing rooms only
+  // Get fruiting/growing rooms only (supports multi-purpose rooms)
   const growingRooms = useMemo(() => {
-    return locations.filter(loc =>
-      loc.isActive &&
-      (loc.level === 'room' || loc.roomPurpose) &&
-      ['fruiting', 'colonization', 'inoculation'].includes(loc.roomPurpose || '')
-    );
+    const growingPurposes = ['fruiting', 'colonization', 'inoculation'];
+    return locations.filter(loc => {
+      if (!loc.isActive) return false;
+      if (loc.level !== 'room' && !loc.roomPurpose && !loc.roomPurposes?.length) return false;
+
+      // Check new roomPurposes array (if any purpose matches growing criteria)
+      if (loc.roomPurposes?.some(p => growingPurposes.includes(p))) {
+        return true;
+      }
+
+      // Fall back to legacy roomPurpose field for backwards compatibility
+      return growingPurposes.includes(loc.roomPurpose || '');
+    });
   }, [locations]);
 
   // Initialize check data

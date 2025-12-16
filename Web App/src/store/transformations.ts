@@ -167,6 +167,24 @@ export const transformLocationFromDb = (row: any): Location => ({
   procurementDate: row.procurement_date ? new Date(row.procurement_date) : undefined,
   notes: row.notes,
   isActive: row.is_active ?? true,
+  // Hierarchical location fields
+  parentId: row.parent_id,
+  level: row.level,
+  roomPurpose: row.room_purpose, // Legacy single purpose field
+  roomPurposes: row.room_purposes || (row.room_purpose ? [row.room_purpose] : undefined), // New array field with fallback
+  capacity: row.capacity,
+  currentOccupancy: row.current_occupancy ?? 0,
+  sortOrder: row.sort_order ?? 0,
+  path: row.path,
+  code: row.code,
+  dimensions: row.dimension_length || row.dimension_width || row.dimension_height
+    ? {
+        length: row.dimension_length ? parseFloat(row.dimension_length) : undefined,
+        width: row.dimension_width ? parseFloat(row.dimension_width) : undefined,
+        height: row.dimension_height ? parseFloat(row.dimension_height) : undefined,
+        unit: row.dimension_unit || 'cm',
+      }
+    : undefined,
 });
 
 export const transformLocationToDb = (location: Partial<Location>, userId?: string | null) => ({
@@ -187,6 +205,20 @@ export const transformLocationToDb = (location: Partial<Location>, userId?: stri
   procurement_date: location.procurementDate?.toISOString(),
   notes: location.notes,
   is_active: location.isActive,
+  // Hierarchical location fields
+  parent_id: toDbId(location.parentId),
+  level: location.level,
+  room_purpose: location.roomPurposes?.[0] || location.roomPurpose, // Store first purpose in legacy field
+  room_purposes: location.roomPurposes, // Store full array
+  capacity: location.capacity,
+  current_occupancy: location.currentOccupancy,
+  sort_order: location.sortOrder,
+  path: location.path,
+  code: location.code,
+  dimension_length: location.dimensions?.length,
+  dimension_width: location.dimensions?.width,
+  dimension_height: location.dimensions?.height,
+  dimension_unit: location.dimensions?.unit || 'cm',
   ...(userId && { user_id: userId }),
 });
 
