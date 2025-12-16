@@ -355,6 +355,31 @@ rm -rf node_modules && npm install
 - Ensure both `src/store/types.ts` and `src/types/index.ts` are consistent
 - Run `npm run type-check` to identify issues
 
+## Versioning Policy
+
+**IMPORTANT: DO NOT bump the version without explicit user approval.**
+
+This project follows semantic versioning but is currently in **early beta** (v0.x.x). The version number in `package.json` should reflect the actual maturity of the application.
+
+### Version Guidelines:
+- **v0.1.x - v0.4.x**: Early development, core features being built
+- **v0.5.x - v0.7.x**: Feature complete but untested, known bugs
+- **v0.8.x - v0.9.x**: Beta testing, bug fixes, security audits
+- **v1.0.0**: Production ready - thoroughly tested, security reviewed, stable
+
+### Current Status:
+- App was rapidly prototyped (~2 days of development)
+- **No automated tests** exist yet
+- **No security audit** has been performed
+- **No real-world testing** has been done
+- Many potential vulnerabilities, bugs, and errors may exist
+
+### Rules for AI Assistants:
+1. **NEVER** bump the version number without explicit user request
+2. **NEVER** assume the app is ready for v1.0 based on feature count
+3. If asked to bump version, remind user of the testing/audit requirements
+4. Version changes should be documented in commit messages
+
 ## Notes for AI Assistants
 
 1. **Main code is in `Web App/` directory** - Always work relative to this path
@@ -364,3 +389,4 @@ rm -rf node_modules && npm install
 5. **Offline-first** - Don't assume Supabase is connected
 6. **Idempotent schema** - SQL migrations are safe to re-run
 7. **No testing yet** - Be careful with refactoring without tests
+8. **Version control** - See "Versioning Policy" above - NEVER bump version without user approval
