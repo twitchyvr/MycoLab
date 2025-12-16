@@ -1,0 +1,640 @@
+// ============================================================================
+// DEV LOG: RECENT PHASES (28-30)
+// Container Workflow, Inline Creation, Recent Development, v1.0 Priorities
+// December 2024 Updates, UX Improvements
+// ============================================================================
+
+import type { DevLogFeature } from '../../types';
+
+const timestamp = () => new Date().toISOString();
+
+/**
+ * Phase 28: Culture & Container Workflow (Critical Gaps)
+ * Phase 29: Inline Creation & Draft Workflow (Critical UX Gap)
+ * Phase 30: Recent Development (v0.9.0)
+ * v1.0 Priorities
+ * December 2024 Updates
+ * UX Improvements
+ */
+export const recentPhases: DevLogFeature[] = [
+  // =============================================================================
+  // PHASE 28: CULTURE & CONTAINER WORKFLOW (Critical Gaps)
+  // These are fundamental workflow issues that affect daily use
+  // =============================================================================
+  {
+    id: 'dev-500',
+    title: 'Recipe-to-Culture Linking',
+    description: 'When creating a culture (LC, agar, slant, etc.), allow user to select which recipe was used to make the media. Track what\'s actually IN each container. Essential for knowing what recipe produced which results.',
+    category: 'core',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 8,
+    dependencies: ['dev-050'],
+    notes: 'Core workflow gap - users need to know what recipe is in each culture container',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-501',
+    title: 'Fill Volume vs Container Capacity',
+    description: 'Containers have total capacity (e.g., 1000ml jar) but are often partially filled (e.g., 600ml of LC). Track both: vessel.volume_ml (max capacity) and culture.fill_volume_ml (actual amount). Show fill percentage.',
+    category: 'core',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 6,
+    notes: 'Real-world usage: a 1000ml jar might only have 600ml of LC. Users need to track actual volume.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-502',
+    title: 'Batch/Prep Session Tracking',
+    description: 'When you prep a batch of media (e.g., make 5L of LC and fill 8 jars), track it as a "prep session" or "batch". Link all containers filled from the same batch. Track prep date, sterilization params, recipe used.',
+    category: 'core',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 10,
+    dependencies: ['dev-500'],
+    notes: 'Essential for batch-level contamination tracking - if one jar from a batch contams, check the others',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-503',
+    title: 'Container Lifecycle States',
+    description: 'Track container status through its lifecycle: empty → sterilized → filled → inoculated → colonizing → ready → in-use → exhausted/contaminated. Different from culture status - this is the physical container.',
+    category: 'core',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 6,
+    notes: 'Users need to know: is this jar clean? sterilized? what\'s in it?',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-504',
+    title: 'Sterilization Logging',
+    description: 'Log sterilization events for containers: date, method (PC/autoclave), pressure, time, who did it. Track if container was sterilized before filling. Alert if using unsterilized container.',
+    category: 'core',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 8,
+    dependencies: ['dev-166'],
+    notes: 'Links to pressure cooking calculator. Important for contamination root cause analysis.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-505',
+    title: 'Container Reuse Tracking',
+    description: 'For reusable vessels (jars, bottles), track usage count and history. How many times has this jar been used? Last cleaned? Any contamination history? Flag high-use containers for inspection.',
+    category: 'core',
+    status: 'planned',
+    priority: 'medium',
+    estimatedHours: 6,
+    dependencies: ['dev-503'],
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-506',
+    title: 'Media Age & Expiration',
+    description: 'Track how old the media is in each container. LC degrades over time, agar dries out. Show "days since prep", calculate viability window, alert when media is getting old.',
+    category: 'core',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 6,
+    dependencies: ['dev-500'],
+    notes: 'LC viability is typically 2-6 months. Agar plates dry out. Users need expiration awareness.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-507',
+    title: 'Culture Creation Workflow Redesign',
+    description: 'Redesign "Add Culture" flow to capture: container type, fill volume, recipe used, prep/sterilization date, source (if inoculated), location. Guided multi-step form for complete data capture.',
+    category: 'ui',
+    status: 'planned',
+    priority: 'critical',
+    estimatedHours: 12,
+    dependencies: ['dev-500', 'dev-501', 'dev-504'],
+    notes: 'Consolidates the above features into a proper user workflow',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-508',
+    title: 'Quick Fill from Batch',
+    description: 'After prepping a batch of media, quickly log multiple containers filled from it. "I made LC today and filled 8 jars" → creates 8 culture records with shared batch ID, recipe, prep date.',
+    category: 'core',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 8,
+    dependencies: ['dev-502', 'dev-401'],
+    notes: 'Reduces data entry burden when prepping multiple containers at once',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-509',
+    title: 'What\'s In This Container View',
+    description: 'For any container/culture, show complete contents: recipe name, ingredients, prep date, sterilization date, inoculation date, source culture, current volume remaining, age, viability status.',
+    category: 'ui',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 8,
+    dependencies: ['dev-500', 'dev-501', 'dev-506'],
+    notes: 'Single view to answer "what exactly is in this jar?"',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-510',
+    title: 'Volume Deduction on Use',
+    description: 'When using culture (e.g., inoculating grain from LC), deduct volume used. "Used 10ml from LC-042" updates remaining volume. Track usage history per container.',
+    category: 'core',
+    status: 'planned',
+    priority: 'medium',
+    estimatedHours: 6,
+    dependencies: ['dev-501'],
+    notes: 'Know how much LC is left in each jar',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  // =============================================================================
+  // PHASE 29: INLINE CREATION & DRAFT WORKFLOW (Critical UX Gap)
+  // Identified as highest priority - blocking basic workflow
+  // =============================================================================
+  {
+    id: 'dev-600',
+    title: 'Inline "Add New" in Form Dropdowns',
+    description: 'When creating a grow/culture/etc, allow "Add New..." option in dropdown for strains, spawn types, substrates, containers. Opens mini-form inline or modal without losing form state.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 16,
+    actualHours: 20,
+    completedAt: timestamp(),
+    notes: `Comprehensive inline creation system implemented:
+
+**Core Infrastructure:**
+- StandardDropdown component with entityType prop for "+ Add" buttons
+- CreationContext with draft stack for nested creation (create strain → create species → back to strain)
+- EntityFormModal with 14+ entity type forms
+- useEntityForm hook for form state management
+
+**Supported Entity Types (all with "+ Add" in dropdowns):**
+- Strains (with nested species creation)
+- Locations (with type/classification creation)
+- Vessels, Container Types
+- Grain Types, Substrate Types
+- Suppliers
+- Recipe Categories
+- Location Types, Location Classifications
+- Inventory Items (with category creation)
+- Inventory Categories
+
+**Pre-configured dropdown variants:**
+- StrainDropdown, LocationDropdown, VesselDropdown
+- SupplierDropdown, GrainTypeDropdown, SubstrateTypeDropdown
+- ContainerTypeDropdown, InventoryItemDropdown, InventoryCategoryDropdown
+
+**Key Features:**
+- Draft auto-selection after creation
+- Nested creation support (up to 3 levels deep)
+- Breadcrumb navigation in nested forms
+- Form validation with required field indicators`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-601',
+    title: 'Form Draft Auto-Save',
+    description: 'Automatically save form state to localStorage as user fills it out. Restore drafts on return. Prevents data loss when navigating away to add missing items.',
+    category: 'core',
+    status: 'planned',
+    priority: 'critical',
+    estimatedHours: 0,
+    dependencies: ['dev-600'],
+    notes: 'Essential for draft workflow - user can leave form to add items and return to complete it.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-602',
+    title: 'Draft Resume Flow',
+    description: 'After adding a new strain/substrate/etc, automatically return user to their saved draft with the new item selected. Clear draft on successful submission.',
+    category: 'ui',
+    status: 'planned',
+    priority: 'critical',
+    estimatedHours: 0,
+    dependencies: ['dev-601'],
+    notes: 'Complete the loop - create → navigate → add → return → resume.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-603',
+    title: 'Draft Indicator in UI',
+    description: 'Show visual indicator when drafts exist. "Continue editing Grow Draft" button on dashboard or relevant page. List pending drafts.',
+    category: 'ui',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 0,
+    dependencies: ['dev-601'],
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  // =============================================================================
+  // PHASE 30: RECENT DEVELOPMENT (v0.9.0)
+  // Features completed in recent development cycles
+  // =============================================================================
+  {
+    id: 'dev-700',
+    title: 'Admin Data Management Panel',
+    description: 'Centralized admin panel for managing master data (strains, locations, vessels, etc.) with tabbed interface. Includes notification settings and system configuration.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 12,
+    actualHours: 10,
+    completedAt: timestamp(),
+    notes: 'Accessible from Settings page. Manages all lookup tables in one place.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-701',
+    title: 'Account Deletion Functionality',
+    description: 'Allow users to permanently delete their account and all associated data. Includes confirmation dialog with safety checks.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    actualHours: 3,
+    completedAt: timestamp(),
+    dependencies: ['dev-122'],
+    notes: 'Part of user account management. Includes logout confirmation.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-702',
+    title: 'Emergency Logout Functionality',
+    description: 'Force logout mechanism for stuck authentication sessions. Clears all local auth state and redirects to login.',
+    category: 'core',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 2,
+    actualHours: 1,
+    completedAt: timestamp(),
+    dependencies: ['dev-122'],
+    notes: 'Accessible from login screen for recovery.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-703',
+    title: 'StandardDropdown Component System',
+    description: 'Unified dropdown component that combines selection with inline "Add New" capability. Automatically opens entity creation modal without losing form state.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 8,
+    actualHours: 6,
+    completedAt: timestamp(),
+    dependencies: ['dev-600'],
+    notes: 'Implemented as StandardDropdown with nested draft stack for entity creation.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-704',
+    title: 'Stock Management Page',
+    description: 'Dedicated page for managing lab stock/inventory separate from culture containers. Track supplies, ingredients, and consumables.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 10,
+    actualHours: 8,
+    completedAt: timestamp(),
+    dependencies: ['dev-070'],
+    notes: 'Complements Lab Inventory view with dedicated stock management.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-705',
+    title: 'Version Display in UI',
+    description: 'Display current app version in sidebar. Version pulled from package.json at build time via Vite define.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 1,
+    actualHours: 1,
+    completedAt: timestamp(),
+    notes: 'Shows version below app name in sidebar.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-706',
+    title: 'Default User Data Seed Script',
+    description: 'SQL script to populate new user accounts with default lookup data (strains, locations, vessels, etc.). Bootstraps new users with essential data.',
+    category: 'data',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    actualHours: 3,
+    completedAt: timestamp(),
+    dependencies: ['dev-120'],
+    notes: 'Runs on new user signup to provide initial data set.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-707',
+    title: 'Auth Flow Improvements',
+    description: 'Enhanced signup flow with proper email verification, success UX, and safeguards against auth trigger failures. Fixed signOut hanging issues.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 6,
+    actualHours: 5,
+    completedAt: timestamp(),
+    dependencies: ['dev-122'],
+    notes: 'Includes form attributes for password manager recognition.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  // =============================================================================
+  // v1.0.0 TARGET PRIORITIES
+  // High-impact features for v1.0 release
+  // =============================================================================
+  {
+    id: 'dev-800',
+    title: 'Photo Upload & Storage',
+    description: 'Enable photo uploads for cultures, grows, and observations. Cloud storage integration (Supabase Storage or external). Image gallery views.',
+    category: 'core',
+    status: 'planned',
+    priority: 'critical',
+    estimatedHours: 16,
+    dependencies: ['dev-060'],
+    notes: 'Foundational feature for photo journaling. Required for contamination documentation.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-801',
+    title: 'Observation Logging System',
+    description: 'Quick observation entry for any culture or grow. Timestamps, notes, optional photos, categorized by type (growth, contamination, harvest, general).',
+    category: 'core',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 10,
+    actualHours: 4,
+    completedAt: timestamp(),
+    dependencies: ['dev-062'],
+    notes: 'Unified observation timeline with filtering, quick entry modal, and navigation integration.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-802',
+    title: 'Notification Engine Implementation',
+    description: 'Background notification system that evaluates rules and generates alerts. Culture expiration, stage transitions, low stock, etc.',
+    category: 'core',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 14,
+    dependencies: ['dev-100'],
+    notes: 'Foundation for all automated alerts. In-app notifications first, push later.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-803',
+    title: 'Today View Dashboard Widget',
+    description: 'What needs attention TODAY: items expiring, stage transitions due, scheduled tasks, low stock alerts. One glance for daily priorities.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 8,
+    actualHours: 6,
+    completedAt: timestamp(),
+    dependencies: ['dev-423'],
+    notes: 'Full TodayView component with task generation from cultures and grows, priority filtering, and quick navigation.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-804',
+    title: 'Batch Transfer Workflow',
+    description: 'Transfer from one culture to multiple targets (e.g., LC to 10 agar plates). Auto-generate labels, increment generations, update lineage.',
+    category: 'core',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 10,
+    dependencies: ['dev-401', 'dev-404'],
+    notes: 'Critical for efficient agar work and LC transfers.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-805',
+    title: 'Global Search',
+    description: 'Cmd+K style search across all entities. Search cultures, grows, strains, recipes by name, label, or notes.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 10,
+    actualHours: 3,
+    completedAt: timestamp(),
+    dependencies: ['dev-140'],
+    notes: 'Full Cmd+K search modal with keyboard navigation, entity type badges, and instant navigation.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  // =============================================================================
+  // DECEMBER 2024 UPDATES
+  // Species data improvements and grow management enhancements
+  // =============================================================================
+  {
+    id: 'dev-710',
+    title: 'Species Automation Parameters',
+    description: 'Full automation-ready parameters for all species grow phases. Includes temperature/humidity/CO2 ranges with warning and critical thresholds, light schedules, stage transition criteria, and equipment notes.',
+    category: 'data',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 8,
+    actualHours: 6,
+    completedAt: timestamp(),
+    notes: 'Updated 20+ species with complete GrowPhaseParameters for spawn colonization, bulk colonization, pinning, and maturation stages. Automation-ready for future IoT integration.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-711',
+    title: 'Species Stage Notes',
+    description: 'Human-readable stage-specific notes for species cultivation. Added spawn_colonization_notes, bulk_colonization_notes, pinning_notes, and maturation_notes TEXT columns.',
+    category: 'data',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 4,
+    actualHours: 3,
+    completedAt: timestamp(),
+    dependencies: ['dev-710'],
+    notes: 'Provides practical guidance for each growth stage. Separate from technical parameters for easy UI display.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-712',
+    title: 'Grow Inoculation Date Field',
+    description: 'Added user-selectable inoculation date field to new grow form. Defaults to today but allows backdating for retroactive logging.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 2,
+    actualHours: 1,
+    completedAt: timestamp(),
+    notes: 'Uses HTML date input with proper timezone handling (noon time to avoid day shift issues).',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-713',
+    title: 'Recipe Transform Fixes',
+    description: 'Fixed missing sourceUrl and costPerBatch field mappings in recipe transforms. Data was being lost on save/load.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: 'Part of schema/code consistency audit.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-714',
+    title: 'SpeciesInfoPanel Component',
+    description: 'Enhanced species detail view with tabbed interface showing Overview, Growing Conditions, Stage Guide, and Automation tabs. Includes tooltips for technical parameters and visual progress indicators.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 6,
+    actualHours: 4,
+    completedAt: timestamp(),
+    dependencies: ['dev-710', 'dev-711'],
+    notes: 'Displays rich species data including environmental ranges, stage notes, and automation config. Includes compact SpeciesPreview for dropdowns.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-715',
+    title: 'Inventory Items Cost Column Fix',
+    description: 'Fixed missing cost_per_unit column in inventory_items table causing save errors. Added migration for backwards compatibility.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: 'Schema had inconsistent column naming (unit_cost vs cost_per_unit). Migration ensures both exist.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-716',
+    title: 'Expandable Species UI in Settings',
+    description: 'Integrated SpeciesInfoPanel into Settings page species tab with click-to-expand functionality. Each species row shows category icon, name, difficulty badge, and yield preview. Clicking expands to show full tabbed detail view.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 3,
+    actualHours: 2,
+    completedAt: timestamp(),
+    dependencies: ['dev-714'],
+    notes: 'Replaced simple data table with rich interactive list. Shows Overview, Growing, Stage Guide, and Automation tabs when expanded.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-717',
+    title: 'Schema FK Constraint Safety',
+    description: 'Fixed species seed data deletion causing FK constraint violation. Schema now safely handles re-runs by checking existing data and using ON CONFLICT DO NOTHING.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 2,
+    actualHours: 1.5,
+    completedAt: timestamp(),
+    notes: 'Added conditional block to skip seeding if 5+ species exist. Created partial unique index for conflict handling.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-718',
+    title: 'Inventory Items Column Mismatch Fix',
+    description: 'Fixed 400 error when creating inventory items. Code was using min_quantity but database column is reorder_point. Added debug logging for future troubleshooting.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 1,
+    actualHours: 1,
+    completedAt: timestamp(),
+    dependencies: ['dev-715'],
+    notes: 'Part of schema/code alignment audit. Console now logs insert data and errors for debugging.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  // =============================================================================
+  // UX IMPROVEMENTS
+  // =============================================================================
+  {
+    id: 'dev-806',
+    title: 'Navigation Revamp - Mobile UX',
+    description: 'Revamp sidebar navigation to be cleaner and mobile-friendly. Currently 23+ nav items making it cluttered. Implement grouped/collapsible sections: Core (Dashboard, Today), Operations (Daily Check, Harvest, Observations), Library (Cultures, Lineage, Grows, Recipes), Lab (Mapping, Occupancy, Labels, Scanner), Tools (Calculators, Contamination, BE%), Analytics/Settings. Consider bottom nav bar for mobile with quick actions.',
+    category: 'ui',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 8,
+    notes: 'User feedback: "It\'s getting a bit crazy and it needs to be clean so using it on mobile isn\'t cumbersome". Consider accordion-style sections, bottom navigation for mobile, and hiding less-used items behind a "More" menu.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  // =============================================================================
+  // MODULARIZATION TASK (Added during code refactoring)
+  // =============================================================================
+  {
+    id: 'dev-900',
+    title: 'Codebase Modularization',
+    description: 'Modularize large files for better maintainability. Split devlog features into phase-based files, extract DataContext transforms, reorganize SQL schema. Ensures easier updates and reduced cognitive load when editing.',
+    category: 'core',
+    status: 'in_progress',
+    priority: 'high',
+    estimatedHours: 8,
+    notes: `Files being modularized:
+- src/data/initialData.ts → devlog/, samples/, projectScope.ts
+- src/store/DataContext.tsx → transforms/, defaults/
+- supabase-schema.sql → Better section organization
+- supabase-seed-data.sql → Ensure idempotent
+
+Benefits:
+- Smaller, focused files (~500 lines vs ~3000 lines)
+- Easier to locate specific features/phases
+- Reduced merge conflicts
+- Faster code navigation`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+];
+
+export default recentPhases;
