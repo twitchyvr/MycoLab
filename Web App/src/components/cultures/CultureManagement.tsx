@@ -149,6 +149,22 @@ export const CultureManagement: React.FC = () => {
     };
   }, [cultures]);
 
+  // Keep selectedCulture in sync with state.cultures when cultures data changes
+  useEffect(() => {
+    if (selectedCulture) {
+      const updated = cultures.find(c => c.id === selectedCulture.id);
+      if (updated) {
+        // Only update if the culture data has actually changed
+        if (JSON.stringify(updated) !== JSON.stringify(selectedCulture)) {
+          setSelectedCulture(updated);
+        }
+      } else {
+        // Culture was deleted
+        setSelectedCulture(null);
+      }
+    }
+  }, [cultures, selectedCulture]);
+
   // Filtered and sorted cultures
   const filteredCultures = useMemo(() => {
     let result = [...cultures];
@@ -211,12 +227,7 @@ export const CultureManagement: React.FC = () => {
       notes: newObservation.notes,
       healthRating: newObservation.healthRating,
     });
-
-    // Refresh selected culture from state
-    setTimeout(() => {
-      const updated = state.cultures.find(c => c.id === selectedCulture.id);
-      if (updated) setSelectedCulture(updated);
-    }, 0);
+    // selectedCulture will be auto-updated by the sync useEffect when state.cultures changes
 
     setShowObservationModal(false);
     setNewObservation({ type: 'general', notes: '', healthRating: undefined });
@@ -237,12 +248,7 @@ export const CultureManagement: React.FC = () => {
       unit: newTransfer.unit,
       notes: newTransfer.notes,
     });
-
-    // Refresh selected culture from state
-    setTimeout(() => {
-      const updated = state.cultures.find(c => c.id === selectedCulture.id);
-      if (updated) setSelectedCulture(updated);
-    }, 0);
+    // selectedCulture will be auto-updated by the sync useEffect when state.cultures changes
 
     setShowTransferModal(false);
     setNewTransfer({ toType: 'agar', quantity: 1, unit: 'wedge', notes: '', createNewRecord: false });
