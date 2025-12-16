@@ -367,12 +367,13 @@ This project follows semantic versioning but is currently in **early beta** (v0.
 - **v0.8.x - v0.9.x**: Beta testing, bug fixes, security audits
 - **v1.0.0**: Production ready - thoroughly tested, security reviewed, stable
 
-### Current Status:
+### Current Status (v0.2.0):
 - App was rapidly prototyped (~2 days of development)
 - **No automated tests** exist yet
 - **No security audit** has been performed
 - **No real-world testing** has been done
 - Many potential vulnerabilities, bugs, and errors may exist
+- Current version: **v0.2.0** (early alpha/beta)
 
 ### Rules for AI Assistants:
 1. **NEVER** bump the version number without explicit user request
