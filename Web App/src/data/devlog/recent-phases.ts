@@ -1111,6 +1111,42 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-910',
+    title: 'Grow Edit Button Not Working from Lab Inventory',
+    description: 'Fixed bug where clicking "Edit" button on a grow in the Lab Inventory modal navigated to the Grows page but did not open the edit modal. Added full edit functionality with a warning for downstream data effects.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 2,
+    actualHours: 1.5,
+    completedAt: timestamp(),
+    notes: `Grow edit functionality bug fix:
+
+**Problem:**
+- Edit button in UnifiedItemView (Lab Inventory) dispatched mycolab:edit-item event
+- GrowManagement event handler only selected the grow, didn't open edit modal
+- Code comment said "For now, just select it - could open edit modal in future"
+
+**Solution:**
+1. Added showEditModal state and editGrow form state to GrowManagement
+2. Implemented openEditModal() function to populate edit form with grow data
+3. Updated mycolab:edit-item event handler to call openEditModal()
+4. Added full edit modal UI with all grow fields editable
+5. Added getDownstreamEffects() to detect linked data (flushes, observations, yield)
+6. Added warning banner when grow has existing data that could be affected
+7. Added Edit icon button to detail panel actions for discoverability
+
+**Warning Display:**
+- Shows amber warning banner when grow has flushes, observations, or yield data
+- Lists specific downstream data (e.g., "3 harvest records", "5 observations")
+- Warns about data integrity for core field changes (strain, dates, container)
+
+**Files Updated:**
+- components/grows/GrowManagement.tsx (edit modal, warning, handlers)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

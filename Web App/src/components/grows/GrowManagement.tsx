@@ -35,6 +35,7 @@ const Icons = {
   ChevronRight: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="9 18 15 12 9 6"/></svg>,
   Clipboard: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>,
   Scale: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M12 3v18M3 12h18M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg>,
+  Edit: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
 };
 
 // Stage timeline component
@@ -125,6 +126,7 @@ export const GrowManagement: React.FC = () => {
   const [selectedGrow, setSelectedGrow] = useState<Grow | null>(null);
   const [detailTab, setDetailTab] = useState<'overview' | 'timeline' | 'harvests'>('overview');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showObservationModal, setShowObservationModal] = useState(false);
   const [showHarvestModal, setShowHarvestModal] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
@@ -190,6 +192,11 @@ export const GrowManagement: React.FC = () => {
 
   // Form state
   const [newGrow, setNewGrow] = useState<GrowFormState>(getInitialFormState);
+
+  // Edit form state
+  const [editGrow, setEditGrow] = useState<GrowFormState & { id: string }>(
+    { ...defaultFormState, id: '' }
+  );
 
   // Check for draft on mount
   useEffect(() => {
@@ -266,7 +273,7 @@ export const GrowManagement: React.FC = () => {
         const grow = grows.find(g => g.id === event.detail.id);
         if (grow) {
           setSelectedGrow(grow);
-          // For now, just select it - could open edit modal in future
+          openEditModal(grow);
         }
       }
     };
@@ -405,6 +412,83 @@ export const GrowManagement: React.FC = () => {
     setShowCreateModal(false);
     clearDraft(); // Clear draft on successful creation
     setNewGrow(defaultFormState);
+  };
+
+  // Open edit modal with grow data
+  const openEditModal = (grow: Grow) => {
+    setEditGrow({
+      id: grow.id,
+      name: grow.name,
+      strainId: grow.strainId,
+      sourceCultureId: grow.sourceCultureId || '',
+      grainTypeId: '', // Not stored on grow, just spawn type name
+      spawnWeight: grow.spawnWeight,
+      substrateTypeId: grow.substrateTypeId,
+      substrateWeight: grow.substrateWeight,
+      containerId: grow.containerId,
+      containerCount: grow.containerCount,
+      locationId: grow.locationId,
+      inoculationDate: new Date(grow.spawnedAt).toISOString().split('T')[0],
+      targetTempColonization: grow.targetTempColonization || 24,
+      targetTempFruiting: grow.targetTempFruiting || 22,
+      targetHumidity: grow.targetHumidity || 90,
+      estimatedCost: grow.estimatedCost,
+      notes: grow.notes,
+    });
+    setShowEditModal(true);
+  };
+
+  // Get downstream effects for a grow (for warning display)
+  const getDownstreamEffects = (grow: Grow) => {
+    const effects: string[] = [];
+
+    if (grow.flushes.length > 0) {
+      effects.push(`${grow.flushes.length} harvest record${grow.flushes.length !== 1 ? 's' : ''}`);
+    }
+    if (grow.observations.length > 0) {
+      effects.push(`${grow.observations.length} observation${grow.observations.length !== 1 ? 's' : ''}`);
+    }
+    if (grow.totalYield > 0) {
+      effects.push(`${grow.totalYield}g total yield`);
+    }
+
+    return effects;
+  };
+
+  // Update grow handler
+  const handleUpdateGrow = async () => {
+    if (!editGrow.id || !editGrow.strainId || !editGrow.substrateTypeId || !editGrow.containerId || !editGrow.locationId) return;
+
+    // Parse the inoculation date
+    const inoculationDate = editGrow.inoculationDate
+      ? new Date(editGrow.inoculationDate + 'T12:00:00')
+      : new Date();
+
+    // Calculate new spawn rate
+    const newSpawnRate = editGrow.spawnWeight && editGrow.substrateWeight
+      ? Math.round((editGrow.spawnWeight / (editGrow.spawnWeight + editGrow.substrateWeight)) * 100)
+      : 0;
+
+    await updateGrow(editGrow.id, {
+      name: editGrow.name,
+      strainId: editGrow.strainId,
+      sourceCultureId: editGrow.sourceCultureId || undefined,
+      spawnWeight: editGrow.spawnWeight,
+      substrateTypeId: editGrow.substrateTypeId,
+      substrateWeight: editGrow.substrateWeight,
+      spawnRate: newSpawnRate,
+      containerId: editGrow.containerId,
+      containerCount: editGrow.containerCount,
+      locationId: editGrow.locationId,
+      spawnedAt: inoculationDate,
+      targetTempColonization: editGrow.targetTempColonization,
+      targetTempFruiting: editGrow.targetTempFruiting,
+      targetHumidity: editGrow.targetHumidity,
+      estimatedCost: editGrow.estimatedCost,
+      notes: editGrow.notes,
+    });
+
+    setShowEditModal(false);
   };
 
   // Advance stage handler
@@ -881,6 +965,13 @@ export const GrowManagement: React.FC = () => {
                 <Icons.Clipboard />
                 Log
               </button>
+              <button
+                onClick={() => openEditModal(selectedGrow)}
+                className="p-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg"
+                title="Edit Grow"
+              >
+                <Icons.Edit />
+              </button>
               {!['completed', 'contaminated', 'aborted'].includes(selectedGrow.currentStage) && (
                 <button
                   onClick={handleMarkContaminated}
@@ -893,6 +984,7 @@ export const GrowManagement: React.FC = () => {
               <button
                 onClick={() => handleDelete(selectedGrow.id)}
                 className="p-2 bg-red-950/50 hover:bg-red-950 text-red-400 rounded-lg"
+                title="Delete Grow"
               >
                 <Icons.Trash />
               </button>
@@ -1100,6 +1192,217 @@ export const GrowManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Modal */}
+      {showEditModal && (() => {
+        const growToEdit = grows.find(g => g.id === editGrow.id);
+        const downstreamEffects = growToEdit ? getDownstreamEffects(growToEdit) : [];
+        const editSpawnRate = editGrow.spawnWeight && editGrow.substrateWeight
+          ? Math.round((editGrow.spawnWeight / (editGrow.spawnWeight + editGrow.substrateWeight)) * 100)
+          : 0;
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-white">Edit Grow</h3>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-zinc-400 hover:text-white"
+                >
+                  <Icons.X />
+                </button>
+              </div>
+
+              {/* Warning about downstream effects */}
+              {downstreamEffects.length > 0 && (
+                <div className="mb-6 p-4 bg-amber-950/30 border border-amber-800/50 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <span className="text-amber-400 text-lg">⚠️</span>
+                    <div>
+                      <p className="text-amber-400 font-medium text-sm mb-1">This grow has existing data</p>
+                      <p className="text-amber-300/70 text-xs mb-2">
+                        Changes to core fields (strain, dates, container) may affect data integrity. The following data is associated with this grow:
+                      </p>
+                      <ul className="text-xs text-amber-300/60 list-disc list-inside">
+                        {downstreamEffects.map((effect, i) => (
+                          <li key={i}>{effect}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Name</label>
+                  <input
+                    type="text"
+                    value={editGrow.name}
+                    onChange={e => setEditGrow(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <StandardDropdown
+                    label="Strain"
+                    required
+                    value={editGrow.strainId}
+                    onChange={value => setEditGrow(prev => ({ ...prev, strainId: value }))}
+                    options={activeStrains}
+                    placeholder="Select..."
+                    entityType="strain"
+                    fieldName="strainId"
+                  />
+                  <StandardDropdown
+                    label="Source Culture"
+                    value={editGrow.sourceCultureId}
+                    onChange={value => setEditGrow(prev => ({ ...prev, sourceCultureId: value }))}
+                    options={readyCultureOptions}
+                    placeholder="None"
+                    fieldName="sourceCultureId"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <StandardDropdown
+                    label="Spawn Type"
+                    value={editGrow.grainTypeId}
+                    onChange={value => setEditGrow(prev => ({ ...prev, grainTypeId: value }))}
+                    options={activeGrainTypes}
+                    placeholder="Select..."
+                    entityType="grainType"
+                    fieldName="grainTypeId"
+                  />
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-2">Spawn Weight (g)</label>
+                    <input
+                      type="number"
+                      value={editGrow.spawnWeight}
+                      onChange={e => setEditGrow(prev => ({ ...prev, spawnWeight: parseInt(e.target.value) || 0 }))}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <StandardDropdown
+                    label="Substrate"
+                    required
+                    value={editGrow.substrateTypeId}
+                    onChange={value => setEditGrow(prev => ({ ...prev, substrateTypeId: value }))}
+                    options={activeSubstrateTypes}
+                    filterFn={s => s.category === 'bulk'}
+                    placeholder="Select..."
+                    entityType="substrateType"
+                    fieldName="substrateTypeId"
+                  />
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-2">Substrate Weight (g)</label>
+                    <input
+                      type="number"
+                      value={editGrow.substrateWeight}
+                      onChange={e => setEditGrow(prev => ({ ...prev, substrateWeight: parseInt(e.target.value) || 0 }))}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                    />
+                  </div>
+                </div>
+
+                {editSpawnRate > 0 && (
+                  <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                    <p className="text-xs text-zinc-500">Calculated Spawn Rate</p>
+                    <p className="text-xl font-bold text-emerald-400">{editSpawnRate}%</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <StandardDropdown
+                    label="Container"
+                    required
+                    value={editGrow.containerId}
+                    onChange={value => setEditGrow(prev => ({ ...prev, containerId: value }))}
+                    options={activeContainers.filter(c => c.usageContext.includes('grow'))}
+                    placeholder="Select..."
+                    entityType="container"
+                    fieldName="containerId"
+                  />
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-2">Count</label>
+                    <input
+                      type="number"
+                      value={editGrow.containerCount}
+                      onChange={e => setEditGrow(prev => ({ ...prev, containerCount: parseInt(e.target.value) || 1 }))}
+                      min="1"
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <StandardDropdown
+                    label="Location"
+                    required
+                    value={editGrow.locationId}
+                    onChange={value => setEditGrow(prev => ({ ...prev, locationId: value }))}
+                    options={activeLocations}
+                    placeholder="Select..."
+                    entityType="location"
+                    fieldName="locationId"
+                  />
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-2">Inoculation Date</label>
+                    <input
+                      type="date"
+                      value={editGrow.inoculationDate}
+                      onChange={e => setEditGrow(prev => ({ ...prev, inoculationDate: e.target.value }))}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white [color-scheme:dark]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Estimated Cost ($)</label>
+                  <input
+                    type="number"
+                    value={editGrow.estimatedCost}
+                    onChange={e => setEditGrow(prev => ({ ...prev, estimatedCost: parseFloat(e.target.value) || 0 }))}
+                    step="0.01"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Notes</label>
+                  <textarea
+                    value={editGrow.notes}
+                    onChange={e => setEditGrow(prev => ({ ...prev, notes: e.target.value }))}
+                    rows={3}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateGrow}
+                  disabled={!editGrow.strainId || !editGrow.substrateTypeId || !editGrow.containerId || !editGrow.locationId}
+                  className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Observation Modal */}
       {showObservationModal && selectedGrow && (
