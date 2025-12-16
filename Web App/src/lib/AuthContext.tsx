@@ -45,6 +45,7 @@ export interface AuthContextValue extends AuthState {
   signUp: (email: string, password: string, captchaToken?: string) => Promise<SignUpResult>;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   signInWithMagicLink: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
+  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: (options?: { clearData?: boolean }) => Promise<void>;
   resetPassword: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
@@ -398,6 +399,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return { error };
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+
+    return { error };
+  }, []);
+
   const signOut = useCallback(async (options: { clearData?: boolean } = {}) => {
     console.log('[Auth] signOut called');
     if (!supabase) {
@@ -719,6 +733,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     signUp,
     signIn,
     signInWithMagicLink,
+    signInWithGoogle,
     signOut,
     resetPassword,
     updatePassword,
