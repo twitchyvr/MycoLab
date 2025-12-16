@@ -501,7 +501,7 @@ const ObservationCard: React.FC<ObservationCardProps> = ({ observation, onNaviga
 type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
 
 interface ObservationTimelineProps {
-  onNavigate?: (page: Page) => void;
+  onNavigate?: (page: Page, itemId?: string) => void;
 }
 
 export const ObservationTimeline: React.FC<ObservationTimelineProps> = ({ onNavigate }) => {
@@ -576,9 +576,10 @@ export const ObservationTimeline: React.FC<ObservationTimelineProps> = ({ onNavi
     return groupByDate(filteredObservations);
   }, [filteredObservations]);
 
-  const handleEntityNavigate = (entityType: 'culture' | 'grow', _entityId: string) => {
+  const handleEntityNavigate = (entityType: 'culture' | 'grow', entityId: string) => {
     if (onNavigate) {
-      onNavigate(entityType === 'culture' ? 'cultures' : 'grows');
+      // Navigate with item ID for deep-linking support
+      onNavigate(entityType === 'culture' ? 'cultures' : 'grows', entityId);
     }
   };
 

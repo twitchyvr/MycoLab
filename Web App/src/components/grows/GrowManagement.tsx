@@ -943,8 +943,9 @@ export const GrowManagement: React.FC = () => {
                   onChange={value => setNewGrow(prev => ({ ...prev, sourceCultureId: value }))}
                   options={readyCultureOptions}
                   placeholder="None"
-                  entityType="culture"
                   fieldName="sourceCultureId"
+                  // Note: No entityType - cultures are too complex for inline creation
+                  // Users should create cultures separately in the Cultures page
                 />
               </div>
 

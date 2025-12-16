@@ -1,6 +1,6 @@
 {
   "name": "mycolab",
-  "version": "0.9.0",
+  "version": "0.2.0",
   "description": "Comprehensive Mycology Laboratory Management System",
   "private": true,
   "type": "module",

@@ -74,7 +74,7 @@ interface UnifiedItem {
 type Page = 'dashboard' | 'today' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
 
 interface UnifiedItemViewProps {
-  onNavigate?: (page: Page) => void;
+  onNavigate?: (page: Page, itemId?: string) => void;
 }
 
 export const UnifiedItemView: React.FC<UnifiedItemViewProps> = ({ onNavigate }) => {
@@ -425,15 +425,11 @@ export const UnifiedItemView: React.FC<UnifiedItemViewProps> = ({ onNavigate }) 
                 <button
                   onClick={() => {
                     const targetPage = selectedItem.isGrow ? 'grows' : 'cultures';
+                    const itemId = selectedItem.id;
                     setSelectedItem(null);
                     if (onNavigate) {
-                      onNavigate(targetPage);
-                      // Dispatch event to select the item on the target page
-                      setTimeout(() => {
-                        window.dispatchEvent(new CustomEvent('mycolab:select-item', {
-                          detail: { id: selectedItem.id, type: selectedItem.isGrow ? 'grow' : 'culture' }
-                        }));
-                      }, 100);
+                      // Navigate with item ID for deep-linking (URL will be /grows/id or /cultures/id)
+                      onNavigate(targetPage, itemId);
                     }
                   }}
                   className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium"
@@ -443,13 +439,15 @@ export const UnifiedItemView: React.FC<UnifiedItemViewProps> = ({ onNavigate }) 
                 <button
                   onClick={() => {
                     const targetPage = selectedItem.isGrow ? 'grows' : 'cultures';
+                    const itemId = selectedItem.id;
                     setSelectedItem(null);
                     if (onNavigate) {
-                      onNavigate(targetPage);
-                      // Dispatch event to select and edit the item on the target page
+                      // Navigate with item ID for deep-linking
+                      onNavigate(targetPage, itemId);
+                      // Dispatch edit event to open edit mode
                       setTimeout(() => {
                         window.dispatchEvent(new CustomEvent('mycolab:edit-item', {
-                          detail: { id: selectedItem.id, type: selectedItem.isGrow ? 'grow' : 'culture' }
+                          detail: { id: itemId, type: selectedItem.isGrow ? 'grow' : 'culture' }
                         }));
                       }, 100);
                     }

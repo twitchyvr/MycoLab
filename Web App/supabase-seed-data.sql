@@ -5,8 +5,9 @@
 --
 -- DATA TIERS:
 -- 1. SYSTEM DATA (user_id = NULL): Read-only reference data all users can see
---    - Species, Strains, Vessels, Container Types, Substrate Types
---    - Inventory Categories, Recipe Categories, Grain Types
+--    - Containers, Substrate Types, Inventory Categories, Recipe Categories, Grain Types
+--    - Location Types, Location Classifications
+--    - (Species & Strains in separate file: supabase-species-data.sql)
 --    Users cannot modify/delete these - they are global defaults
 --
 -- 2. DEFAULT USER DATA: Created when a user signs up
@@ -22,178 +23,83 @@
 -- SECTION 1: SYSTEM-LEVEL SEED DATA (user_id = NULL)
 -- These are global defaults visible to all users but not editable
 -- ============================================================================
+-- NOTE: Species and Strains data has been moved to supabase-species-data.sql
+-- Run that file separately to load species/strains data.
+-- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- SPECIES - Common cultivated mushroom species
+-- CONTAINERS - Unified container types (culture and grow)
+-- Replaces former 'vessels' and 'container_types' tables
 -- ----------------------------------------------------------------------------
-INSERT INTO species (id, name, scientific_name, common_names, category, notes, user_id)
+INSERT INTO containers (id, name, category, volume_ml, is_reusable, usage_context, notes, user_id)
 VALUES
-  -- Gourmet Species
-  ('00000000-0000-0000-0000-000000000001', 'Oyster', 'Pleurotus ostreatus', ARRAY['Pearl Oyster', 'Tree Oyster'], 'gourmet', 'Fast-growing, beginner-friendly. Many color varieties available.', NULL),
-  ('00000000-0000-0000-0000-000000000002', 'King Oyster', 'Pleurotus eryngii', ARRAY['King Trumpet', 'French Horn'], 'gourmet', 'Meaty texture, excellent culinary mushroom. Slower than regular oyster.', NULL),
-  ('00000000-0000-0000-0000-000000000003', 'Pink Oyster', 'Pleurotus djamor', ARRAY['Flamingo Oyster'], 'gourmet', 'Tropical species, needs warmth. Vibrant pink color, delicate flavor.', NULL),
-  ('00000000-0000-0000-0000-000000000004', 'Blue Oyster', 'Pleurotus columbinus', ARRAY['Blue Pearl'], 'gourmet', 'Cold-tolerant variety. Deep blue caps when young, fading to gray.', NULL),
-  ('00000000-0000-0000-0000-000000000005', 'Shiitake', 'Lentinula edodes', ARRAY['Oak Mushroom', 'Black Forest'], 'gourmet', 'Traditional Asian mushroom. Longer colonization but excellent flavor and shelf life.', NULL),
-  ('00000000-0000-0000-0000-000000000006', 'Maitake', 'Grifola frondosa', ARRAY['Hen of the Woods', 'Dancing Mushroom'], 'gourmet', 'Prized gourmet with medicinal properties. Challenging to cultivate.', NULL),
-  ('00000000-0000-0000-0000-000000000007', 'Chestnut', 'Pholiota adiposa', ARRAY['Cinnamon Cap'], 'gourmet', 'Nutty flavor, crunchy texture. Good for supplemented substrates.', NULL),
-  ('00000000-0000-0000-0000-000000000008', 'Pioppino', 'Cyclocybe aegerita', ARRAY['Black Poplar', 'Velvet Pioppini'], 'gourmet', 'Italian delicacy with firm texture. Grows in clusters.', NULL),
-  ('00000000-0000-0000-0000-000000000009', 'Enoki', 'Flammulina velutipes', ARRAY['Winter Mushroom', 'Velvet Foot'], 'gourmet', 'Long thin stems, mild flavor. Needs cold fruiting temps.', NULL),
-  ('00000000-0000-0000-0000-000000000010', 'Nameko', 'Pholiota nameko', ARRAY['Butterscotch Mushroom'], 'gourmet', 'Slimy cap, used in miso soup. Prefers cooler temperatures.', NULL),
-
-  -- Medicinal Species
-  ('00000000-0000-0000-0000-000000000011', 'Lions Mane', 'Hericium erinaceus', ARRAY['Bearded Tooth', 'Pom Pom'], 'medicinal', 'Brain-boosting medicinal. Needs high humidity, no caps - just teeth.', NULL),
-  ('00000000-0000-0000-0000-000000000012', 'Reishi', 'Ganoderma lucidum', ARRAY['Lingzhi', 'Mushroom of Immortality'], 'medicinal', 'Woody polypore, primarily for tea/tinctures. Long grow cycle.', NULL),
-  ('00000000-0000-0000-0000-000000000013', 'Turkey Tail', 'Trametes versicolor', ARRAY['Yun Zhi', 'Kawaratake'], 'medicinal', 'Thin shelf fungus, powerful immune support. Easy outdoor cultivation.', NULL),
-  ('00000000-0000-0000-0000-000000000014', 'Cordyceps', 'Cordyceps militaris', ARRAY['Caterpillar Fungus'], 'medicinal', 'Orange club-shaped fruiting bodies. Requires specialized substrate and light.', NULL),
-  ('00000000-0000-0000-0000-000000000015', 'Chaga', 'Inonotus obliquus', ARRAY['Clinker Polypore'], 'medicinal', 'Wild-harvested primarily. Sclerotia, not fruiting body.', NULL),
-
-  -- Research/Other Species
-  ('00000000-0000-0000-0000-000000000016', 'Wine Cap', 'Stropharia rugosoannulata', ARRAY['King Stropharia', 'Garden Giant'], 'other', 'Outdoor garden species. Great for wood chips and garden beds.', NULL),
-  ('00000000-0000-0000-0000-000000000017', 'Chicken of the Woods', 'Laetiporus sulphureus', ARRAY['Sulphur Shelf'], 'gourmet', 'Bright orange shelf fungus. Challenging indoor cultivation.', NULL),
-  ('00000000-0000-0000-0000-000000000018', 'Black Pearl', 'Pleurotus ostreatus var', ARRAY['Black King'], 'gourmet', 'Dark oyster variety with robust flavor. Similar care to standard oyster.', NULL),
-  ('00000000-0000-0000-0000-000000000019', 'Golden Oyster', 'Pleurotus citrinopileatus', ARRAY['Yellow Oyster'], 'gourmet', 'Tropical species, bright yellow. Needs warmth, delicate texture.', NULL),
-  ('00000000-0000-0000-0000-000000000020', 'Elm Oyster', 'Hypsizygus ulmarius', ARRAY['Elm Leech'], 'gourmet', 'Large white caps, mild flavor. Cold tolerant.', NULL)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  scientific_name = EXCLUDED.scientific_name,
-  common_names = EXCLUDED.common_names,
-  category = EXCLUDED.category,
-  notes = EXCLUDED.notes;
-
--- ----------------------------------------------------------------------------
--- STRAINS - Popular strains for each species
--- ----------------------------------------------------------------------------
-INSERT INTO strains (id, name, species_id, species, difficulty, colonization_days_min, colonization_days_max, fruiting_days_min, fruiting_days_max, optimal_temp_colonization, optimal_temp_fruiting, notes, user_id)
-VALUES
-  -- Oyster Strains
-  ('00000000-0000-0000-0001-000000000001', 'Blue Oyster', '00000000-0000-0000-0000-000000000004', 'Pleurotus columbinus', 'beginner', 7, 14, 5, 10, 22, 18, 'Cold-tolerant variety, fruits at lower temps. Aggressive colonizer.', NULL),
-  ('00000000-0000-0000-0001-000000000002', 'Pink Oyster', '00000000-0000-0000-0000-000000000003', 'Pleurotus djamor', 'beginner', 5, 10, 4, 7, 28, 25, 'Tropical species, needs warmth (75-85°F). Fast grower, short shelf life.', NULL),
-  ('00000000-0000-0000-0001-000000000003', 'Pearl Oyster', '00000000-0000-0000-0000-000000000001', 'Pleurotus ostreatus', 'beginner', 7, 14, 5, 10, 24, 20, 'Classic oyster mushroom. Very forgiving, great for beginners.', NULL),
-  ('00000000-0000-0000-0001-000000000004', 'Golden Oyster', '00000000-0000-0000-0000-000000000019', 'Pleurotus citrinopileatus', 'beginner', 7, 12, 5, 8, 26, 24, 'Bright yellow clusters, tropical species. Delicate, use fresh.', NULL),
-  ('00000000-0000-0000-0001-000000000005', 'Italian Oyster', '00000000-0000-0000-0000-000000000001', 'Pleurotus ostreatus', 'beginner', 10, 14, 5, 10, 24, 21, 'Brown caps, excellent flavor. Slightly longer colonization.', NULL),
-  ('00000000-0000-0000-0001-000000000006', 'King Oyster', '00000000-0000-0000-0000-000000000002', 'Pleurotus eryngii', 'intermediate', 14, 21, 7, 14, 24, 18, 'Thick stems, meaty texture. Needs specific fruiting conditions.', NULL),
-
-  -- Lions Mane Strains
-  ('00000000-0000-0000-0001-000000000010', 'Lions Mane', '00000000-0000-0000-0000-000000000011', 'Hericium erinaceus', 'intermediate', 14, 21, 7, 14, 22, 18, 'Standard lions mane. High humidity crucial for tooth formation.', NULL),
-  ('00000000-0000-0000-0001-000000000011', 'Bears Head', '00000000-0000-0000-0000-000000000011', 'Hericium americanum', 'intermediate', 14, 21, 7, 14, 22, 18, 'Branching variety with shorter teeth. Similar care to standard.', NULL),
-
-  -- Shiitake Strains
-  ('00000000-0000-0000-0001-000000000020', 'Shiitake (Cold Weather)', '00000000-0000-0000-0000-000000000005', 'Lentinula edodes', 'intermediate', 60, 90, 7, 14, 24, 16, 'Cold-shock variety for fruiting. Traditional log or sawdust cultivation.', NULL),
-  ('00000000-0000-0000-0001-000000000021', 'Shiitake (Warm Weather)', '00000000-0000-0000-0000-000000000005', 'Lentinula edodes', 'intermediate', 45, 75, 7, 14, 24, 21, 'Faster colonization, fruits at warmer temps. Good for indoor cultivation.', NULL),
-  ('00000000-0000-0000-0001-000000000022', 'Donko Shiitake', '00000000-0000-0000-0000-000000000005', 'Lentinula edodes', 'advanced', 60, 90, 10, 18, 24, 14, 'Thick, cracked caps. Slow fruiting produces premium quality.', NULL),
-
-  -- Reishi Strains
-  ('00000000-0000-0000-0001-000000000030', 'Red Reishi', '00000000-0000-0000-0000-000000000012', 'Ganoderma lucidum', 'intermediate', 30, 60, 30, 90, 26, 26, 'Classic medicinal reishi. Conk or antler forms depending on CO2.', NULL),
-
-  -- Maitake
-  ('00000000-0000-0000-0001-000000000040', 'Maitake', '00000000-0000-0000-0000-000000000006', 'Grifola frondosa', 'advanced', 45, 90, 14, 28, 22, 18, 'Challenging species. Needs specific conditions and patience.', NULL),
-
-  -- Wine Cap
-  ('00000000-0000-0000-0001-000000000050', 'Wine Cap (Garden Giant)', '00000000-0000-0000-0000-000000000016', 'Stropharia rugosoannulata', 'beginner', 30, 60, 14, 28, 20, 18, 'Best for outdoor beds. Wood chips + straw substrate.', NULL),
-
-  -- Chestnut
-  ('00000000-0000-0000-0001-000000000060', 'Chestnut', '00000000-0000-0000-0000-000000000007', 'Pholiota adiposa', 'intermediate', 14, 21, 10, 14, 24, 20, 'Nutty flavor, firm texture. Supplemented sawdust preferred.', NULL),
-
-  -- Pioppino
-  ('00000000-0000-0000-0001-000000000070', 'Pioppino', '00000000-0000-0000-0000-000000000008', 'Cyclocybe aegerita', 'intermediate', 21, 30, 10, 18, 24, 18, 'Italian gourmet. Long stems, clusters. Needs cold shock.', NULL),
-
-  -- Cordyceps
-  ('00000000-0000-0000-0001-000000000080', 'Cordyceps militaris', '00000000-0000-0000-0000-000000000014', 'Cordyceps militaris', 'advanced', 21, 35, 30, 60, 24, 20, 'Requires rice substrate and specific light cycle. Orange clubs.', NULL),
-
-  -- Enoki
-  ('00000000-0000-0000-0001-000000000090', 'Enoki', '00000000-0000-0000-0000-000000000009', 'Flammulina velutipes', 'intermediate', 14, 21, 14, 21, 22, 10, 'Cold fruiting (40-50°F). High CO2 elongates stems.', NULL)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  species_id = EXCLUDED.species_id,
-  species = EXCLUDED.species,
-  difficulty = EXCLUDED.difficulty,
-  colonization_days_min = EXCLUDED.colonization_days_min,
-  colonization_days_max = EXCLUDED.colonization_days_max,
-  fruiting_days_min = EXCLUDED.fruiting_days_min,
-  fruiting_days_max = EXCLUDED.fruiting_days_max,
-  optimal_temp_colonization = EXCLUDED.optimal_temp_colonization,
-  optimal_temp_fruiting = EXCLUDED.optimal_temp_fruiting,
-  notes = EXCLUDED.notes;
-
--- ----------------------------------------------------------------------------
--- VESSELS - Culture container types
--- ----------------------------------------------------------------------------
-INSERT INTO vessels (id, name, type, volume_ml, is_reusable, notes, user_id)
-VALUES
+  -- Culture Containers (formerly vessels)
   -- Jars
-  ('00000000-0000-0000-0002-000000000001', 'Half Pint Mason Jar (8 oz)', 'jar', 237, true, 'Small jar for BRF cakes or small LC batches', NULL),
-  ('00000000-0000-0000-0002-000000000002', 'Pint Mason Jar (16 oz)', 'jar', 473, true, 'Standard grain spawn jar, good for smaller batches', NULL),
-  ('00000000-0000-0000-0002-000000000003', 'Quart Mason Jar (32 oz)', 'jar', 946, true, 'Most common grain spawn jar size', NULL),
-  ('00000000-0000-0000-0002-000000000004', 'Half Gallon Mason Jar (64 oz)', 'jar', 1893, true, 'Large LC or grain jar, reduces number of vessels', NULL),
-  ('00000000-0000-0000-0002-000000000005', '500ml Media Bottle', 'bottle', 500, true, 'Lab media bottle for LC or agar, autoclavable', NULL),
-  ('00000000-0000-0000-0002-000000000006', '1000ml Media Bottle', 'bottle', 1000, true, 'Large lab media bottle for bulk LC', NULL),
+  ('00000000-0000-0000-0002-000000000001', 'Half Pint Mason Jar (8 oz)', 'jar', 237, true, ARRAY['culture'], 'Small jar for BRF cakes or small LC batches', NULL),
+  ('00000000-0000-0000-0002-000000000002', 'Pint Mason Jar (16 oz)', 'jar', 473, true, ARRAY['culture'], 'Standard grain spawn jar, good for smaller batches', NULL),
+  ('00000000-0000-0000-0002-000000000003', 'Quart Mason Jar (32 oz)', 'jar', 946, true, ARRAY['culture', 'grow'], 'Most common grain spawn jar size', NULL),
+  ('00000000-0000-0000-0002-000000000004', 'Half Gallon Mason Jar (64 oz)', 'jar', 1893, true, ARRAY['culture'], 'Large LC or grain jar, reduces number of containers', NULL),
+  ('00000000-0000-0000-0002-000000000005', '500ml Media Bottle', 'bottle', 500, true, ARRAY['culture'], 'Lab media bottle for LC or agar, autoclavable', NULL),
+  ('00000000-0000-0000-0002-000000000006', '1000ml Media Bottle', 'bottle', 1000, true, ARRAY['culture'], 'Large lab media bottle for bulk LC', NULL),
 
   -- Petri Dishes
-  ('00000000-0000-0000-0002-000000000010', '60mm Petri Dish', 'plate', 10, false, 'Small agar plate, good for slants or samples', NULL),
-  ('00000000-0000-0000-0002-000000000011', '90mm Petri Dish', 'plate', 20, false, 'Standard agar plate size (European)', NULL),
-  ('00000000-0000-0000-0002-000000000012', '100mm Petri Dish', 'plate', 25, false, 'Standard agar plate size (American)', NULL),
-  ('00000000-0000-0000-0002-000000000013', '150mm Petri Dish', 'plate', 60, false, 'Large agar plate for sectoring or multiple transfers', NULL),
+  ('00000000-0000-0000-0002-000000000010', '60mm Petri Dish', 'plate', 10, false, ARRAY['culture'], 'Small agar plate, good for slants or samples', NULL),
+  ('00000000-0000-0000-0002-000000000011', '90mm Petri Dish', 'plate', 20, false, ARRAY['culture'], 'Standard agar plate size (European)', NULL),
+  ('00000000-0000-0000-0002-000000000012', '100mm Petri Dish', 'plate', 25, false, ARRAY['culture'], 'Standard agar plate size (American)', NULL),
+  ('00000000-0000-0000-0002-000000000013', '150mm Petri Dish', 'plate', 60, false, ARRAY['culture'], 'Large agar plate for sectoring or multiple transfers', NULL),
 
   -- Tubes
-  ('00000000-0000-0000-0002-000000000020', 'Test Tube Slant (16x150mm)', 'tube', 15, true, 'Standard slant tube for long-term storage', NULL),
-  ('00000000-0000-0000-0002-000000000021', 'Screw Cap Culture Tube', 'tube', 20, true, 'Reusable culture tube with screw cap', NULL),
-  ('00000000-0000-0000-0002-000000000022', 'Cryo Vial (2ml)', 'tube', 2, false, 'For cryogenic storage with glycerol', NULL),
+  ('00000000-0000-0000-0002-000000000020', 'Test Tube Slant (16x150mm)', 'tube', 15, true, ARRAY['culture'], 'Standard slant tube for long-term storage', NULL),
+  ('00000000-0000-0000-0002-000000000021', 'Screw Cap Culture Tube', 'tube', 20, true, ARRAY['culture'], 'Reusable culture tube with screw cap', NULL),
+  ('00000000-0000-0000-0002-000000000022', 'Cryo Vial (2ml)', 'tube', 2, false, ARRAY['culture'], 'For cryogenic storage with glycerol', NULL),
 
   -- Syringes
-  ('00000000-0000-0000-0002-000000000030', '10cc Syringe', 'syringe', 10, false, 'Standard spore or LC syringe', NULL),
-  ('00000000-0000-0000-0002-000000000031', '20cc Syringe', 'syringe', 20, false, 'Larger syringe for LC distribution', NULL),
-  ('00000000-0000-0000-0002-000000000032', '60cc Syringe', 'syringe', 60, false, 'Large syringe for bulk LC inoculation', NULL),
+  ('00000000-0000-0000-0002-000000000030', '10cc Syringe', 'syringe', 10, false, ARRAY['culture'], 'Standard spore or LC syringe', NULL),
+  ('00000000-0000-0000-0002-000000000031', '20cc Syringe', 'syringe', 20, false, ARRAY['culture'], 'Larger syringe for LC distribution', NULL),
+  ('00000000-0000-0000-0002-000000000032', '60cc Syringe', 'syringe', 60, false, ARRAY['culture'], 'Large syringe for bulk LC inoculation', NULL),
 
-  -- Bags
-  ('00000000-0000-0000-0002-000000000040', '3lb Spawn Bag (0.2 micron)', 'bag', 2000, false, 'Small unicorn bag with filter patch', NULL),
-  ('00000000-0000-0000-0002-000000000041', '5lb Spawn Bag (0.2 micron)', 'bag', 3500, false, 'Standard unicorn bag with filter patch', NULL),
-  ('00000000-0000-0000-0002-000000000042', '10lb Spawn Bag (0.5 micron)', 'bag', 7000, false, 'Large spawn bag, 0.5 micron filter', NULL),
-  ('00000000-0000-0000-0002-000000000043', 'All-in-One Grow Bag', 'bag', 4000, false, 'Pre-made grain + substrate bag, inject and grow', NULL)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  type = EXCLUDED.type,
-  volume_ml = EXCLUDED.volume_ml,
-  is_reusable = EXCLUDED.is_reusable,
-  notes = EXCLUDED.notes;
+  -- Bags (culture context - spawn bags)
+  ('00000000-0000-0000-0002-000000000040', '3lb Spawn Bag (0.2 micron)', 'bag', 2000, false, ARRAY['culture'], 'Small unicorn bag with filter patch', NULL),
+  ('00000000-0000-0000-0002-000000000041', '5lb Spawn Bag (0.2 micron)', 'bag', 3500, false, ARRAY['culture', 'grow'], 'Standard unicorn bag with filter patch', NULL),
+  ('00000000-0000-0000-0002-000000000042', '10lb Spawn Bag (0.5 micron)', 'bag', 7000, false, ARRAY['culture', 'grow'], 'Large spawn bag, 0.5 micron filter', NULL),
+  ('00000000-0000-0000-0002-000000000043', 'All-in-One Grow Bag', 'bag', 4000, false, ARRAY['grow'], 'Pre-made grain + substrate bag, inject and grow', NULL),
 
--- ----------------------------------------------------------------------------
--- CONTAINER TYPES - Grow containers
--- ----------------------------------------------------------------------------
-INSERT INTO container_types (id, name, category, volume_l, notes, user_id)
-VALUES
+  -- Grow Containers (formerly container_types)
   -- Tubs
-  ('00000000-0000-0000-0003-000000000001', '6qt Shoebox', 'tub', 5.7, 'Small personal grow, great for testing genetics', NULL),
-  ('00000000-0000-0000-0003-000000000002', '15qt Tub', 'tub', 14.2, 'Medium grow container, good yield per footprint', NULL),
-  ('00000000-0000-0000-0003-000000000003', '32qt Tub', 'tub', 30.3, 'Large tub, requires more spawn', NULL),
-  ('00000000-0000-0000-0003-000000000004', '56qt Tub', 'tub', 53, 'Standard monotub size, popular choice', NULL),
-  ('00000000-0000-0000-0003-000000000005', '66qt Monotub', 'tub', 62.5, 'Large monotub for bulk grows', NULL),
-  ('00000000-0000-0000-0003-000000000006', '105qt Tub', 'tub', 99.4, 'Extra large monotub for maximum yield', NULL),
-  ('00000000-0000-0000-0003-000000000007', 'Dub Tub (2x 6qt)', 'tub', 11.4, 'Two shoeboxes stacked for extra height', NULL),
+  ('00000000-0000-0000-0003-000000000001', '6qt Shoebox', 'tub', 5700, true, ARRAY['grow'], 'Small personal grow, great for testing genetics', NULL),
+  ('00000000-0000-0000-0003-000000000002', '15qt Tub', 'tub', 14200, true, ARRAY['grow'], 'Medium grow container, good yield per footprint', NULL),
+  ('00000000-0000-0000-0003-000000000003', '32qt Tub', 'tub', 30300, true, ARRAY['grow'], 'Large tub, requires more spawn', NULL),
+  ('00000000-0000-0000-0003-000000000004', '56qt Tub', 'tub', 53000, true, ARRAY['grow'], 'Standard monotub size, popular choice', NULL),
+  ('00000000-0000-0000-0003-000000000005', '66qt Monotub', 'tub', 62500, true, ARRAY['grow'], 'Large monotub for bulk grows', NULL),
+  ('00000000-0000-0000-0003-000000000006', '105qt Tub', 'tub', 99400, true, ARRAY['grow'], 'Extra large monotub for maximum yield', NULL),
+  ('00000000-0000-0000-0003-000000000007', 'Dub Tub (2x 6qt)', 'tub', 11400, true, ARRAY['grow'], 'Two shoeboxes stacked for extra height', NULL),
 
-  -- Bags
-  ('00000000-0000-0000-0003-000000000010', '5lb Grow Bag', 'bag', 4, 'All-in-one style grow bag', NULL),
-  ('00000000-0000-0000-0003-000000000011', '10lb Grow Bag', 'bag', 8, 'Large grow bag for sawdust fruiting blocks', NULL),
-  ('00000000-0000-0000-0003-000000000012', 'Fruiting Block Bag (2.5kg)', 'bag', 5, 'Commercial style fruiting block', NULL),
+  -- Bags (grow context - fruiting bags)
+  ('00000000-0000-0000-0003-000000000010', '5lb Grow Bag', 'bag', 4000, false, ARRAY['grow'], 'All-in-one style grow bag', NULL),
+  ('00000000-0000-0000-0003-000000000011', '10lb Grow Bag', 'bag', 8000, false, ARRAY['grow'], 'Large grow bag for sawdust fruiting blocks', NULL),
+  ('00000000-0000-0000-0003-000000000012', 'Fruiting Block Bag (2.5kg)', 'bag', 5000, false, ARRAY['grow'], 'Commercial style fruiting block', NULL),
 
   -- Buckets
-  ('00000000-0000-0000-0003-000000000020', '5 Gallon Bucket', 'bucket', 19, 'Bucket tek for oysters, low-tech method', NULL),
-  ('00000000-0000-0000-0003-000000000021', '3 Gallon Bucket', 'bucket', 11.4, 'Smaller bucket for limited space', NULL),
+  ('00000000-0000-0000-0003-000000000020', '5 Gallon Bucket', 'bucket', 19000, true, ARRAY['grow'], 'Bucket tek for oysters, low-tech method', NULL),
+  ('00000000-0000-0000-0003-000000000021', '3 Gallon Bucket', 'bucket', 11400, true, ARRAY['grow'], 'Smaller bucket for limited space', NULL),
 
-  -- Jars
-  ('00000000-0000-0000-0003-000000000030', 'Half Pint PF Tek Jar', 'jar', 0.24, 'Classic PF tek BRF cake container', NULL),
-  ('00000000-0000-0000-0003-000000000031', 'Wide Mouth Pint Jar', 'jar', 0.47, 'Alternative BRF or mini-grain grow', NULL),
+  -- Jars (grow context - PF tek)
+  ('00000000-0000-0000-0003-000000000030', 'Half Pint PF Tek Jar', 'jar', 240, true, ARRAY['grow'], 'Classic PF tek BRF cake container', NULL),
+  ('00000000-0000-0000-0003-000000000031', 'Wide Mouth Pint Jar', 'jar', 470, true, ARRAY['grow'], 'Alternative BRF or mini-grain grow', NULL),
 
   -- Beds
-  ('00000000-0000-0000-0003-000000000040', 'Outdoor Garden Bed (4x8)', 'bed', 500, 'Raised bed for wine caps, king stropharia', NULL),
-  ('00000000-0000-0000-0003-000000000041', 'Small Outdoor Patch (2x4)', 'bed', 125, 'Smaller outdoor cultivation area', NULL),
+  ('00000000-0000-0000-0003-000000000040', 'Outdoor Garden Bed (4x8)', 'bed', 500000, false, ARRAY['grow'], 'Raised bed for wine caps, king stropharia', NULL),
+  ('00000000-0000-0000-0003-000000000041', 'Small Outdoor Patch (2x4)', 'bed', 125000, false, ARRAY['grow'], 'Smaller outdoor cultivation area', NULL),
 
   -- Other
-  ('00000000-0000-0000-0003-000000000050', 'Martha Tent', 'other', 500, 'Greenhouse-style fruiting chamber', NULL),
-  ('00000000-0000-0000-0003-000000000051', 'Shotgun Fruiting Chamber', 'other', 50, 'Simple SGFC for PF tek cakes', NULL)
+  ('00000000-0000-0000-0003-000000000050', 'Martha Tent', 'other', 500000, true, ARRAY['grow'], 'Greenhouse-style fruiting chamber', NULL),
+  ('00000000-0000-0000-0003-000000000051', 'Shotgun Fruiting Chamber', 'other', 50000, true, ARRAY['grow'], 'Simple SGFC for PF tek cakes', NULL)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   category = EXCLUDED.category,
-  volume_l = EXCLUDED.volume_l,
+  volume_ml = EXCLUDED.volume_ml,
+  is_reusable = EXCLUDED.is_reusable,
+  usage_context = EXCLUDED.usage_context,
   notes = EXCLUDED.notes;
 
 -- ----------------------------------------------------------------------------
@@ -457,10 +363,8 @@ UPDATE schema_version SET version = 4, updated_at = NOW() WHERE id = 1;
 -- If you see this, the seed data was applied successfully!
 --
 -- Summary of what was created:
--- - 20 Species (gourmet, medicinal, research)
--- - 18 Strains (oyster, lions mane, shiitake, etc.)
--- - 20 Vessels (jars, plates, tubes, syringes, bags)
--- - 18 Container Types (tubs, bags, buckets, beds)
+-- - 40 Containers (unified: jars, plates, tubes, syringes, tubs, bags, buckets, beds)
+-- NOTE: Species/Strains are now in supabase-species-data.sql
 -- - 30+ Substrate Types (bulk, grain, agar, liquid)
 -- - 10 Inventory Categories
 -- - 7 Recipe Categories

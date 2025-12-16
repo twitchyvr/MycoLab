@@ -792,6 +792,117 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-902',
+    title: 'Species/Strains Data Extraction',
+    description: 'Extracted species and strains seed data into a separate SQL file to reduce main seed file size and improve maintainability.',
+    category: 'data',
+    status: 'completed',
+    priority: 'low',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: `SQL file reorganization:
+
+**New File Structure:**
+- supabase-schema.sql - Database schema (idempotent)
+- supabase-species-data.sql - Species & strains reference data (NEW)
+- supabase-seed-data.sql - Containers, substrates, categories, etc.
+
+**Benefits:**
+- Smaller, more focused SQL files
+- Easier to maintain species/strain data separately
+- Faster editing and review of seed data
+- All files remain idempotent (safe to re-run)
+
+**Run Order:**
+1. supabase-schema.sql
+2. supabase-species-data.sql
+3. supabase-seed-data.sql`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-903',
+    title: 'Version Reset & Versioning Policy',
+    description: 'Reset version from v0.9.0 to v0.2.0 to accurately reflect early alpha/beta status. Established versioning policy in CLAUDE.md.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 0.5,
+    actualHours: 0.25,
+    completedAt: timestamp(),
+    notes: `Version management update:
+
+**Problem:**
+- App was at v0.9.0 implying near-production readiness
+- Reality: 2-day rapid prototype with no tests or security audit
+- Risk of AI assistants auto-bumping to v1.0 in future sessions
+
+**Solution:**
+- Reset to v0.2.0 (early alpha/beta)
+- Added Versioning Policy section to CLAUDE.md
+- Clear guidelines for AI assistants: NEVER bump version without explicit user approval
+
+**Version Guidelines (documented in CLAUDE.md):**
+- v0.1.x - v0.4.x: Early development
+- v0.5.x - v0.7.x: Feature complete but untested
+- v0.8.x - v0.9.x: Beta testing, bug fixes, security audits
+- v1.0.0: Production ready (requires thorough testing + security review)
+
+**Current Status:**
+- No automated tests
+- No security audit
+- No real-world testing
+- Many potential bugs and vulnerabilities`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-904',
+    title: 'URL Deep-Linking Support',
+    description: 'Implemented React Router for URL-based navigation. Users can now copy/paste URLs to navigate directly to specific pages or items.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 2,
+    actualHours: 1.5,
+    completedAt: timestamp(),
+    notes: `Implemented comprehensive deep-linking support using React Router DOM v6.
+
+**What Changed:**
+- App now uses BrowserRouter for URL-based navigation
+- URLs update when navigating between pages (e.g., /cultures, /grows, /settings)
+- Item-specific URLs supported (e.g., /cultures/uuid, /grows/uuid)
+- Browser back/forward navigation works correctly
+
+**Route Examples:**
+- / → Dashboard
+- /cultures → Culture Management
+- /cultures/abc-123 → Culture Management with specific culture selected
+- /grows/xyz-456 → Grow Management with specific grow selected
+- /settings → Settings page
+- /devlog → Dev Roadmap
+
+**Technical Implementation:**
+- Added routeConfig mapping Page types to URL paths
+- Added pathToPage reverse lookup for URL parsing
+- Updated App component to use BrowserRouter
+- Created AppWithRouter inner component with useNavigate/useLocation
+- onNavigate prop updated across components to support optional itemId
+- Existing mycolab:select-item events work seamlessly with URL navigation
+
+**Components Updated:**
+- App.tsx (main routing)
+- UnifiedItemView (Lab Inventory)
+- ObservationTimeline
+- TodayView
+- LabCommandCenter
+- CultureManagement (already had listeners)
+- GrowManagement (already had listeners)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
