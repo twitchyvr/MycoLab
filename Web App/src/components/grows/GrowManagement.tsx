@@ -278,6 +278,22 @@ export const GrowManagement: React.FC = () => {
     };
   }, [grows]);
 
+  // Keep selectedGrow in sync with state.grows when grows data changes
+  useEffect(() => {
+    if (selectedGrow) {
+      const updated = grows.find(g => g.id === selectedGrow.id);
+      if (updated) {
+        // Only update if the grow data has actually changed
+        if (JSON.stringify(updated) !== JSON.stringify(selectedGrow)) {
+          setSelectedGrow(updated);
+        }
+      } else {
+        // Grow was deleted
+        setSelectedGrow(null);
+      }
+    }
+  }, [grows, selectedGrow]);
+
   // Calculated spawn rate
   const calculatedSpawnRate = useMemo(() => {
     if (!newGrow.spawnWeight || !newGrow.substrateWeight) return 0;
@@ -392,24 +408,18 @@ export const GrowManagement: React.FC = () => {
   };
 
   // Advance stage handler
-  const handleAdvanceStage = () => {
+  const handleAdvanceStage = async () => {
     if (!selectedGrow) return;
-    advanceGrowStage(selectedGrow.id);
-    setTimeout(() => {
-      const updated = state.grows.find(g => g.id === selectedGrow.id);
-      if (updated) setSelectedGrow(updated);
-    }, 0);
+    await advanceGrowStage(selectedGrow.id);
+    // selectedGrow will be auto-updated by the sync useEffect when state.grows changes
   };
 
   // Mark contaminated handler
-  const handleMarkContaminated = () => {
+  const handleMarkContaminated = async () => {
     if (!selectedGrow) return;
     if (confirm('Mark this grow as contaminated? This action cannot be undone.')) {
-      markGrowContaminated(selectedGrow.id);
-      setTimeout(() => {
-        const updated = state.grows.find(g => g.id === selectedGrow.id);
-        if (updated) setSelectedGrow(updated);
-      }, 0);
+      await markGrowContaminated(selectedGrow.id);
+      // selectedGrow will be auto-updated by the sync useEffect when state.grows changes
     }
   };
 
@@ -425,21 +435,17 @@ export const GrowManagement: React.FC = () => {
       notes: newObservation.notes,
       colonizationPercent: newObservation.colonizationPercent,
     });
-
-    setTimeout(() => {
-      const updated = state.grows.find(g => g.id === selectedGrow.id);
-      if (updated) setSelectedGrow(updated);
-    }, 0);
+    // selectedGrow will be auto-updated by the sync useEffect when state.grows changes
 
     setShowObservationModal(false);
     setNewObservation({ type: 'general', title: '', notes: '', colonizationPercent: undefined });
   };
 
   // Add harvest handler
-  const handleAddHarvest = () => {
+  const handleAddHarvest = async () => {
     if (!selectedGrow || !newHarvest.wetWeight) return;
 
-    addFlush(selectedGrow.id, {
+    await addFlush(selectedGrow.id, {
       harvestDate: new Date(),
       wetWeight: newHarvest.wetWeight,
       dryWeight: newHarvest.dryWeight || Math.round(newHarvest.wetWeight * 0.1),
@@ -447,11 +453,7 @@ export const GrowManagement: React.FC = () => {
       quality: newHarvest.quality,
       notes: newHarvest.notes,
     });
-
-    setTimeout(() => {
-      const updated = state.grows.find(g => g.id === selectedGrow.id);
-      if (updated) setSelectedGrow(updated);
-    }, 0);
+    // selectedGrow will be auto-updated by the sync useEffect when state.grows changes
 
     setShowHarvestModal(false);
     setNewHarvest({ wetWeight: 0, dryWeight: 0, mushroomCount: undefined, quality: 'good', notes: '' });
