@@ -530,22 +530,37 @@ export const GrowManagement: React.FC = () => {
     setNewObservation({ type: 'general', title: '', notes: '', colonizationPercent: undefined });
   };
 
+  // Error state for harvest modal
+  const [harvestError, setHarvestError] = useState<string | null>(null);
+  const [isSavingHarvest, setIsSavingHarvest] = useState(false);
+
   // Add harvest handler
   const handleAddHarvest = async () => {
     if (!selectedGrow || !newHarvest.wetWeight) return;
 
-    await addFlush(selectedGrow.id, {
-      harvestDate: new Date(),
-      wetWeight: newHarvest.wetWeight,
-      dryWeight: newHarvest.dryWeight || Math.round(newHarvest.wetWeight * 0.1),
-      mushroomCount: newHarvest.mushroomCount,
-      quality: newHarvest.quality,
-      notes: newHarvest.notes,
-    });
-    // selectedGrow will be auto-updated by the sync useEffect when state.grows changes
+    setHarvestError(null);
+    setIsSavingHarvest(true);
 
-    setShowHarvestModal(false);
-    setNewHarvest({ wetWeight: 0, dryWeight: 0, mushroomCount: undefined, quality: 'good', notes: '' });
+    try {
+      await addFlush(selectedGrow.id, {
+        harvestDate: new Date(),
+        wetWeight: newHarvest.wetWeight,
+        dryWeight: newHarvest.dryWeight || Math.round(newHarvest.wetWeight * 0.1),
+        mushroomCount: newHarvest.mushroomCount,
+        quality: newHarvest.quality,
+        notes: newHarvest.notes,
+      });
+      // selectedGrow will be auto-updated by the sync useEffect when state.grows changes
+
+      setShowHarvestModal(false);
+      setNewHarvest({ wetWeight: 0, dryWeight: 0, mushroomCount: undefined, quality: 'good', notes: '' });
+    } catch (err) {
+      console.error('Failed to save harvest:', err);
+      const message = err instanceof Error ? err.message : 'Failed to save harvest. Please try again.';
+      setHarvestError(message);
+    } finally {
+      setIsSavingHarvest(false);
+    }
   };
 
   // Open exit survey for a grow
@@ -1663,21 +1678,45 @@ export const GrowManagement: React.FC = () => {
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
                 />
               </div>
+
+              {/* Error Message */}
+              {harvestError && (
+                <div className="p-3 bg-red-950/50 border border-red-800/50 rounded-lg">
+                  <p className="text-red-400 text-sm">{harvestError}</p>
+                  <p className="text-red-400/70 text-xs mt-1">
+                    Please check your connection and try again. If the problem persists, the database schema may need to be updated.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowHarvestModal(false)}
-                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
+                onClick={() => {
+                  setShowHarvestModal(false);
+                  setHarvestError(null);
+                }}
+                disabled={isSavingHarvest}
+                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white rounded-lg font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddHarvest}
-                disabled={!newHarvest.wetWeight}
-                className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
+                disabled={!newHarvest.wetWeight || isSavingHarvest}
+                className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium flex items-center justify-center gap-2"
               >
-                Record
+                {isSavingHarvest ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Saving...
+                  </>
+                ) : (
+                  'Record'
+                )}
               </button>
             </div>
           </div>

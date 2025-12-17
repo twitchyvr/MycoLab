@@ -154,18 +154,36 @@ const Sparkline: React.FC<{
   height?: number;
   width?: number;
 }> = ({ data, color = '#10b981', height = 40, width = 100 }) => {
+  // Handle empty data
   if (data.length === 0) return null;
-  
+
+  // Handle single data point - show a dot instead of a line
+  if (data.length === 1) {
+    return (
+      <svg width={width} height={height} className="overflow-visible">
+        <circle
+          cx={width / 2}
+          cy={height / 2}
+          r="4"
+          fill={color}
+        />
+      </svg>
+    );
+  }
+
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
-  
+
   const points = data.map((value, idx) => {
     const x = (idx / (data.length - 1)) * width;
     const y = height - ((value - min) / range) * height;
     return `${x},${y}`;
   }).join(' ');
-  
+
+  const lastX = width; // data.length - 1 / (data.length - 1) = 1
+  const lastY = height - ((data[data.length - 1] - min) / range) * height;
+
   return (
     <svg width={width} height={height} className="overflow-visible">
       <polyline
@@ -178,8 +196,8 @@ const Sparkline: React.FC<{
       />
       {/* End dot */}
       <circle
-        cx={(data.length - 1) / (data.length - 1) * width}
-        cy={height - ((data[data.length - 1] - min) / range) * height}
+        cx={lastX}
+        cy={lastY}
         r="3"
         fill={color}
       />

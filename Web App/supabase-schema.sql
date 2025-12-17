@@ -668,10 +668,30 @@ CREATE TABLE IF NOT EXISTS flushes (
   harvest_date DATE,
   wet_weight_g DECIMAL,
   dry_weight_g DECIMAL,
+  mushroom_count INTEGER,
+  quality TEXT CHECK (quality IN ('excellent', 'good', 'fair', 'poor')) DEFAULT 'good',
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
+
+-- Add missing columns to flushes table (idempotent migration)
+DO $$ BEGIN
+  ALTER TABLE flushes ADD COLUMN IF NOT EXISTS mushroom_count INTEGER;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE flushes ADD COLUMN IF NOT EXISTS quality TEXT DEFAULT 'good';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Add check constraint for quality values (if not exists)
+DO $$ BEGIN
+  ALTER TABLE flushes ADD CONSTRAINT flushes_quality_check
+    CHECK (quality IN ('excellent', 'good', 'fair', 'poor'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Recipe ingredients
 CREATE TABLE IF NOT EXISTS recipe_ingredients (

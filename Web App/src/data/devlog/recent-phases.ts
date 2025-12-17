@@ -1339,6 +1339,104 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-915',
+    title: 'Flushes Table Schema Fix - Missing Columns',
+    description: 'Fixed database schema for flushes table which was missing mushroom_count and quality columns, causing 400 errors when recording harvests.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: `Database schema bug fix for harvest recording:
+
+**Problem:**
+- Recording harvests in GrowManagement threw 400 errors
+- Console showed "Failed to load resource: the server responded with a status of 400"
+- Users unable to save harvest data for their grows
+
+**Root Cause:**
+- flushes table in supabase-schema.sql was missing two columns:
+  - mushroom_count INTEGER
+  - quality TEXT
+- transformFlushToDb was sending these fields to Supabase
+- Supabase rejected the insert due to unknown columns
+
+**Solution:**
+- Added mushroom_count INTEGER column to flushes table
+- Added quality TEXT with CHECK constraint ('excellent', 'good', 'fair', 'poor')
+- Added idempotent ALTER TABLE migrations for existing databases
+- Added check constraint with exception handling for duplicate_object
+
+**Files Updated:**
+- supabase-schema.sql (flushes table definition + migration blocks)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-916',
+    title: 'Sparkline NaN Error Fix',
+    description: 'Fixed NaN errors in chart Sparkline components when data has only one element, causing "Problem parsing points=NaN,30" errors.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: `Chart rendering bug fix:
+
+**Problem:**
+- Console showed repeated "Error: Problem parsing points='NaN,30'" errors
+- Also showed "Error: Invalid value for <circle> attribute cx='NaN'"
+- Charts would fail to render when yield data had only one data point
+
+**Root Cause:**
+- Sparkline component calculated x position as: idx / (data.length - 1)
+- When data.length = 1, this becomes 0/0 = NaN
+- SVG polyline couldn't parse NaN coordinates
+
+**Solution:**
+- Added early return for single data point case
+- Single point now renders as centered circle instead of line
+- Prevents division by zero in all coordinate calculations
+- Also fixed circle cx calculation for end dot
+
+**Files Updated:**
+- components/analytics/AnalyticsDashboard.tsx (Sparkline component)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-917',
+    title: 'Harvest Modal Error Handling',
+    description: 'Added comprehensive error handling and loading states to the harvest recording modal in GrowManagement.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: `Improved harvest recording UX:
+
+**Problem:**
+- Harvest modal had no error handling
+- If save failed, user saw no feedback
+- Button had no loading state during save
+
+**Solution:**
+1. Added harvestError state for error messages
+2. Added isSavingHarvest loading state
+3. Wrapped addFlush in try-catch with user-friendly error display
+4. Added spinner animation during save
+5. Added helpful error message suggesting schema update
+6. Disabled buttons during save to prevent double-submit
+
+**Files Updated:**
+- components/grows/GrowManagement.tsx (handleAddHarvest, Harvest Modal UI)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
