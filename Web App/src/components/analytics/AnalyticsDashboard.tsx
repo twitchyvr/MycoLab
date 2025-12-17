@@ -154,6 +154,7 @@ const Sparkline: React.FC<{
   height?: number;
   width?: number;
 }> = ({ data, color = '#10b981', height = 40, width = 100 }) => {
+  // Handle empty data
   if (data.length === 0) return null;
 
   // Handle single data point - just show a dot
