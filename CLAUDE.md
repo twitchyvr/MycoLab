@@ -39,7 +39,9 @@ MycoLab/
 │   ├── tailwind.config.js # Tailwind CSS configuration
 │   ├── postcss.config.js  # PostCSS configuration
 │   ├── index.html         # Entry HTML
-│   ├── supabase-schema.sql # Database schema (idempotent)
+│   ├── supabase-schema.sql     # Database schema (idempotent) - MUST CHECK ON DB CHANGES
+│   ├── supabase-seed-data.sql  # Reference data (idempotent) - MUST CHECK ON DATA CHANGES
+│   ├── supabase-species-data.sql # Species/strains data (idempotent)
 │   └── src/
 │       ├── App.tsx        # Main app component with routing
 │       ├── index.tsx      # Entry point
@@ -56,7 +58,9 @@ MycoLab/
 │       │   ├── settings/      # SettingsPage
 │       │   ├── setup/         # SetupWizard
 │       │   └── tools/         # Calculators (Substrate, SpawnRate, PressureCooking)
-│       ├── data/          # Initial/seed data (initialData.ts)
+│       ├── data/          # Initial/seed data and devlog
+│       │   ├── initialData.ts   # Default state values
+│       │   └── devlog/          # Feature roadmap - MUST UPDATE ON CHANGES
 │       ├── lib/           # Supabase client configuration
 │       ├── store/         # State management
 │       │   ├── index.ts       # Re-exports
@@ -73,13 +77,160 @@ MycoLab/
 When assisting with this project, always operate with the following context in mind:
 
 1. **Always refer to the roadmap in DevLogPage** for planned features and priorities, add features that we have added or are working on if they are not already in the list, and avoid suggesting features that are already planned or in progress.
-1. **Main code is in `Web App/` directory** - Always work relative to this path
-2. **Two type files exist** - `store/types.ts` (runtime) and `types/index.ts` (extended)
-3. **Context-based state** - Use `useData()` hook for all data operations
-4. **Dark theme** - UI uses zinc/emerald color scheme
-5. **Offline-first** - Don't assume Supabase is connected
-6. **Idempotent schema** - SQL migrations are safe to re-run
-7. **No testing yet** - Be careful with refactoring without tests
+2. **Main code is in `Web App/` directory** - Always work relative to this path
+3. **Two type files exist** - `store/types.ts` (runtime) and `types/index.ts` (extended)
+4. **Context-based state** - Use `useData()` hook for all data operations
+5. **Dark theme** - UI uses zinc/emerald color scheme
+6. **Offline-first** - Don't assume Supabase is connected
+7. **Idempotent schema** - SQL migrations are safe to re-run
+8. **No testing yet** - Be careful with refactoring without tests
+
+### !!! MANDATORY PRE-COMMIT CHECKLIST - NO EXCEPTIONS !!!
+
+**⚠️ STOP! BEFORE RUNNING `git commit`, YOU MUST COMPLETE ALL THREE CHECKS BELOW. ⚠️**
+
+**This is NOT optional. This is NOT "when relevant." This is EVERY SINGLE COMMIT.**
+
+**DO NOT SKIP THESE CHECKS. DO NOT ASSUME THEY DON'T APPLY. DO NOT COMMIT WITHOUT READING THESE FILES.**
+
+---
+
+#### ✅ CHECK 1: Schema File (`supabase-schema.sql`)
+**BEFORE EVERY COMMIT, read `Web App/supabase-schema.sql` and verify:**
+
+**Structure & Idempotency:**
+- [ ] New tables use `CREATE TABLE IF NOT EXISTS`
+- [ ] New columns use `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+- [ ] Removed tables use `DROP TABLE IF EXISTS` (with CASCADE if has dependents)
+- [ ] Removed columns use `ALTER TABLE ... DROP COLUMN IF EXISTS`
+- [ ] The file can be run multiple times without errors
+
+**Error Handling & Exception Safety (REQUIRED):**
+- [ ] Risky operations wrapped in `DO $$ BEGIN ... EXCEPTION WHEN ... END $$;` blocks
+- [ ] Use `EXCEPTION WHEN undefined_table THEN NULL;` for conditional drops
+- [ ] Use `EXCEPTION WHEN duplicate_column THEN NULL;` for conditional adds
+- [ ] Use `EXCEPTION WHEN duplicate_object THEN NULL;` for constraints/indexes
+- [ ] Use `EXCEPTION WHEN foreign_key_violation THEN RAISE WARNING '...';` for FK issues
+- [ ] Use `RAISE NOTICE` or `RAISE WARNING` for non-fatal issues (don't fail silently)
+- [ ] Critical operations should `RAISE EXCEPTION` on failure, not continue silently
+- [ ] Wrap related changes in transactions where atomicity matters
+
+**Safe Migration Patterns:**
+- [ ] DROP CASCADE only when dependencies are intentionally removed
+- [ ] Column type changes: add new → migrate data → drop old (not ALTER TYPE)
+- [ ] NOT NULL additions: backfill NULLs first → then add constraint
+- [ ] FK additions: validate data first → then add constraint
+- [ ] Index creation uses `CREATE INDEX IF NOT EXISTS` or `CONCURRENTLY`
+
+**Dependency Order:**
+- [ ] Tables are created in dependency order (referenced tables before referencing tables)
+- [ ] Tables are dropped in reverse dependency order (referencing tables before referenced tables)
+- [ ] Triggers are created AFTER their referenced tables and functions exist
+- [ ] Views are created AFTER their source tables exist
+- [ ] RLS policies are created AFTER their tables exist
+
+**Data Safety:**
+- [ ] Destructive operations (DROP, TRUNCATE) are clearly commented with warnings
+- [ ] Data migrations are handled BEFORE structural changes that would lose data
+- [ ] Backup/rollback considerations are documented for risky operations
+- [ ] Column renames preserve data (add new → copy data → drop old, NOT direct rename)
+
+**Intelligent Defaults:**
+- [ ] New NOT NULL columns have DEFAULT values to handle existing rows
+- [ ] New columns with constraints are added in stages (add column → backfill → add constraint)
+- [ ] Enum/check constraint changes handle existing invalid values
+
+**If your changes ADD, MODIFY, or REMOVE ANY database field, table, or relationship - UPDATE THIS FILE.**
+
+---
+
+#### ✅ CHECK 2: Seed Data Files (`supabase-seed-data.sql`, `supabase-species-data.sql`)
+**BEFORE EVERY COMMIT, read these files and verify:**
+
+**File Scope:**
+- [ ] `Web App/supabase-seed-data.sql` - Contains all reference data (containers, substrate types, inventory categories, recipe categories, location types, grain types, etc.)
+- [ ] `Web App/supabase-species-data.sql` - Contains all species and strain reference data
+
+**Idempotency & Upsert Patterns:**
+- [ ] All INSERTs use `ON CONFLICT (id) DO UPDATE SET ...` pattern
+- [ ] UPDATE SET clause includes ALL columns that might change (not just some)
+- [ ] Removed seed data is deleted with `DELETE FROM ... WHERE id = ...`
+- [ ] DELETE operations run BEFORE INSERTs to avoid constraint conflicts
+
+**Referential Integrity:**
+- [ ] Seed data is inserted in dependency order (parent tables before child tables)
+- [ ] Foreign key references use valid IDs that exist in referenced tables
+- [ ] Deletions cascade properly or remove dependent records first
+- [ ] No orphaned records are left after deletions
+
+**Data Consistency:**
+- [ ] System-level seed data has `user_id = NULL` for global visibility
+- [ ] UUIDs are stable (don't regenerate on each run - use fixed UUIDs for seed data)
+- [ ] Timestamps use `NOW()` or are omitted to use defaults
+- [ ] Text values are properly escaped and handle special characters
+
+**Error Handling & Exception Safety (REQUIRED):**
+- [ ] Bulk inserts wrapped in `DO $$ BEGIN ... EXCEPTION WHEN ... END $$;` blocks
+- [ ] Use `EXCEPTION WHEN unique_violation THEN NULL;` for idempotent inserts
+- [ ] Use `EXCEPTION WHEN foreign_key_violation THEN RAISE WARNING '...';` for FK issues
+- [ ] Use `EXCEPTION WHEN check_violation THEN RAISE WARNING '...';` for constraint issues
+- [ ] Use `RAISE NOTICE` to log successful operations for debugging
+- [ ] Use `RAISE WARNING` for recoverable issues that shouldn't stop execution
+- [ ] Use `RAISE EXCEPTION` for critical failures that must stop execution
+- [ ] Wrap related seed data in transactions for atomicity
+
+**Robustness:**
+- [ ] Seed file can be run on empty database (fresh install)
+- [ ] Seed file can be run on existing database (migration/update)
+- [ ] Seed file handles partial failures gracefully (continues where possible, logs issues)
+- [ ] Comments explain the purpose of each data section
+- [ ] Each major section has a RAISE NOTICE indicating start/completion
+
+**If your changes ADD, MODIFY, or REMOVE ANY dropdown options, default values, or reference data - UPDATE THESE FILES.**
+
+---
+
+#### ✅ CHECK 3: DevLog/Roadmap (`src/data/devlog/`)
+**BEFORE EVERY COMMIT, read the devlog files and verify:**
+- [ ] `Web App/src/data/devlog/recent-phases.ts` - Check for the feature you're working on
+- [ ] Update `status: 'completed'` for finished features
+- [ ] Update `status: 'in_progress'` for started features
+- [ ] Add new entries for features NOT already in any devlog file
+- [ ] Include `actualHours` if known
+
+**If your changes implement, modify, or complete ANY feature - UPDATE THE DEVLOG.**
+
+---
+
+### ⛔ FAILURE TO COMPLETE THESE CHECKS IS UNACCEPTABLE ⛔
+
+**Common excuses that are NOT valid:**
+- ❌ "This is a small change" - CHECK ANYWAY
+- ❌ "I already know what's in those files" - READ THEM AGAIN
+- ❌ "This doesn't affect the database" - VERIFY BY READING THE FILES
+- ❌ "The devlog doesn't have this feature" - ADD IT
+- ❌ "I checked earlier in this session" - CHECK AGAIN BEFORE THIS COMMIT
+
+**The user has been burned by skipped checks. Do not add to that pain.**
+
+**SQL Files Location:**
+```
+Web App/
+├── supabase-schema.sql      # Database structure (tables, indexes, triggers, RLS)
+├── supabase-seed-data.sql   # System reference data (containers, categories, etc.)
+└── supabase-species-data.sql # Species and strain reference data
+```
+
+**DevLog Files Location:**
+```
+Web App/src/data/devlog/
+├── index.ts          # Combined exports and utility functions
+├── types.ts          # Phase ID ranges and type exports
+├── early-phases.ts   # Phases 1-9: Foundation through Yields
+├── mid-phases.ts     # Phases 10-18: QR Labels through Virtual Lab
+├── later-phases.ts   # Phases 19-27: Future through Environmental
+└── recent-phases.ts  # Phases 28+: Container Workflow, Recent Dev, etc.
+```
 
 ## Development Commands
 
@@ -391,3 +542,13 @@ This project follows semantic versioning but is currently in **early beta** (v0.
 6. **Idempotent schema** - SQL migrations are safe to re-run
 7. **No testing yet** - Be careful with refactoring without tests
 8. **Version control** - See "Versioning Policy" above - NEVER bump version without user approval
+9. **⚠️ MANDATORY PRE-COMMIT: Check SQL files BEFORE EVERY COMMIT** - Not "when relevant", EVERY commit:
+   - READ `supabase-schema.sql` - verify schema changes are included
+   - READ `supabase-seed-data.sql` - verify reference data is included
+   - READ `supabase-species-data.sql` - verify species/strain data is included
+   - DO NOT SKIP THIS. DO NOT ASSUME. READ THE FILES.
+10. **⚠️ MANDATORY PRE-COMMIT: Update DevLog BEFORE EVERY COMMIT** - Not "when relevant", EVERY commit:
+    - READ `src/data/devlog/*.ts` files
+    - UPDATE status for features you touched
+    - ADD new entries for features not already tracked
+    - DO NOT SKIP THIS. DO NOT ASSUME. READ THE FILES.
