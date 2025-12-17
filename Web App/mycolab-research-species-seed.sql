@@ -380,7 +380,7 @@ VALUES (
   -- USER_ID (NULL for global/system data)
   NULL
 )
-ON CONFLICT (scientific_name) WHERE user_id IS NULL AND category = 'research'
+ON CONFLICT (name)
 DO UPDATE SET
   name = EXCLUDED.name,
   common_names = EXCLUDED.common_names,
@@ -755,7 +755,7 @@ VALUES (
   -- USER_ID
   NULL
 )
-ON CONFLICT (scientific_name) WHERE user_id IS NULL AND category = 'research'
+ON CONFLICT (name)
 DO UPDATE SET
   name = EXCLUDED.name,
   common_names = EXCLUDED.common_names,
@@ -1124,7 +1124,7 @@ VALUES (
   -- USER_ID
   NULL
 )
-ON CONFLICT (scientific_name) WHERE user_id IS NULL AND category = 'research'
+ON CONFLICT (name)
 DO UPDATE SET
   name = EXCLUDED.name,
   common_names = EXCLUDED.common_names,
@@ -1474,7 +1474,7 @@ VALUES (
   -- USER_ID
   NULL
 )
-ON CONFLICT (scientific_name) WHERE user_id IS NULL AND category = 'research'
+ON CONFLICT (name)
 DO UPDATE SET
   name = EXCLUDED.name,
   common_names = EXCLUDED.common_names,
@@ -1810,7 +1810,7 @@ VALUES (
   -- USER_ID
   NULL
 )
-ON CONFLICT (scientific_name) WHERE user_id IS NULL AND category = 'research'
+ON CONFLICT (name)
 DO UPDATE SET
   name = EXCLUDED.name,
   common_names = EXCLUDED.common_names,
@@ -2164,7 +2164,7 @@ VALUES (
   -- USER_ID
   NULL
 )
-ON CONFLICT (scientific_name) WHERE user_id IS NULL AND category = 'research'
+ON CONFLICT (name)
 DO UPDATE SET
   name = EXCLUDED.name,
   common_names = EXCLUDED.common_names,
