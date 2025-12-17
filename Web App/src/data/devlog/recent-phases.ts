@@ -1292,6 +1292,53 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-914',
+    title: 'Contamination Event Detail Modal & Interactivity',
+    description: 'Made contamination events in Contam Analysis clickable with drill-down detail modal. Users can now click on any contamination event to view details, edit type/cause/notes, see prevention tips, and navigate to the source culture or grow.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 3,
+    actualHours: 2,
+    completedAt: timestamp(),
+    notes: `Contamination Analysis Event Interactivity:
+
+**User Pain Point:**
+- Contamination events in the list were non-interactive
+- No way to drill down into details or edit information
+- Couldn't easily navigate to the source culture/grow
+
+**Solution:**
+1. Made event list items clickable buttons with hover effects
+2. Added chevron indicator for clickability
+3. Created comprehensive detail modal with:
+   - Quick stats (detection date, day count, location)
+   - Stage badge display
+   - Editable contamination type dropdown
+   - Editable suspected cause dropdown
+   - Editable notes textarea
+   - Knowledge card showing selected type info
+   - Prevention tips from knowledge base
+   - Context info (grain type, substrate, PC params if available)
+
+**Actions in Detail Modal:**
+- "View Culture/Grow" button to navigate to source entity
+- Save Changes button to persist edits
+- Cancel button to close without saving
+
+**Technical Implementation:**
+- Added selectedEvent and editingEvent state
+- Event cards changed from divs to buttons
+- Added Icons: ChevronRight, Edit, ExternalLink, Save, Calendar, Clock, MapPin
+- Detail modal uses sticky header/footer for long content
+- Dispatches custom navigate event to link to source items
+
+**Files Updated:**
+- components/analysis/ContaminationAnalysis.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
