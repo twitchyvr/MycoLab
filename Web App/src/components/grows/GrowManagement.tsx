@@ -84,6 +84,7 @@ const GrowCard: React.FC<GrowCardProps> = ({
   const [harvestForm, setHarvestForm] = useState({ wetWeight: 0, dryWeight: 0, quality: 'good' as Flush['quality'], notes: '', mushroomCount: undefined as number | undefined });
   const [showHarvestForm, setShowHarvestForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const days = daysActive(grow.spawnedAt, grow.completedAt);
   const config = stageConfig[grow.currentStage];
@@ -94,6 +95,7 @@ const GrowCard: React.FC<GrowCardProps> = ({
   const handleSubmitHarvest = async () => {
     if (!harvestForm.wetWeight) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       await onRecordHarvest(
         harvestForm.wetWeight,
@@ -104,6 +106,10 @@ const GrowCard: React.FC<GrowCardProps> = ({
       );
       setHarvestForm({ wetWeight: 0, dryWeight: 0, quality: 'good', notes: '', mushroomCount: undefined });
       setShowHarvestForm(false);
+    } catch (err: any) {
+      console.error('Failed to save harvest:', err);
+      const message = err?.message || err?.error?.message || 'Failed to save harvest. Please try again.';
+      setSaveError(message);
     } finally {
       setIsSaving(false);
     }
@@ -223,9 +229,14 @@ const GrowCard: React.FC<GrowCardProps> = ({
                 </button>
               ))}
             </div>
+            {saveError && (
+              <div className="p-2 bg-red-950/50 border border-red-800/50 rounded text-xs text-red-400">
+                {saveError}
+              </div>
+            )}
             <div className="flex gap-2">
               <button
-                onClick={() => setShowHarvestForm(false)}
+                onClick={() => { setShowHarvestForm(false); setSaveError(null); }}
                 className="flex-1 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-xs font-medium"
               >
                 Cancel
@@ -1076,58 +1087,60 @@ export const GrowManagement: React.FC = () => {
 
       {/* Main Content Area */}
       {viewMode === 'kanban' ? (
-        // Kanban View
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {(showCompleted ? [...activeStages, 'completed' as GrowStage] : activeStages).map(stage => {
-            const config = stageConfig[stage];
-            const stageGrows = growsByStage[stage] || [];
+        // Kanban View - horizontal scroll on desktop for better readability
+        <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="flex flex-col sm:flex-row gap-4 min-w-max sm:min-w-0">
+            {(showCompleted ? [...activeStages, 'completed' as GrowStage] : activeStages).map(stage => {
+              const config = stageConfig[stage];
+              const stageGrows = growsByStage[stage] || [];
 
-            return (
-              <div key={stage} className="flex flex-col">
-                {/* Column Header */}
-                <div className={`flex items-center justify-between px-3 py-2 rounded-t-xl ${config.bgColor} border ${config.borderColor} border-b-0`}>
-                  <div className="flex items-center gap-2">
-                    <span>{config.icon}</span>
-                    <span className={`font-medium ${config.color}`}>{config.label}</span>
-                  </div>
-                  <span className="text-xs bg-zinc-900/50 px-2 py-0.5 rounded-full text-zinc-400">
-                    {stageGrows.length}
-                  </span>
-                </div>
-
-                {/* Column Content */}
-                <div className={`flex-1 p-2 space-y-2 bg-zinc-900/30 border ${config.borderColor} border-t-0 rounded-b-xl min-h-[200px]`}>
-                  {stageGrows.map(grow => (
-                    <GrowCard
-                      key={grow.id}
-                      grow={grow}
-                      strain={getStrain(grow.strainId)}
-                      container={getContainer(grow.containerId)}
-                      location={getLocation(grow.locationId)}
-                      isExpanded={expandedCards.has(grow.id)}
-                      isHarvesting={harvestingCard === grow.id}
-                      onToggleExpand={() => toggleCardExpand(grow.id)}
-                      onAdvanceStage={() => handleAdvanceStage(grow.id)}
-                      onRecordHarvest={(wet, dry, quality, notes, count) => handleRecordHarvest(grow.id, wet, dry, quality, notes, count)}
-                      onMarkContaminated={() => handleMarkContaminatedWithSurvey(grow)}
-                      onComplete={() => handleCompleteGrow(grow)}
-                      onEdit={() => openEditModal(grow)}
-                      onDelete={() => openExitSurvey(grow)}
-                      onLogObservation={() => {
-                        setSelectedGrow(grow);
-                        setShowObservationModal(true);
-                      }}
-                    />
-                  ))}
-                  {stageGrows.length === 0 && (
-                    <div className="text-center py-8 text-zinc-600 text-sm">
-                      No grows in {config.label.toLowerCase()}
+              return (
+                <div key={stage} className="flex flex-col w-full sm:w-72 md:w-80 lg:w-[340px] flex-shrink-0">
+                  {/* Column Header */}
+                  <div className={`flex items-center justify-between px-3 py-2 rounded-t-xl ${config.bgColor} border ${config.borderColor} border-b-0`}>
+                    <div className="flex items-center gap-2">
+                      <span>{config.icon}</span>
+                      <span className={`font-medium ${config.color}`}>{config.label}</span>
                     </div>
-                  )}
+                    <span className="text-xs bg-zinc-900/50 px-2 py-0.5 rounded-full text-zinc-400">
+                      {stageGrows.length}
+                    </span>
+                  </div>
+
+                  {/* Column Content */}
+                  <div className={`flex-1 p-2 space-y-2 bg-zinc-900/30 border ${config.borderColor} border-t-0 rounded-b-xl min-h-[200px]`}>
+                    {stageGrows.map(grow => (
+                      <GrowCard
+                        key={grow.id}
+                        grow={grow}
+                        strain={getStrain(grow.strainId)}
+                        container={getContainer(grow.containerId)}
+                        location={getLocation(grow.locationId)}
+                        isExpanded={expandedCards.has(grow.id)}
+                        isHarvesting={harvestingCard === grow.id}
+                        onToggleExpand={() => toggleCardExpand(grow.id)}
+                        onAdvanceStage={() => handleAdvanceStage(grow.id)}
+                        onRecordHarvest={(wet, dry, quality, notes, count) => handleRecordHarvest(grow.id, wet, dry, quality, notes, count)}
+                        onMarkContaminated={() => handleMarkContaminatedWithSurvey(grow)}
+                        onComplete={() => handleCompleteGrow(grow)}
+                        onEdit={() => openEditModal(grow)}
+                        onDelete={() => openExitSurvey(grow)}
+                        onLogObservation={() => {
+                          setSelectedGrow(grow);
+                          setShowObservationModal(true);
+                        }}
+                      />
+                    ))}
+                    {stageGrows.length === 0 && (
+                      <div className="text-center py-8 text-zinc-600 text-sm">
+                        No grows in {config.label.toLowerCase()}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       ) : viewMode === 'grid' ? (
         // Grid View
