@@ -99,11 +99,14 @@ When assisting with this project, always operate with the following context in m
 **BEFORE EVERY COMMIT, read `Web App/supabase-schema.sql` and verify:**
 - [ ] Any new database tables are defined with `CREATE TABLE IF NOT EXISTS`
 - [ ] Any new columns are added with `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+- [ ] Any removed tables/columns are dropped with `DROP TABLE IF EXISTS` / `DROP COLUMN IF EXISTS`
 - [ ] Any new indexes, constraints, or foreign keys are included
+- [ ] Any removed indexes, constraints, or foreign keys are dropped
 - [ ] Any new triggers or RLS policies are defined
+- [ ] Any removed triggers or RLS policies are dropped
 - [ ] The file remains idempotent (safe to run multiple times)
 
-**If your changes touch ANY database field, table, or relationship - UPDATE THIS FILE.**
+**If your changes ADD, MODIFY, or REMOVE ANY database field, table, or relationship - UPDATE THIS FILE.**
 
 ---
 
@@ -112,9 +115,11 @@ When assisting with this project, always operate with the following context in m
 - [ ] `Web App/supabase-seed-data.sql` - Contains all reference data (containers, substrate types, inventory categories, recipe categories, location types, grain types, etc.)
 - [ ] `Web App/supabase-species-data.sql` - Contains all species and strain reference data
 - [ ] New lookup data uses `ON CONFLICT (id) DO UPDATE SET ...` pattern
+- [ ] Removed seed data is deleted with `DELETE FROM ... WHERE id = ...`
+- [ ] Modified seed data is updated in the `ON CONFLICT` clause
 - [ ] System-level seed data has `user_id = NULL` for global visibility
 
-**If your changes add ANY new dropdown options, default values, or reference data - UPDATE THESE FILES.**
+**If your changes ADD, MODIFY, or REMOVE ANY dropdown options, default values, or reference data - UPDATE THESE FILES.**
 
 ---
 
