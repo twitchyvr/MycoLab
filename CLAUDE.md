@@ -97,14 +97,48 @@ When assisting with this project, always operate with the following context in m
 
 #### ✅ CHECK 1: Schema File (`supabase-schema.sql`)
 **BEFORE EVERY COMMIT, read `Web App/supabase-schema.sql` and verify:**
-- [ ] Any new database tables are defined with `CREATE TABLE IF NOT EXISTS`
-- [ ] Any new columns are added with `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
-- [ ] Any removed tables/columns are dropped with `DROP TABLE IF EXISTS` / `DROP COLUMN IF EXISTS`
-- [ ] Any new indexes, constraints, or foreign keys are included
-- [ ] Any removed indexes, constraints, or foreign keys are dropped
-- [ ] Any new triggers or RLS policies are defined
-- [ ] Any removed triggers or RLS policies are dropped
-- [ ] The file remains idempotent (safe to run multiple times)
+
+**Structure & Idempotency:**
+- [ ] New tables use `CREATE TABLE IF NOT EXISTS`
+- [ ] New columns use `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+- [ ] Removed tables use `DROP TABLE IF EXISTS` (with CASCADE if has dependents)
+- [ ] Removed columns use `ALTER TABLE ... DROP COLUMN IF EXISTS`
+- [ ] The file can be run multiple times without errors
+
+**Error Handling & Exception Safety (REQUIRED):**
+- [ ] Risky operations wrapped in `DO $$ BEGIN ... EXCEPTION WHEN ... END $$;` blocks
+- [ ] Use `EXCEPTION WHEN undefined_table THEN NULL;` for conditional drops
+- [ ] Use `EXCEPTION WHEN duplicate_column THEN NULL;` for conditional adds
+- [ ] Use `EXCEPTION WHEN duplicate_object THEN NULL;` for constraints/indexes
+- [ ] Use `EXCEPTION WHEN foreign_key_violation THEN RAISE WARNING '...';` for FK issues
+- [ ] Use `RAISE NOTICE` or `RAISE WARNING` for non-fatal issues (don't fail silently)
+- [ ] Critical operations should `RAISE EXCEPTION` on failure, not continue silently
+- [ ] Wrap related changes in transactions where atomicity matters
+
+**Safe Migration Patterns:**
+- [ ] DROP CASCADE only when dependencies are intentionally removed
+- [ ] Column type changes: add new → migrate data → drop old (not ALTER TYPE)
+- [ ] NOT NULL additions: backfill NULLs first → then add constraint
+- [ ] FK additions: validate data first → then add constraint
+- [ ] Index creation uses `CREATE INDEX IF NOT EXISTS` or `CONCURRENTLY`
+
+**Dependency Order:**
+- [ ] Tables are created in dependency order (referenced tables before referencing tables)
+- [ ] Tables are dropped in reverse dependency order (referencing tables before referenced tables)
+- [ ] Triggers are created AFTER their referenced tables and functions exist
+- [ ] Views are created AFTER their source tables exist
+- [ ] RLS policies are created AFTER their tables exist
+
+**Data Safety:**
+- [ ] Destructive operations (DROP, TRUNCATE) are clearly commented with warnings
+- [ ] Data migrations are handled BEFORE structural changes that would lose data
+- [ ] Backup/rollback considerations are documented for risky operations
+- [ ] Column renames preserve data (add new → copy data → drop old, NOT direct rename)
+
+**Intelligent Defaults:**
+- [ ] New NOT NULL columns have DEFAULT values to handle existing rows
+- [ ] New columns with constraints are added in stages (add column → backfill → add constraint)
+- [ ] Enum/check constraint changes handle existing invalid values
 
 **If your changes ADD, MODIFY, or REMOVE ANY database field, table, or relationship - UPDATE THIS FILE.**
 
@@ -112,12 +146,45 @@ When assisting with this project, always operate with the following context in m
 
 #### ✅ CHECK 2: Seed Data Files (`supabase-seed-data.sql`, `supabase-species-data.sql`)
 **BEFORE EVERY COMMIT, read these files and verify:**
+
+**File Scope:**
 - [ ] `Web App/supabase-seed-data.sql` - Contains all reference data (containers, substrate types, inventory categories, recipe categories, location types, grain types, etc.)
 - [ ] `Web App/supabase-species-data.sql` - Contains all species and strain reference data
-- [ ] New lookup data uses `ON CONFLICT (id) DO UPDATE SET ...` pattern
+
+**Idempotency & Upsert Patterns:**
+- [ ] All INSERTs use `ON CONFLICT (id) DO UPDATE SET ...` pattern
+- [ ] UPDATE SET clause includes ALL columns that might change (not just some)
 - [ ] Removed seed data is deleted with `DELETE FROM ... WHERE id = ...`
-- [ ] Modified seed data is updated in the `ON CONFLICT` clause
+- [ ] DELETE operations run BEFORE INSERTs to avoid constraint conflicts
+
+**Referential Integrity:**
+- [ ] Seed data is inserted in dependency order (parent tables before child tables)
+- [ ] Foreign key references use valid IDs that exist in referenced tables
+- [ ] Deletions cascade properly or remove dependent records first
+- [ ] No orphaned records are left after deletions
+
+**Data Consistency:**
 - [ ] System-level seed data has `user_id = NULL` for global visibility
+- [ ] UUIDs are stable (don't regenerate on each run - use fixed UUIDs for seed data)
+- [ ] Timestamps use `NOW()` or are omitted to use defaults
+- [ ] Text values are properly escaped and handle special characters
+
+**Error Handling & Exception Safety (REQUIRED):**
+- [ ] Bulk inserts wrapped in `DO $$ BEGIN ... EXCEPTION WHEN ... END $$;` blocks
+- [ ] Use `EXCEPTION WHEN unique_violation THEN NULL;` for idempotent inserts
+- [ ] Use `EXCEPTION WHEN foreign_key_violation THEN RAISE WARNING '...';` for FK issues
+- [ ] Use `EXCEPTION WHEN check_violation THEN RAISE WARNING '...';` for constraint issues
+- [ ] Use `RAISE NOTICE` to log successful operations for debugging
+- [ ] Use `RAISE WARNING` for recoverable issues that shouldn't stop execution
+- [ ] Use `RAISE EXCEPTION` for critical failures that must stop execution
+- [ ] Wrap related seed data in transactions for atomicity
+
+**Robustness:**
+- [ ] Seed file can be run on empty database (fresh install)
+- [ ] Seed file can be run on existing database (migration/update)
+- [ ] Seed file handles partial failures gracefully (continues where possible, logs issues)
+- [ ] Comments explain the purpose of each data section
+- [ ] Each major section has a RAISE NOTICE indicating start/completion
 
 **If your changes ADD, MODIFY, or REMOVE ANY dropdown options, default values, or reference data - UPDATE THESE FILES.**
 
