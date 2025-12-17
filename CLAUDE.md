@@ -85,29 +85,61 @@ When assisting with this project, always operate with the following context in m
 7. **Idempotent schema** - SQL migrations are safe to re-run
 8. **No testing yet** - Be careful with refactoring without tests
 
-### !!! MANDATORY CHECKS - MUST PERFORM FOR ALL CHANGES
+### !!! MANDATORY PRE-COMMIT CHECKLIST - NO EXCEPTIONS !!!
 
-**Before completing ANY feature or modification, you MUST verify:**
+**⚠️ STOP! BEFORE RUNNING `git commit`, YOU MUST COMPLETE ALL THREE CHECKS BELOW. ⚠️**
 
-#### 1. Database Schema Synchronization
-When adding/modifying database tables, fields, or relationships:
-- **CHECK** `Web App/supabase-schema.sql` - Ensure all new tables, columns, constraints, and indexes are added
-- **VERIFY** the schema remains idempotent (uses `IF NOT EXISTS`, `ON CONFLICT DO UPDATE`, etc.)
-- **UPDATE** any new foreign key relationships, triggers, or RLS policies
+**This is NOT optional. This is NOT "when relevant." This is EVERY SINGLE COMMIT.**
 
-#### 2. Seed Data Synchronization
-When adding new lookup data, default values, or reference data:
-- **CHECK** `Web App/supabase-seed-data.sql` - For containers, substrate types, inventory categories, recipe categories, location types, etc.
-- **CHECK** `Web App/supabase-species-data.sql` - For species and strain reference data
-- **VERIFY** seed data uses idempotent inserts (`ON CONFLICT DO UPDATE`)
-- **ENSURE** system-level data has `user_id = NULL` for global visibility
+**DO NOT SKIP THESE CHECKS. DO NOT ASSUME THEY DON'T APPLY. DO NOT COMMIT WITHOUT READING THESE FILES.**
 
-#### 3. DevLog/Roadmap Synchronization
-After completing ANY feature or significant change:
-- **CHECK** `Web App/src/data/devlog/` files (early-phases.ts, mid-phases.ts, later-phases.ts, recent-phases.ts)
-- **UPDATE** feature status to `'completed'` if finished, `'in_progress'` if started
-- **ADD** new entries for features not already in the roadmap
-- **INCLUDE** actual hours spent if known (`actualHours` field)
+---
+
+#### ✅ CHECK 1: Schema File (`supabase-schema.sql`)
+**BEFORE EVERY COMMIT, read `Web App/supabase-schema.sql` and verify:**
+- [ ] Any new database tables are defined with `CREATE TABLE IF NOT EXISTS`
+- [ ] Any new columns are added with `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+- [ ] Any new indexes, constraints, or foreign keys are included
+- [ ] Any new triggers or RLS policies are defined
+- [ ] The file remains idempotent (safe to run multiple times)
+
+**If your changes touch ANY database field, table, or relationship - UPDATE THIS FILE.**
+
+---
+
+#### ✅ CHECK 2: Seed Data Files (`supabase-seed-data.sql`, `supabase-species-data.sql`)
+**BEFORE EVERY COMMIT, read these files and verify:**
+- [ ] `Web App/supabase-seed-data.sql` - Contains all reference data (containers, substrate types, inventory categories, recipe categories, location types, grain types, etc.)
+- [ ] `Web App/supabase-species-data.sql` - Contains all species and strain reference data
+- [ ] New lookup data uses `ON CONFLICT (id) DO UPDATE SET ...` pattern
+- [ ] System-level seed data has `user_id = NULL` for global visibility
+
+**If your changes add ANY new dropdown options, default values, or reference data - UPDATE THESE FILES.**
+
+---
+
+#### ✅ CHECK 3: DevLog/Roadmap (`src/data/devlog/`)
+**BEFORE EVERY COMMIT, read the devlog files and verify:**
+- [ ] `Web App/src/data/devlog/recent-phases.ts` - Check for the feature you're working on
+- [ ] Update `status: 'completed'` for finished features
+- [ ] Update `status: 'in_progress'` for started features
+- [ ] Add new entries for features NOT already in any devlog file
+- [ ] Include `actualHours` if known
+
+**If your changes implement, modify, or complete ANY feature - UPDATE THE DEVLOG.**
+
+---
+
+### ⛔ FAILURE TO COMPLETE THESE CHECKS IS UNACCEPTABLE ⛔
+
+**Common excuses that are NOT valid:**
+- ❌ "This is a small change" - CHECK ANYWAY
+- ❌ "I already know what's in those files" - READ THEM AGAIN
+- ❌ "This doesn't affect the database" - VERIFY BY READING THE FILES
+- ❌ "The devlog doesn't have this feature" - ADD IT
+- ❌ "I checked earlier in this session" - CHECK AGAIN BEFORE THIS COMMIT
+
+**The user has been burned by skipped checks. Do not add to that pain.**
 
 **SQL Files Location:**
 ```
@@ -438,11 +470,13 @@ This project follows semantic versioning but is currently in **early beta** (v0.
 6. **Idempotent schema** - SQL migrations are safe to re-run
 7. **No testing yet** - Be careful with refactoring without tests
 8. **Version control** - See "Versioning Policy" above - NEVER bump version without user approval
-9. **MANDATORY: Check SQL files** - After ANY database-related changes:
-   - `supabase-schema.sql` for table/column/constraint changes
-   - `supabase-seed-data.sql` for reference data (containers, categories, etc.)
-   - `supabase-species-data.sql` for species/strain data
-10. **MANDATORY: Update DevLog** - After completing features:
-    - Update status in `src/data/devlog/*.ts` files
-    - Add new features if not already tracked
-    - Mark completed items with `status: 'completed'`
+9. **⚠️ MANDATORY PRE-COMMIT: Check SQL files BEFORE EVERY COMMIT** - Not "when relevant", EVERY commit:
+   - READ `supabase-schema.sql` - verify schema changes are included
+   - READ `supabase-seed-data.sql` - verify reference data is included
+   - READ `supabase-species-data.sql` - verify species/strain data is included
+   - DO NOT SKIP THIS. DO NOT ASSUME. READ THE FILES.
+10. **⚠️ MANDATORY PRE-COMMIT: Update DevLog BEFORE EVERY COMMIT** - Not "when relevant", EVERY commit:
+    - READ `src/data/devlog/*.ts` files
+    - UPDATE status for features you touched
+    - ADD new entries for features not already tracked
+    - DO NOT SKIP THIS. DO NOT ASSUME. READ THE FILES.
