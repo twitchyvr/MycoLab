@@ -1505,6 +1505,36 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-919',
+    title: 'Grows Kanban Layout & Harvest Error Handling Fixes',
+    description: 'Fixed cramped Kanban layout on desktop and added error handling for inline harvest form.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: `Two fixes for the Grows page:
+
+**Issue 1: Cramped Kanban Layout on Desktop**
+- Problem: 4-column grid forced narrow cards on laptops (~250px each)
+- Solution: Changed to flexbox with horizontal scrolling
+- Column widths now scale: sm:288px, md:320px, lg:340px
+- Columns stack vertically on mobile, horizontal scroll on larger screens
+
+**Issue 2: Harvest Save Errors Not Shown**
+- Problem: 400 errors from Supabase caused "Unhandled Promise Rejection"
+- Users saw no feedback when harvest save failed
+- Solution: Added saveError state and try-catch in handleSubmitHarvest
+- Error message now displays in red box above Save button
+- Clear error when canceling form
+
+**Files Updated:**
+- components/grows/GrowManagement.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
