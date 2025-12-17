@@ -39,7 +39,9 @@ MycoLab/
 │   ├── tailwind.config.js # Tailwind CSS configuration
 │   ├── postcss.config.js  # PostCSS configuration
 │   ├── index.html         # Entry HTML
-│   ├── supabase-schema.sql # Database schema (idempotent)
+│   ├── supabase-schema.sql     # Database schema (idempotent) - MUST CHECK ON DB CHANGES
+│   ├── supabase-seed-data.sql  # Reference data (idempotent) - MUST CHECK ON DATA CHANGES
+│   ├── supabase-species-data.sql # Species/strains data (idempotent)
 │   └── src/
 │       ├── App.tsx        # Main app component with routing
 │       ├── index.tsx      # Entry point
@@ -56,7 +58,9 @@ MycoLab/
 │       │   ├── settings/      # SettingsPage
 │       │   ├── setup/         # SetupWizard
 │       │   └── tools/         # Calculators (Substrate, SpawnRate, PressureCooking)
-│       ├── data/          # Initial/seed data (initialData.ts)
+│       ├── data/          # Initial/seed data and devlog
+│       │   ├── initialData.ts   # Default state values
+│       │   └── devlog/          # Feature roadmap - MUST UPDATE ON CHANGES
 │       ├── lib/           # Supabase client configuration
 │       ├── store/         # State management
 │       │   ├── index.ts       # Re-exports
@@ -73,13 +77,56 @@ MycoLab/
 When assisting with this project, always operate with the following context in mind:
 
 1. **Always refer to the roadmap in DevLogPage** for planned features and priorities, add features that we have added or are working on if they are not already in the list, and avoid suggesting features that are already planned or in progress.
-1. **Main code is in `Web App/` directory** - Always work relative to this path
-2. **Two type files exist** - `store/types.ts` (runtime) and `types/index.ts` (extended)
-3. **Context-based state** - Use `useData()` hook for all data operations
-4. **Dark theme** - UI uses zinc/emerald color scheme
-5. **Offline-first** - Don't assume Supabase is connected
-6. **Idempotent schema** - SQL migrations are safe to re-run
-7. **No testing yet** - Be careful with refactoring without tests
+2. **Main code is in `Web App/` directory** - Always work relative to this path
+3. **Two type files exist** - `store/types.ts` (runtime) and `types/index.ts` (extended)
+4. **Context-based state** - Use `useData()` hook for all data operations
+5. **Dark theme** - UI uses zinc/emerald color scheme
+6. **Offline-first** - Don't assume Supabase is connected
+7. **Idempotent schema** - SQL migrations are safe to re-run
+8. **No testing yet** - Be careful with refactoring without tests
+
+### !!! MANDATORY CHECKS - MUST PERFORM FOR ALL CHANGES
+
+**Before completing ANY feature or modification, you MUST verify:**
+
+#### 1. Database Schema Synchronization
+When adding/modifying database tables, fields, or relationships:
+- **CHECK** `Web App/supabase-schema.sql` - Ensure all new tables, columns, constraints, and indexes are added
+- **VERIFY** the schema remains idempotent (uses `IF NOT EXISTS`, `ON CONFLICT DO UPDATE`, etc.)
+- **UPDATE** any new foreign key relationships, triggers, or RLS policies
+
+#### 2. Seed Data Synchronization
+When adding new lookup data, default values, or reference data:
+- **CHECK** `Web App/supabase-seed-data.sql` - For containers, substrate types, inventory categories, recipe categories, location types, etc.
+- **CHECK** `Web App/supabase-species-data.sql` - For species and strain reference data
+- **VERIFY** seed data uses idempotent inserts (`ON CONFLICT DO UPDATE`)
+- **ENSURE** system-level data has `user_id = NULL` for global visibility
+
+#### 3. DevLog/Roadmap Synchronization
+After completing ANY feature or significant change:
+- **CHECK** `Web App/src/data/devlog/` files (early-phases.ts, mid-phases.ts, later-phases.ts, recent-phases.ts)
+- **UPDATE** feature status to `'completed'` if finished, `'in_progress'` if started
+- **ADD** new entries for features not already in the roadmap
+- **INCLUDE** actual hours spent if known (`actualHours` field)
+
+**SQL Files Location:**
+```
+Web App/
+├── supabase-schema.sql      # Database structure (tables, indexes, triggers, RLS)
+├── supabase-seed-data.sql   # System reference data (containers, categories, etc.)
+└── supabase-species-data.sql # Species and strain reference data
+```
+
+**DevLog Files Location:**
+```
+Web App/src/data/devlog/
+├── index.ts          # Combined exports and utility functions
+├── types.ts          # Phase ID ranges and type exports
+├── early-phases.ts   # Phases 1-9: Foundation through Yields
+├── mid-phases.ts     # Phases 10-18: QR Labels through Virtual Lab
+├── later-phases.ts   # Phases 19-27: Future through Environmental
+└── recent-phases.ts  # Phases 28+: Container Workflow, Recent Dev, etc.
+```
 
 ## Development Commands
 
@@ -391,3 +438,11 @@ This project follows semantic versioning but is currently in **early beta** (v0.
 6. **Idempotent schema** - SQL migrations are safe to re-run
 7. **No testing yet** - Be careful with refactoring without tests
 8. **Version control** - See "Versioning Policy" above - NEVER bump version without user approval
+9. **MANDATORY: Check SQL files** - After ANY database-related changes:
+   - `supabase-schema.sql` for table/column/constraint changes
+   - `supabase-seed-data.sql` for reference data (containers, categories, etc.)
+   - `supabase-species-data.sql` for species/strain data
+10. **MANDATORY: Update DevLog** - After completing features:
+    - Update status in `src/data/devlog/*.ts` files
+    - Add new features if not already tracked
+    - Mark completed items with `status: 'completed'`
