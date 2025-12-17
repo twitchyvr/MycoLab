@@ -44,7 +44,6 @@ import { GrowManagement } from './components/grows/GrowManagement';
 import { RecipeBuilder } from './components/recipes/RecipeBuilder';
 import { SetupWizard } from './components/setup/SetupWizard';
 import { StockManagement } from './components/inventory/StockManagement';
-import { TodayView } from './components/today';
 import { CommandCenter } from './components/command';
 import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
 import { ObservationTimeline, EventLogger } from './components/observations';
@@ -53,7 +52,7 @@ import { FloatingActionButton, LabCommandCenter } from './components/dashboard';
 import { LabMapping, LocationOccupancy } from './components/locations';
 import { LabelDesigner } from './components/labels';
 import { QRScanner } from './components/qr';
-import { DailyCheck, HarvestWorkflow, ColdStorageCheck } from './components/dailycheck';
+import { ColdStorageCheck } from './components/dailycheck';
 import { HarvestForecast } from './components/forecast/HarvestForecast';
 import { SpeciesLibrary } from './components/library';
 
@@ -409,28 +408,37 @@ const SectionIcons = {
   ),
 };
 
-// Grouped navigation structure based on design brief
+// Grouped navigation structure - consolidated for clarity
+// Today, Daily Check, and Harvest are now unified in Command Center
 const navGroups: NavGroup[] = [
   {
     id: 'command',
-    label: 'Lab Command',
+    label: 'Daily Ops',
     icon: SectionIcons.Command,
     defaultOpen: true,
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
       { id: 'commandcenter', label: 'Command Center', icon: Icons.Target },
-      { id: 'today', label: 'Today', icon: Icons.Sun },
-      { id: 'dailycheck', label: 'Daily Check', icon: Icons.Clipboard },
-      { id: 'harvest', label: 'Harvest', icon: Icons.Scale },
-      { id: 'forecast', label: 'Forecast', icon: Icons.TrendingUp },
+      { id: 'forecast', label: 'Harvest Forecast', icon: Icons.TrendingUp },
       { id: 'coldstorage', label: 'Cold Storage', icon: Icons.Snowflake },
+    ],
+  },
+  {
+    id: 'genetics',
+    label: 'Cultivation',
+    icon: SectionIcons.Genetics,
+    defaultOpen: false,
+    items: [
+      { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
+      { id: 'grows', label: 'Grows', icon: Icons.Grow },
+      { id: 'lineage', label: 'Lineage Tree', icon: Icons.Lineage },
       { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
-      { id: 'eventlog', label: 'Event Logger', icon: Icons.Pencil },
+      { id: 'eventlog', label: 'Event Log', icon: Icons.Pencil },
     ],
   },
   {
     id: 'library',
-    label: 'Library',
+    label: 'Knowledge Base',
     icon: SectionIcons.Library,
     defaultOpen: false,
     items: [
@@ -440,27 +448,16 @@ const navGroups: NavGroup[] = [
   },
   {
     id: 'inventory',
-    label: 'Inventory',
+    label: 'Lab & Storage',
     icon: SectionIcons.Inventory,
     defaultOpen: false,
     items: [
       { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
       { id: 'stock', label: 'Stock & Orders', icon: Icons.Package },
-      { id: 'labmapping', label: 'Lab Mapping', icon: Icons.Layers },
-      { id: 'occupancy', label: 'Occupancy', icon: Icons.Grid },
-      { id: 'labels', label: 'Labels', icon: Icons.Tag },
+      { id: 'labmapping', label: 'Lab Layout', icon: Icons.Layers },
+      { id: 'occupancy', label: 'Space Tracker', icon: Icons.Grid },
+      { id: 'labels', label: 'Label Maker', icon: Icons.Tag },
       { id: 'scanner', label: 'QR Scanner', icon: Icons.QRScan },
-    ],
-  },
-  {
-    id: 'genetics',
-    label: 'Genetics',
-    icon: SectionIcons.Genetics,
-    defaultOpen: false,
-    items: [
-      { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
-      { id: 'lineage', label: 'Lineage', icon: Icons.Lineage },
-      { id: 'grows', label: 'Grows', icon: Icons.Grow },
     ],
   },
   {
@@ -469,15 +466,15 @@ const navGroups: NavGroup[] = [
     icon: SectionIcons.Analytics,
     defaultOpen: false,
     items: [
-      { id: 'analytics', label: 'Dashboard', icon: Icons.Chart },
-      { id: 'strainanalytics', label: 'Strain Performance', icon: Icons.Target },
-      { id: 'contamination', label: 'Contamination', icon: Icons.AlertTriangle },
+      { id: 'analytics', label: 'Overview', icon: Icons.Chart },
+      { id: 'strainanalytics', label: 'Strain Stats', icon: Icons.Target },
+      { id: 'contamination', label: 'Contam Analysis', icon: Icons.AlertTriangle },
       { id: 'efficiency', label: 'BE Calculator', icon: Icons.TrendingUp },
     ],
   },
   {
     id: 'tools',
-    label: 'Tools',
+    label: 'Calculators',
     icon: SectionIcons.Tools,
     defaultOpen: false,
     items: [
@@ -1169,24 +1166,11 @@ const AppWithRouter: React.FC = () => {
         return <LabCommandCenter onNavigate={setCurrentPage} />;
       case 'commandcenter':
         return <CommandCenter />;
+      // Legacy routes - redirect to unified Command Center
       case 'today':
-        return (
-          <div className="p-6">
-            <TodayView onNavigate={setCurrentPage} />
-          </div>
-        );
       case 'dailycheck':
-        return (
-          <div className="p-6">
-            <DailyCheck />
-          </div>
-        );
       case 'harvest':
-        return (
-          <div className="p-6">
-            <HarvestWorkflow />
-          </div>
-        );
+        return <Navigate to="/command" replace />;
       case 'forecast':
         return (
           <div className="p-6">
