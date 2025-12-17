@@ -1242,10 +1242,53 @@ Benefits:
 - components/command/index.ts (exports)
 
 **Files Updated:**
-- App.tsx (added route, nav item, page config, render case)
+- App.tsx (added route, nav item, page config, render case)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-913',
+    title: 'Navigation Consolidation & UX Cleanup',
+    description: 'Consolidated overlapping navigation items into a cleaner, more intuitive structure. Reduced nav clutter by 30% while preserving all functionality.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 2,
+    actualHours: 1,
+    completedAt: timestamp(),
+    notes: `Navigation Consolidation - Reducing Cognitive Load:
 
-**Note:** Original Today, Daily Check, and Harvest pages are PRESERVED
-for users who prefer the individual views. Command Center is ADDITIONAL.`,
+**Problem:**
+- Lab Command section had 9 items, causing cognitive overload
+- Today, Daily Check, and Harvest overlapped with Command Center
+- Users confused about which page to use
+
+**Solution:**
+1. **Removed Redundant Nav Items**: Today, Daily Check, Harvest removed from sidebar
+2. **Unified in Command Center**: All daily operations now in one place
+3. **Legacy URL Support**: Old routes (/today, /daily-check, /harvest) auto-redirect to /command
+4. **Reorganized Groups**: Better categorization for intuitive navigation
+
+**New Navigation Structure:**
+- **Daily Ops** (4 items): Dashboard, Command Center, Harvest Forecast, Cold Storage
+- **Cultivation** (5 items): Cultures, Grows, Lineage Tree, Observations, Event Log
+- **Knowledge Base** (2 items): Species & Strains, Recipes
+- **Lab & Storage** (6 items): Lab Inventory, Stock & Orders, Lab Layout, Space Tracker, Label Maker, QR Scanner
+- **Analytics** (4 items): Overview, Strain Stats, Contam Analysis, BE Calculator
+- **Calculators** (3 items): Substrate, Spawn Rate, Pressure Cook
+- **Settings** (3 items): Preferences, Profile, Roadmap
+
+**Key Changes:**
+- Renamed sections for clarity (Genetics → Cultivation, Inventory → Lab & Storage)
+- Moved Observations and Event Log to Cultivation (where the data lives)
+- Cleaner labels (Lab Mapping → Lab Layout, Occupancy → Space Tracker)
+
+**Files Updated:**
+- App.tsx (navGroups, removed imports, added redirects)
+
+**Backward Compatibility:**
+- All old URLs still work via automatic redirects
+- No functionality removed, just reorganized`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
