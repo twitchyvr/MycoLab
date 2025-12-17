@@ -1197,6 +1197,58 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-912',
+    title: 'Command Center - Unified Daily Operations Hub',
+    description: 'New consolidated view combining Today tasks, Room Walkthrough, and Harvest workflow into a single "mushroom cultivator\'s cockpit" interface. Three modes: Overview (tasks), Walkthrough (room-by-room inspection), Harvest (quick recording).',
+    category: 'ux',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 8,
+    actualHours: 4,
+    completedAt: timestamp(),
+    notes: `Command Center - Unified Daily Operations:
+
+**User Pain Point:**
+- Today, Daily Check, and Harvest pages had overlapping purposes
+- Too many nav items created cognitive overload
+- Cultivators wanted a single "cockpit" for daily operations
+
+**Solution - Three Modes in One View:**
+1. **Overview Mode**: Auto-generated task list from cultures and grows
+   - Priority-sorted (urgent → high → medium → low)
+   - Session-based completion tracking
+   - Quick stats: cultures, grows, fruiting, urgent count
+
+2. **Walkthrough Mode**: Room-by-room inspection
+   - Progress tracking (X of Y rooms checked)
+   - Per-room: attention flag, harvest estimate, notes
+   - localStorage persistence (date-keyed)
+   - Shows grows and fruiting status per room
+
+3. **Harvest Mode**: Quick harvest recording
+   - Lists all fruiting/harvesting grows
+   - Weight entry with BE% preview
+   - Quality rating and notes
+
+**Design Philosophy:**
+- "Mycelium Model" - operations flow from central hub
+- Mushroom-themed UI with cultivator-friendly language
+- Mobile-first responsive design
+- Preserves ALL functionality from original pages
+
+**Files Created:**
+- components/command/CommandCenter.tsx (new unified component)
+- components/command/index.ts (exports)
+
+**Files Updated:**
+- App.tsx (added route, nav item, page config, render case)
+
+**Note:** Original Today, Daily Check, and Harvest pages are PRESERVED
+for users who prefer the individual views. Command Center is ADDITIONAL.`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
