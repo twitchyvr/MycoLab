@@ -810,6 +810,258 @@ export interface DataStoreState {
 
 export type EntityType = 'species' | 'strain' | 'location' | 'container' | 'substrateType' | 'supplier' | 'inventoryCategory' | 'inventoryItem' | 'culture' | 'grow' | 'recipe';
 
+// ============================================================================
+// OUTCOME LOGGING TYPES
+// Tracks why entities are removed/completed for analytics and insights
+// ============================================================================
+
+// Outcome categories for classification
+export type OutcomeCategory = 'success' | 'failure' | 'neutral' | 'partial';
+
+// Grow-specific outcome codes
+export type GrowOutcomeCode =
+  // Success outcomes
+  | 'completed_success'        // Full cycle, good yield
+  | 'completed_low_yield'      // Completed but below expectations
+  | 'completed_excellent'      // Exceeded yield expectations
+  // Failure outcomes
+  | 'contamination_early'      // Days 1-7 (sterilization/technique)
+  | 'contamination_mid'        // Days 8-21 (environmental)
+  | 'contamination_late'       // Days 22+ (environmental/storage)
+  | 'stalled_colonization'     // Never colonized properly
+  | 'stalled_fruiting'         // Colonized but no pins
+  | 'aborted_user'             // User chose to stop
+  | 'aborted_environmental'    // Environmental failure (power, HVAC)
+  | 'genetics_failure'         // Poor genetics/senescence
+  // Neutral outcomes
+  | 'experiment_ended'         // Research project concluded
+  | 'transferred_out';         // Moved to another grow/user
+
+// Culture-specific outcome codes
+export type CultureOutcomeCode =
+  // Success outcomes
+  | 'exhausted_success'        // Used up all volume successfully
+  | 'archived_healthy'         // Stored for future use
+  // Failure outcomes
+  | 'contamination_bacterial'  // Bacterial contamination
+  | 'contamination_mold'       // Mold contamination
+  | 'contamination_unknown'    // Unknown contamination
+  | 'senescence'               // Genetics degraded
+  | 'media_failure'            // Media issue (pH, drying, etc.)
+  | 'storage_failure'          // Temperature/humidity failure
+  // Neutral outcomes
+  | 'expired_unused'           // Never used, past viability
+  | 'discarded_cleanup'        // Lab cleanup
+  | 'transferred_out';         // Given away/sold
+
+// Inventory-specific outcome codes
+export type InventoryOutcomeCode =
+  | 'consumed_normal'          // Used as expected
+  | 'expired_unused'           // Expired before use
+  | 'damaged'                  // Physical damage
+  | 'contaminated'             // Contamination issue
+  | 'returned'                 // Returned to supplier
+  | 'discarded_quality';       // Quality concerns
+
+// Generic outcome code union
+export type OutcomeCode = GrowOutcomeCode | CultureOutcomeCode | InventoryOutcomeCode;
+
+// Contamination types for detailed tracking
+export type ContaminationType =
+  | 'trichoderma'
+  | 'cobweb'
+  | 'black_mold'
+  | 'penicillium'
+  | 'aspergillus'
+  | 'bacterial'
+  | 'lipstick'
+  | 'wet_spot'
+  | 'yeast'
+  | 'unknown';
+
+// Contamination stage (when detected)
+export type ContaminationStage =
+  | 'agar'
+  | 'liquid_culture'
+  | 'grain_spawn'
+  | 'bulk_colonization'
+  | 'fruiting'
+  | 'storage';
+
+// Suspected cause of contamination
+export type SuspectedCause =
+  | 'sterilization_failure'
+  | 'inoculation_technique'
+  | 'contaminated_source'
+  | 'environmental'
+  | 'substrate_issue'
+  | 'equipment'
+  | 'user_error'
+  | 'unknown';
+
+// Entity outcome record (universal for all entity types)
+export interface EntityOutcome {
+  id: string;
+  entityType: 'grow' | 'culture' | 'inventory_item' | 'inventory_lot' | 'equipment';
+  entityId: string;
+  entityName?: string;
+
+  // Outcome classification
+  outcomeCategory: OutcomeCategory;
+  outcomeCode: OutcomeCode;
+  outcomeLabel?: string;
+
+  // Timing
+  startedAt?: Date;
+  endedAt: Date;
+  durationDays?: number;
+
+  // Financial
+  totalCost?: number;
+  totalRevenue?: number;
+  costPerUnit?: number;
+
+  // Yield (for grows)
+  totalYieldWet?: number;
+  totalYieldDry?: number;
+  biologicalEfficiency?: number;
+  flushCount?: number;
+
+  // References
+  strainId?: string;
+  strainName?: string;
+  speciesId?: string;
+  speciesName?: string;
+  locationId?: string;
+  locationName?: string;
+
+  // Survey data
+  surveyResponses?: Record<string, unknown>;
+
+  // Metadata
+  notes?: string;
+  createdAt: Date;
+}
+
+// Contamination details (linked to outcomes)
+export interface ContaminationDetails {
+  id: string;
+  outcomeId: string;
+  contaminationType?: ContaminationType;
+  contaminationStage?: ContaminationStage;
+  daysToDetection?: number;
+  suspectedCause?: SuspectedCause;
+  temperatureAtDetection?: number;
+  humidityAtDetection?: number;
+  images?: string[];
+  notes?: string;
+  createdAt: Date;
+}
+
+// Exit survey responses (entity-specific questions)
+export interface ExitSurvey {
+  id: string;
+  outcomeId: string;
+  entityType: string;
+
+  // Universal questions
+  baseResponses?: Record<string, unknown>;
+
+  // Type-specific responses
+  specificResponses?: Record<string, unknown>;
+
+  // User experience ratings (1-5)
+  overallSatisfaction?: number;
+  difficultyRating?: number;
+  wouldRepeat?: boolean;
+
+  // Lessons learned
+  whatWorked?: string;
+  whatFailed?: string;
+  wouldChange?: string;
+
+  // Time tracking
+  estimatedHoursSpent?: number;
+
+  completedAt: Date;
+}
+
+// Outcome option for UI selection
+export interface OutcomeOption {
+  code: OutcomeCode;
+  label: string;
+  category: OutcomeCategory;
+  description?: string;
+  icon?: string;
+}
+
+// Grow outcome options for the UI
+export const GROW_OUTCOME_OPTIONS: OutcomeOption[] = [
+  // Success
+  { code: 'completed_success', label: 'Success', category: 'success', description: 'Full cycle, good yield', icon: 'check_circle' },
+  { code: 'completed_excellent', label: 'Excellent', category: 'success', description: 'Exceeded expectations', icon: 'star' },
+  { code: 'completed_low_yield', label: 'Low Yield', category: 'partial', description: 'Completed but below expectations', icon: 'trending_down' },
+  // Contamination
+  { code: 'contamination_early', label: 'Early Contam', category: 'failure', description: 'Days 1-7 (sterilization/technique)', icon: 'warning' },
+  { code: 'contamination_mid', label: 'Mid Contam', category: 'failure', description: 'Days 8-21 (environmental)', icon: 'warning' },
+  { code: 'contamination_late', label: 'Late Contam', category: 'failure', description: 'Days 22+ (environmental/storage)', icon: 'warning' },
+  // Other failures
+  { code: 'stalled_colonization', label: 'Stalled Colonization', category: 'failure', description: 'Never colonized properly', icon: 'pause_circle' },
+  { code: 'stalled_fruiting', label: 'Stalled Fruiting', category: 'failure', description: 'Colonized but no pins', icon: 'pause_circle' },
+  { code: 'genetics_failure', label: 'Genetics Issue', category: 'failure', description: 'Poor genetics/senescence', icon: 'dna' },
+  // Aborted
+  { code: 'aborted_user', label: 'User Aborted', category: 'neutral', description: 'Chose to stop', icon: 'cancel' },
+  { code: 'aborted_environmental', label: 'Environmental Failure', category: 'failure', description: 'Power, HVAC, etc.', icon: 'power_off' },
+  // Neutral
+  { code: 'experiment_ended', label: 'Experiment Ended', category: 'neutral', description: 'Research concluded', icon: 'science' },
+  { code: 'transferred_out', label: 'Transferred', category: 'neutral', description: 'Moved elsewhere', icon: 'move_item' },
+];
+
+// Culture outcome options for the UI
+export const CULTURE_OUTCOME_OPTIONS: OutcomeOption[] = [
+  // Success
+  { code: 'exhausted_success', label: 'Fully Used', category: 'success', description: 'Used up all volume successfully', icon: 'check_circle' },
+  { code: 'archived_healthy', label: 'Archived', category: 'success', description: 'Stored for future use', icon: 'archive' },
+  // Contamination
+  { code: 'contamination_bacterial', label: 'Bacterial Contam', category: 'failure', description: 'Bacterial contamination', icon: 'warning' },
+  { code: 'contamination_mold', label: 'Mold Contam', category: 'failure', description: 'Mold contamination', icon: 'warning' },
+  { code: 'contamination_unknown', label: 'Unknown Contam', category: 'failure', description: 'Unknown contamination', icon: 'warning' },
+  // Other failures
+  { code: 'senescence', label: 'Senescence', category: 'failure', description: 'Genetics degraded over time', icon: 'trending_down' },
+  { code: 'media_failure', label: 'Media Failure', category: 'failure', description: 'pH, drying, or other media issue', icon: 'error' },
+  { code: 'storage_failure', label: 'Storage Failure', category: 'failure', description: 'Temperature/humidity failure', icon: 'thermostat' },
+  // Neutral
+  { code: 'expired_unused', label: 'Expired Unused', category: 'neutral', description: 'Past viability date', icon: 'event_busy' },
+  { code: 'discarded_cleanup', label: 'Lab Cleanup', category: 'neutral', description: 'General cleanup', icon: 'cleaning_services' },
+  { code: 'transferred_out', label: 'Transferred', category: 'neutral', description: 'Given away or sold', icon: 'move_item' },
+];
+
+// Contamination type options for the UI
+export const CONTAMINATION_TYPE_OPTIONS: { code: ContaminationType; label: string; description?: string }[] = [
+  { code: 'trichoderma', label: 'Trichoderma (Green Mold)', description: 'Green/yellow patches, very common' },
+  { code: 'cobweb', label: 'Cobweb Mold', description: 'Gray, wispy, fast-spreading' },
+  { code: 'black_mold', label: 'Black Mold', description: 'Dark black/green spots' },
+  { code: 'penicillium', label: 'Penicillium (Blue-Green)', description: 'Blue-green with white border' },
+  { code: 'aspergillus', label: 'Aspergillus', description: 'Various colors, powdery texture' },
+  { code: 'bacterial', label: 'Bacterial', description: 'Wet, slimy, often smelly' },
+  { code: 'lipstick', label: 'Lipstick Mold', description: 'Bright pink/red spots' },
+  { code: 'wet_spot', label: 'Wet Spot (Bacillus)', description: 'Wet, sour-smelling areas in grain' },
+  { code: 'yeast', label: 'Yeast', description: 'Creamy, pasty appearance' },
+  { code: 'unknown', label: 'Unknown', description: 'Unable to identify' },
+];
+
+// Suspected cause options for the UI
+export const SUSPECTED_CAUSE_OPTIONS: { code: SuspectedCause; label: string; description?: string }[] = [
+  { code: 'sterilization_failure', label: 'Sterilization Failure', description: 'Incomplete sterilization of substrate/equipment' },
+  { code: 'inoculation_technique', label: 'Inoculation Technique', description: 'Contamination during inoculation' },
+  { code: 'contaminated_source', label: 'Contaminated Source', description: 'Source culture was already contaminated' },
+  { code: 'environmental', label: 'Environmental', description: 'Air quality, dust, other grow contams' },
+  { code: 'substrate_issue', label: 'Substrate Issue', description: 'Problem with substrate preparation' },
+  { code: 'equipment', label: 'Equipment', description: 'Contaminated equipment or containers' },
+  { code: 'user_error', label: 'User Error', description: 'Mistake in handling or technique' },
+  { code: 'unknown', label: 'Unknown', description: 'Unable to determine cause' },
+];
+
 export interface LookupHelpers {
   getSpecies: (id: string) => Species | undefined;
   getStrain: (id: string) => Strain | undefined;

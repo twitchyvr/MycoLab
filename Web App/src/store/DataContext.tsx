@@ -11,7 +11,8 @@ import {
   InventoryCategory, InventoryItem, InventoryLot, InventoryUsage, PurchaseOrder,
   Culture, Grow, Recipe, AppSettings,
   CultureObservation, CultureTransfer, GrowObservation, Flush, GrowStage,
-  RecipeCategoryItem, GrainType, LotStatus, UsageType
+  RecipeCategoryItem, GrainType, LotStatus, UsageType,
+  EntityOutcome, ContaminationDetails, OutcomeCategory, OutcomeCode, ContaminationType, ContaminationStage, SuspectedCause
 } from './types';
 import {
   supabase,
@@ -24,6 +25,45 @@ import {
 
 // Import modularized defaults and transformations
 import { emptyState } from './defaults';
+
+// ============================================================================
+// OUTCOME DATA TYPES (for function parameters)
+// ============================================================================
+
+export interface EntityOutcomeData {
+  entityType: 'grow' | 'culture' | 'inventory_item' | 'inventory_lot' | 'equipment';
+  entityId: string;
+  entityName?: string;
+  outcomeCategory: OutcomeCategory;
+  outcomeCode: OutcomeCode;
+  outcomeLabel?: string;
+  startedAt?: Date;
+  endedAt?: Date;
+  totalCost?: number;
+  totalYieldWet?: number;
+  totalYieldDry?: number;
+  biologicalEfficiency?: number;
+  flushCount?: number;
+  strainId?: string;
+  strainName?: string;
+  speciesId?: string;
+  speciesName?: string;
+  locationId?: string;
+  locationName?: string;
+  surveyResponses?: Record<string, unknown>;
+  notes?: string;
+}
+
+export interface ContaminationDetailsData {
+  contaminationType?: ContaminationType;
+  contaminationStage?: ContaminationStage;
+  daysToDetection?: number;
+  suspectedCause?: SuspectedCause;
+  temperatureAtDetection?: number;
+  humidityAtDetection?: number;
+  images?: string[];
+  notes?: string;
+}
 import {
   transformStrainFromDb,
   transformStrainToDb,
@@ -167,11 +207,15 @@ interface DataContextValue extends LookupHelpers {
   // Grow CRUD
   addGrow: (grow: Omit<Grow, 'id' | 'createdAt' | 'observations' | 'flushes' | 'totalYield'>) => Promise<Grow>;
   updateGrow: (id: string, updates: Partial<Grow>) => Promise<void>;
-  deleteGrow: (id: string) => Promise<void>;
+  deleteGrow: (id: string, outcome?: EntityOutcomeData) => Promise<void>;
   advanceGrowStage: (growId: string) => Promise<void>;
   markGrowContaminated: (growId: string, notes?: string) => Promise<void>;
   addGrowObservation: (growId: string, observation: Omit<GrowObservation, 'id'>) => void;
   addFlush: (growId: string, flush: Omit<Flush, 'id' | 'flushNumber'>) => Promise<void>;
+
+  // Outcome Logging
+  saveEntityOutcome: (outcome: EntityOutcomeData) => Promise<EntityOutcome>;
+  saveContaminationDetails: (outcomeId: string, details: ContaminationDetailsData) => Promise<void>;
   
   // Recipe CRUD
   addRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Recipe>;
@@ -1266,21 +1310,142 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }));
   }, [supabase]);
 
-  const deleteGrow = useCallback(async (id: string) => {
+  // ============================================================================
+  // OUTCOME LOGGING
+  // ============================================================================
+
+  const saveEntityOutcome = useCallback(async (outcomeData: EntityOutcomeData): Promise<EntityOutcome> => {
+    const id = generateId('outcome');
+    const now = new Date();
+
+    // Calculate duration
+    const startDate = outcomeData.startedAt ? new Date(outcomeData.startedAt) : null;
+    const endDate = outcomeData.endedAt ? new Date(outcomeData.endedAt) : now;
+    const durationDays = startDate
+      ? Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+      : undefined;
+
+    const outcome: EntityOutcome = {
+      id,
+      entityType: outcomeData.entityType,
+      entityId: outcomeData.entityId,
+      entityName: outcomeData.entityName,
+      outcomeCategory: outcomeData.outcomeCategory,
+      outcomeCode: outcomeData.outcomeCode,
+      outcomeLabel: outcomeData.outcomeLabel,
+      startedAt: outcomeData.startedAt,
+      endedAt: endDate,
+      durationDays,
+      totalCost: outcomeData.totalCost,
+      totalYieldWet: outcomeData.totalYieldWet,
+      totalYieldDry: outcomeData.totalYieldDry,
+      biologicalEfficiency: outcomeData.biologicalEfficiency,
+      flushCount: outcomeData.flushCount,
+      strainId: outcomeData.strainId,
+      strainName: outcomeData.strainName,
+      speciesId: outcomeData.speciesId,
+      speciesName: outcomeData.speciesName,
+      locationId: outcomeData.locationId,
+      locationName: outcomeData.locationName,
+      surveyResponses: outcomeData.surveyResponses,
+      notes: outcomeData.notes,
+      createdAt: now,
+    };
+
+    if (supabase) {
+      const userId = await getCurrentUserId();
+      const { error } = await supabase
+        .from('entity_outcomes')
+        .insert({
+          id: outcome.id,
+          entity_type: outcome.entityType,
+          entity_id: outcome.entityId,
+          entity_name: outcome.entityName,
+          outcome_category: outcome.outcomeCategory,
+          outcome_code: outcome.outcomeCode,
+          outcome_label: outcome.outcomeLabel,
+          started_at: outcome.startedAt?.toISOString(),
+          ended_at: outcome.endedAt.toISOString(),
+          duration_days: outcome.durationDays,
+          total_cost: outcome.totalCost,
+          total_yield_wet: outcome.totalYieldWet,
+          total_yield_dry: outcome.totalYieldDry,
+          biological_efficiency: outcome.biologicalEfficiency,
+          flush_count: outcome.flushCount,
+          strain_id: outcome.strainId,
+          strain_name: outcome.strainName,
+          species_id: outcome.speciesId,
+          species_name: outcome.speciesName,
+          location_id: outcome.locationId,
+          location_name: outcome.locationName,
+          survey_responses: outcome.surveyResponses || {},
+          notes: outcome.notes,
+          user_id: userId,
+        });
+
+      if (error) {
+        console.error('Failed to save entity outcome:', error);
+        // Don't throw - we don't want to block the delete operation
+      }
+    }
+
+    return outcome;
+  }, [supabase, generateId]);
+
+  const saveContaminationDetails = useCallback(async (outcomeId: string, details: ContaminationDetailsData): Promise<void> => {
+    if (!supabase) return;
+
+    const userId = await getCurrentUserId();
+    const { error } = await supabase
+      .from('contamination_details')
+      .insert({
+        id: generateId('contam'),
+        outcome_id: outcomeId,
+        contamination_type: details.contaminationType,
+        contamination_stage: details.contaminationStage,
+        days_to_detection: details.daysToDetection,
+        suspected_cause: details.suspectedCause,
+        temperature_at_detection: details.temperatureAtDetection,
+        humidity_at_detection: details.humidityAtDetection,
+        images: details.images,
+        notes: details.notes,
+        user_id: userId,
+      });
+
+    if (error) {
+      console.error('Failed to save contamination details:', error);
+      // Don't throw - we don't want to block the delete operation
+    }
+  }, [supabase, generateId]);
+
+  const deleteGrow = useCallback(async (id: string, outcome?: EntityOutcomeData) => {
+    // If outcome data provided, save it first
+    if (outcome) {
+      const savedOutcome = await saveEntityOutcome(outcome);
+
+      // If it's a contamination outcome, check for contamination details
+      if (outcome.surveyResponses?.contamination && savedOutcome.id) {
+        const contamDetails = outcome.surveyResponses.contamination as ContaminationDetailsData;
+        if (contamDetails.contaminationType || contamDetails.suspectedCause) {
+          await saveContaminationDetails(savedOutcome.id, contamDetails);
+        }
+      }
+    }
+
     if (supabase) {
       const { error } = await supabase
         .from('grows')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
     }
-    
+
     setState(prev => ({
       ...prev,
       grows: prev.grows.filter(g => g.id !== id)
     }));
-  }, [supabase]);
+  }, [supabase, saveEntityOutcome, saveContaminationDetails]);
 
   const stageOrder: GrowStage[] = ['spawning', 'colonization', 'fruiting', 'harvesting', 'completed'];
 
@@ -2229,6 +2394,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     getCultureLineage, generateCultureLabel,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
     addGrowObservation, addFlush,
+    saveEntityOutcome, saveContaminationDetails,
     addRecipe, updateRecipe, deleteRecipe, calculateRecipeCost, scaleRecipe,
     updateSettings,
     generateId,
@@ -2259,6 +2425,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     getCultureLineage, generateCultureLabel,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
     addGrowObservation, addFlush,
+    saveEntityOutcome, saveContaminationDetails,
     addRecipe, updateRecipe, deleteRecipe, calculateRecipeCost, scaleRecipe,
     updateSettings, generateId, refreshData,
   ]);

@@ -45,6 +45,7 @@ import { RecipeBuilder } from './components/recipes/RecipeBuilder';
 import { SetupWizard } from './components/setup/SetupWizard';
 import { StockManagement } from './components/inventory/StockManagement';
 import { TodayView } from './components/today';
+import { CommandCenter } from './components/command';
 import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
 import { ObservationTimeline, EventLogger } from './components/observations';
 import { ProfilePage } from './components/profile';
@@ -302,12 +303,13 @@ const Icons = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
 
 // Route configuration: maps Page to URL paths
 // Routes with :id support deep-linking to specific items
 const routeConfig: Record<Page, string> = {
   dashboard: '/',
+  commandcenter: '/command',
   today: '/today',
   dailycheck: '/daily-check',
   harvest: '/harvest',
@@ -416,6 +418,7 @@ const navGroups: NavGroup[] = [
     defaultOpen: true,
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
+      { id: 'commandcenter', label: 'Command Center', icon: Icons.Target },
       { id: 'today', label: 'Today', icon: Icons.Sun },
       { id: 'dailycheck', label: 'Daily Check', icon: Icons.Clipboard },
       { id: 'harvest', label: 'Harvest', icon: Icons.Scale },
@@ -1129,6 +1132,7 @@ const AppWithRouter: React.FC = () => {
 
   const pageConfig: Record<Page, { title: string; subtitle?: string }> = {
     dashboard: { title: 'Lab Command Center', subtitle: 'Real-time operational hub for your mycology lab' },
+    commandcenter: { title: 'Command Center', subtitle: 'Unified daily operations: tasks, room checks, harvests' },
     today: { title: 'Today', subtitle: 'Daily tasks and actionable items' },
     dailycheck: { title: 'Daily Room Check', subtitle: 'Growing room rounds with harvest estimates' },
     harvest: { title: 'Harvest Workflow', subtitle: 'Quick harvest recording with auto BE% calculation' },
@@ -1163,6 +1167,8 @@ const AppWithRouter: React.FC = () => {
     switch (currentPage) {
       case 'dashboard':
         return <LabCommandCenter onNavigate={setCurrentPage} />;
+      case 'commandcenter':
+        return <CommandCenter />;
       case 'today':
         return (
           <div className="p-6">

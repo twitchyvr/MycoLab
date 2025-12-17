@@ -4001,6 +4001,220 @@ CREATE POLICY "Users can delete their own cold_storage_checks"
   USING (auth.uid() = user_id);
 
 -- ============================================================================
+-- OUTCOME LOGGING TABLES (v18)
+-- Tracks why entities are removed/completed for analytics and insights
+-- ============================================================================
+
+-- Entity outcomes (universal for all entity types: grows, cultures, inventory)
+CREATE TABLE IF NOT EXISTS entity_outcomes (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('grow', 'culture', 'inventory_item', 'inventory_lot', 'equipment')),
+  entity_id UUID NOT NULL,
+  entity_name TEXT,  -- Denormalized for historical reference
+
+  -- Outcome classification
+  outcome_category TEXT NOT NULL CHECK (outcome_category IN ('success', 'failure', 'neutral', 'partial')),
+  outcome_code TEXT NOT NULL,  -- From taxonomy (e.g., 'contamination_early', 'completed_success')
+  outcome_label TEXT,  -- Human-readable version
+
+  -- Timing
+  started_at TIMESTAMPTZ,      -- When entity was created/started
+  ended_at TIMESTAMPTZ DEFAULT NOW(),
+  duration_days INTEGER,       -- Calculated from dates
+
+  -- Financial
+  total_cost DECIMAL(10,2),
+  total_revenue DECIMAL(10,2),       -- For harvests that were sold
+  cost_per_unit DECIMAL(10,4),       -- Calculated efficiency
+
+  -- Yield (for grows)
+  total_yield_wet DECIMAL(10,2),
+  total_yield_dry DECIMAL(10,2),
+  biological_efficiency DECIMAL(5,2),
+  flush_count INTEGER,
+
+  -- References (denormalized for historical queries)
+  strain_id UUID,
+  strain_name TEXT,
+  species_id UUID,
+  species_name TEXT,
+  location_id UUID,
+  location_name TEXT,
+
+  -- Survey data (JSONB for flexibility)
+  survey_responses JSONB DEFAULT '{}',
+
+  -- Metadata
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for entity_outcomes
+CREATE INDEX IF NOT EXISTS idx_entity_outcomes_entity ON entity_outcomes(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_entity_outcomes_user ON entity_outcomes(user_id);
+CREATE INDEX IF NOT EXISTS idx_entity_outcomes_outcome ON entity_outcomes(outcome_category, outcome_code);
+CREATE INDEX IF NOT EXISTS idx_entity_outcomes_strain ON entity_outcomes(strain_id);
+CREATE INDEX IF NOT EXISTS idx_entity_outcomes_ended_at ON entity_outcomes(ended_at);
+
+-- Enable RLS on entity_outcomes
+ALTER TABLE entity_outcomes ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for entity_outcomes
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own entity_outcomes" ON entity_outcomes;
+  DROP POLICY IF EXISTS "Users can insert their own entity_outcomes" ON entity_outcomes;
+  DROP POLICY IF EXISTS "Users can update their own entity_outcomes" ON entity_outcomes;
+  DROP POLICY IF EXISTS "Users can delete their own entity_outcomes" ON entity_outcomes;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own entity_outcomes"
+  ON entity_outcomes FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own entity_outcomes"
+  ON entity_outcomes FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own entity_outcomes"
+  ON entity_outcomes FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own entity_outcomes"
+  ON entity_outcomes FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Contamination details (linked to outcomes for detailed contam analysis)
+CREATE TABLE IF NOT EXISTS contamination_details (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  outcome_id UUID REFERENCES entity_outcomes(id) ON DELETE CASCADE,
+
+  contamination_type TEXT CHECK (contamination_type IN (
+    'trichoderma', 'cobweb', 'black_mold', 'penicillium',
+    'aspergillus', 'bacterial', 'lipstick', 'wet_spot', 'yeast', 'unknown'
+  )),
+  contamination_stage TEXT CHECK (contamination_stage IN (
+    'agar', 'liquid_culture', 'grain_spawn', 'bulk_colonization', 'fruiting', 'storage'
+  )),
+  days_to_detection INTEGER,
+  suspected_cause TEXT CHECK (suspected_cause IN (
+    'sterilization_failure', 'inoculation_technique', 'contaminated_source',
+    'environmental', 'substrate_issue', 'equipment', 'user_error', 'unknown'
+  )),
+
+  -- Environment at time of contamination
+  temperature_at_detection DECIMAL(5,2),
+  humidity_at_detection DECIMAL(5,2),
+
+  -- Photo evidence
+  images TEXT[],
+
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for contamination_details
+CREATE INDEX IF NOT EXISTS idx_contamination_details_outcome ON contamination_details(outcome_id);
+CREATE INDEX IF NOT EXISTS idx_contamination_details_type ON contamination_details(contamination_type);
+CREATE INDEX IF NOT EXISTS idx_contamination_details_cause ON contamination_details(suspected_cause);
+CREATE INDEX IF NOT EXISTS idx_contamination_details_user ON contamination_details(user_id);
+
+-- Enable RLS on contamination_details
+ALTER TABLE contamination_details ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for contamination_details
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own contamination_details" ON contamination_details;
+  DROP POLICY IF EXISTS "Users can insert their own contamination_details" ON contamination_details;
+  DROP POLICY IF EXISTS "Users can update their own contamination_details" ON contamination_details;
+  DROP POLICY IF EXISTS "Users can delete their own contamination_details" ON contamination_details;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own contamination_details"
+  ON contamination_details FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own contamination_details"
+  ON contamination_details FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own contamination_details"
+  ON contamination_details FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own contamination_details"
+  ON contamination_details FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Exit surveys (entity-specific questions and user feedback)
+CREATE TABLE IF NOT EXISTS exit_surveys (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  outcome_id UUID REFERENCES entity_outcomes(id) ON DELETE CASCADE,
+  entity_type TEXT NOT NULL,
+
+  -- Universal questions (stored as JSONB)
+  base_responses JSONB DEFAULT '{}',
+
+  -- Type-specific responses (stored as JSONB)
+  specific_responses JSONB DEFAULT '{}',
+
+  -- User experience ratings (1-5)
+  overall_satisfaction INTEGER CHECK (overall_satisfaction BETWEEN 1 AND 5),
+  difficulty_rating INTEGER CHECK (difficulty_rating BETWEEN 1 AND 5),
+  would_repeat BOOLEAN,
+
+  -- Lessons learned
+  what_worked TEXT,
+  what_failed TEXT,
+  would_change TEXT,
+
+  -- Time tracking
+  estimated_hours_spent DECIMAL(6,2),
+
+  completed_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for exit_surveys
+CREATE INDEX IF NOT EXISTS idx_exit_surveys_outcome ON exit_surveys(outcome_id);
+CREATE INDEX IF NOT EXISTS idx_exit_surveys_entity_type ON exit_surveys(entity_type);
+CREATE INDEX IF NOT EXISTS idx_exit_surveys_user ON exit_surveys(user_id);
+
+-- Enable RLS on exit_surveys
+ALTER TABLE exit_surveys ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for exit_surveys
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own exit_surveys" ON exit_surveys;
+  DROP POLICY IF EXISTS "Users can insert their own exit_surveys" ON exit_surveys;
+  DROP POLICY IF EXISTS "Users can update their own exit_surveys" ON exit_surveys;
+  DROP POLICY IF EXISTS "Users can delete their own exit_surveys" ON exit_surveys;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own exit_surveys"
+  ON exit_surveys FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own exit_surveys"
+  ON exit_surveys FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own exit_surveys"
+  ON exit_surveys FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own exit_surveys"
+  ON exit_surveys FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
 -- SCHEMA VERSION (for tracking migrations)
 -- ============================================================================
 
@@ -4011,12 +4225,21 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 17)
-ON CONFLICT (id) DO UPDATE SET version = 17, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 18)
+ON CONFLICT (id) DO UPDATE SET version = 18, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v18 (2024-12): Added outcome logging system for analytics and insights:
+--               - entity_outcomes: Universal outcome tracking for grows, cultures, inventory
+--                 Captures outcome category (success/failure/neutral/partial), outcome codes,
+--                 timing, financials, yield data, and survey responses (JSONB)
+--               - contamination_details: Detailed contamination tracking linked to outcomes
+--                 Includes contam type, stage, suspected cause, environment data
+--               - exit_surveys: User feedback and lessons learned on entity removal
+--                 Satisfaction ratings, difficulty, what worked/failed/would change
+--               - Full RLS policies and indexes for all new tables
 -- v17 (2024-12): Added new features tables:
 --               - lab_events: General purpose event logging (dev-062)
 --                 Supports observations, maintenance, harvests, transfers, etc.
