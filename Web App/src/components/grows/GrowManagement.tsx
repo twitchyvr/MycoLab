@@ -5,8 +5,9 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
-import type { Grow, GrowStage, GrowStatus, GrowObservation, Flush } from '../../store/types';
+import type { Grow, GrowStage, GrowStatus, GrowObservation, Flush, GrowOutcomeCode } from '../../store/types';
 import { StandardDropdown } from '../common/StandardDropdown';
+import { ExitSurveyModal, ExitSurveyData } from '../surveys';
 
 // Draft key for localStorage
 const GROW_DRAFT_KEY = 'mycolab-grow-draft';
@@ -33,6 +34,7 @@ const Icons = {
   Grid: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
   List: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
   ChevronRight: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="9 18 15 12 9 6"/></svg>,
+  Check: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="20 6 9 17 4 12"/></svg>,
   Clipboard: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>,
   Scale: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M12 3v18M3 12h18M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg>,
   Edit: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
@@ -129,6 +131,9 @@ export const GrowManagement: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showObservationModal, setShowObservationModal] = useState(false);
   const [showHarvestModal, setShowHarvestModal] = useState(false);
+  const [showExitSurveyModal, setShowExitSurveyModal] = useState(false);
+  const [exitSurveyGrow, setExitSurveyGrow] = useState<Grow | null>(null);
+  const [preselectedOutcome, setPreselectedOutcome] = useState<GrowOutcomeCode | undefined>(undefined);
   const [hasDraft, setHasDraft] = useState(false);
 
   // Form type
@@ -543,12 +548,90 @@ export const GrowManagement: React.FC = () => {
     setNewHarvest({ wetWeight: 0, dryWeight: 0, mushroomCount: undefined, quality: 'good', notes: '' });
   };
 
-  // Delete handler
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this grow?')) {
-      deleteGrow(id);
-      if (selectedGrow?.id === id) setSelectedGrow(null);
+  // Open exit survey for a grow
+  const openExitSurvey = (grow: Grow, preselected?: GrowOutcomeCode) => {
+    setExitSurveyGrow(grow);
+    setPreselectedOutcome(preselected);
+    setShowExitSurveyModal(true);
+  };
+
+  // Handle exit survey completion
+  const handleExitSurveyComplete = async (surveyData: ExitSurveyData) => {
+    if (!exitSurveyGrow) return;
+
+    const strain = getStrain(exitSurveyGrow.strainId);
+    const location = getLocation(exitSurveyGrow.locationId);
+
+    // Build the outcome data
+    const outcomeData = {
+      entityType: 'grow' as const,
+      entityId: exitSurveyGrow.id,
+      entityName: exitSurveyGrow.name,
+      outcomeCategory: surveyData.outcomeCategory,
+      outcomeCode: surveyData.outcomeCode,
+      outcomeLabel: surveyData.outcomeLabel,
+      startedAt: exitSurveyGrow.spawnedAt,
+      endedAt: new Date(),
+      totalCost: exitSurveyGrow.estimatedCost,
+      totalYieldWet: exitSurveyGrow.totalYield,
+      flushCount: exitSurveyGrow.flushes.length,
+      strainId: exitSurveyGrow.strainId,
+      strainName: strain?.name,
+      locationId: exitSurveyGrow.locationId,
+      locationName: location?.name,
+      surveyResponses: {
+        contamination: surveyData.contamination,
+        feedback: surveyData.feedback,
+      },
+      notes: surveyData.feedback?.notes,
+    };
+
+    // Delete the grow with outcome data
+    await deleteGrow(exitSurveyGrow.id, outcomeData);
+
+    // Clean up
+    setShowExitSurveyModal(false);
+    setExitSurveyGrow(null);
+    setPreselectedOutcome(undefined);
+    if (selectedGrow?.id === exitSurveyGrow.id) setSelectedGrow(null);
+  };
+
+  // Handle skip survey (delete without logging)
+  const handleSkipSurvey = async () => {
+    if (!exitSurveyGrow) return;
+
+    if (confirm('Delete this grow without logging the outcome? This data helps track patterns.')) {
+      await deleteGrow(exitSurveyGrow.id);
+      setShowExitSurveyModal(false);
+      setExitSurveyGrow(null);
+      setPreselectedOutcome(undefined);
+      if (selectedGrow?.id === exitSurveyGrow.id) setSelectedGrow(null);
     }
+  };
+
+  // Delete handler - now opens exit survey
+  const handleDelete = (grow: Grow) => {
+    openExitSurvey(grow);
+  };
+
+  // Mark contaminated handler - opens exit survey with preselected contamination
+  const handleMarkContaminatedWithSurvey = (grow: Grow) => {
+    // Determine which contamination code based on days active
+    const days = daysActive(grow.spawnedAt);
+    let outcomeCode: GrowOutcomeCode = 'contamination_mid';
+    if (days <= 7) outcomeCode = 'contamination_early';
+    else if (days > 21) outcomeCode = 'contamination_late';
+
+    openExitSurvey(grow, outcomeCode);
+  };
+
+  // Complete grow handler - opens exit survey with success preselected
+  const handleCompleteGrow = (grow: Grow) => {
+    // Determine success level based on yield
+    let outcomeCode: GrowOutcomeCode = 'completed_success';
+    // Could add logic here to suggest excellent/low_yield based on species typical yield
+
+    openExitSurvey(grow, outcomeCode);
   };
 
   return (
@@ -940,14 +1023,28 @@ export const GrowManagement: React.FC = () => {
 
             {/* Actions */}
             <div className="flex flex-wrap gap-2 pt-4 mt-4 border-t border-zinc-800">
+              {/* Primary action buttons row */}
               {!['completed', 'contaminated', 'aborted'].includes(selectedGrow.currentStage) && (
-                <button
-                  onClick={handleAdvanceStage}
-                  className="flex-1 flex items-center justify-center gap-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium"
-                >
-                  <Icons.ChevronRight />
-                  Advance
-                </button>
+                <>
+                  {selectedGrow.currentStage === 'harvesting' ? (
+                    <button
+                      onClick={() => handleCompleteGrow(selectedGrow)}
+                      className="flex-1 flex items-center justify-center gap-1 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium"
+                      title="Complete this grow and log outcome"
+                    >
+                      <Icons.Check />
+                      Complete
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleAdvanceStage}
+                      className="flex-1 flex items-center justify-center gap-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium"
+                    >
+                      <Icons.ChevronRight />
+                      Advance
+                    </button>
+                  )}
+                </>
               )}
               {['fruiting', 'harvesting'].includes(selectedGrow.currentStage) && (
                 <button
@@ -965,6 +1062,8 @@ export const GrowManagement: React.FC = () => {
                 <Icons.Clipboard />
                 Log
               </button>
+
+              {/* Secondary action buttons row */}
               <button
                 onClick={() => openEditModal(selectedGrow)}
                 className="p-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg"
@@ -974,17 +1073,17 @@ export const GrowManagement: React.FC = () => {
               </button>
               {!['completed', 'contaminated', 'aborted'].includes(selectedGrow.currentStage) && (
                 <button
-                  onClick={handleMarkContaminated}
+                  onClick={() => handleMarkContaminatedWithSurvey(selectedGrow)}
                   className="p-2 bg-red-950/50 hover:bg-red-950 text-red-400 rounded-lg text-sm"
-                  title="Mark Contaminated"
+                  title="Mark Contaminated (log outcome)"
                 >
                   ☠️
                 </button>
               )}
               <button
-                onClick={() => handleDelete(selectedGrow.id)}
+                onClick={() => handleDelete(selectedGrow)}
                 className="p-2 bg-red-950/50 hover:bg-red-950 text-red-400 rounded-lg"
-                title="Delete Grow"
+                title="Remove Grow (log outcome)"
               >
                 <Icons.Trash />
               </button>
@@ -1583,6 +1682,23 @@ export const GrowManagement: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Exit Survey Modal */}
+      {exitSurveyGrow && (
+        <ExitSurveyModal
+          isOpen={showExitSurveyModal}
+          onClose={() => {
+            setShowExitSurveyModal(false);
+            setExitSurveyGrow(null);
+            setPreselectedOutcome(undefined);
+          }}
+          onComplete={handleExitSurveyComplete}
+          onSkip={handleSkipSurvey}
+          entityType="grow"
+          entityName={exitSurveyGrow.name}
+          preselectedOutcome={preselectedOutcome}
+        />
       )}
     </div>
   );

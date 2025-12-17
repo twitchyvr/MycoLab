@@ -1147,6 +1147,56 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-911',
+    title: 'Outcome Logging System (Phase 1)',
+    description: 'Comprehensive outcome tracking when removing/completing grows. Exit survey captures outcome category (success/failure/neutral/partial), contamination details, and user feedback. Foundation for analytics and insights.',
+    category: 'core',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 12,
+    actualHours: 8,
+    completedAt: timestamp(),
+    notes: `Outcome Logging System - Phase 1:
+
+**User Pain Point:**
+- Contaminated grows only showed a delete button with no way to log what happened
+- No data capture on why grows failed/succeeded
+- Lost valuable pattern data for contamination analysis
+
+**Solution:**
+1. Database tables: entity_outcomes, contamination_details, exit_surveys (v18)
+2. Comprehensive type system for outcomes (GrowOutcomeCode, CultureOutcomeCode, ContaminationType, etc.)
+3. ExitSurveyModal component with multi-step wizard flow
+4. Context integration with saveEntityOutcome, saveContaminationDetails
+5. GrowManagement updated with outcome buttons and exit survey integration
+
+**Outcome Categories:**
+- Success: completed_success, completed_excellent, completed_low_yield
+- Failure: contamination_early/mid/late, stalled_colonization, stalled_fruiting, genetics_failure
+- Neutral: aborted_user, experiment_ended, transferred_out
+- Environmental: aborted_environmental
+
+**Contamination Tracking:**
+- Type: trichoderma, cobweb, black_mold, penicillium, aspergillus, bacterial, lipstick, wet_spot, yeast, unknown
+- Stage: agar, liquid_culture, grain_spawn, bulk_colonization, fruiting, storage
+- Suspected Cause: sterilization_failure, inoculation_technique, contaminated_source, environmental, substrate_issue, equipment, user_error
+
+**Files Updated:**
+- supabase-schema.sql (v18 - added entity_outcomes, contamination_details, exit_surveys tables)
+- store/types.ts (outcome types, options arrays)
+- store/DataContext.tsx (saveEntityOutcome, saveContaminationDetails, updated deleteGrow)
+- components/surveys/ExitSurveyModal.tsx (new modal component)
+- components/grows/GrowManagement.tsx (exit survey integration, outcome buttons)
+
+**Future Phases:**
+- Phase 2: Culture exit surveys
+- Phase 3: Inventory item exit surveys
+- Phase 4: Strain experience tracking
+- Phase 5: Anonymous telemetry and reporting`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
