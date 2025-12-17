@@ -1201,7 +1201,7 @@ Benefits:
     id: 'dev-912',
     title: 'Command Center - Unified Daily Operations Hub',
     description: 'New consolidated view combining Today tasks, Room Walkthrough, and Harvest workflow into a single "mushroom cultivator\'s cockpit" interface. Three modes: Overview (tasks), Walkthrough (room-by-room inspection), Harvest (quick recording).',
-    category: 'ux',
+    category: 'ui',
     status: 'completed',
     priority: 'high',
     estimatedHours: 8,
