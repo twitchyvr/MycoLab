@@ -157,16 +157,11 @@ const Sparkline: React.FC<{
   // Handle empty data
   if (data.length === 0) return null;
 
-  // Handle single data point - show a dot instead of a line
+  // Handle single data point - just show a dot
   if (data.length === 1) {
     return (
       <svg width={width} height={height} className="overflow-visible">
-        <circle
-          cx={width / 2}
-          cy={height / 2}
-          r="4"
-          fill={color}
-        />
+        <circle cx={width / 2} cy={height / 2} r="3" fill={color} />
       </svg>
     );
   }
@@ -181,7 +176,7 @@ const Sparkline: React.FC<{
     return `${x},${y}`;
   }).join(' ');
 
-  const lastX = width; // data.length - 1 / (data.length - 1) = 1
+  const lastX = width; // When data.length > 1, last point is at full width
   const lastY = height - ((data[data.length - 1] - min) / range) * height;
 
   return (

@@ -595,6 +595,13 @@ export const ContaminationAnalysis: React.FC = () => {
 
       {activeTab === 'analysis' && (
         <div className="grid md:grid-cols-2 gap-6">
+          {analysis.totalEvents === 0 && (
+            <div className="md:col-span-2 text-center py-12 text-zinc-500">
+              <Icons.TrendingUp />
+              <p className="mt-2">No data to analyze yet</p>
+              <p className="text-sm text-zinc-600">Contamination events will be analyzed here once they occur</p>
+            </div>
+          )}
           {/* By Type */}
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
             <h3 className="text-sm font-medium text-zinc-400 mb-4">By Contamination Type</h3>
@@ -604,7 +611,7 @@ export const ContaminationAnalysis: React.FC = () => {
                 .sort(([, a], [, b]) => b - a)
                 .map(([type, count]) => {
                   const info = contamKnowledge[type as ContaminationType];
-                  const percent = Math.round((count / analysis.totalEvents) * 100);
+                  const percent = analysis.totalEvents > 0 ? Math.round((count / analysis.totalEvents) * 100) : 0;
                   return (
                     <div key={type} className="flex items-center gap-3">
                       <div className="flex-1">
@@ -634,7 +641,7 @@ export const ContaminationAnalysis: React.FC = () => {
                 .sort(([, a], [, b]) => b - a)
                 .map(([stage, count]) => {
                   const info = stageConfig[stage as ContaminationStage];
-                  const percent = Math.round((count / analysis.totalEvents) * 100);
+                  const percent = analysis.totalEvents > 0 ? Math.round((count / analysis.totalEvents) * 100) : 0;
                   return (
                     <div key={stage} className="flex items-center gap-3">
                       <div className="flex-1">
@@ -664,7 +671,7 @@ export const ContaminationAnalysis: React.FC = () => {
                 .sort(([, a], [, b]) => b - a)
                 .map(([cause, count]) => {
                   const info = causeConfig[cause as SuspectedCause];
-                  const percent = Math.round((count / analysis.totalEvents) * 100);
+                  const percent = analysis.totalEvents > 0 ? Math.round((count / analysis.totalEvents) * 100) : 0;
                   return (
                     <div key={cause} className="flex items-center gap-3">
                       <div className="flex-1">
@@ -692,7 +699,7 @@ export const ContaminationAnalysis: React.FC = () => {
               {Object.entries(analysis.byStrain)
                 .sort(([, a], [, b]) => b - a)
                 .map(([strain, count]) => {
-                  const percent = Math.round((count / analysis.totalEvents) * 100);
+                  const percent = analysis.totalEvents > 0 ? Math.round((count / analysis.totalEvents) * 100) : 0;
                   return (
                     <div key={strain} className="flex items-center gap-3">
                       <div className="flex-1">

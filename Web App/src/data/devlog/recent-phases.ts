@@ -1437,6 +1437,74 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-918',
+    title: 'Grows Page Complete Reimagining (v3)',
+    description: 'Full redesign of the Grows page with Kanban view, Today\'s Focus section, inline harvest recording, and mobile-friendly design.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 8,
+    actualHours: 3,
+    completedAt: timestamp(),
+    notes: `Major UI/UX overhaul for the Grows page focused on grower workflow:
+
+**New Features:**
+
+1. **Kanban/Stage View** (Default)
+   - 4 columns: Spawning, Colonizing, Fruiting, Harvesting
+   - Optional "Completed" column with toggle
+   - Color-coded columns by stage
+   - Stage count badges
+
+2. **Today's Focus Section**
+   - Smart task generation based on grow age and stage
+   - Highlights grows ready to advance (14+ days in colonization)
+   - Shows grows ready to harvest (7+ days in fruiting)
+   - Alerts for grows in harvesting stage
+   - Priority sorting (high/medium/low)
+   - Collapsible UI
+
+3. **Inline Harvest Recording**
+   - No more modal for harvests!
+   - Record harvest directly on grow card
+   - Quick quality selection (E/G/F/P buttons)
+   - Auto-estimate dry weight (~10%)
+   - Shows flush number
+
+4. **Quick Action Buttons**
+   - One-click stage advancement on each card
+   - Complete button for harvesting stage
+   - Contamination marking with exit survey
+
+5. **Mobile-Friendly Design**
+   - Responsive 4-column to single-column layout
+   - Large touch targets
+   - Scrollable stage summary bar
+   - Expandable card details
+
+6. **Flush Timeline**
+   - Horizontal flush history in expanded cards
+   - Shows "F1: 450g, F2: 320g" format
+   - BE% calculation displayed
+
+7. **View Mode Toggle**
+   - Kanban (default), Grid, and List views
+   - All views share the same GrowCard component
+   - Consistent quick actions across views
+
+**Preserved Features:**
+- Create/Edit modals with full form
+- Draft auto-save for new grows
+- Exit survey integration
+- Observation logging
+- All existing data points
+
+**Files Updated:**
+- components/grows/GrowManagement.tsx (complete rewrite ~1640 lines)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
