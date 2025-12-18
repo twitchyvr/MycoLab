@@ -205,7 +205,7 @@ export const WeightInput: React.FC<WeightInputProps> = ({
       )}
 
       {/* Input with unit selector */}
-      <div className="relative flex">
+      <div className="relative flex items-stretch">
         <input
           ref={inputRef}
           type="text"
@@ -217,7 +217,7 @@ export const WeightInput: React.FC<WeightInputProps> = ({
           placeholder={placeholder || examples[0]}
           disabled={disabled}
           className={`
-            flex-1 bg-zinc-800 border border-zinc-700 rounded-l-lg px-3
+            min-w-0 flex-1 bg-zinc-800 border border-zinc-700 rounded-l-lg px-3
             ${compact ? 'py-1.5 text-sm' : 'py-2'}
             text-white placeholder-zinc-500
             focus:outline-none focus:border-emerald-500
@@ -226,27 +226,27 @@ export const WeightInput: React.FC<WeightInputProps> = ({
         />
 
         {/* Unit button/selector */}
-        <div className="relative" ref={unitSelectorRef}>
+        <div className="relative flex-shrink-0" ref={unitSelectorRef}>
           <button
             type="button"
             onClick={() => setShowUnitSelector(!showUnitSelector)}
             disabled={disabled}
             className={`
-              bg-zinc-700 border border-l-0 border-zinc-600 rounded-r-lg
-              ${compact ? 'px-2 py-1.5 text-sm min-w-[50px]' : 'px-3 py-2 min-w-[60px]'}
+              h-full bg-zinc-700 border border-l-0 border-zinc-600 rounded-r-lg
+              ${compact ? 'px-2 text-sm w-11' : 'px-2 w-12'}
               text-zinc-300 hover:bg-zinc-600 hover:text-white
               focus:outline-none focus:ring-1 focus:ring-emerald-500
               disabled:opacity-50 disabled:cursor-not-allowed
-              transition-colors flex items-center justify-center gap-1
+              transition-colors flex items-center justify-center gap-0.5
             `}
           >
-            <span className="font-medium">{getUnitLabel(displayUnit, true, false)}</span>
+            <span className="font-medium text-xs">{displayUnit}</span>
             <svg
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
-              className={`w-3 h-3 transition-transform ${showUnitSelector ? 'rotate-180' : ''}`}
+              className={`w-3 h-3 flex-shrink-0 transition-transform ${showUnitSelector ? 'rotate-180' : ''}`}
             >
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -254,37 +254,37 @@ export const WeightInput: React.FC<WeightInputProps> = ({
 
           {/* Unit dropdown */}
           {showUnitSelector && (
-            <div className="absolute right-0 top-full mt-1 z-50 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl overflow-hidden min-w-[120px]">
+            <div className="absolute right-0 top-full mt-1 z-50 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl overflow-hidden w-28">
               <div className="py-1">
-                <div className="px-3 py-1 text-xs text-zinc-500 uppercase tracking-wide">Metric</div>
+                <div className="px-2 py-0.5 text-[10px] text-zinc-500 uppercase tracking-wide">Metric</div>
                 {['g', 'kg'].map(unit => (
                   <button
                     key={unit}
                     type="button"
                     onClick={() => handleUnitChange(unit as WeightUnit)}
                     className={`
-                      w-full px-3 py-2 text-left text-sm flex items-center justify-between
+                      w-full px-2 py-1.5 text-left text-sm flex items-center justify-between
                       ${displayUnit === unit ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-300 hover:bg-zinc-700'}
                     `}
                   >
-                    <span>{getUnitLabel(unit as WeightUnit, true, true)}</span>
-                    <span className="text-xs text-zinc-500">{unit}</span>
+                    <span className="text-xs">{getUnitLabel(unit as WeightUnit, true, true)}</span>
+                    <span className="text-[10px] text-zinc-500">{unit}</span>
                   </button>
                 ))}
-                <div className="border-t border-zinc-700 my-1" />
-                <div className="px-3 py-1 text-xs text-zinc-500 uppercase tracking-wide">Imperial</div>
+                <div className="border-t border-zinc-700 my-0.5" />
+                <div className="px-2 py-0.5 text-[10px] text-zinc-500 uppercase tracking-wide">Imperial</div>
                 {['oz', 'lb'].map(unit => (
                   <button
                     key={unit}
                     type="button"
                     onClick={() => handleUnitChange(unit as WeightUnit)}
                     className={`
-                      w-full px-3 py-2 text-left text-sm flex items-center justify-between
+                      w-full px-2 py-1.5 text-left text-sm flex items-center justify-between
                       ${displayUnit === unit ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-300 hover:bg-zinc-700'}
                     `}
                   >
-                    <span>{getUnitLabel(unit as WeightUnit, true, true)}</span>
-                    <span className="text-xs text-zinc-500">{unit}</span>
+                    <span className="text-xs">{getUnitLabel(unit as WeightUnit, true, true)}</span>
+                    <span className="text-[10px] text-zinc-500">{unit}</span>
                   </button>
                 ))}
               </div>
