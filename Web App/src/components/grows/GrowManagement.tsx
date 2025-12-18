@@ -8,6 +8,7 @@ import { useData } from '../../store';
 import type { Grow, GrowStage, GrowStatus, GrowObservation, Flush, GrowOutcomeCode } from '../../store/types';
 import { StandardDropdown } from '../common/StandardDropdown';
 import { NumericInput } from '../common/NumericInput';
+import { WeightInput } from '../common/WeightInput';
 import { ExitSurveyModal, ExitSurveyData } from '../surveys';
 
 // Draft key for localStorage
@@ -190,24 +191,22 @@ const GrowCard: React.FC<GrowCardProps> = ({
               Flush #{grow.flushes.length + 1}
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Wet (g) *</label>
-                <NumericInput
-                  value={harvestForm.wetWeight}
-                  onChange={value => setHarvestForm(prev => ({ ...prev, wetWeight: value ?? 0 }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-white text-sm"
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Dry (g)</label>
-                <NumericInput
-                  value={harvestForm.dryWeight}
-                  onChange={value => setHarvestForm(prev => ({ ...prev, dryWeight: value ?? 0 }))}
-                  placeholder={harvestForm.wetWeight ? `~${Math.round(harvestForm.wetWeight * 0.1)}` : '0'}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-white text-sm"
-                />
-              </div>
+              <WeightInput
+                label="Wet Weight *"
+                value={harvestForm.wetWeight}
+                onChange={value => setHarvestForm(prev => ({ ...prev, wetWeight: value ?? 0 }))}
+                allowEmpty={false}
+                compact={true}
+                showConversionHint={false}
+              />
+              <WeightInput
+                label="Dry Weight"
+                value={harvestForm.dryWeight}
+                onChange={value => setHarvestForm(prev => ({ ...prev, dryWeight: value ?? 0 }))}
+                placeholder={harvestForm.wetWeight ? `~${Math.round(harvestForm.wetWeight * 0.1)}` : '0'}
+                compact={true}
+                showConversionHint={false}
+              />
             </div>
             <div className="grid grid-cols-4 gap-1">
               {(['excellent', 'good', 'fair', 'poor'] as const).map(q => (
@@ -1315,14 +1314,13 @@ export const GrowManagement: React.FC = () => {
                   entityType="grainType"
                   fieldName="grainTypeId"
                 />
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Spawn Weight (g)</label>
-                  <NumericInput
-                    value={newGrow.spawnWeight}
-                    onChange={value => setNewGrow(prev => ({ ...prev, spawnWeight: value ?? 0 }))}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
+                <WeightInput
+                  label="Spawn Weight"
+                  value={newGrow.spawnWeight}
+                  onChange={value => setNewGrow(prev => ({ ...prev, spawnWeight: value ?? 0 }))}
+                  allowEmpty={false}
+                  showConversionHint={true}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1337,14 +1335,13 @@ export const GrowManagement: React.FC = () => {
                   entityType="substrateType"
                   fieldName="substrateTypeId"
                 />
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Substrate Weight (g)</label>
-                  <NumericInput
-                    value={newGrow.substrateWeight}
-                    onChange={value => setNewGrow(prev => ({ ...prev, substrateWeight: value ?? 0 }))}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
+                <WeightInput
+                  label="Substrate Weight"
+                  value={newGrow.substrateWeight}
+                  onChange={value => setNewGrow(prev => ({ ...prev, substrateWeight: value ?? 0 }))}
+                  allowEmpty={false}
+                  showConversionHint={true}
+                />
               </div>
 
               {calculatedSpawnRate > 0 && (

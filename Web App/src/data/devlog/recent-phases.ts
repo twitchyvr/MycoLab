@@ -2414,6 +2414,98 @@ Created reusable NumericInput component (components/common/NumericInput.tsx):
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1202',
+    title: 'Session/Version Refresh Detection',
+    description: 'Automatically detect when the app has been rebuilt and prompt users to refresh their browser. Shows blocking modal to ensure clean session after deployments.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    actualHours: 2,
+    completedAt: timestamp(),
+    notes: `Version refresh detection system:
+
+**Problem:**
+- After app rebuilds/redeployments, Supabase sessions could become stale
+- Users had to manually "triple escape" to log out on desktop
+- No equivalent workaround on mobile
+- Stale sessions caused data sync issues
+
+**Solution:**
+Created VersionContext (lib/VersionContext.tsx):
+- Uses Vite build-time constants (__BUILD_TIME__, __APP_VERSION__)
+- Stores last known build time in localStorage
+- Compares on app load to detect version mismatch
+- Shows blocking modal when new version detected
+
+**VersionUpdateModal Features:**
+- Clear messaging about new version availability
+- "Refresh Now" button (simple window.location.reload)
+- "Clear Session & Refresh" button (clears all localStorage first)
+- Blocking overlay prevents interaction until refreshed
+- Works on both desktop and mobile
+
+**Files Created:**
+- lib/VersionContext.tsx
+
+**Files Updated:**
+- App.tsx (VersionProvider wrapping, modal integration)
+- vite.config.ts (build-time constants injection)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1203',
+    title: 'Weight Input with Imperial/Metric Switching',
+    description: 'Smart weight input component that supports metric (g, kg) and imperial (oz, lb) units. Users can enter weights in any format and the system stores everything in grams internally.',
+    category: 'ux',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 6,
+    actualHours: 4,
+    completedAt: timestamp(),
+    notes: `Imperial/metric weight system:
+
+**Problem:**
+- All weight inputs were grams-only
+- Users comfortable with oz/lb had to convert manually
+- No flexibility for different regional preferences
+
+**Solution:**
+Created comprehensive weight utilities (utils/weight.ts):
+- Type definitions: WeightUnit ('g'|'kg'|'oz'|'lb'), WeightSystem ('metric'|'imperial')
+- Conversion functions: toGrams(), fromGrams(), convertWeight()
+- Smart parsing: parseWeight() handles various formats:
+  - Plain numbers with default unit
+  - "500g", "1.5kg", "8oz", "2lb"
+  - Compound imperial: "1 lb 8 oz"
+- Formatting: formatWeight(), formatWeightAuto(), formatWeightCompound()
+- Auto-selects best unit (g vs kg, oz vs lb) based on value
+- Conversion hints for opposite system
+
+**WeightInput Component (components/common/WeightInput.tsx):**
+- Unit dropdown with g/kg/oz/lb options
+- Remembers last selected unit in localStorage
+- Shows conversion hint below input
+- Compact mode for tight spaces
+- Always stores/returns grams internally
+
+**Forms Updated:**
+- GrowManagement.tsx (spawn weight, substrate weight, wet/dry weight)
+- HarvestWorkflow.tsx (wet/dry weight)
+- CommandCenter.tsx (wet/dry weight in harvest form)
+
+**Files Created:**
+- utils/weight.ts
+- components/common/WeightInput.tsx
+
+**Files Updated:**
+- utils/index.ts (export weight utilities)
+- GrowManagement.tsx, HarvestWorkflow.tsx, CommandCenter.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

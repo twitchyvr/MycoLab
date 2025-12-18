@@ -6,6 +6,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
 import { NumericInput } from '../common/NumericInput';
+import { WeightInput } from '../common/WeightInput';
 import type { Grow, Flush, GrowStage } from '../../store/types';
 
 // ============================================================================
@@ -110,29 +111,7 @@ const GrowSelectionCard: React.FC<{
   );
 };
 
-const WeightInput: React.FC<{
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  placeholder?: string;
-  suffix?: string;
-  highlight?: boolean;
-}> = ({ label, value, onChange, placeholder = '0', suffix = 'g', highlight }) => (
-  <div>
-    <label className="block text-sm text-zinc-400 mb-2">{label}</label>
-    <div className="relative">
-      <NumericInput
-        value={value}
-        onChange={val => onChange(val ?? 0)}
-        placeholder={placeholder}
-        className={`w-full bg-zinc-800 border rounded-lg px-4 py-3 text-xl font-bold text-center focus:outline-none ${
-          highlight ? 'border-emerald-500 text-emerald-400' : 'border-zinc-700 text-white focus:border-emerald-500'
-        }`}
-      />
-      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">{suffix}</span>
-    </div>
-  </div>
-);
+// Using global WeightInput component from common folder
 
 const BEGauge: React.FC<{
   be: number;
@@ -438,14 +417,16 @@ export const HarvestWorkflow: React.FC = () => {
             <WeightInput
               label="Wet Weight *"
               value={wetWeight}
-              onChange={setWetWeight}
-              highlight={wetWeight > 0}
+              onChange={val => setWetWeight(val ?? 0)}
+              allowEmpty={false}
+              showConversionHint={true}
             />
             <WeightInput
               label="Dry Weight (optional)"
               value={dryWeight}
-              onChange={setDryWeight}
+              onChange={val => setDryWeight(val ?? 0)}
               placeholder={wetWeight > 0 ? `~${Math.round(wetWeight * 0.1)}` : '0'}
+              showConversionHint={true}
             />
             <div>
               <label className="block text-sm text-zinc-400 mb-2">Mushroom Count (optional)</label>

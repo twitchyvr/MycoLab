@@ -9,6 +9,7 @@ import { useData } from '../../store';
 import type { Grow, Culture, Location, Flush } from '../../store/types';
 import { format, differenceInDays, addDays } from 'date-fns';
 import { NumericInput } from '../common/NumericInput';
+import { WeightInput } from '../common/WeightInput';
 
 // ============================================================================
 // TYPES
@@ -898,34 +899,33 @@ const HarvestEntryForm: React.FC<HarvestEntryFormProps> = ({
       </div>
 
       {/* Weight Entry */}
-      <div className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-800">
-        <label className="block text-sm text-zinc-400 mb-2">Wet Weight (g) *</label>
-        <NumericInput
+      <div className="space-y-3">
+        <WeightInput
+          label="Wet Weight *"
           value={entry.wetWeight}
           onChange={(value) => setEntry(prev => ({ ...prev, wetWeight: value ?? 0 }))}
-          placeholder="0"
-          className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-2xl font-bold text-center"
+          allowEmpty={false}
+          showConversionHint={true}
         />
-      </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
-          <label className="block text-sm text-zinc-400 mb-2">Dry Weight (g)</label>
-          <NumericInput
-            value={entry.dryWeight}
+        <div className="grid grid-cols-2 gap-3">
+          <WeightInput
+            label="Dry Weight"
+            value={entry.dryWeight ?? 0}
             onChange={(value) => setEntry(prev => ({ ...prev, dryWeight: value }))}
             placeholder="Optional"
-            className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white"
+            compact={true}
+            showConversionHint={false}
           />
-        </div>
-        <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
-          <label className="block text-sm text-zinc-400 mb-2">Count</label>
-          <NumericInput
-            value={entry.mushroomCount}
-            onChange={(value) => setEntry(prev => ({ ...prev, mushroomCount: value }))}
-            placeholder="Optional"
-            className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white"
-          />
+          <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
+            <label className="block text-sm text-zinc-400 mb-2">Count</label>
+            <NumericInput
+              value={entry.mushroomCount}
+              onChange={(value) => setEntry(prev => ({ ...prev, mushroomCount: value }))}
+              placeholder="Optional"
+              className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white"
+            />
+          </div>
         </div>
       </div>
 
