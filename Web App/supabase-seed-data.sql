@@ -351,10 +351,165 @@ CREATE TRIGGER on_user_created_populate_data
 
 
 -- ============================================================================
--- SECTION 3: SCHEMA VERSION UPDATE
+-- SECTION 3: REDACTION PRESETS FOR PUBLIC SHARING
+-- System presets available to all users (user_id = NULL, is_system = true)
 -- ============================================================================
 
-UPDATE schema_version SET version = 4, updated_at = NOW() WHERE id = 1;
+-- Default redaction presets for field visibility in public passports
+INSERT INTO redaction_presets (id, name, description, field_visibility, applies_to, is_system, user_id)
+VALUES
+  (
+    '00000000-0000-0000-0100-000000000001',
+    'Customer View (Default)',
+    'Standard view for customers - shows product quality, hides business details. Ideal for Etsy, farmers markets, and retail sales.',
+    '{
+      "strain": true,
+      "species": true,
+      "substrate_type": true,
+      "spawn_weight": false,
+      "substrate_weight": false,
+      "container": true,
+      "location": true,
+      "location_address": false,
+      "inoculation_date": true,
+      "colonization_date": true,
+      "fruiting_date": true,
+      "harvest_dates": true,
+      "total_yield": true,
+      "flush_weights": true,
+      "biological_efficiency": true,
+      "observations": true,
+      "photos": true,
+      "cost": false,
+      "failures": false,
+      "contamination_history": false,
+      "supplier_info": false,
+      "recipe_details": false,
+      "notes": false,
+      "lot_number": false
+    }'::JSONB,
+    ARRAY['grow', 'culture', 'batch'],
+    true,
+    NULL
+  ),
+  (
+    '00000000-0000-0000-0100-000000000002',
+    'Auditor View',
+    'Full transparency for auditors/inspectors - shows everything except personal addresses. Use for compliance reviews and lab audits.',
+    '{
+      "strain": true,
+      "species": true,
+      "substrate_type": true,
+      "spawn_weight": true,
+      "substrate_weight": true,
+      "container": true,
+      "location": true,
+      "location_address": false,
+      "inoculation_date": true,
+      "colonization_date": true,
+      "fruiting_date": true,
+      "harvest_dates": true,
+      "total_yield": true,
+      "flush_weights": true,
+      "biological_efficiency": true,
+      "observations": true,
+      "photos": true,
+      "cost": true,
+      "failures": true,
+      "contamination_history": true,
+      "supplier_info": true,
+      "recipe_details": true,
+      "notes": true,
+      "lot_number": true
+    }'::JSONB,
+    ARRAY['grow', 'culture', 'batch'],
+    true,
+    NULL
+  ),
+  (
+    '00000000-0000-0000-0100-000000000003',
+    'Minimal View',
+    'Bare minimum for privacy-conscious sellers - shows only strain, harvest dates, yield, and photos. Maximum privacy.',
+    '{
+      "strain": true,
+      "species": true,
+      "substrate_type": false,
+      "spawn_weight": false,
+      "substrate_weight": false,
+      "container": false,
+      "location": false,
+      "location_address": false,
+      "inoculation_date": false,
+      "colonization_date": false,
+      "fruiting_date": false,
+      "harvest_dates": true,
+      "total_yield": true,
+      "flush_weights": false,
+      "biological_efficiency": true,
+      "observations": false,
+      "photos": true,
+      "cost": false,
+      "failures": false,
+      "contamination_history": false,
+      "supplier_info": false,
+      "recipe_details": false,
+      "notes": false,
+      "lot_number": false
+    }'::JSONB,
+    ARRAY['grow', 'culture', 'batch'],
+    true,
+    NULL
+  ),
+  (
+    '00000000-0000-0000-0100-000000000004',
+    'Genetics Focus',
+    'Emphasizes lineage and genetic information - ideal for culture sales, spore syringes, and LC. Shows full lineage tree.',
+    '{
+      "strain": true,
+      "species": true,
+      "substrate_type": false,
+      "spawn_weight": false,
+      "substrate_weight": false,
+      "container": true,
+      "location": false,
+      "location_address": false,
+      "inoculation_date": true,
+      "colonization_date": true,
+      "fruiting_date": false,
+      "harvest_dates": false,
+      "total_yield": false,
+      "flush_weights": false,
+      "biological_efficiency": false,
+      "observations": true,
+      "photos": true,
+      "cost": false,
+      "failures": false,
+      "contamination_history": false,
+      "supplier_info": false,
+      "recipe_details": false,
+      "notes": false,
+      "lot_number": true,
+      "lineage": true,
+      "generation": true,
+      "parent_culture": true
+    }'::JSONB,
+    ARRAY['culture'],
+    true,
+    NULL
+  )
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  field_visibility = EXCLUDED.field_visibility,
+  applies_to = EXCLUDED.applies_to,
+  is_system = EXCLUDED.is_system;
+
+
+-- ============================================================================
+-- SECTION 4: SCHEMA VERSION UPDATE
+-- ============================================================================
+
+UPDATE schema_version SET version = 5, updated_at = NOW() WHERE id = 1;
 
 
 -- ============================================================================
@@ -371,6 +526,7 @@ UPDATE schema_version SET version = 4, updated_at = NOW() WHERE id = 1;
 -- - 10 Grain Types
 -- - 7 Location Types
 -- - 4 Location Classifications
+-- - 4 Redaction Presets (Customer View, Auditor View, Minimal View, Genetics Focus)
 --
 -- New users will automatically receive:
 -- - 10 hierarchical locations (facility > rooms > zones/racks)
@@ -379,4 +535,11 @@ UPDATE schema_version SET version = 4, updated_at = NOW() WHERE id = 1;
 --   - 5 Zones/Racks (Fridge, Flow Hood, Rack, Martha Tent, Supply Shelf)
 -- - 4 essential recipes (MEA, LC, CVG, Grain Spawn)
 -- - Default settings
+--
+-- PUBLIC SHARING SYSTEM (v21):
+-- - Redaction Presets: Templates for field visibility in public passports
+--   - Customer View: Standard for retail sales (hides costs, supplier info)
+--   - Auditor View: Full transparency for inspectors (shows all except addresses)
+--   - Minimal View: Maximum privacy (only strain, yield, photos)
+--   - Genetics Focus: For culture sales (emphasizes lineage)
 -- ============================================================================

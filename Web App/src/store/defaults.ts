@@ -93,6 +93,11 @@ export const emptyState: DataStoreState = {
   cultures: [],
   grows: [],
   recipes: [],
+  // Public sharing system
+  shareTokens: [],
+  batchPassports: [],
+  redactionPresets: [],
+  // Notifications
   notifications: [],
   notificationRules: [],
   settings: {
