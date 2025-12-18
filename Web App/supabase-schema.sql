@@ -4235,6 +4235,91 @@ CREATE POLICY "Users can delete their own exit_surveys"
   USING (auth.uid() = user_id);
 
 -- ============================================================================
+-- RPC FUNCTIONS (Direct SQL to bypass PostgREST schema cache issues)
+-- ============================================================================
+
+-- Function to insert a flush record directly (bypasses PostgREST schema cache)
+-- This is a workaround for PGRST204 errors when PostgREST cache is stale
+CREATE OR REPLACE FUNCTION insert_flush(
+  p_grow_id UUID,
+  p_flush_number INTEGER,
+  p_harvest_date DATE,
+  p_wet_weight_g DECIMAL,
+  p_dry_weight_g DECIMAL DEFAULT NULL,
+  p_mushroom_count INTEGER DEFAULT NULL,
+  p_quality TEXT DEFAULT 'good',
+  p_notes TEXT DEFAULT NULL,
+  p_user_id UUID DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_result JSONB;
+  v_flush_id UUID;
+BEGIN
+  -- Use provided user_id or get from auth context
+  v_user_id := COALESCE(p_user_id, auth.uid());
+
+  -- Validate that caller owns this grow (RLS check)
+  IF NOT EXISTS (
+    SELECT 1 FROM grows WHERE id = p_grow_id AND (user_id = v_user_id OR user_id IS NULL)
+  ) THEN
+    RAISE EXCEPTION 'Access denied: You do not own this grow record';
+  END IF;
+
+  -- Insert the flush record
+  INSERT INTO flushes (
+    grow_id,
+    flush_number,
+    harvest_date,
+    wet_weight_g,
+    dry_weight_g,
+    mushroom_count,
+    quality,
+    notes,
+    user_id
+  ) VALUES (
+    p_grow_id,
+    p_flush_number,
+    p_harvest_date,
+    p_wet_weight_g,
+    p_dry_weight_g,
+    p_mushroom_count,
+    p_quality,
+    p_notes,
+    v_user_id
+  )
+  RETURNING id INTO v_flush_id;
+
+  -- Return the inserted record as JSONB
+  SELECT jsonb_build_object(
+    'id', f.id,
+    'grow_id', f.grow_id,
+    'flush_number', f.flush_number,
+    'harvest_date', f.harvest_date,
+    'wet_weight_g', f.wet_weight_g,
+    'dry_weight_g', f.dry_weight_g,
+    'mushroom_count', f.mushroom_count,
+    'quality', f.quality,
+    'notes', f.notes,
+    'created_at', f.created_at,
+    'user_id', f.user_id
+  ) INTO v_result
+  FROM flushes f
+  WHERE f.id = v_flush_id;
+
+  RETURN v_result;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION insert_flush TO authenticated;
+GRANT EXECUTE ON FUNCTION insert_flush TO anon;
+
+-- ============================================================================
 -- SCHEMA VERSION (for tracking migrations)
 -- ============================================================================
 
@@ -4245,12 +4330,17 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 18)
-ON CONFLICT (id) DO UPDATE SET version = 18, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 19)
+ON CONFLICT (id) DO UPDATE SET version = 19, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v19 (2024-12): Added RPC function to bypass PostgREST schema cache issues:
+--               - insert_flush: Direct SQL function for inserting flush records
+--                 Bypasses PostgREST schema cache (PGRST204 errors)
+--                 Returns inserted record as JSONB
+--                 Includes RLS validation for grow ownership
 -- v18 (2024-12): Added outcome logging system for analytics and insights:
 --               - entity_outcomes: Universal outcome tracking for grows, cultures, inventory
 --                 Captures outcome category (success/failure/neutral/partial), outcome codes,
