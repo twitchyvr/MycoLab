@@ -2367,7 +2367,6 @@ custom IDs like 'outcome-mjbw2cne-h7jx2' which caused Postgres error 22P02.
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
-<<<<<<< HEAD
   {
     id: 'dev-1201',
     title: 'Fix Numeric Input Backspace Behavior',
@@ -2577,6 +2576,40 @@ Created comprehensive weight utilities (utils/weight.ts):
 - Deploy Supabase Edge Functions for email/SMS delivery
 - Integrate notification triggers in DataContext operations
 - Add notification history view in Settings`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1204',
+    title: 'Fix Data Not Loading After Email Login',
+    description: 'Fixed bug where data would not display after logging in with email/password, but worked correctly with Google OAuth. Root cause was DataContext not listening to auth state changes.',
+    category: 'bug',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 2,
+    actualHours: 1,
+    completedAt: timestamp(),
+    notes: `Data loading bug fix for email authentication:
+
+**Problem:**
+- When logging in with Google OAuth, data loaded correctly (due to page redirect/reload)
+- When logging in with email/password, data would not display
+- User had to log out and back in with Google to see their data
+- Issue appeared after version refresh detection was added
+
+**Root Cause:**
+- DataContext loaded data once on mount via useEffect
+- OAuth login triggers a page redirect, so DataContext re-initializes with the new session
+- Email login changes auth state without page reload, so DataContext never knew to reload data
+
+**Solution:**
+Added auth state listener in DataContext that:
+1. Subscribes to supabase.auth.onAuthStateChange
+2. On SIGNED_IN event (non-anonymous), reloads all data from Supabase
+3. On TOKEN_REFRESHED event, refreshes data if last sync was >5 seconds ago (debounce)
+
+**Files Updated:**
+- store/DataContext.tsx (added onAuthStateChange listener after initialization useEffect)`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
