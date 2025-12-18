@@ -6,6 +6,7 @@ import React, { useState, createContext, useContext, useEffect, useMemo } from '
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
 import { DataProvider, useData, CreationProvider, useCreation, NotificationProvider, ThemeProvider } from './store';
 import { AuthProvider } from './lib/AuthContext';
+import { VersionProvider, VersionUpdateModal } from './lib/VersionContext';
 import { EntityFormModal } from './components/forms';
 import { AuthModal, AccountMenu } from './components/auth';
 import { ToastContainer, NotificationBell } from './components/notifications';
@@ -1334,14 +1335,16 @@ const AppWithRouter: React.FC = () => {
   return (
     <ThemeProvider>
       <ErrorBoundary>
-        <AuthProvider>
-          <DataProvider>
-            <NotificationProvider>
-              <GlobalErrorHandler />
-              <CreationProvider>
-                <AppContext.Provider value={contextValue}>
-                  <AuthModal />
-                  <CreationModalManager />
+        <VersionProvider>
+          <AuthProvider>
+            <DataProvider>
+              <NotificationProvider>
+                <GlobalErrorHandler />
+                <CreationProvider>
+                  <AppContext.Provider value={contextValue}>
+                    <VersionUpdateModal />
+                    <AuthModal />
+                    <CreationModalManager />
                   <ToastContainer />
                   <AppContent
                     showSetup={showSetup}
@@ -1354,11 +1357,12 @@ const AppWithRouter: React.FC = () => {
                     renderPage={renderPage}
                     pageConfig={pageConfig}
                   />
-                </AppContext.Provider>
-              </CreationProvider>
-            </NotificationProvider>
-          </DataProvider>
-        </AuthProvider>
+                  </AppContext.Provider>
+                </CreationProvider>
+              </NotificationProvider>
+            </DataProvider>
+          </AuthProvider>
+        </VersionProvider>
       </ErrorBoundary>
     </ThemeProvider>
   );

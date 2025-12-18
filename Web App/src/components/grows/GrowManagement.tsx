@@ -7,6 +7,8 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useData } from '../../store';
 import type { Grow, GrowStage, GrowStatus, GrowObservation, Flush, GrowOutcomeCode } from '../../store/types';
 import { StandardDropdown } from '../common/StandardDropdown';
+import { NumericInput } from '../common/NumericInput';
+import { WeightInput } from '../common/WeightInput';
 import { ExitSurveyModal, ExitSurveyData } from '../surveys';
 
 // Draft key for localStorage
@@ -189,27 +191,22 @@ const GrowCard: React.FC<GrowCardProps> = ({
               Flush #{grow.flushes.length + 1}
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Wet (g) *</label>
-                <input
-                  type="number"
-                  value={harvestForm.wetWeight || ''}
-                  onChange={e => setHarvestForm(prev => ({ ...prev, wetWeight: parseFloat(e.target.value) || 0 }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-white text-sm"
-                  placeholder="0"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Dry (g)</label>
-                <input
-                  type="number"
-                  value={harvestForm.dryWeight || ''}
-                  onChange={e => setHarvestForm(prev => ({ ...prev, dryWeight: parseFloat(e.target.value) || 0 }))}
-                  placeholder={harvestForm.wetWeight ? `~${Math.round(harvestForm.wetWeight * 0.1)}` : '0'}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-white text-sm"
-                />
-              </div>
+              <WeightInput
+                label="Wet Weight *"
+                value={harvestForm.wetWeight}
+                onChange={value => setHarvestForm(prev => ({ ...prev, wetWeight: value ?? 0 }))}
+                allowEmpty={false}
+                compact={true}
+                showConversionHint={false}
+              />
+              <WeightInput
+                label="Dry Weight"
+                value={harvestForm.dryWeight}
+                onChange={value => setHarvestForm(prev => ({ ...prev, dryWeight: value ?? 0 }))}
+                placeholder={harvestForm.wetWeight ? `~${Math.round(harvestForm.wetWeight * 0.1)}` : '0'}
+                compact={true}
+                showConversionHint={false}
+              />
             </div>
             <div className="grid grid-cols-4 gap-1">
               {(['excellent', 'good', 'fair', 'poor'] as const).map(q => (
@@ -1317,15 +1314,13 @@ export const GrowManagement: React.FC = () => {
                   entityType="grainType"
                   fieldName="grainTypeId"
                 />
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Spawn Weight (g)</label>
-                  <input
-                    type="number"
-                    value={newGrow.spawnWeight}
-                    onChange={e => setNewGrow(prev => ({ ...prev, spawnWeight: parseInt(e.target.value) || 0 }))}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
+                <WeightInput
+                  label="Spawn Weight"
+                  value={newGrow.spawnWeight}
+                  onChange={value => setNewGrow(prev => ({ ...prev, spawnWeight: value ?? 0 }))}
+                  allowEmpty={false}
+                  showConversionHint={true}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1340,15 +1335,13 @@ export const GrowManagement: React.FC = () => {
                   entityType="substrateType"
                   fieldName="substrateTypeId"
                 />
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Substrate Weight (g)</label>
-                  <input
-                    type="number"
-                    value={newGrow.substrateWeight}
-                    onChange={e => setNewGrow(prev => ({ ...prev, substrateWeight: parseInt(e.target.value) || 0 }))}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
+                <WeightInput
+                  label="Substrate Weight"
+                  value={newGrow.substrateWeight}
+                  onChange={value => setNewGrow(prev => ({ ...prev, substrateWeight: value ?? 0 }))}
+                  allowEmpty={false}
+                  showConversionHint={true}
+                />
               </div>
 
               {calculatedSpawnRate > 0 && (
@@ -1371,11 +1364,12 @@ export const GrowManagement: React.FC = () => {
                 />
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Count</label>
-                  <input
-                    type="number"
+                  <NumericInput
                     value={newGrow.containerCount}
-                    onChange={e => setNewGrow(prev => ({ ...prev, containerCount: parseInt(e.target.value) || 1 }))}
-                    min="1"
+                    onChange={value => setNewGrow(prev => ({ ...prev, containerCount: value ?? 1 }))}
+                    min={1}
+                    allowEmpty={false}
+                    defaultValue={1}
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
                   />
                 </div>
@@ -1405,11 +1399,10 @@ export const GrowManagement: React.FC = () => {
 
               <div>
                 <label className="block text-sm text-zinc-400 mb-2">Estimated Cost ($)</label>
-                <input
-                  type="number"
+                <NumericInput
                   value={newGrow.estimatedCost}
-                  onChange={e => setNewGrow(prev => ({ ...prev, estimatedCost: parseFloat(e.target.value) || 0 }))}
-                  step="0.01"
+                  onChange={value => setNewGrow(prev => ({ ...prev, estimatedCost: value ?? 0 }))}
+                  step={0.01}
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
                 />
               </div>
@@ -1511,11 +1504,10 @@ export const GrowManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Estimated Cost ($)</label>
-                  <input
-                    type="number"
+                  <NumericInput
                     value={editGrow.estimatedCost}
-                    onChange={e => setEditGrow(prev => ({ ...prev, estimatedCost: parseFloat(e.target.value) || 0 }))}
-                    step="0.01"
+                    onChange={value => setEditGrow(prev => ({ ...prev, estimatedCost: value ?? 0 }))}
+                    step={0.01}
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
                   />
                 </div>
@@ -1589,12 +1581,11 @@ export const GrowManagement: React.FC = () => {
               {selectedGrow.currentStage === 'colonization' && (
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Colonization %</label>
-                  <input
-                    type="number"
-                    value={newObservation.colonizationPercent || ''}
-                    onChange={e => setNewObservation(prev => ({ ...prev, colonizationPercent: parseInt(e.target.value) || undefined }))}
-                    min="0"
-                    max="100"
+                  <NumericInput
+                    value={newObservation.colonizationPercent}
+                    onChange={value => setNewObservation(prev => ({ ...prev, colonizationPercent: value }))}
+                    min={0}
+                    max={100}
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
                   />
                 </div>

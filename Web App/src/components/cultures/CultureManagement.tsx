@@ -6,6 +6,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
 import { CultureWizard } from './CultureWizard';
+import { NumericInput } from '../common/NumericInput';
 import type { Culture, CultureType, CultureStatus, CultureObservation } from '../../store/types';
 
 // Type configurations
@@ -815,11 +816,12 @@ export const CultureManagement: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Quantity</label>
-                  <input
-                    type="number"
+                  <NumericInput
                     value={newTransfer.quantity}
-                    onChange={e => setNewTransfer(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
-                    min="1"
+                    onChange={value => setNewTransfer(prev => ({ ...prev, quantity: value ?? 1 }))}
+                    min={1}
+                    allowEmpty={false}
+                    defaultValue={1}
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
                   />
                 </div>
