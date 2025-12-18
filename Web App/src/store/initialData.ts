@@ -1211,6 +1211,11 @@ export const initialDataState: DataStoreState = {
   cultures: initialCultures,
   grows: initialGrows,
   recipes: initialRecipes,
+  // Public sharing system
+  shareTokens: [],
+  batchPassports: [],
+  redactionPresets: [],
+  // Notifications
   notifications: [],
   notificationRules: [],
   settings: initialSettings,

@@ -770,6 +770,206 @@ export interface AppSettings {
 }
 
 // ============================================================================
+// PUBLIC SHARING SYSTEM TYPES
+// Token-based sharing for public/anonymous access to grows, cultures, batches
+// Following API security best practices and EU Digital Product Passport standards
+// ============================================================================
+
+// Entity types that can be shared publicly
+export type ShareableEntityType = 'grow' | 'culture' | 'batch' | 'recipe' | 'lineage';
+
+// Access levels for shared content
+export type ShareAccessLevel = 'customer' | 'auditor';
+
+// Share token for public/anonymous access
+export interface ShareToken {
+  id: string;
+  token: string;  // Opaque random string (NOT JWT per security best practices)
+
+  // What is being shared
+  entityType: ShareableEntityType;
+  entityId: string;
+
+  // Access control
+  accessLevel: ShareAccessLevel;
+  permissions: Record<string, boolean>;  // Additional field-level permissions
+
+  // Expiration & analytics
+  expiresAt: Date;
+  viewCount: number;
+  lastViewedAt?: Date;
+
+  // Revocation
+  isRevoked: boolean;
+  revokedAt?: Date;
+  revokedReason?: string;
+
+  // Ownership
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Field visibility configuration for redaction
+export interface FieldVisibility {
+  // Basic info
+  strain?: boolean;
+  species?: boolean;
+  substrateType?: boolean;
+
+  // Weights/quantities
+  spawnWeight?: boolean;
+  substrateWeight?: boolean;
+
+  // Container/location
+  container?: boolean;
+  location?: boolean;         // General location (e.g., "Pacific Northwest")
+  locationAddress?: boolean;  // Specific address - ALWAYS default false
+
+  // Timeline/dates
+  inoculationDate?: boolean;
+  colonizationDate?: boolean;
+  fruitingDate?: boolean;
+  harvestDates?: boolean;
+
+  // Yields
+  totalYield?: boolean;
+  flushWeights?: boolean;
+  biologicalEfficiency?: boolean;
+
+  // Observations
+  observations?: boolean;
+  photos?: boolean;
+
+  // Lineage (for cultures)
+  lineage?: boolean;
+  generation?: boolean;
+  parentCulture?: boolean;
+
+  // Sensitive data - DEFAULT FALSE
+  cost?: boolean;
+  failures?: boolean;
+  contaminationHistory?: boolean;
+  supplierInfo?: boolean;
+  recipeDetails?: boolean;
+  notes?: boolean;
+  lotNumber?: boolean;
+}
+
+// Batch passport (Digital Product Passport)
+export interface BatchPassport {
+  id: string;
+
+  // Unique passport identifier (shareable, human-readable)
+  // Format: ML-YYYY-MM-NNNN (e.g., "ML-2024-12-0001")
+  passportCode: string;
+
+  // What this passport represents
+  entityType: 'grow' | 'culture' | 'batch';
+  entityId: string;
+
+  // Field visibility configuration
+  fieldVisibility: FieldVisibility;
+
+  // Custom public content (seller-written)
+  publicTitle?: string;
+  publicDescription?: string;
+  publicNotes?: string;
+  sellerName?: string;
+  sellerContact?: string;
+  sellerWebsite?: string;
+
+  // Lineage snapshot (frozen at passport creation)
+  lineageSnapshot?: {
+    ancestors: Array<{
+      id: string;
+      type: string;
+      label: string;
+      strainName?: string;
+      createdAt: string;
+    }>;
+    descendants: Array<{
+      id: string;
+      type: string;
+      label: string;
+      strainName?: string;
+      createdAt: string;
+    }>;
+    capturedAt: string;
+  };
+
+  // QR Code data
+  qrDataUrl?: string;
+  qrShortUrl?: string;
+
+  // Status
+  isPublished: boolean;
+  publishedAt?: Date;
+
+  // Ownership
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Passport view analytics (anonymized)
+export interface PassportView {
+  id: string;
+  passportId: string;
+
+  // Viewer info (anonymous - no PII stored)
+  viewerToken?: string;  // Hashed session token
+  ipHash?: string;       // Hashed IP for fraud detection
+  userAgent?: string;
+  referrer?: string;
+
+  // Geolocation (optional, city-level only)
+  geoCountry?: string;
+  geoRegion?: string;
+
+  viewedAt: Date;
+}
+
+// Redaction preset (template for field visibility)
+export interface RedactionPreset {
+  id: string;
+  name: string;
+  description?: string;
+
+  // Field visibility template
+  fieldVisibility: FieldVisibility;
+
+  // Which entity types this preset applies to
+  appliesTo: Array<'grow' | 'culture' | 'batch'>;
+
+  // Ownership (null = system preset available to all)
+  isSystem: boolean;
+  userId?: string;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Default redaction preset IDs (system presets)
+export const REDACTION_PRESET_IDS = {
+  CUSTOMER_VIEW: '00000000-0000-0000-0100-000000000001',
+  AUDITOR_VIEW: '00000000-0000-0000-0100-000000000002',
+  MINIMAL_VIEW: '00000000-0000-0000-0100-000000000003',
+  GENETICS_FOCUS: '00000000-0000-0000-0100-000000000004',
+} as const;
+
+// Passport analytics summary
+export interface PassportAnalytics {
+  passportId: string;
+  totalViews: number;
+  uniqueViewers: number;
+  viewsByCountry: Record<string, number>;
+  viewsByDay: Array<{ date: string; count: number }>;
+  topReferrers: Array<{ referrer: string; count: number }>;
+  lastViewedAt?: Date;
+}
+
+// ============================================================================
 // DATA STORE STATE
 // ============================================================================
 
@@ -795,6 +995,11 @@ export interface DataStoreState {
   cultures: Culture[];
   grows: Grow[];
   recipes: Recipe[];
+
+  // Public sharing system
+  shareTokens: ShareToken[];
+  batchPassports: BatchPassport[];
+  redactionPresets: RedactionPreset[];
 
   // Notifications
   notifications: UserNotification[];

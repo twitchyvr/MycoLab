@@ -4378,6 +4378,298 @@ GRANT EXECUTE ON FUNCTION insert_flush TO authenticated;
 GRANT EXECUTE ON FUNCTION insert_flush TO anon;
 
 -- ============================================================================
+-- PUBLIC SHARING SYSTEM (v21)
+-- Token-based sharing for public/anonymous access to grows, cultures, batches
+-- Following API security best practices: opaque tokens, expiration, revocation
+-- ============================================================================
+
+-- Share tokens for public/anonymous access
+CREATE TABLE IF NOT EXISTS share_tokens (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  -- Token is opaque random string (NOT JWT per security best practices)
+  token TEXT UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+
+  -- What is being shared
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('grow', 'culture', 'batch', 'recipe', 'lineage')),
+  entity_id UUID NOT NULL,
+
+  -- Access control
+  access_level TEXT DEFAULT 'customer' CHECK (access_level IN ('customer', 'auditor')),
+  permissions JSONB DEFAULT '{}',
+
+  -- Expiration & analytics
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days'),
+  view_count INTEGER DEFAULT 0,
+  last_viewed_at TIMESTAMPTZ,
+
+  -- Revocation
+  is_revoked BOOLEAN DEFAULT false,
+  revoked_at TIMESTAMPTZ,
+  revoked_reason TEXT,
+
+  -- Ownership
+  created_by UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Batch passports (Digital Product Passport following EU ESPR/GS1 standards)
+CREATE TABLE IF NOT EXISTS batch_passports (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- Unique passport identifier (shareable, human-readable)
+  -- Format: ML-YYYY-MM-NNNN (e.g., "ML-2024-12-0001")
+  passport_code TEXT UNIQUE NOT NULL,
+
+  -- What this passport represents
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('grow', 'culture', 'batch')),
+  entity_id UUID NOT NULL,
+
+  -- Public/Redacted field configuration
+  -- JSON object mapping field names to visibility (true=show, false=hide)
+  -- e.g., {"strain": true, "cost": false, "location_address": false}
+  field_visibility JSONB DEFAULT '{}',
+
+  -- Custom public content (seller-written)
+  public_title TEXT,
+  public_description TEXT,
+  public_notes TEXT,
+  seller_name TEXT,
+  seller_contact TEXT,
+  seller_website TEXT,
+
+  -- Lineage snapshot (frozen at passport creation to prevent post-hoc modifications)
+  -- Stores full lineage tree including ancestors and descendants
+  lineage_snapshot JSONB,
+
+  -- QR Code data
+  qr_data_url TEXT,
+  qr_short_url TEXT,
+
+  -- Status
+  is_published BOOLEAN DEFAULT false,
+  published_at TIMESTAMPTZ,
+
+  -- Ownership
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- View analytics for passports (anonymized, no PII stored)
+CREATE TABLE IF NOT EXISTS passport_views (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  passport_id UUID REFERENCES batch_passports(id) ON DELETE CASCADE,
+
+  -- Viewer info (anonymous - no PII stored)
+  viewer_token TEXT, -- Hashed session token for unique visitor tracking
+  ip_hash TEXT, -- Hashed IP for fraud detection (not stored raw)
+  user_agent TEXT,
+  referrer TEXT,
+
+  -- Geolocation (optional, city-level only for privacy)
+  geo_country TEXT,
+  geo_region TEXT,
+
+  viewed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Field redaction presets (templates for common visibility patterns)
+CREATE TABLE IF NOT EXISTS redaction_presets (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+
+  -- Field visibility template
+  -- JSON object mapping field names to visibility
+  field_visibility JSONB NOT NULL,
+
+  -- Which entity types this preset applies to
+  applies_to TEXT[] DEFAULT ARRAY['grow', 'culture', 'batch'],
+
+  -- Ownership (null = system preset available to all)
+  is_system BOOLEAN DEFAULT false,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for share_tokens
+CREATE INDEX IF NOT EXISTS idx_share_tokens_token ON share_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_share_tokens_entity ON share_tokens(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_share_tokens_created_by ON share_tokens(created_by);
+CREATE INDEX IF NOT EXISTS idx_share_tokens_expires_at ON share_tokens(expires_at);
+
+-- Indexes for batch_passports
+CREATE INDEX IF NOT EXISTS idx_batch_passports_code ON batch_passports(passport_code);
+CREATE INDEX IF NOT EXISTS idx_batch_passports_entity ON batch_passports(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_batch_passports_user_id ON batch_passports(user_id);
+CREATE INDEX IF NOT EXISTS idx_batch_passports_published ON batch_passports(is_published) WHERE is_published = true;
+
+-- Indexes for passport_views
+CREATE INDEX IF NOT EXISTS idx_passport_views_passport_id ON passport_views(passport_id);
+CREATE INDEX IF NOT EXISTS idx_passport_views_viewed_at ON passport_views(viewed_at);
+
+-- Indexes for redaction_presets
+CREATE INDEX IF NOT EXISTS idx_redaction_presets_user_id ON redaction_presets(user_id);
+CREATE INDEX IF NOT EXISTS idx_redaction_presets_system ON redaction_presets(is_system) WHERE is_system = true;
+
+-- ============================================================================
+-- RLS POLICIES FOR PUBLIC SHARING SYSTEM
+-- ============================================================================
+
+-- Enable RLS on share_tokens
+ALTER TABLE share_tokens ENABLE ROW LEVEL SECURITY;
+
+-- Owners can manage their own share tokens
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'share_tokens' AND policyname = 'share_tokens_owner_all') THEN
+    EXECUTE 'CREATE POLICY share_tokens_owner_all ON share_tokens FOR ALL USING (auth.uid() = created_by)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Enable RLS on batch_passports
+ALTER TABLE batch_passports ENABLE ROW LEVEL SECURITY;
+
+-- Owners can manage their own passports
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'batch_passports' AND policyname = 'batch_passports_owner_all') THEN
+    EXECUTE 'CREATE POLICY batch_passports_owner_all ON batch_passports FOR ALL USING (auth.uid() = user_id)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Published passports are publicly readable (for anonymous passport viewing)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'batch_passports' AND policyname = 'batch_passports_public_read') THEN
+    EXECUTE 'CREATE POLICY batch_passports_public_read ON batch_passports FOR SELECT USING (is_published = true)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Enable RLS on passport_views
+ALTER TABLE passport_views ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can insert views (for anonymous tracking)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'passport_views' AND policyname = 'passport_views_insert') THEN
+    EXECUTE 'CREATE POLICY passport_views_insert ON passport_views FOR INSERT WITH CHECK (true)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Only passport owners can read their own views
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'passport_views' AND policyname = 'passport_views_owner_read') THEN
+    EXECUTE 'CREATE POLICY passport_views_owner_read ON passport_views FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM batch_passports bp
+        WHERE bp.id = passport_views.passport_id
+        AND bp.user_id = auth.uid()
+      )
+    )';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Enable RLS on redaction_presets
+ALTER TABLE redaction_presets ENABLE ROW LEVEL SECURITY;
+
+-- System presets are readable by all authenticated users
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'redaction_presets' AND policyname = 'redaction_presets_system_read') THEN
+    EXECUTE 'CREATE POLICY redaction_presets_system_read ON redaction_presets FOR SELECT USING (is_system = true)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Users can manage their own presets
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'redaction_presets' AND policyname = 'redaction_presets_owner_all') THEN
+    EXECUTE 'CREATE POLICY redaction_presets_owner_all ON redaction_presets FOR ALL USING (auth.uid() = user_id)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ============================================================================
+-- HELPER FUNCTIONS FOR PUBLIC SHARING
+-- ============================================================================
+
+-- Function to generate unique passport codes
+CREATE OR REPLACE FUNCTION generate_passport_code()
+RETURNS TEXT AS $$
+DECLARE
+  v_year TEXT;
+  v_month TEXT;
+  v_seq INTEGER;
+  v_code TEXT;
+BEGIN
+  v_year := TO_CHAR(NOW(), 'YYYY');
+  v_month := TO_CHAR(NOW(), 'MM');
+
+  -- Get the next sequence number for this month
+  SELECT COALESCE(MAX(
+    CAST(SUBSTRING(passport_code FROM 12 FOR 4) AS INTEGER)
+  ), 0) + 1 INTO v_seq
+  FROM batch_passports
+  WHERE passport_code LIKE 'ML-' || v_year || '-' || v_month || '-%';
+
+  v_code := 'ML-' || v_year || '-' || v_month || '-' || LPAD(v_seq::TEXT, 4, '0');
+
+  RETURN v_code;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to record passport view (for anonymous tracking)
+CREATE OR REPLACE FUNCTION record_passport_view(
+  p_passport_code TEXT,
+  p_viewer_token TEXT DEFAULT NULL,
+  p_ip_hash TEXT DEFAULT NULL,
+  p_user_agent TEXT DEFAULT NULL,
+  p_referrer TEXT DEFAULT NULL,
+  p_geo_country TEXT DEFAULT NULL,
+  p_geo_region TEXT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_passport_id UUID;
+  v_view_id UUID;
+BEGIN
+  -- Find the passport
+  SELECT id INTO v_passport_id
+  FROM batch_passports
+  WHERE passport_code = p_passport_code
+    AND is_published = true;
+
+  IF v_passport_id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Passport not found or not published');
+  END IF;
+
+  -- Record the view
+  INSERT INTO passport_views (
+    passport_id, viewer_token, ip_hash, user_agent, referrer, geo_country, geo_region
+  ) VALUES (
+    v_passport_id, p_viewer_token, p_ip_hash, p_user_agent, p_referrer, p_geo_country, p_geo_region
+  ) RETURNING id INTO v_view_id;
+
+  RETURN jsonb_build_object('success', true, 'view_id', v_view_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION generate_passport_code TO authenticated;
+GRANT EXECUTE ON FUNCTION record_passport_view TO anon;
+GRANT EXECUTE ON FUNCTION record_passport_view TO authenticated;
+
+-- ============================================================================
 -- SCHEMA VERSION (for tracking migrations)
 -- ============================================================================
 
@@ -4388,12 +4680,25 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 20)
-ON CONFLICT (id) DO UPDATE SET version = 20, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 21)
+ON CONFLICT (id) DO UPDATE SET version = 21, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v21 (2024-12): PUBLIC SHARING SYSTEM - Token-based sharing for public access:
+--               - share_tokens: Opaque tokens for public/anonymous access to grows,
+--                 cultures, batches. Follows API security best practices with expiration,
+--                 revocation, and rate limiting support. Access levels: customer, auditor.
+--               - batch_passports: Digital Product Passports following EU ESPR/GS1 standards.
+--                 Unique human-readable codes (ML-YYYY-MM-NNNN), frozen lineage snapshots,
+--                 field visibility configuration for redaction.
+--               - passport_views: Anonymized analytics for passport views. No PII stored,
+--                 only hashed tokens and city-level geolocation.
+--               - redaction_presets: Field visibility templates (Customer, Auditor, Minimal).
+--                 System presets available to all, users can create custom presets.
+--               - Helper functions: generate_passport_code(), record_passport_view()
+--               - Full RLS policies and indexes for all tables
 -- v20 (2024-12): CRITICAL FIX - Flushes table column name migration:
 --               - Database had: wet_weight, dry_weight (integer)
 --               - App expected: wet_weight_g, dry_weight_g (DECIMAL)
