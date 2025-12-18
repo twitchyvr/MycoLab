@@ -385,8 +385,15 @@ export const CommandCenter: React.FC = () => {
     }));
   };
 
+  // Harvest submission state
+  const [isSubmittingHarvest, setIsSubmittingHarvest] = useState(false);
+  const [harvestError, setHarvestError] = useState<string | null>(null);
+
   const handleHarvestSubmit = async () => {
     if (!selectedGrowForHarvest || harvestEntry.wetWeight <= 0) return;
+
+    setIsSubmittingHarvest(true);
+    setHarvestError(null);
 
     try {
       await addFlush(selectedGrowForHarvest.id, {
@@ -398,11 +405,15 @@ export const CommandCenter: React.FC = () => {
         notes: harvestEntry.notes,
       });
 
-      // Reset
+      // Success - reset and go back to harvest list
       setSelectedGrowForHarvest(null);
       setHarvestEntry({ growId: '', wetWeight: 0, quality: 'good' });
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to record harvest:', e);
+      const message = e?.message || e?.error?.message || 'Failed to save harvest. Please try again.';
+      setHarvestError(message);
+    } finally {
+      setIsSubmittingHarvest(false);
     }
   };
 
@@ -517,7 +528,23 @@ export const CommandCenter: React.FC = () => {
                       </span>
                     )}
                     {task.action && (
-                      <button className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-white">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle different actions
+                          if (task.action === 'Record harvest' && task.entityId) {
+                            const grow = grows.find(g => g.id === task.entityId);
+                            if (grow) {
+                              setSelectedGrowForHarvest(grow);
+                              setHarvestEntry({ growId: grow.id, wetWeight: 0, quality: 'good' });
+                              setMode('harvest');
+                            }
+                          }
+                          // Mark task as completed after action
+                          toggleTaskComplete(task.id);
+                        }}
+                        className="text-xs px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                      >
                         {task.action}
                       </button>
                     )}
@@ -701,7 +728,9 @@ export const CommandCenter: React.FC = () => {
                 entry={harvestEntry}
                 setEntry={setHarvestEntry}
                 onSubmit={handleHarvestSubmit}
-                onCancel={() => setSelectedGrowForHarvest(null)}
+                onCancel={() => { setSelectedGrowForHarvest(null); setHarvestError(null); }}
+                isLoading={isSubmittingHarvest}
+                error={harvestError}
               />
             )}
           </div>
@@ -843,10 +872,12 @@ interface HarvestEntryFormProps {
   setEntry: React.Dispatch<React.SetStateAction<HarvestEntry>>;
   onSubmit: () => void;
   onCancel: () => void;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
 const HarvestEntryForm: React.FC<HarvestEntryFormProps> = ({
-  grow, strain, entry, setEntry, onSubmit, onCancel
+  grow, strain, entry, setEntry, onSubmit, onCancel, isLoading, error
 }) => {
   return (
     <div className="space-y-4">
@@ -943,20 +974,28 @@ const HarvestEntryForm: React.FC<HarvestEntryFormProps> = ({
         </div>
       )}
 
+      {/* Error Display */}
+      {error && (
+        <div className="p-3 rounded-lg bg-red-950/50 border border-red-800 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
       {/* Submit */}
       <div className="flex gap-3">
         <button
           onClick={onCancel}
-          className="flex-1 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-medium"
+          disabled={isLoading}
+          className="flex-1 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white font-medium"
         >
           Cancel
         </button>
         <button
           onClick={onSubmit}
-          disabled={!entry.wetWeight}
+          disabled={!entry.wetWeight || isLoading}
           className="flex-1 py-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-medium"
         >
-          Record Harvest
+          {isLoading ? 'Saving...' : 'Record Harvest'}
         </button>
       </div>
     </div>

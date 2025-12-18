@@ -85,6 +85,30 @@ When assisting with this project, always operate with the following context in m
 7. **Idempotent schema** - SQL migrations are safe to re-run
 8. **No testing yet** - Be careful with refactoring without tests
 
+### ⚠️ DRY PRINCIPLE - NO DUPLICATE INTERFACES ⚠️
+
+**CRITICAL: Before creating ANY new UI component or form, ALWAYS search for existing implementations first.**
+
+This app has a history of creating multiple different interfaces for the same task (e.g., recording harvests). This creates:
+- Inconsistent UX for users
+- Maintenance burden (bugs fixed in one place, not others)
+- Confusion about which interface to use
+
+**Rules:**
+1. **ONE interface per task** - If a task can be done from multiple pages, use the SAME component (import it, don't recreate it)
+2. **Search first** - Before building: `grep -r "Record.*[Hh]arvest\|harvest.*[Ff]orm" src/`
+3. **Shared components** - Put reusable forms/modals in `components/common/` or a dedicated folder
+4. **Entry points != interfaces** - Multiple buttons can trigger the same modal
+
+**Current consolidation needed:**
+- Harvest entry: GrowManagement, CommandCenter, HarvestWorkflow all have different forms
+- TODO: Create single `HarvestEntryModal` component used everywhere
+
+**Always ask yourself:**
+- Does this task already have a UI component somewhere?
+- Can I reuse an existing component instead of creating a new one?
+- If I must create new, can it be shared across the app?
+
 ### !!! MANDATORY PRE-COMMIT CHECKLIST - NO EXCEPTIONS !!!
 
 **⚠️ STOP! BEFORE RUNNING `git commit`, YOU MUST COMPLETE ALL THREE CHECKS BELOW. ⚠️**
