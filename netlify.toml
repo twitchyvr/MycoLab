@@ -7,10 +7,9 @@
   # Build command
   command = "npm run build"
 
-  # Disable Netlify's change detection - always build on merge
-  # This fixes false "no content change" cancellations with subdirectory bases
-  # ignore = "true"
-  ignore = "exit 1"
+  # Only build when Web App files change (saves build minutes)
+  # Uses git diff to check if relevant files changed
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ../netlify.toml"
 
   # Publish directory (relative to base)
   publish = "dist"
@@ -24,3 +23,47 @@
 # Environment variables (optional - can also be set in Netlify dashboard)
 [build.environment]
   NODE_VERSION = "20"
+
+# ===========================================
+# CACHING HEADERS - Reduces bandwidth usage
+# ===========================================
+
+# Cache static assets aggressively (they have content hashes)
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache fonts
+[[headers]]
+  for = "*.woff2"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Short cache for HTML (allows updates to propagate)
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# ===========================================
+# DEPLOY CONTEXTS - Control when builds happen
+# ===========================================
+
+# Only deploy production from main branch
+[context.production]
+  branch = "main"
+
+# Skip deploy previews for most branches (saves build minutes)
+# Comment out if you want PR previews
+[context.deploy-preview]
+  ignore = "exit 0"
+
+# Skip branch deploys entirely (saves build minutes)
+[context.branch-deploy]
+  ignore = "exit 0"
