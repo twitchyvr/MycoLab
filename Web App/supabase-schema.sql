@@ -646,6 +646,184 @@ CREATE TABLE IF NOT EXISTS grows (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
+-- ============================================================================
+-- GROWS TABLE MIGRATION: Add columns expected by the application
+-- The app uses different column names than the original schema
+-- ============================================================================
+DO $$
+BEGIN
+  -- Add status column (app uses 'status' instead of 'is_active')
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'status'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN status TEXT DEFAULT 'active';
+    -- Migrate from is_active if it exists
+    UPDATE grows SET status = CASE WHEN is_active = false THEN 'completed' ELSE 'active' END;
+    RAISE NOTICE 'Added status column to grows';
+  END IF;
+
+  -- Add current_stage column (app uses 'current_stage' instead of 'stage')
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'current_stage'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN current_stage TEXT DEFAULT 'spawning';
+    -- Migrate from stage if it exists (also fix 'colonizing' -> 'colonization')
+    UPDATE grows SET current_stage =
+      CASE
+        WHEN stage = 'colonizing' THEN 'colonization'
+        ELSE COALESCE(stage, 'spawning')
+      END;
+    RAISE NOTICE 'Added current_stage column to grows';
+  END IF;
+
+  -- Add spawn_type column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'spawn_type'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN spawn_type TEXT DEFAULT 'grain';
+    RAISE NOTICE 'Added spawn_type column to grows';
+  END IF;
+
+  -- Add spawn_weight column (app uses 'spawn_weight' instead of 'spawn_weight_g')
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'spawn_weight'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN spawn_weight DECIMAL DEFAULT 0;
+    -- Migrate from spawn_weight_g if it exists
+    UPDATE grows SET spawn_weight = COALESCE(spawn_weight_g, 0);
+    RAISE NOTICE 'Added spawn_weight column to grows';
+  END IF;
+
+  -- Add substrate_weight column (app uses 'substrate_weight' instead of 'substrate_weight_g')
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'substrate_weight'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN substrate_weight DECIMAL DEFAULT 0;
+    -- Migrate from substrate_weight_g if it exists
+    UPDATE grows SET substrate_weight = COALESCE(substrate_weight_g, 0);
+    RAISE NOTICE 'Added substrate_weight column to grows';
+  END IF;
+
+  -- Add spawn_rate column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'spawn_rate'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN spawn_rate DECIMAL DEFAULT 20;
+    RAISE NOTICE 'Added spawn_rate column to grows';
+  END IF;
+
+  -- Add spawned_at column (app uses 'spawned_at' TIMESTAMPTZ instead of 'spawn_date' DATE)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'spawned_at'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN spawned_at TIMESTAMPTZ DEFAULT NOW();
+    -- Migrate from spawn_date if it exists
+    UPDATE grows SET spawned_at = spawn_date::TIMESTAMPTZ WHERE spawn_date IS NOT NULL;
+    RAISE NOTICE 'Added spawned_at column to grows';
+  END IF;
+
+  -- Add colonization_started_at column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'colonization_started_at'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN colonization_started_at TIMESTAMPTZ;
+    -- Migrate from colonization_start if it exists
+    UPDATE grows SET colonization_started_at = colonization_start::TIMESTAMPTZ WHERE colonization_start IS NOT NULL;
+    RAISE NOTICE 'Added colonization_started_at column to grows';
+  END IF;
+
+  -- Add fruiting_started_at column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'fruiting_started_at'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN fruiting_started_at TIMESTAMPTZ;
+    -- Migrate from fruiting_start if it exists
+    UPDATE grows SET fruiting_started_at = fruiting_start::TIMESTAMPTZ WHERE fruiting_start IS NOT NULL;
+    RAISE NOTICE 'Added fruiting_started_at column to grows';
+  END IF;
+
+  -- Add completed_at column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'completed_at'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN completed_at TIMESTAMPTZ;
+    -- Migrate from harvest_date if it exists
+    UPDATE grows SET completed_at = harvest_date::TIMESTAMPTZ WHERE harvest_date IS NOT NULL;
+    RAISE NOTICE 'Added completed_at column to grows';
+  END IF;
+
+  -- Add target_temp_colonization column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'target_temp_colonization'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN target_temp_colonization DECIMAL DEFAULT 24;
+    RAISE NOTICE 'Added target_temp_colonization column to grows';
+  END IF;
+
+  -- Add target_temp_fruiting column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'target_temp_fruiting'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN target_temp_fruiting DECIMAL DEFAULT 22;
+    RAISE NOTICE 'Added target_temp_fruiting column to grows';
+  END IF;
+
+  -- Add target_humidity column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'target_humidity'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN target_humidity DECIMAL DEFAULT 90;
+    RAISE NOTICE 'Added target_humidity column to grows';
+  END IF;
+
+  -- Add total_yield column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'total_yield'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN total_yield DECIMAL DEFAULT 0;
+    RAISE NOTICE 'Added total_yield column to grows';
+  END IF;
+
+  -- Add estimated_cost column
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'estimated_cost'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN estimated_cost DECIMAL DEFAULT 0;
+    RAISE NOTICE 'Added estimated_cost column to grows';
+  END IF;
+
+  RAISE NOTICE 'Grows table migration complete';
+END $$;
+
+-- Add check constraint for current_stage values (if not exists)
+DO $$ BEGIN
+  ALTER TABLE grows ADD CONSTRAINT grows_current_stage_check
+    CHECK (current_stage IN ('spawning', 'colonization', 'fruiting', 'harvesting', 'completed', 'contaminated', 'aborted'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Add check constraint for status values (if not exists)
+DO $$ BEGIN
+  ALTER TABLE grows ADD CONSTRAINT grows_status_check
+    CHECK (status IN ('active', 'paused', 'completed', 'failed'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- Grow observations
 CREATE TABLE IF NOT EXISTS grow_observations (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
