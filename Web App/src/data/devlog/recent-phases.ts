@@ -2064,6 +2064,222 @@ custom IDs like 'outcome-mjbw2cne-h7jx2' which caused Postgres error 22P02.
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  // =============================================================================
+  // PHASE 38: LAB SPACES REDESIGN
+  // Chamber-centric location management with environmental presets
+  // =============================================================================
+  {
+    id: 'dev-1080',
+    title: 'Lab Spaces - Unified Location Management',
+    description: 'Consolidated Lab Layout and Space Tracker into a single "Lab Spaces" page. Combines location tree management with occupancy tracking in one unified interface.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 8,
+    actualHours: 4,
+    completedAt: timestamp(),
+    notes: `Major UI consolidation for location management:
+
+**What Changed:**
+- Combined Lab Layout (CRUD) + Space Tracker (visualization) into single page
+- New unified "Lab Spaces" nav item replaces separate entries
+- Legacy routes (/lab-mapping, /occupancy) redirect to /lab-spaces
+- Dual view modes: Tree view and Overview dashboard
+
+**Key Features:**
+- Tree view with inline occupancy indicators (culture/grow counts)
+- Dashboard overview with environment type breakdown
+- Click-to-select shows detailed location panel
+- Quick navigation to cultures/grows from location details
+
+**Benefits:**
+- No more switching between pages to manage vs view occupancy
+- Single source of truth for lab locations
+- Cleaner navigation (2 items → 1 item)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1081',
+    title: 'Environmental Chamber Presets',
+    description: 'One-click presets for common controlled environments. Select "Incubator", "Fruiting Chamber", "Cold Storage", etc. and auto-fill temperature/humidity targets.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    actualHours: 2,
+    completedAt: timestamp(),
+    dependencies: ['dev-1080'],
+    notes: `Chamber presets for quick setup:
+
+**Available Presets:**
+- Incubator (75-82°F, 60-80% RH) - Warm colonization
+- Fruiting Chamber (65-75°F, 85-95% RH) - High humidity fruiting
+- Cold Storage (35-45°F, 30-50% RH) - Fridge/refrigeration
+- Martha Tent (68-75°F, 90-99% RH) - Budget fruiting
+- Still Air Box - Sterile inoculation workspace
+- Flow Hood Area - Laminar flow workspace
+- Drying Chamber (95-165°F, 10-30% RH) - Dehydrator
+- Monotub (68-76°F, 85-95% RH) - Self-contained fruiting
+- Outdoor Area - Garden/log growing
+
+**Features:**
+- Semantic icons for each environment type
+- Auto-detect environment type from temp/humidity ranges
+- Cold storage indicator (snowflake) for locations < 50°F
+- Each preset has appropriate default room purposes`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1082',
+    title: 'Chamber-Centric Location Hierarchy',
+    description: 'Renamed and reorganized location levels to be more intuitive for cultivators. "Zone" becomes "Environment/Chamber", "Rack" becomes "Equipment".',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 2,
+    actualHours: 1,
+    completedAt: timestamp(),
+    dependencies: ['dev-1080'],
+    notes: `Location type hierarchy redesign:
+
+**New Labels (dropdown):**
+- Facility (Building/Property)
+- Room
+- Environment / Chamber (for controlled spaces like fridges, incubators)
+- Equipment (Rack/Chamber/Box within a room)
+- Shelf
+- Position / Slot
+
+**Semantic Meaning:**
+- Users now understand "Environment" = controlled temperature/humidity space
+- "Equipment" makes more sense than "Rack" for a fridge or martha tent
+- Help text explains appropriate usage for each level`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  // =============================================================================
+  // PHASE 39: USER FEEDBACK & QUALITY TRACKING (Suggested by Leia)
+  // Grow quality ratings, vendor assessment, community features
+  // =============================================================================
+  {
+    id: 'dev-1100',
+    title: 'Harvest Quality Ratings',
+    description: 'Rate harvests on multiple quality dimensions: potency, bruising, taste (for gourmet), appearance. Save data points for analytics.',
+    category: 'core',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 8,
+    notes: 'Suggested by Leia. Captures subjective quality data beyond just weight. Useful for strain selection and grow method comparison.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1101',
+    title: 'Grow Experience Reviews',
+    description: 'After completing a grow, prompt for a review: overall rating, what went well, what to improve. "Mark as Grown" workflow with structured feedback.',
+    category: 'ui',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 10,
+    dependencies: ['dev-911'],
+    notes: 'Suggested by Leia. Builds on exit survey system. Captures qualitative experience data for learning.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1102',
+    title: 'Vendor Assessment & Consistency Tracking',
+    description: 'Rate vendors/suppliers on consistency, quality, shipping speed. Track which vendors have been inconsistent. Flag problematic suppliers.',
+    category: 'core',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 10,
+    notes: 'Suggested by Leia. Essential for identifying unreliable suppliers. Link to contamination tracking - did bad vendor supplies cause issues?',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1103',
+    title: 'Non-Contamination Abort Reasons',
+    description: 'Expanded abort reasons for grows: vendor issues (bad genetics, contaminated source), environment failure (equipment malfunction, power outage), stalled growth, user error. Not all failures are contamination.',
+    category: 'core',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 6,
+    dependencies: ['dev-911'],
+    notes: 'Suggested by Leia. Current system focuses on contamination - need broader failure categorization.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1104',
+    title: 'Dual Rating System (AI vs Grower)',
+    description: 'Two-score system like Rotten Tomatoes: MycoLab AI score based on objective metrics (BE%, time, contamination rate) vs Grower score based on subjective experience.',
+    category: 'enhancement',
+    status: 'planned',
+    priority: 'medium',
+    estimatedHours: 12,
+    dependencies: ['dev-1100', 'dev-1101'],
+    notes: 'Suggested by Leia. Inspired by "critics vs audience" scores. AI analyzes data, grower rates experience. Both valuable.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1105',
+    title: 'Community Comments & Likes',
+    description: 'Allow comments on shared grows/strains with likes and "helpful" voting. Filter/sort by most helpful. Build community knowledge base.',
+    category: 'enhancement',
+    status: 'planned',
+    priority: 'medium',
+    estimatedHours: 16,
+    dependencies: ['dev-1000', 'dev-1003'],
+    notes: 'Suggested by Leia. Social features for community building. Requires public sharing foundation.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1106',
+    title: 'Grow Duration Estimation from Feedback',
+    description: 'Aggregate user feedback and comments to estimate accurate grow durations per strain. "Based on 47 grows, Golden Teacher typically takes 28-35 days to first harvest."',
+    category: 'enhancement',
+    status: 'planned',
+    priority: 'medium',
+    estimatedHours: 8,
+    dependencies: ['dev-1105', 'dev-180'],
+    notes: 'Suggested by Leia. Use community data to improve predictions. Statistical analysis of actual grow times.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1107',
+    title: 'Photo Widget for Grows',
+    description: 'Photo gallery widget on grow detail pages. Quick photo upload, timeline view, before/after comparisons. Essential visual documentation.',
+    category: 'ui',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 10,
+    dependencies: ['dev-800', 'dev-1050'],
+    notes: 'Suggested by Leia. Builds on photo upload infrastructure. Visual progress tracking is highly requested.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1108',
+    title: 'Avery Sheet Label Templates',
+    description: 'Pre-configured label templates for standard Avery sheet sizes. Print multiple labels per sheet for home printers. Common sizes: 5160, 5163, 5164.',
+    category: 'ui',
+    status: 'planned',
+    priority: 'medium',
+    estimatedHours: 6,
+    dependencies: ['dev-091'],
+    notes: 'Suggested by Leia. Current system supports thermal printers - add standard inkjet/laser Avery sheets.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
