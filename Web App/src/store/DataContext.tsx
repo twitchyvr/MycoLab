@@ -510,6 +510,47 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     init();
   }, [loadDataFromSupabase]);
 
+  // Listen for auth state changes and reload data when user signs in
+  // This fixes the issue where email/password login doesn't trigger a data reload
+  // (OAuth login causes a page reload, so data loads fresh, but email login doesn't)
+  useEffect(() => {
+    if (!supabase) return;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        // Reload data when user signs in (with a real account, not anonymous)
+        if (event === 'SIGNED_IN' && session?.user && !session.user.is_anonymous) {
+          console.log('[DataContext] Auth state changed to SIGNED_IN, reloading data...');
+          const client = getSupabaseClient();
+          if (client) {
+            await loadDataFromSupabase(client);
+          }
+        }
+
+        // Also reload on TOKEN_REFRESHED to ensure we have fresh data after token refresh
+        if (event === 'TOKEN_REFRESHED' && session?.user && !session.user.is_anonymous) {
+          console.log('[DataContext] Token refreshed, ensuring data is current...');
+          // Only reload if we haven't loaded recently (within last 5 seconds)
+          const lastSync = localStorage.getItem('mycolab-last-sync');
+          if (lastSync) {
+            const lastSyncTime = new Date(lastSync).getTime();
+            const now = Date.now();
+            if (now - lastSyncTime > 5000) {
+              const client = getSupabaseClient();
+              if (client) {
+                await loadDataFromSupabase(client);
+              }
+            }
+          }
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [loadDataFromSupabase]);
+
   // Refresh data function
   const refreshData = useCallback(async () => {
     const client = getSupabaseClient();
