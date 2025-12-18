@@ -2646,6 +2646,41 @@ Added auth state listener in DataContext that:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1206',
+    title: 'Grows Table Schema Fix - Missing Columns',
+    description: 'Fixed database schema for grows table which was missing 15+ columns expected by the application, causing 400 errors when creating new grows.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 1,
+    actualHours: 0.75,
+    completedAt: timestamp(),
+    notes: `Database schema bug fix for grow creation:
+
+**Problem:**
+- Creating new grows in GrowManagement threw 400 errors
+- Console showed "Failed to load resource: the server responded with a status of 400"
+- Users unable to create or save grow data
+
+**Root Cause:**
+- grows table in supabase-schema.sql had an old schema structure
+- Application transformation functions (transformGrowToDb) expected different column names
+- Missing columns: status, current_stage, spawn_type, spawn_weight, substrate_weight, spawn_rate, spawned_at, colonization_started_at, fruiting_started_at, completed_at, target_temp_colonization, target_temp_fruiting, target_humidity, total_yield, estimated_cost
+- Wrong column names: stage vs current_stage, spawn_date vs spawned_at, substrate_weight_g vs substrate_weight
+
+**Solution:**
+- Added idempotent migration block to supabase-schema.sql
+- Creates all missing columns with proper defaults
+- Migrates data from old columns (stage -> current_stage, spawn_date -> spawned_at, etc.)
+- Handles 'colonizing' -> 'colonization' stage name difference
+- Added CHECK constraints for current_stage and status values
+
+**Files Updated:**
+- supabase-schema.sql (added grows table migration block after table creation)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
