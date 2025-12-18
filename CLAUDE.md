@@ -213,13 +213,26 @@ When assisting with this project, always operate with the following context in m
 
 **The user has been burned by skipped checks. Do not add to that pain.**
 
-**SQL Files Location:**
+**SQL Files Location & Execution Order:**
 ```
 Web App/
-├── supabase-schema.sql      # Database structure (tables, indexes, triggers, RLS)
-├── supabase-seed-data.sql   # System reference data (containers, categories, etc.)
-└── supabase-species-data.sql # Species and strain reference data
+├── supabase-schema.sql         # 1️⃣ RUN FIRST - Database structure
+├── supabase-seed-data.sql      # 2️⃣ RUN SECOND - Reference data
+├── supabase-species-data.sql   # 3️⃣ RUN THIRD - Species/strain data
+└── supabase-wipe-user-data.sql # ⚠️ DESTRUCTIVE - Wipes all user data
 ```
+
+**SQL Files Relationship:**
+- `supabase-schema.sql` - Creates tables, indexes, triggers, RLS policies. Idempotent.
+- `supabase-seed-data.sql` - Populates reference tables (containers, categories). user_id=NULL for system data.
+- `supabase-species-data.sql` - Populates species/strains. user_id=NULL for system data.
+- `supabase-wipe-user-data.sql` - **DESTRUCTIVE**: Removes ALL user data, preserves seed data and schema.
+
+**⚠️ When Schema Changes - Update These Files:**
+1. Add new table to `supabase-schema.sql`
+2. Add default data to `supabase-seed-data.sql` (if reference table)
+3. Add species data to `supabase-species-data.sql` (if species/strain)
+4. **Add to wipe script** `supabase-wipe-user-data.sql` (if table has user data)
 
 **DevLog Files Location:**
 ```

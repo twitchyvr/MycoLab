@@ -1545,16 +1545,7 @@ Benefits:
     estimatedHours: 1,
     actualHours: 0.75,
     completedAt: timestamp(),
-    notes: `**Problem**: PostgREST schema cache not refreshing after schema changes
-- Error: "Could not find the 'dry_weight_g' column of 'flushes' in the schema cache"
-- The column exists in the database, but PostgREST's cached schema is stale
-- Running schema SQL and restarting Supabase didn't fix it
-
-**Root Cause Analysis**:
-- The schema SQL is correct (dry_weight_g exists at line 670)
-- The transformation code correctly maps dryWeight → dry_weight_g
-- PGRST204 is specifically a PostgREST schema cache error
-- This is a Supabase infrastructure issue, not a code issue
+    notes: `**Initial Symptom**: PGRST204 error when saving harvests
 
 **Solution**: Created RPC function to bypass PostgREST cache
 1. Added insert_flush() PostgreSQL function in schema
@@ -1569,6 +1560,52 @@ Benefits:
 **Files Updated:**
 - supabase-schema.sql (added insert_flush RPC function, v19)
 - store/DataContext.tsx (added RPC fallback logic)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-921',
+    title: 'Critical Fix: Flushes Table Column Name Mismatch',
+    description: 'Fixed fundamental database schema drift where actual column names did not match expected names.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 2,
+    actualHours: 1,
+    completedAt: timestamp(),
+    notes: `**ROOT CAUSE DISCOVERED**:
+The PGRST204 error was NOT a schema cache issue - the columns literally did not exist!
+
+**Database Reality vs Code Expectation:**
+| Database Had | Code Expected |
+|--------------|---------------|
+| wet_weight (integer) | wet_weight_g (DECIMAL) |
+| dry_weight (integer) | dry_weight_g (DECIMAL) |
+
+**Why This Happened:**
+- Schema SQL uses CREATE TABLE IF NOT EXISTS
+- Table already existed with old column names
+- New schema with _g suffix never got applied
+- PostgREST correctly reported column did not exist
+
+**Proper Fix (v20):**
+1. Added migration that:
+   - Adds new columns (wet_weight_g, dry_weight_g) as DECIMAL
+   - Copies data from old columns to new columns
+   - Drops old columns (wet_weight, dry_weight)
+2. Made transformation code defensive:
+   - Handles both old and new column names
+   - Falls back gracefully during migration
+
+**Industry Best Practice Lessons:**
+- Always verify actual DB schema vs expected schema
+- Column naming should include units (_g for grams)
+- Use proper migrations, not just CREATE IF NOT EXISTS
+- Defensive code that handles schema variations gracefully
+
+**Files Updated:**
+- supabase-schema.sql (migration v20, column rename)
+- store/transformations.ts (defensive column handling)`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },

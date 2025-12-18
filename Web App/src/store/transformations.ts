@@ -580,17 +580,27 @@ export const transformSupplierToDb = (supplier: Partial<Supplier>, userId?: stri
 // FLUSH TRANSFORMATIONS
 // ============================================================================
 
+/**
+ * Transform flush data from database format to app format.
+ * Handles both old column names (wet_weight, dry_weight) and new names (wet_weight_g, dry_weight_g)
+ * for backwards compatibility during migration.
+ */
 export const transformFlushFromDb = (row: any): Flush => ({
   id: row.id,
   flushNumber: row.flush_number,
   harvestDate: new Date(row.harvest_date),
-  wetWeight: row.wet_weight_g,
-  dryWeight: row.dry_weight_g,
+  // Handle both old (wet_weight) and new (wet_weight_g) column names
+  wetWeight: row.wet_weight_g ?? row.wet_weight ?? 0,
+  dryWeight: row.dry_weight_g ?? row.dry_weight ?? 0,
   mushroomCount: row.mushroom_count,
   quality: row.quality || 'good',
   notes: row.notes,
 });
 
+/**
+ * Transform flush data from app format to database format.
+ * Uses the new column names with _g suffix (for grams).
+ */
 export const transformFlushToDb = (flush: Omit<Flush, 'id'>, growId: string) => ({
   grow_id: growId,
   flush_number: flush.flushNumber,
