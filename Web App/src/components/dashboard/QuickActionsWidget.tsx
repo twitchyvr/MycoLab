@@ -306,7 +306,26 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
 
 export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onNavigate }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Detect when modals are open (check for modal overlays)
+  useEffect(() => {
+    const checkForModals = () => {
+      // Look for modal overlays (fixed elements with backdrop)
+      const modals = document.querySelectorAll('.fixed.inset-0.bg-black\\/50, .fixed.inset-0[class*="bg-black"]');
+      setIsModalOpen(modals.length > 0);
+    };
+
+    // Initial check
+    checkForModals();
+
+    // Use MutationObserver to detect DOM changes
+    const observer = new MutationObserver(checkForModals);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, []);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -321,6 +340,11 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onNa
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
+
+  // Don't render if modal is open
+  if (isModalOpen) {
+    return null;
+  }
 
   const handleCreateNew = (page: string) => {
     setIsOpen(false);
