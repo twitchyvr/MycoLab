@@ -5,6 +5,7 @@
 import React from 'react';
 import { useData } from '../../store';
 import { StandardDropdown } from '../common/StandardDropdown';
+import { NumericInput } from '../common/NumericInput';
 
 export interface InventoryItemFormData {
   name: string;
@@ -100,13 +101,12 @@ export const InventoryItemForm: React.FC<InventoryItemFormProps> = ({
           </label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
-            <input
-              type="number"
-              value={data.unitCost ?? ''}
-              onChange={e => onChange({ unitCost: parseFloat(e.target.value) || undefined })}
+            <NumericInput
+              value={data.unitCost}
+              onChange={value => onChange({ unitCost: value })}
               placeholder="0.00"
-              step="0.01"
-              min="0"
+              step={0.01}
+              min={0}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg pl-7 pr-3 py-2 text-white focus:outline-none focus:border-emerald-500"
             />
           </div>
@@ -131,23 +131,21 @@ export const InventoryItemForm: React.FC<InventoryItemFormProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm text-zinc-400 mb-2">Low Stock Alert At</label>
-            <input
-              type="number"
-              value={data.reorderPoint ?? ''}
-              onChange={e => onChange({ reorderPoint: parseInt(e.target.value) || undefined })}
+            <NumericInput
+              value={data.reorderPoint}
+              onChange={value => onChange({ reorderPoint: value })}
               placeholder="e.g., 5"
-              min="0"
+              min={0}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
             />
           </div>
           <div>
             <label className="block text-sm text-zinc-400 mb-2">Reorder Quantity</label>
-            <input
-              type="number"
-              value={data.reorderQty ?? ''}
-              onChange={e => onChange({ reorderQty: parseInt(e.target.value) || undefined })}
+            <NumericInput
+              value={data.reorderQty}
+              onChange={value => onChange({ reorderQty: value })}
               placeholder="e.g., 10"
-              min="0"
+              min={0}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
             />
           </div>

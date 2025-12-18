@@ -9,6 +9,7 @@
 // ============================================================================
 
 import React, { useState } from 'react';
+import { NumericInput } from '../common/NumericInput';
 import type { Strain, Species } from '../../store/types';
 import { formatSpeciesDisplay } from '../../utils/taxonomy';
 

@@ -7,6 +7,7 @@
 // ============================================================================
 
 import React from 'react';
+import { NumericInput } from '../common/NumericInput';
 import type { RecipeCategory } from '../../store/types';
 
 export interface RecipeFormData {
@@ -121,12 +122,11 @@ export const RecipeForm: React.FC<RecipeFormProps> = ({
       <div>
         <label className="block text-sm text-zinc-400 mb-2">Yield</label>
         <div className="flex gap-3">
-          <input
-            type="number"
-            value={data.yield?.amount || ''}
-            onChange={e => onChange({
+          <NumericInput
+            value={data.yield?.amount}
+            onChange={value => onChange({
               yield: {
-                amount: parseInt(e.target.value) || 0,
+                amount: value ?? 0,
                 unit: data.yield?.unit || 'ml',
               },
             })}
@@ -158,10 +158,9 @@ export const RecipeForm: React.FC<RecipeFormProps> = ({
         <div>
           <label className="block text-sm text-zinc-400 mb-2">Prep Time</label>
           <div className="relative">
-            <input
-              type="number"
-              value={data.prepTime || ''}
-              onChange={e => onChange({ prepTime: parseInt(e.target.value) || undefined })}
+            <NumericInput
+              value={data.prepTime}
+              onChange={value => onChange({ prepTime: value })}
               placeholder="15"
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
             />
@@ -171,10 +170,9 @@ export const RecipeForm: React.FC<RecipeFormProps> = ({
         <div>
           <label className="block text-sm text-zinc-400 mb-2">Sterilization</label>
           <div className="relative">
-            <input
-              type="number"
-              value={data.sterilizationTime || ''}
-              onChange={e => onChange({ sterilizationTime: parseInt(e.target.value) || undefined })}
+            <NumericInput
+              value={data.sterilizationTime}
+              onChange={value => onChange({ sterilizationTime: value })}
               placeholder="45"
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
             />
@@ -184,10 +182,9 @@ export const RecipeForm: React.FC<RecipeFormProps> = ({
         <div>
           <label className="block text-sm text-zinc-400 mb-2">Pressure</label>
           <div className="relative">
-            <input
-              type="number"
-              value={data.sterilizationPsi || ''}
-              onChange={e => onChange({ sterilizationPsi: parseInt(e.target.value) || undefined })}
+            <NumericInput
+              value={data.sterilizationPsi}
+              onChange={value => onChange({ sterilizationPsi: value })}
               placeholder="15"
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
             />

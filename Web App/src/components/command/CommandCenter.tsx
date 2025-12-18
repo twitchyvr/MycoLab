@@ -8,6 +8,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
 import type { Grow, Culture, Location, Flush } from '../../store/types';
 import { format, differenceInDays, addDays } from 'date-fns';
+import { NumericInput } from '../common/NumericInput';
 
 // ============================================================================
 // TYPES
@@ -828,10 +829,9 @@ const RoomDetailView: React.FC<RoomDetailViewProps> = ({
         {/* Harvest Estimate */}
         <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
           <label className="block text-sm text-zinc-400 mb-2">7-Day Harvest Estimate (g)</label>
-          <input
-            type="number"
-            value={room.harvestEstimate || ''}
-            onChange={(e) => onUpdate({ harvestEstimate: parseInt(e.target.value) || 0 })}
+          <NumericInput
+            value={room.harvestEstimate}
+            onChange={(value) => onUpdate({ harvestEstimate: value ?? 0 })}
             placeholder="0"
             className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white"
           />
@@ -900,33 +900,29 @@ const HarvestEntryForm: React.FC<HarvestEntryFormProps> = ({
       {/* Weight Entry */}
       <div className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-800">
         <label className="block text-sm text-zinc-400 mb-2">Wet Weight (g) *</label>
-        <input
-          type="number"
-          value={entry.wetWeight || ''}
-          onChange={(e) => setEntry(prev => ({ ...prev, wetWeight: parseFloat(e.target.value) || 0 }))}
+        <NumericInput
+          value={entry.wetWeight}
+          onChange={(value) => setEntry(prev => ({ ...prev, wetWeight: value ?? 0 }))}
           placeholder="0"
           className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-2xl font-bold text-center"
-          autoFocus
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
           <label className="block text-sm text-zinc-400 mb-2">Dry Weight (g)</label>
-          <input
-            type="number"
-            value={entry.dryWeight || ''}
-            onChange={(e) => setEntry(prev => ({ ...prev, dryWeight: parseFloat(e.target.value) || undefined }))}
+          <NumericInput
+            value={entry.dryWeight}
+            onChange={(value) => setEntry(prev => ({ ...prev, dryWeight: value }))}
             placeholder="Optional"
             className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white"
           />
         </div>
         <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
           <label className="block text-sm text-zinc-400 mb-2">Count</label>
-          <input
-            type="number"
-            value={entry.mushroomCount || ''}
-            onChange={(e) => setEntry(prev => ({ ...prev, mushroomCount: parseInt(e.target.value) || undefined }))}
+          <NumericInput
+            value={entry.mushroomCount}
+            onChange={(value) => setEntry(prev => ({ ...prev, mushroomCount: value }))}
             placeholder="Optional"
             className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white"
           />

@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
+import { NumericInput } from '../common/NumericInput';
 import type { Grow, Flush, GrowStage } from '../../store/types';
 
 // ============================================================================
@@ -120,10 +121,9 @@ const WeightInput: React.FC<{
   <div>
     <label className="block text-sm text-zinc-400 mb-2">{label}</label>
     <div className="relative">
-      <input
-        type="number"
-        value={value || ''}
-        onChange={e => onChange(parseFloat(e.target.value) || 0)}
+      <NumericInput
+        value={value}
+        onChange={val => onChange(val ?? 0)}
         placeholder={placeholder}
         className={`w-full bg-zinc-800 border rounded-lg px-4 py-3 text-xl font-bold text-center focus:outline-none ${
           highlight ? 'border-emerald-500 text-emerald-400' : 'border-zinc-700 text-white focus:border-emerald-500'
@@ -449,10 +449,9 @@ export const HarvestWorkflow: React.FC = () => {
             />
             <div>
               <label className="block text-sm text-zinc-400 mb-2">Mushroom Count (optional)</label>
-              <input
-                type="number"
-                value={mushroomCount || ''}
-                onChange={e => setMushroomCount(parseInt(e.target.value) || undefined)}
+              <NumericInput
+                value={mushroomCount}
+                onChange={setMushroomCount}
                 placeholder="Number of mushrooms"
                 className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500"
               />

@@ -2367,6 +2367,53 @@ custom IDs like 'outcome-mjbw2cne-h7jx2' which caused Postgres error 22P02.
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1201',
+    title: 'Fix Numeric Input Backspace Behavior',
+    description: 'Fixed bug where backspacing in numeric input fields would leave a trailing zero, causing values like "01713" when typing a new number. Created reusable NumericInput component.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    actualHours: 2,
+    completedAt: timestamp(),
+    notes: `Numeric input backspace fix:
+
+**Problem:**
+- In all numeric inputs (spawn weight, substrate weight, cost, etc.)
+- Backspacing to clear field resulted in "0" remaining
+- Typing new number appended to "0", creating "01713" instead of "1713"
+- Had to manually select and overwrite the zero
+
+**Root Cause:**
+- Pattern \`parseInt(e.target.value) || 0\` converted empty string to 0
+- \`parseInt('')\` returns NaN, \`NaN || 0\` returns 0
+- Controlled input then displayed "0", new keystrokes appended
+
+**Solution:**
+Created reusable NumericInput component (components/common/NumericInput.tsx):
+- Tracks display value as string internally
+- Allows empty string state (no forced "0")
+- Converts to number on onChange/onBlur
+- Supports min/max, step, allowEmpty, defaultValue props
+- Uses type="text" with inputMode="decimal" for better mobile UX
+
+**Components Updated:**
+- GrowManagement.tsx (spawn weight, substrate weight, count, cost, colonization %)
+- CommandCenter.tsx (harvest estimate, wet/dry weight, mushroom count)
+- CultureManagement.tsx (transfer quantity)
+- CultureWizard.tsx (volume, fill volume, cost)
+- HarvestWorkflow.tsx (WeightInput component, mushroom count)
+- ContainerForm.tsx (volume, dimensions)
+- InventoryItemForm.tsx (unit cost, reorder point, reorder qty)
+- RecipeForm.tsx (yield amount, prep time, sterilization time/psi)
+- StrainForm.tsx (added import)
+
+**Files Created:**
+- components/common/NumericInput.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

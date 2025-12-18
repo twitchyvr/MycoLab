@@ -4,6 +4,7 @@
 // ============================================================================
 
 import React from 'react';
+import { NumericInput } from '../common/NumericInput';
 import type { ContainerCategory, ContainerUsageContext } from '../../store/types';
 
 export interface ContainerFormData {
@@ -182,10 +183,9 @@ export const ContainerForm: React.FC<ContainerFormProps> = ({
       {/* Volume */}
       <div>
         <label className="block text-sm text-zinc-400 mb-2">Volume (ml)</label>
-        <input
-          type="number"
-          value={data.volumeMl || ''}
-          onChange={e => onChange({ volumeMl: parseInt(e.target.value) || undefined })}
+        <NumericInput
+          value={data.volumeMl}
+          onChange={value => onChange({ volumeMl: value })}
           placeholder="e.g., 946 for quart jar, 62000 for 66qt tub"
           className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
         />
@@ -221,12 +221,11 @@ export const ContainerForm: React.FC<ContainerFormProps> = ({
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-zinc-500 mb-1">Length</label>
-              <input
-                type="number"
-                value={data.dimensions?.length || ''}
-                onChange={e => onChange({
+              <NumericInput
+                value={data.dimensions?.length}
+                onChange={value => onChange({
                   dimensions: {
-                    length: parseFloat(e.target.value) || 0,
+                    length: value ?? 0,
                     width: data.dimensions?.width || 0,
                     height: data.dimensions?.height || 0,
                     unit: 'cm',
@@ -238,13 +237,12 @@ export const ContainerForm: React.FC<ContainerFormProps> = ({
             </div>
             <div>
               <label className="block text-xs text-zinc-500 mb-1">Width</label>
-              <input
-                type="number"
-                value={data.dimensions?.width || ''}
-                onChange={e => onChange({
+              <NumericInput
+                value={data.dimensions?.width}
+                onChange={value => onChange({
                   dimensions: {
                     length: data.dimensions?.length || 0,
-                    width: parseFloat(e.target.value) || 0,
+                    width: value ?? 0,
                     height: data.dimensions?.height || 0,
                     unit: 'cm',
                   },
@@ -255,14 +253,13 @@ export const ContainerForm: React.FC<ContainerFormProps> = ({
             </div>
             <div>
               <label className="block text-xs text-zinc-500 mb-1">Height</label>
-              <input
-                type="number"
-                value={data.dimensions?.height || ''}
-                onChange={e => onChange({
+              <NumericInput
+                value={data.dimensions?.height}
+                onChange={value => onChange({
                   dimensions: {
                     length: data.dimensions?.length || 0,
                     width: data.dimensions?.width || 0,
-                    height: parseFloat(e.target.value) || 0,
+                    height: value ?? 0,
                     unit: 'cm',
                   },
                 })}

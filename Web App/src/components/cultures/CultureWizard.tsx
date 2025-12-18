@@ -21,6 +21,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useData } from '../../store';
 import { useCreation, ENTITY_CONFIGS } from '../../store/CreationContext';
 import { StandardDropdown } from '../common/StandardDropdown';
+import { NumericInput } from '../common/NumericInput';
 import type { Culture, CultureType, CultureStatus } from '../../store/types';
 
 // ============================================================================
@@ -319,10 +320,9 @@ const Step2ContainerLocation: React.FC<StepProps> = ({ formData, onChange, error
               Container Capacity (ml)
               <span className="text-xs text-zinc-600 ml-1">(total volume)</span>
             </label>
-            <input
-              type="number"
-              value={formData.volumeMl || ''}
-              onChange={e => onChange({ volumeMl: parseInt(e.target.value) || undefined })}
+            <NumericInput
+              value={formData.volumeMl}
+              onChange={value => onChange({ volumeMl: value })}
               placeholder="e.g., 1000"
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
             />
@@ -332,10 +332,9 @@ const Step2ContainerLocation: React.FC<StepProps> = ({ formData, onChange, error
               Fill Amount (ml)
               <span className="text-xs text-zinc-600 ml-1">(actual media)</span>
             </label>
-            <input
-              type="number"
-              value={formData.fillVolumeMl || ''}
-              onChange={e => onChange({ fillVolumeMl: parseInt(e.target.value) || undefined })}
+            <NumericInput
+              value={formData.fillVolumeMl}
+              onChange={value => onChange({ fillVolumeMl: value })}
               placeholder="e.g., 600"
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
             />
@@ -535,13 +534,12 @@ const Step4SourceCost: React.FC<StepProps> = ({ formData, onChange }) => {
           <label className="block text-sm text-zinc-400 mb-2">
             Cost ($)
           </label>
-          <input
-            type="number"
-            value={formData.cost || ''}
-            onChange={e => onChange({ cost: parseFloat(e.target.value) || 0 })}
+          <NumericInput
+            value={formData.cost}
+            onChange={value => onChange({ cost: value ?? 0 })}
             placeholder="0.00"
-            step="0.01"
-            min="0"
+            step={0.01}
+            min={0}
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
           />
         </div>
