@@ -2613,6 +2613,39 @@ Added auth state listener in DataContext that:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1205',
+    title: 'Netlify Credit Optimization',
+    description: 'Optimized Netlify configuration to reduce credit usage through smart build skipping, caching headers, and build optimizations.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: `Netlify credit optimization to reduce hosting costs:
+
+**Build Minute Savings:**
+- Smart build skipping: Only build when Web App files actually change (was building on every commit)
+- Disabled deploy previews for branches (saves build minutes per PR)
+- Disabled branch deploys (only main branch deploys to production)
+
+**Bandwidth Savings:**
+- Aggressive caching for static assets (1 year, immutable)
+- Cache fonts with long expiration
+- Proper cache headers for HTML (no-cache to ensure updates propagate)
+
+**Build Speed Improvements:**
+- Disabled source maps in production (smaller bundles, faster builds)
+- Code splitting: vendor chunk (react, react-dom, react-router-dom), charts chunk (recharts)
+- Better caching of unchanged chunks
+
+**Files Updated:**
+- netlify.toml (build skipping, caching headers, deploy contexts)
+- Web App/vite.config.ts (source maps disabled, code splitting)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
