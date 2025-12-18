@@ -338,7 +338,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onNa
   ];
 
   return (
-    <div ref={menuRef} className="fixed bottom-6 right-6 z-50 sm:hidden">
+    <div ref={menuRef} className="fixed bottom-6 right-6 z-50">
       {/* Expanded menu */}
       {isOpen && (
         <div className="absolute bottom-16 right-0 space-y-2 animate-fade-in">
