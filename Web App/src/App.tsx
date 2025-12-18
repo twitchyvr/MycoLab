@@ -9,6 +9,7 @@ import { AuthProvider } from './lib/AuthContext';
 import { EntityFormModal } from './components/forms';
 import { AuthModal, AccountMenu } from './components/auth';
 import { ToastContainer, NotificationBell } from './components/notifications';
+import { ErrorBoundary, GlobalErrorHandler } from './components/errors';
 import DevLogPage from './components/devlog/DevLogPage';
 import { PrivacyPolicy, TermsOfService } from './components/legal';
 import type { 
@@ -1326,30 +1327,33 @@ const AppWithRouter: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <DataProvider>
-          <NotificationProvider>
-            <CreationProvider>
-              <AppContext.Provider value={contextValue}>
-                <AuthModal />
-                <CreationModalManager />
-                <ToastContainer />
-                <AppContent
-                  showSetup={showSetup}
-                  setShowSetup={setShowSetup}
-                  currentPage={currentPage}
-                  setCurrentPage={setCurrentPage}
-                  selectedItemId={selectedItemId}
-                  sidebarOpen={sidebarOpen}
-                  setSidebarOpen={setSidebarOpen}
-                  renderPage={renderPage}
-                  pageConfig={pageConfig}
-                />
-              </AppContext.Provider>
-            </CreationProvider>
-          </NotificationProvider>
-        </DataProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <DataProvider>
+            <NotificationProvider>
+              <GlobalErrorHandler />
+              <CreationProvider>
+                <AppContext.Provider value={contextValue}>
+                  <AuthModal />
+                  <CreationModalManager />
+                  <ToastContainer />
+                  <AppContent
+                    showSetup={showSetup}
+                    setShowSetup={setShowSetup}
+                    currentPage={currentPage}
+                    setCurrentPage={setCurrentPage}
+                    selectedItemId={selectedItemId}
+                    sidebarOpen={sidebarOpen}
+                    setSidebarOpen={setSidebarOpen}
+                    renderPage={renderPage}
+                    pageConfig={pageConfig}
+                  />
+                </AppContext.Provider>
+              </CreationProvider>
+            </NotificationProvider>
+          </DataProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 };
