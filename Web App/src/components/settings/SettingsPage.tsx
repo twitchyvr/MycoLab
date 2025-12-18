@@ -1650,6 +1650,185 @@ export const SettingsPage: React.FC = () => {
                 Save Preferences
               </button>
             </div>
+
+            {/* Email/SMS Notification Settings */}
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-2">Email & SMS Notifications</h3>
+              <p className="text-sm text-zinc-400 mb-6">
+                Receive alerts about important events like contamination, harvest readiness, and low inventory via email or SMS.
+              </p>
+
+              {/* Email Notifications */}
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-white">Email Notifications</h4>
+                    <p className="text-xs text-zinc-500">Receive notifications via email</p>
+                  </div>
+                  <button
+                    onClick={() => setLocalSettings(prev => ({ ...prev, emailNotificationsEnabled: !prev.emailNotificationsEnabled }))}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      localSettings.emailNotificationsEnabled ? 'bg-emerald-500' : 'bg-zinc-700'
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      localSettings.emailNotificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+
+                {localSettings.emailNotificationsEnabled && (
+                  <div className="pl-4 border-l-2 border-zinc-700 space-y-3">
+                    <div>
+                      <label className="block text-sm text-zinc-400 mb-1">Notification Email</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          value={localSettings.notificationEmail || ''}
+                          onChange={e => setLocalSettings(prev => ({ ...prev, notificationEmail: e.target.value }))}
+                          placeholder="Enter email address"
+                          className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
+                        />
+                        {localSettings.notificationEmailVerified ? (
+                          <span className="flex items-center gap-1 px-3 py-2 text-emerald-400 text-sm">
+                            <Icons.CheckCircle /> Verified
+                          </span>
+                        ) : (
+                          <button className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm">
+                            Verify
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-1">Leave blank to use your account email</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SMS Notifications */}
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-white">SMS Notifications</h4>
+                    <p className="text-xs text-zinc-500">Receive urgent notifications via text message</p>
+                  </div>
+                  <button
+                    onClick={() => setLocalSettings(prev => ({ ...prev, smsNotificationsEnabled: !prev.smsNotificationsEnabled }))}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      localSettings.smsNotificationsEnabled ? 'bg-emerald-500' : 'bg-zinc-700'
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      localSettings.smsNotificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+
+                {localSettings.smsNotificationsEnabled && (
+                  <div className="pl-4 border-l-2 border-zinc-700 space-y-3">
+                    <div>
+                      <label className="block text-sm text-zinc-400 mb-1">Phone Number</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="tel"
+                          value={localSettings.phoneNumber || ''}
+                          onChange={e => setLocalSettings(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                          placeholder="+1 (555) 123-4567"
+                          className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
+                        />
+                        {localSettings.phoneVerified ? (
+                          <span className="flex items-center gap-1 px-3 py-2 text-emerald-400 text-sm">
+                            <Icons.CheckCircle /> Verified
+                          </span>
+                        ) : (
+                          <button className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm">
+                            Verify
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-1">SMS is reserved for urgent alerts only (contamination, critical failures)</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Quiet Hours */}
+              <div className="space-y-4 border-t border-zinc-700 pt-6">
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-1">Quiet Hours</h4>
+                  <p className="text-xs text-zinc-500 mb-3">Pause notifications during these hours (uses your timezone: {localSettings.timezone})</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1">Start (Don't Disturb After)</label>
+                      <input
+                        type="time"
+                        value={localSettings.quietHoursStart || '22:00'}
+                        onChange={e => setLocalSettings(prev => ({ ...prev, quietHoursStart: e.target.value }))}
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1">End (Resume Notifications)</label>
+                      <input
+                        type="time"
+                        value={localSettings.quietHoursEnd || '08:00'}
+                        onChange={e => setLocalSettings(prev => ({ ...prev, quietHoursEnd: e.target.value }))}
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Event Categories */}
+              <div className="space-y-4 border-t border-zinc-700 pt-6 mt-6">
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-1">Notification Events</h4>
+                  <p className="text-xs text-zinc-500 mb-3">Choose which events trigger email/SMS notifications</p>
+                  <div className="space-y-3">
+                    {[
+                      { key: 'contamination', label: 'Contamination Detected', desc: 'Immediate alert when contamination is logged', urgent: true },
+                      { key: 'harvest_ready', label: 'Harvest Ready', desc: 'When grows are ready for harvest' },
+                      { key: 'stage_transition', label: 'Stage Transitions', desc: 'When grows should advance to next stage' },
+                      { key: 'low_inventory', label: 'Low Inventory', desc: 'When supplies fall below reorder point' },
+                      { key: 'culture_expiring', label: 'Culture Expiring', desc: 'When cultures are approaching expiration' },
+                      { key: 'lc_age', label: 'LC Age Warning', desc: 'When liquid cultures are getting old' },
+                    ].map(event => (
+                      <div key={event.key} className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-white">{event.label}</span>
+                            {event.urgent && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-red-500/20 text-red-400 rounded">URGENT</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-zinc-500">{event.desc}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {localSettings.emailNotificationsEnabled && (
+                            <button className="px-2 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded">
+                              📧
+                            </button>
+                          )}
+                          {localSettings.smsNotificationsEnabled && (
+                            <button className="px-2 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded">
+                              📱
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => { updateSettings(localSettings); setSuccess('Notification settings saved'); }}
+                className="mt-6 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium"
+              >
+                Save Notification Settings
+              </button>
+            </div>
           </div>
         );
 

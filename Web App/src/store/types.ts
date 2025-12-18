@@ -749,6 +749,119 @@ export interface NotificationPreferences {
   soundEnabled: boolean;
   // Browser push notifications
   pushEnabled: boolean;
+  // Email/SMS preferences
+  emailEnabled?: boolean;
+  smsEnabled?: boolean;
+}
+
+// ============================================================================
+// EMAIL/SMS NOTIFICATION CHANNEL TYPES
+// ============================================================================
+
+// Channel types for delivering notifications
+export type NotificationChannelType = 'email' | 'sms' | 'push';
+
+// Delivery status tracking
+export type NotificationDeliveryStatus = 'pending' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'unsubscribed';
+
+// Priority levels for notifications
+export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+// Notification channel configuration
+export interface NotificationChannel {
+  id: string;
+  userId: string;
+  channelType: NotificationChannelType;
+  isEnabled: boolean;
+  isVerified: boolean;
+  // Contact info (email address or phone number in E.164 format)
+  contactValue: string;
+  // Verification
+  verificationCode?: string;
+  verificationSentAt?: Date;
+  verifiedAt?: Date;
+  // Channel-specific settings
+  quietHoursStart?: string;  // HH:MM format, e.g., '22:00'
+  quietHoursEnd?: string;    // HH:MM format, e.g., '08:00'
+  timezone: string;
+  // Rate limiting
+  maxPerHour: number;
+  maxPerDay: number;
+  // Metadata
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Per-event notification preferences
+export interface NotificationEventPreference {
+  id: string;
+  userId: string;
+  eventCategory: NotificationCategory;
+  // Which channels to use for this event type
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  pushEnabled: boolean;
+  // Priority/urgency settings
+  priority: NotificationPriority;
+  // Only send SMS for urgent if true (saves SMS quota)
+  smsUrgentOnly: boolean;
+  // Batching - combine multiple notifications of same type
+  batchIntervalMinutes: number;  // 0 = immediate, >0 = batch
+  // Metadata
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Delivery log for tracking sent notifications
+export interface NotificationDeliveryLog {
+  id: string;
+  userId: string;
+  // What was sent
+  channelType: NotificationChannelType;
+  eventCategory: NotificationCategory;
+  // Content
+  title: string;
+  message: string;
+  // Related entity (optional)
+  entityType?: 'culture' | 'grow' | 'inventory' | 'recipe';
+  entityId?: string;
+  entityName?: string;
+  // Delivery status
+  status: NotificationDeliveryStatus;
+  sentAt?: Date;
+  deliveredAt?: Date;
+  // Error tracking
+  errorCode?: string;
+  errorMessage?: string;
+  retryCount: number;
+  nextRetryAt?: Date;
+  // External provider tracking
+  provider?: string;  // 'sendgrid', 'twilio', 'resend', etc.
+  providerMessageId?: string;
+  // Cost tracking (for SMS)
+  costCents?: number;
+  // Metadata
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+}
+
+// Notification template for customizable messages
+export interface NotificationTemplate {
+  id: string;
+  name: string;
+  eventCategory: NotificationCategory;
+  channelType: NotificationChannelType;
+  // Content templates (support {{variable}} placeholders)
+  subjectTemplate?: string;  // For email only
+  bodyTemplate: string;
+  // HTML template for email (optional)
+  htmlTemplate?: string;
+  // Active status
+  isActive: boolean;
+  isSystem: boolean;  // System templates can't be deleted
+  // Metadata
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ============================================================================
@@ -767,6 +880,15 @@ export interface AppSettings {
     contaminationAlerts: boolean;
   };
   notificationPreferences?: NotificationPreferences;
+  // Email/SMS notification settings
+  emailNotificationsEnabled?: boolean;
+  smsNotificationsEnabled?: boolean;
+  notificationEmail?: string;
+  phoneNumber?: string;
+  phoneVerified?: boolean;
+  notificationEmailVerified?: boolean;
+  quietHoursStart?: string;  // HH:MM format
+  quietHoursEnd?: string;    // HH:MM format
 }
 
 // ============================================================================

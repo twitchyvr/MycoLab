@@ -825,6 +825,214 @@ CREATE TABLE IF NOT EXISTS admin_notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ============================================================================
+-- EVENT NOTIFICATION SYSTEM (Email/SMS)
+-- Configurable notification channels for alerting users of events
+-- ============================================================================
+
+-- Notification channels - stores user's email/SMS preferences and contact info
+CREATE TABLE IF NOT EXISTS notification_channels (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+
+  -- Channel type and status
+  channel_type TEXT NOT NULL CHECK (channel_type IN ('email', 'sms', 'push')),
+  is_enabled BOOLEAN DEFAULT true,
+  is_verified BOOLEAN DEFAULT false,
+
+  -- Contact info (email or phone number)
+  contact_value TEXT NOT NULL,  -- email address or phone number (E.164 format for SMS)
+
+  -- Verification
+  verification_code TEXT,
+  verification_sent_at TIMESTAMPTZ,
+  verified_at TIMESTAMPTZ,
+
+  -- Channel-specific settings
+  quiet_hours_start TIME,  -- e.g., '22:00' - don't send notifications after this
+  quiet_hours_end TIME,    -- e.g., '08:00' - resume notifications after this
+  timezone TEXT DEFAULT 'America/Chicago',  -- for quiet hours calculation
+
+  -- Rate limiting
+  max_per_hour INTEGER DEFAULT 10,
+  max_per_day INTEGER DEFAULT 50,
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Each user can only have one of each channel type
+  UNIQUE(user_id, channel_type)
+);
+
+-- Notification event preferences - which events trigger which channels
+CREATE TABLE IF NOT EXISTS notification_event_preferences (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+
+  -- Event category (matches NotificationCategory from types.ts)
+  event_category TEXT NOT NULL CHECK (event_category IN (
+    'culture_expiring', 'stage_transition', 'low_inventory', 'harvest_ready',
+    'contamination', 'lc_age', 'slow_growth', 'system', 'user'
+  )),
+
+  -- Which channels to use for this event type
+  email_enabled BOOLEAN DEFAULT false,
+  sms_enabled BOOLEAN DEFAULT false,
+  push_enabled BOOLEAN DEFAULT true,  -- in-app always on by default
+
+  -- Priority/urgency settings
+  priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+
+  -- Only send SMS for urgent if true (saves SMS quota)
+  sms_urgent_only BOOLEAN DEFAULT true,
+
+  -- Batching - combine multiple notifications of same type
+  batch_interval_minutes INTEGER DEFAULT 0,  -- 0 = immediate, >0 = batch
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Each user can only have one preference per event category
+  UNIQUE(user_id, event_category)
+);
+
+-- Notification delivery log - tracks all sent notifications
+CREATE TABLE IF NOT EXISTS notification_delivery_log (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+
+  -- What was sent
+  channel_type TEXT NOT NULL CHECK (channel_type IN ('email', 'sms', 'push')),
+  event_category TEXT NOT NULL,
+
+  -- Content
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+
+  -- Related entity (optional)
+  entity_type TEXT,  -- 'culture', 'grow', 'inventory', 'recipe'
+  entity_id TEXT,
+  entity_name TEXT,
+
+  -- Delivery status
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'delivered', 'failed', 'bounced', 'unsubscribed')),
+  sent_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ,
+
+  -- Error tracking
+  error_code TEXT,
+  error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
+  next_retry_at TIMESTAMPTZ,
+
+  -- External provider tracking
+  provider TEXT,  -- 'sendgrid', 'twilio', 'resend', etc.
+  provider_message_id TEXT,  -- ID from the provider for tracking
+
+  -- Cost tracking (for SMS)
+  cost_cents INTEGER,
+
+  -- Metadata
+  metadata JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Notification templates - customizable message templates
+CREATE TABLE IF NOT EXISTS notification_templates (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- Template identification
+  name TEXT NOT NULL UNIQUE,
+  event_category TEXT NOT NULL,
+  channel_type TEXT NOT NULL CHECK (channel_type IN ('email', 'sms', 'push')),
+
+  -- Content templates (support {{variable}} placeholders)
+  subject_template TEXT,  -- For email only
+  body_template TEXT NOT NULL,
+
+  -- HTML template for email (optional)
+  html_template TEXT,
+
+  -- Active status
+  is_active BOOLEAN DEFAULT true,
+  is_system BOOLEAN DEFAULT true,  -- System templates can't be deleted
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add email/SMS columns to user_settings for existing databases
+DO $$
+BEGIN
+  -- Email notification enabled
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'email_notifications_enabled') THEN
+    ALTER TABLE user_settings ADD COLUMN email_notifications_enabled BOOLEAN DEFAULT false;
+    RAISE NOTICE 'Added email_notifications_enabled to user_settings';
+  END IF;
+
+  -- SMS notification enabled
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'sms_notifications_enabled') THEN
+    ALTER TABLE user_settings ADD COLUMN sms_notifications_enabled BOOLEAN DEFAULT false;
+    RAISE NOTICE 'Added sms_notifications_enabled to user_settings';
+  END IF;
+
+  -- Notification email (separate from auth email)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'notification_email') THEN
+    ALTER TABLE user_settings ADD COLUMN notification_email TEXT;
+    RAISE NOTICE 'Added notification_email to user_settings';
+  END IF;
+
+  -- Phone number for SMS
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'phone_number') THEN
+    ALTER TABLE user_settings ADD COLUMN phone_number TEXT;
+    RAISE NOTICE 'Added phone_number to user_settings';
+  END IF;
+
+  -- Phone verified flag
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'phone_verified') THEN
+    ALTER TABLE user_settings ADD COLUMN phone_verified BOOLEAN DEFAULT false;
+    RAISE NOTICE 'Added phone_verified to user_settings';
+  END IF;
+
+  -- Email verified flag (for notification email if different from auth)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'notification_email_verified') THEN
+    ALTER TABLE user_settings ADD COLUMN notification_email_verified BOOLEAN DEFAULT false;
+    RAISE NOTICE 'Added notification_email_verified to user_settings';
+  END IF;
+
+  -- Quiet hours
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'quiet_hours_start') THEN
+    ALTER TABLE user_settings ADD COLUMN quiet_hours_start TIME;
+    RAISE NOTICE 'Added quiet_hours_start to user_settings';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'quiet_hours_end') THEN
+    ALTER TABLE user_settings ADD COLUMN quiet_hours_end TIME;
+    RAISE NOTICE 'Added quiet_hours_end to user_settings';
+  END IF;
+
+  RAISE NOTICE 'Email/SMS notification columns migration complete';
+END $$;
+
+-- Indexes for notification tables
+CREATE INDEX IF NOT EXISTS idx_notification_channels_user_id ON notification_channels(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_event_preferences_user_id ON notification_event_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_delivery_log_user_id ON notification_delivery_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_delivery_log_status ON notification_delivery_log(status);
+CREATE INDEX IF NOT EXISTS idx_notification_delivery_log_created_at ON notification_delivery_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_notification_templates_event_category ON notification_templates(event_category);
+
 -- Function to automatically create user profile on signup
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
@@ -3126,6 +3334,10 @@ ALTER TABLE inventory_usages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_channels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_event_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_delivery_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_templates ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- ROW LEVEL SECURITY POLICIES
@@ -3165,6 +3377,28 @@ DROP POLICY IF EXISTS "admin_notifications_select" ON admin_notifications;
 DROP POLICY IF EXISTS "admin_notifications_insert" ON admin_notifications;
 DROP POLICY IF EXISTS "admin_notifications_update" ON admin_notifications;
 DROP POLICY IF EXISTS "admin_notifications_delete" ON admin_notifications;
+
+-- Notification channels
+DROP POLICY IF EXISTS "notification_channels_select" ON notification_channels;
+DROP POLICY IF EXISTS "notification_channels_insert" ON notification_channels;
+DROP POLICY IF EXISTS "notification_channels_update" ON notification_channels;
+DROP POLICY IF EXISTS "notification_channels_delete" ON notification_channels;
+
+-- Notification event preferences
+DROP POLICY IF EXISTS "notification_event_preferences_select" ON notification_event_preferences;
+DROP POLICY IF EXISTS "notification_event_preferences_insert" ON notification_event_preferences;
+DROP POLICY IF EXISTS "notification_event_preferences_update" ON notification_event_preferences;
+DROP POLICY IF EXISTS "notification_event_preferences_delete" ON notification_event_preferences;
+
+-- Notification delivery log
+DROP POLICY IF EXISTS "notification_delivery_log_select" ON notification_delivery_log;
+DROP POLICY IF EXISTS "notification_delivery_log_insert" ON notification_delivery_log;
+
+-- Notification templates
+DROP POLICY IF EXISTS "notification_templates_select" ON notification_templates;
+DROP POLICY IF EXISTS "notification_templates_insert" ON notification_templates;
+DROP POLICY IF EXISTS "notification_templates_update" ON notification_templates;
+DROP POLICY IF EXISTS "notification_templates_delete" ON notification_templates;
 
 -- Species
 DROP POLICY IF EXISTS "anon_species_select" ON species;
@@ -3447,6 +3681,28 @@ CREATE POLICY "admin_notifications_select" ON admin_notifications FOR SELECT USI
 CREATE POLICY "admin_notifications_insert" ON admin_notifications FOR INSERT WITH CHECK (is_admin());
 CREATE POLICY "admin_notifications_update" ON admin_notifications FOR UPDATE USING (is_admin());
 CREATE POLICY "admin_notifications_delete" ON admin_notifications FOR DELETE USING (is_admin());
+
+-- Notification channels policies (user's own only)
+CREATE POLICY "notification_channels_select" ON notification_channels FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_channels_insert" ON notification_channels FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "notification_channels_update" ON notification_channels FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_channels_delete" ON notification_channels FOR DELETE USING (user_id = auth.uid() OR is_admin());
+
+-- Notification event preferences policies (user's own only)
+CREATE POLICY "notification_event_preferences_select" ON notification_event_preferences FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_event_preferences_insert" ON notification_event_preferences FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "notification_event_preferences_update" ON notification_event_preferences FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_event_preferences_delete" ON notification_event_preferences FOR DELETE USING (user_id = auth.uid() OR is_admin());
+
+-- Notification delivery log policies (user's own only, insert allowed for system)
+CREATE POLICY "notification_delivery_log_select" ON notification_delivery_log FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_delivery_log_insert" ON notification_delivery_log FOR INSERT WITH CHECK (user_id = auth.uid() OR is_admin());
+
+-- Notification templates policies (system templates are public, only admins can modify)
+CREATE POLICY "notification_templates_select" ON notification_templates FOR SELECT USING (is_active = true OR is_admin());
+CREATE POLICY "notification_templates_insert" ON notification_templates FOR INSERT WITH CHECK (is_admin());
+CREATE POLICY "notification_templates_update" ON notification_templates FOR UPDATE USING (is_admin());
+CREATE POLICY "notification_templates_delete" ON notification_templates FOR DELETE USING (is_admin() AND is_system = false);
 
 -- Species policies (shared defaults + user's own)
 CREATE POLICY "species_select" ON species FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());

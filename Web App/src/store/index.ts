@@ -8,6 +8,7 @@ export * from './DataContext';
 export * from './CreationContext';
 export * from './NotificationContext';
 export * from './ThemeContext';
+export * from './NotificationService';
 
 // Export modularized utilities
 export * from './defaults';

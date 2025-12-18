@@ -2367,6 +2367,7 @@ custom IDs like 'outcome-mjbw2cne-h7jx2' which caused Postgres error 22P02.
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+<<<<<<< HEAD
   {
     id: 'dev-1201',
     title: 'Fix Numeric Input Backspace Behavior',
@@ -2503,6 +2504,79 @@ Created comprehensive weight utilities (utils/weight.ts):
 **Files Updated:**
 - utils/index.ts (export weight utilities)
 - GrowManagement.tsx, HarvestWorkflow.tsx, CommandCenter.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  // =============================================================================
+  // PHASE 41: EMAIL/SMS NOTIFICATION SYSTEM
+  // External notification channels for event alerts
+  // =============================================================================
+  {
+    id: 'dev-1300',
+    title: 'Email/SMS Event Notification System',
+    description: 'Comprehensive email and SMS notification system for alerting users about important events. Configurable per-event preferences, quiet hours, rate limiting, and delivery tracking.',
+    category: 'core',
+    status: 'in_progress',
+    priority: 'high',
+    estimatedHours: 20,
+    notes: `Email/SMS Notification System:
+
+**Database Schema:**
+- notification_channels: Store email/SMS configuration per user with verification status
+- notification_event_preferences: Per-event channel preferences (which events trigger email/SMS)
+- notification_delivery_log: Track all sent notifications with status and error handling
+- notification_templates: Customizable message templates with placeholder support
+- Extended user_settings with email/SMS fields and quiet hours
+
+**TypeScript Types:**
+- NotificationChannelType: 'email' | 'sms' | 'push'
+- NotificationDeliveryStatus: 'pending' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'unsubscribed'
+- NotificationPriority: 'low' | 'normal' | 'high' | 'urgent'
+- NotificationChannel, NotificationEventPreference, NotificationDeliveryLog, NotificationTemplate interfaces
+
+**Service Layer (NotificationService.ts):**
+- sendNotification(): Main entry point for sending notifications
+- sendEmail(), sendSms(): Channel-specific delivery via Supabase Edge Functions
+- isInQuietHours(): Respects user's quiet hours settings
+- getEventPreferences(): Fetches user's per-event channel preferences
+- logDelivery(): Records all delivery attempts for audit trail
+- Convenience functions: notifyContamination(), notifyHarvestReady(), notifyStageTransition(), notifyLowInventory(), notifyCultureExpiring(), notifyLcAge()
+
+**UI Component (Settings > Preferences):**
+- Email Notifications toggle with email input and verification button
+- SMS Notifications toggle with phone input and verification button
+- Quiet Hours configuration (start/end times with timezone display)
+- Event category toggles showing which events trigger which channels
+- Urgent event badges for contamination alerts
+
+**Event Categories:**
+- contamination: Immediate alert (URGENT)
+- harvest_ready: When grows are ready for harvest
+- stage_transition: When grows should advance stages
+- low_inventory: When supplies fall below reorder point
+- culture_expiring: When cultures approach expiration
+- lc_age: When liquid cultures are getting old
+
+**Features:**
+- Email notifications via Supabase Edge Functions (SendGrid/Resend)
+- SMS notifications via Supabase Edge Functions (Twilio)
+- Quiet hours support (don't disturb between configurable times)
+- Rate limiting (max per hour/day)
+- SMS reserved for urgent alerts by default
+- Verification flow for email and phone numbers
+- Full delivery tracking with error logging
+
+**Security:**
+- RLS policies for all notification tables
+- Users can only see/modify their own notification settings
+- Admins can view all delivery logs
+- Templates are system-managed (only admins can modify)
+
+**Next Steps:**
+- Deploy Supabase Edge Functions for email/SMS delivery
+- Integrate notification triggers in DataContext operations
+- Add notification history view in Settings`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
