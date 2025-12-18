@@ -50,14 +50,14 @@ import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
 import { ObservationTimeline, EventLogger } from './components/observations';
 import { ProfilePage } from './components/profile';
 import { FloatingActionButton, LabCommandCenter } from './components/dashboard';
+import { GrowthTrail } from './components/navigation';
+import type { Page as NavPage } from './components/navigation';
 import { LabMapping, LocationOccupancy, LabSpaces } from './components/locations';
 import { LabelDesigner } from './components/labels';
 import { QRScanner } from './components/qr';
 import { ColdStorageCheck } from './components/dailycheck';
 import { HarvestForecast } from './components/forecast/HarvestForecast';
 import { SpeciesLibrary } from './components/library';
-import { MyceliumHub, SporeMenu, GrowthTrail, CompactGrowthTrail } from './components/navigation';
-import type { Page as NavPage } from './components/navigation';
 
 // ============================================================================
 // CONTEXT
@@ -1400,9 +1400,6 @@ const AppContent: React.FC<{
 }) => {
   const { state } = useData();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-
-  // Mycelium Navigation System state
-  const [isHubOpen, setIsHubOpen] = useState(false);
   const [previousPages, setPreviousPages] = useState<Page[]>([]);
 
   // Track navigation history for breadcrumb trail
@@ -1447,17 +1444,12 @@ const AppContent: React.FC<{
     }
   }, [selectedItemId, currentPage]);
 
-  // Global keyboard shortcut for search (Cmd/Ctrl + K) and hub (Cmd/Ctrl + .)
+  // Global keyboard shortcut for search (Cmd/Ctrl + K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setIsSearchOpen(prev => !prev);
-      }
-      // Cmd/Ctrl + . to toggle hub
-      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
-        e.preventDefault();
-        setIsHubOpen(prev => !prev);
       }
     };
 
@@ -1469,22 +1461,6 @@ const AppContent: React.FC<{
   const handleSearchNavigate = (page: Page, itemId?: string, itemType?: string) => {
     // Navigate with item ID for deep-linking support
     setCurrentPage(page, itemId);
-  };
-
-  // Handle navigation from Mycelium Hub/SporeMenu
-  const handleMyceliumNavigate = (page: NavPage) => {
-    setCurrentPage(page as Page);
-  };
-
-  // Handle back navigation for compact trail
-  const handleBack = () => {
-    if (previousPages.length > 1) {
-      const prevPage = previousPages[previousPages.length - 2];
-      setCurrentPage(prevPage);
-      setPreviousPages(prev => prev.slice(0, -1));
-    } else {
-      setCurrentPage('dashboard');
-    }
   };
 
   return (
@@ -1505,14 +1481,6 @@ const AppContent: React.FC<{
         onNavigate={handleSearchNavigate}
       />
 
-      {/* Mycelium Hub - Full navigation overlay */}
-      <MyceliumHub
-        isOpen={isHubOpen}
-        currentPage={currentPage as NavPage}
-        onNavigate={handleMyceliumNavigate}
-        onClose={() => setIsHubOpen(false)}
-      />
-
       <div className="h-screen flex bg-zinc-950 text-white overflow-hidden">
         <Sidebar
           currentPage={currentPage}
@@ -1523,51 +1491,28 @@ const AppContent: React.FC<{
           activeGrowCount={activeGrowCount}
         />
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden lg:ml-0">
-          {/* Desktop: Standard header */}
-          <div className="hidden lg:block">
-            <Header
-              {...pageConfig[currentPage]}
-              currentPage={currentPage}
-              onNavigate={setCurrentPage}
-              onMenuClick={() => setSidebarOpen(true)}
-              onSearchClick={() => setIsSearchOpen(true)}
-            />
-            {/* Growth Trail breadcrumb - shows navigation path */}
-            <GrowthTrail
-              currentPage={currentPage as NavPage}
-              previousPages={previousPages as NavPage[]}
-              onNavigate={handleMyceliumNavigate}
-              onOpenHub={() => setIsHubOpen(true)}
-            />
-          </div>
-
-          {/* Mobile: Compact trail replaces header */}
-          <div className="lg:hidden">
-            <Header
-              {...pageConfig[currentPage]}
-              currentPage={currentPage}
-              onNavigate={setCurrentPage}
-              onMenuClick={() => setSidebarOpen(true)}
-              onSearchClick={() => setIsSearchOpen(true)}
-            />
-            <CompactGrowthTrail
-              currentPage={currentPage as NavPage}
-              onNavigate={handleMyceliumNavigate}
-              onBack={handleBack}
-              onOpenHub={() => setIsHubOpen(true)}
-            />
-          </div>
-
-          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 bg-mycelium-network">
+          <Header
+            {...pageConfig[currentPage]}
+            currentPage={currentPage}
+            onNavigate={setCurrentPage}
+            onMenuClick={() => setSidebarOpen(true)}
+            onSearchClick={() => setIsSearchOpen(true)}
+          />
+          {/* GrowthTrail breadcrumb - visible on all screen sizes */}
+          <GrowthTrail
+            currentPage={currentPage as NavPage}
+            previousPages={previousPages as NavPage[]}
+            onNavigate={(page) => setCurrentPage(page as Page)}
+            onOpenHub={() => setSidebarOpen(true)}
+          />
+          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
             {renderPage()}
           </div>
         </main>
 
-        {/* Spore Menu - Radial quick-access navigation (replaces FAB) */}
-        <SporeMenu
-          currentPage={currentPage as NavPage}
-          onNavigate={handleMyceliumNavigate}
-          onOpenHub={() => setIsHubOpen(true)}
+        {/* Floating Action Button for quick actions */}
+        <FloatingActionButton
+          onNavigate={(page) => setCurrentPage(page as Page)}
         />
       </div>
     </>

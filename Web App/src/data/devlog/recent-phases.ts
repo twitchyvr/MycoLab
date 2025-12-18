@@ -2288,14 +2288,28 @@ custom IDs like 'outcome-mjbw2cne-h7jx2' which caused Postgres error 22P02.
   {
     id: 'dev-1200',
     title: 'Mycelium Navigation System - Complete Redesign',
-    description: 'Unique, mushroom-themed navigation system inspired by fungal networks. Three main components: MyceliumHub (network-style full navigation), SporeMenu (radial FAB), GrowthTrail (organic breadcrumbs). Mobile and desktop optimized.',
+    description: 'Unique, mushroom-themed navigation system inspired by fungal networks. Three main components: MyceliumHub (network-style full navigation), SporeMenu (radial FAB), GrowthTrail (organic breadcrumbs). REVERTED - Components too intrusive, poor mobile UX. CSS animations preserved for future use.',
     category: 'ui',
-    status: 'completed',
+    status: 'cancelled',
     priority: 'high',
     estimatedHours: 20,
     actualHours: 11,
     completedAt: timestamp(),
-    notes: `Mycelium Navigation System - Complete Implementation:
+    notes: `Mycelium Navigation System - REVERTED:
+
+**Why Reverted:**
+- MyceliumHub took up too much screen space
+- SporeMenu (mushroom FAB) expanded beyond browser window on desktop
+- Breadcrumb trails didn't render properly on mobile
+- Original navigation sidebar was not replaced, causing confusion
+- User feedback: "not the kind of creativity I was expecting"
+
+**What Was Preserved:**
+- CSS animations in tailwind.config.js and globals.css
+- Animation keyframes for future organic UI enhancements
+- Component files remain for potential future refinement
+
+**Original Implementation:
 
 **Vision:**
 - Navigation inspired by the organic, interconnected nature of mycelial networks
