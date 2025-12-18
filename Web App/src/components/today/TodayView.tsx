@@ -27,7 +27,7 @@ interface TodayTask {
 type Page = 'dashboard' | 'today' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
 
 interface TodayViewProps {
-  onNavigate?: (page: Page) => void;
+  onNavigate?: (page: Page, itemId?: string) => void;
 }
 
 // ============================================================================
@@ -519,10 +519,11 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
     setCompletedTasks(prev => new Set([...prev, taskId]));
   };
 
-  const handleNavigateToEntity = (entityType: string) => {
+  const handleNavigateToEntity = (entityType: string, entityId?: string) => {
     if (onNavigate) {
       const page: Page = entityType === 'culture' ? 'cultures' : 'grows';
-      onNavigate(page);
+      // Navigate with item ID for deep-linking support
+      onNavigate(page, entityId);
     }
   };
 
@@ -608,7 +609,7 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
               key={task.id}
               task={task}
               onComplete={() => handleCompleteTask(task.id)}
-              onNavigate={() => handleNavigateToEntity(task.entityType)}
+              onNavigate={() => handleNavigateToEntity(task.entityType, task.entityId)}
             />
           ))
         )}

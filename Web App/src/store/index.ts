@@ -6,3 +6,9 @@
 export * from './types';
 export * from './DataContext';
 export * from './CreationContext';
+export * from './NotificationContext';
+export * from './ThemeContext';
+
+// Export modularized utilities
+export * from './defaults';
+export * from './transformations';

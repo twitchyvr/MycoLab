@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
-import { StandardDropdown } from '../common/StandardDropdown';
+import { CultureWizard } from './CultureWizard';
 import type { Culture, CultureType, CultureStatus, CultureObservation } from '../../store/types';
 
 // Type configurations
@@ -66,12 +66,12 @@ export const CultureManagement: React.FC = () => {
     state,
     activeStrains,
     activeLocations,
-    activeVessels,
+    activeContainers,
     activeSuppliers,
     activeRecipes,
     getStrain,
     getLocation,
-    getVessel,
+    getContainer,
     getSupplier,
     getRecipe,
     getCultureLineage,
@@ -93,25 +93,9 @@ export const CultureManagement: React.FC = () => {
   const [filterStrain, setFilterStrain] = useState<string | 'all'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'strain' | 'health'>('date');
   const [selectedCulture, setSelectedCulture] = useState<Culture | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [showObservationModal, setShowObservationModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-
-  // Form state
-  const [newCulture, setNewCulture] = useState({
-    type: 'agar' as CultureType,
-    strainId: '',
-    locationId: '',
-    vesselId: '',
-    recipeId: '',
-    volumeMl: undefined as number | undefined,
-    fillVolumeMl: undefined as number | undefined,
-    cost: 0,
-    supplierId: '',
-    lotNumber: '',
-    notes: '',
-    prepDate: new Date().toISOString().split('T')[0],
-  });
 
   const [newObservation, setNewObservation] = useState({
     type: 'general' as CultureObservation['type'],
@@ -131,7 +115,7 @@ export const CultureManagement: React.FC = () => {
   useEffect(() => {
     const handleCreateNew = (event: CustomEvent) => {
       if (event.detail?.page === 'cultures') {
-        setShowCreateModal(true);
+        setShowWizard(true);
       }
     };
     window.addEventListener('mycolab:create-new', handleCreateNew as EventListener);
@@ -164,6 +148,22 @@ export const CultureManagement: React.FC = () => {
       window.removeEventListener('mycolab:edit-item', handleEditItem as EventListener);
     };
   }, [cultures]);
+
+  // Keep selectedCulture in sync with state.cultures when cultures data changes
+  useEffect(() => {
+    if (selectedCulture) {
+      const updated = cultures.find(c => c.id === selectedCulture.id);
+      if (updated) {
+        // Only update if the culture data has actually changed
+        if (JSON.stringify(updated) !== JSON.stringify(selectedCulture)) {
+          setSelectedCulture(updated);
+        }
+      } else {
+        // Culture was deleted
+        setSelectedCulture(null);
+      }
+    }
+  }, [cultures, selectedCulture]);
 
   // Filtered and sorted cultures
   const filteredCultures = useMemo(() => {
@@ -217,46 +217,6 @@ export const CultureManagement: React.FC = () => {
     [cultures]
   );
 
-  // Create culture handler
-  const handleCreateCulture = () => {
-    if (!newCulture.strainId || !newCulture.locationId || !newCulture.vesselId) return;
-
-    addCulture({
-      type: newCulture.type,
-      label: generateCultureLabel(newCulture.type),
-      strainId: newCulture.strainId,
-      status: 'colonizing',
-      generation: 0,
-      locationId: newCulture.locationId,
-      vesselId: newCulture.vesselId,
-      recipeId: newCulture.recipeId || undefined,
-      volumeMl: newCulture.volumeMl,
-      fillVolumeMl: newCulture.fillVolumeMl,
-      prepDate: newCulture.prepDate || undefined,
-      healthRating: 5,
-      notes: newCulture.notes,
-      cost: newCulture.cost,
-      supplierId: newCulture.supplierId || undefined,
-      lotNumber: newCulture.lotNumber || undefined,
-    });
-
-    setShowCreateModal(false);
-    setNewCulture({
-      type: 'agar',
-      strainId: '',
-      locationId: '',
-      vesselId: '',
-      recipeId: '',
-      volumeMl: undefined,
-      fillVolumeMl: undefined,
-      cost: 0,
-      supplierId: '',
-      lotNumber: '',
-      notes: '',
-      prepDate: new Date().toISOString().split('T')[0],
-    });
-  };
-
   // Add observation handler
   const handleAddObservation = () => {
     if (!selectedCulture || !newObservation.notes) return;
@@ -267,12 +227,7 @@ export const CultureManagement: React.FC = () => {
       notes: newObservation.notes,
       healthRating: newObservation.healthRating,
     });
-
-    // Refresh selected culture from state
-    setTimeout(() => {
-      const updated = state.cultures.find(c => c.id === selectedCulture.id);
-      if (updated) setSelectedCulture(updated);
-    }, 0);
+    // selectedCulture will be auto-updated by the sync useEffect when state.cultures changes
 
     setShowObservationModal(false);
     setNewObservation({ type: 'general', notes: '', healthRating: undefined });
@@ -293,12 +248,7 @@ export const CultureManagement: React.FC = () => {
       unit: newTransfer.unit,
       notes: newTransfer.notes,
     });
-
-    // Refresh selected culture from state
-    setTimeout(() => {
-      const updated = state.cultures.find(c => c.id === selectedCulture.id);
-      if (updated) setSelectedCulture(updated);
-    }, 0);
+    // selectedCulture will be auto-updated by the sync useEffect when state.cultures changes
 
     setShowTransferModal(false);
     setNewTransfer({ toType: 'agar', quantity: 1, unit: 'wedge', notes: '', createNewRecord: false });
@@ -334,7 +284,7 @@ export const CultureManagement: React.FC = () => {
           <p className="text-zinc-400 text-sm">Manage your living cultures and genetics</p>
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => setShowWizard(true)}
           className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors"
         >
           <Icons.Plus />
@@ -599,8 +549,8 @@ export const CultureManagement: React.FC = () => {
                 <span className="text-white">{getLocation(selectedCulture.locationId)?.name}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-500">Vessel</span>
-                <span className="text-white">{getVessel(selectedCulture.vesselId)?.name}</span>
+                <span className="text-zinc-500">Container</span>
+                <span className="text-white">{getContainer(selectedCulture.containerId)?.name}</span>
               </div>
               
               {/* Recipe/Media Info */}
@@ -748,191 +698,15 @@ export const CultureManagement: React.FC = () => {
         )}
       </div>
 
-      {/* Create Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">New Culture</h3>
-              <button onClick={() => setShowCreateModal(false)} className="text-zinc-400 hover:text-white">
-                <Icons.X />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Type Selection */}
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Type</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(cultureTypeConfig).map(([key, config]) => (
-                    <button
-                      key={key}
-                      onClick={() => setNewCulture(prev => ({ ...prev, type: key as CultureType }))}
-                      className={`p-3 rounded-lg border text-sm font-medium transition-all ${
-                        newCulture.type === key
-                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-                          : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
-                      }`}
-                    >
-                      <span className="text-xl mr-2">{config.icon}</span>
-                      {config.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Strain */}
-              <StandardDropdown
-                label="Strain"
-                required
-                value={newCulture.strainId}
-                onChange={value => setNewCulture(prev => ({ ...prev, strainId: value }))}
-                options={activeStrains}
-                placeholder="Select strain..."
-                entityType="strain"
-                fieldName="strainId"
-              />
-
-              {/* Location */}
-              <StandardDropdown
-                label="Location"
-                required
-                value={newCulture.locationId}
-                onChange={value => setNewCulture(prev => ({ ...prev, locationId: value }))}
-                options={activeLocations}
-                placeholder="Select location..."
-                entityType="location"
-                fieldName="locationId"
-              />
-
-              {/* Vessel */}
-              <StandardDropdown
-                label="Vessel"
-                required
-                value={newCulture.vesselId}
-                onChange={value => setNewCulture(prev => ({ ...prev, vesselId: value }))}
-                options={activeVessels}
-                placeholder="Select vessel..."
-                entityType="vessel"
-                fieldName="vesselId"
-              />
-
-              {/* Recipe - filter by culture type */}
-              <StandardDropdown
-                label="Recipe / Media Formula"
-                value={newCulture.recipeId}
-                onChange={value => setNewCulture(prev => ({ ...prev, recipeId: value }))}
-                options={activeRecipes}
-                filterFn={r => {
-                  // Filter recipes by matching culture type
-                  if (newCulture.type === 'liquid_culture') return r.category === 'liquid_culture';
-                  if (newCulture.type === 'agar' || newCulture.type === 'slant') return r.category === 'agar';
-                  if (newCulture.type === 'spore_syringe') return r.category === 'liquid_culture' || r.category === 'other';
-                  return true;
-                }}
-                placeholder="Select recipe..."
-                entityType="recipe"
-                fieldName="recipeId"
-                helpText={newCulture.recipeId
-                  ? (getRecipe(newCulture.recipeId)?.description || 'No description')
-                  : "(what's in this container?)"}
-              />
-
-              {/* Volume fields - show for liquids and optionally for others */}
-              {(newCulture.type === 'liquid_culture' || newCulture.type === 'spore_syringe') && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-zinc-400 mb-2">
-                      Container Capacity (ml)
-                      <span className="text-zinc-500 text-xs block">Total vessel volume</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={newCulture.volumeMl || ''}
-                      onChange={e => setNewCulture(prev => ({ ...prev, volumeMl: parseInt(e.target.value) || undefined }))}
-                      placeholder="e.g., 1000"
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-zinc-400 mb-2">
-                      Fill Amount (ml)
-                      <span className="text-zinc-500 text-xs block">Actual media inside</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={newCulture.fillVolumeMl || ''}
-                      onChange={e => setNewCulture(prev => ({ ...prev, fillVolumeMl: parseInt(e.target.value) || undefined }))}
-                      placeholder="e.g., 600"
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Prep Date */}
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Prep Date</label>
-                <input
-                  type="date"
-                  value={newCulture.prepDate || ''}
-                  onChange={e => setNewCulture(prev => ({ ...prev, prepDate: e.target.value }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-
-              {/* Cost */}
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Cost ($)</label>
-                <input
-                  type="number"
-                  value={newCulture.cost || ''}
-                  onChange={e => setNewCulture(prev => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))}
-                  step="0.01"
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-
-              {/* Supplier */}
-              <StandardDropdown
-                label="Supplier"
-                value={newCulture.supplierId}
-                onChange={value => setNewCulture(prev => ({ ...prev, supplierId: value }))}
-                options={activeSuppliers}
-                placeholder="Select supplier..."
-                entityType="supplier"
-                fieldName="supplierId"
-              />
-
-              {/* Notes */}
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Notes</label>
-                <textarea
-                  value={newCulture.notes}
-                  onChange={e => setNewCulture(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={3}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateCulture}
-                disabled={!newCulture.strainId || !newCulture.locationId || !newCulture.vesselId}
-                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Culture Creation Wizard */}
+      {showWizard && (
+        <CultureWizard
+          onClose={() => setShowWizard(false)}
+          onSuccess={(culture) => {
+            // Optionally select the newly created culture
+            setSelectedCulture(culture);
+          }}
+        />
       )}
 
       {/* Observation Modal */}

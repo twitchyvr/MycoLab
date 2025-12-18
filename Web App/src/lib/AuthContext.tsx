@@ -45,6 +45,7 @@ export interface AuthContextValue extends AuthState {
   signUp: (email: string, password: string, captchaToken?: string) => Promise<SignUpResult>;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   signInWithMagicLink: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
+  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: (options?: { clearData?: boolean }) => Promise<void>;
   resetPassword: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
@@ -120,13 +121,68 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    // Get initial session
+    // Check if this is an OAuth callback (tokens in URL hash)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const hasOAuthTokens = hashParams.has('access_token');
+
+    if (hasOAuthTokens) {
+      console.log('[Auth] OAuth callback detected in URL hash');
+    }
+
+    // Listen for auth changes FIRST - this handles OAuth callbacks
+    const { data: { subscription } } = supabase!.auth.onAuthStateChange(
+      async (event, newSession) => {
+        console.log('[Auth] Auth state change:', event, newSession?.user?.email || 'no user');
+
+        // Clear OAuth tokens from URL for cleaner appearance
+        if (hasOAuthTokens && window.location.hash) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        setIsLoading(false);
+
+        if (newSession?.user) {
+          setIsAnonymous(newSession.user.is_anonymous ?? false);
+
+          // Fetch profile for authenticated users
+          if (!newSession.user.is_anonymous) {
+            const userProfile = await fetchProfile(newSession.user.id);
+            setProfile(userProfile);
+          } else {
+            setProfile(null);
+          }
+        } else {
+          setIsAnonymous(true);
+          setProfile(null);
+        }
+
+        // Close modal on successful auth
+        if (event === 'SIGNED_IN' && newSession?.user && !newSession.user.is_anonymous) {
+          setShowAuthModal(false);
+        }
+      }
+    );
+
+    // Get initial session (only if NOT an OAuth callback - let onAuthStateChange handle that)
     const initAuth = async () => {
+      // If we have OAuth tokens, onAuthStateChange will handle it
+      if (hasOAuthTokens) {
+        console.log('[Auth] Waiting for onAuthStateChange to process OAuth tokens...');
+        return;
+      }
+
       try {
         // Try to get existing session
-        const { data: { session: existingSession } } = await supabase!.auth.getSession();
+        const { data: { session: existingSession }, error: sessionError } = await supabase!.auth.getSession();
+
+        if (sessionError) {
+          console.error('[Auth] Error getting session:', sessionError);
+        }
 
         if (existingSession) {
+          console.log('[Auth] Existing session found:', existingSession.user.email);
           setSession(existingSession);
           setUser(existingSession.user);
           setIsAnonymous(existingSession.user.is_anonymous ?? false);
@@ -160,36 +216,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     initAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase!.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log('Auth state change:', event);
-
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-
-        if (newSession?.user) {
-          setIsAnonymous(newSession.user.is_anonymous ?? false);
-
-          // Fetch profile for authenticated users
-          if (!newSession.user.is_anonymous) {
-            const userProfile = await fetchProfile(newSession.user.id);
-            setProfile(userProfile);
-          } else {
-            setProfile(null);
-          }
-        } else {
-          setIsAnonymous(true);
-          setProfile(null);
-        }
-
-        // Close modal on successful auth
-        if (event === 'SIGNED_IN' && newSession?.user && !newSession.user.is_anonymous) {
-          setShowAuthModal(false);
-        }
-      }
-    );
 
     return () => {
       subscription.unsubscribe();
@@ -394,6 +420,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (error?.message?.toLowerCase().includes('captcha')) {
       return { error: { ...error, message: 'Captcha verification failed. Please try again.' } as AuthError };
     }
+
+    return { error };
+  }, []);
+
+  const signInWithGoogle = useCallback(async () => {
+    if (!supabase) return { error: new Error('Supabase not configured') as AuthError };
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
 
     return { error };
   }, []);
@@ -719,6 +758,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     signUp,
     signIn,
     signInWithMagicLink,
+    signInWithGoogle,
     signOut,
     resetPassword,
     updatePassword,

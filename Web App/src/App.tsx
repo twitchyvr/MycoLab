@@ -2,12 +2,16 @@
 // MYCOLAB - Main Application Component
 // ============================================================================
 
-import React, { useState, createContext, useContext, useEffect } from 'react';
-import { DataProvider, useData, CreationProvider, useCreation } from './store';
+import React, { useState, createContext, useContext, useEffect, useMemo } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
+import { DataProvider, useData, CreationProvider, useCreation, NotificationProvider, ThemeProvider } from './store';
 import { AuthProvider } from './lib/AuthContext';
 import { EntityFormModal } from './components/forms';
 import { AuthModal, AccountMenu } from './components/auth';
+import { ToastContainer, NotificationBell } from './components/notifications';
+import { ErrorBoundary, GlobalErrorHandler } from './components/errors';
 import DevLogPage from './components/devlog/DevLogPage';
+import { PrivacyPolicy, TermsOfService } from './components/legal';
 import type { 
   AppState, 
   Culture, 
@@ -16,12 +20,12 @@ import type {
   FeatureStatus,
   FeaturePriority 
 } from './types';
-import { 
-  defaultPreferences, 
-  sampleStrains, 
-  sampleVendors, 
+import {
+  defaultPreferences,
+  sampleStrains,
+  sampleVendors,
   sampleLocations,
-  sampleVesselTypes,
+  sampleContainers,
   sampleIngredients,
   initialDevLog,
   projectScope
@@ -31,6 +35,7 @@ import { UnifiedItemView } from './components/inventory/UnifiedItemView';
 import { ContaminationAnalysis } from './components/analysis/ContaminationAnalysis';
 import { BiologicalEfficiencyCalculator } from './components/analysis/BiologicalEfficiencyCalculator';
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
+import { StrainPerformanceAnalytics } from './components/analytics/StrainPerformanceAnalytics';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { SpawnRateCalculator } from './components/tools/SpawnRateCalculator';
 import { PressureCookingCalculator } from './components/tools/PressureCookingCalculator';
@@ -40,10 +45,17 @@ import { GrowManagement } from './components/grows/GrowManagement';
 import { RecipeBuilder } from './components/recipes/RecipeBuilder';
 import { SetupWizard } from './components/setup/SetupWizard';
 import { StockManagement } from './components/inventory/StockManagement';
-import { TodayView } from './components/today';
+import { CommandCenter } from './components/command';
 import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
-import { ObservationTimeline } from './components/observations';
+import { ObservationTimeline, EventLogger } from './components/observations';
 import { ProfilePage } from './components/profile';
+import { FloatingActionButton, LabCommandCenter } from './components/dashboard';
+import { LabMapping, LocationOccupancy } from './components/locations';
+import { LabelDesigner } from './components/labels';
+import { QRScanner } from './components/qr';
+import { ColdStorageCheck } from './components/dailycheck';
+import { HarvestForecast } from './components/forecast/HarvestForecast';
+import { SpeciesLibrary } from './components/library';
 
 // ============================================================================
 // CONTEXT
@@ -74,7 +86,7 @@ const initialState: AppState = {
   strains: sampleStrains,
   vendors: sampleVendors,
   locations: sampleLocations,
-  vesselTypes: sampleVesselTypes,
+  containers: sampleContainers,
   ingredients: sampleIngredients,
   tools: [],
   procedures: [],
@@ -199,6 +211,11 @@ const Icons = {
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
     </svg>
   ),
+  Target: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+    </svg>
+  ),
   TrendingUp: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
       <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
@@ -207,6 +224,11 @@ const Icons = {
   Layers: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
       <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
+    </svg>
+  ),
+  Grid: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
     </svg>
   ),
   Thermometer: () => (
@@ -229,13 +251,110 @@ const Icons = {
       <path d="M9 14l2 2 4-4"/>
     </svg>
   ),
+  Tag: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+      <line x1="7" y1="7" x2="7.01" y2="7"/>
+    </svg>
+  ),
+  QRScan: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <rect x="3" y="3" width="7" height="7"/>
+      <rect x="14" y="3" width="7" height="7"/>
+      <rect x="3" y="14" width="7" height="7"/>
+      <rect x="14" y="14" width="3" height="3"/>
+      <rect x="18" y="14" width="3" height="3"/>
+      <rect x="14" y="18" width="3" height="3"/>
+      <rect x="18" y="18" width="3" height="3"/>
+    </svg>
+  ),
+  Scale: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M12 3v18M3 12h18M5.5 5.5l13 13M18.5 5.5l-13 13"/>
+    </svg>
+  ),
+  Library: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      <path d="M8 7h8"/>
+      <path d="M8 11h8"/>
+      <path d="M8 15h4"/>
+    </svg>
+  ),
+  Snowflake: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <line x1="12" y1="2" x2="12" y2="22"/>
+      <path d="M4.93 4.93l4.24 4.24"/>
+      <path d="M14.83 14.83l4.24 4.24"/>
+      <path d="M19.07 4.93l-4.24 4.24"/>
+      <path d="M9.17 14.83l-4.24 4.24"/>
+      <line x1="2" y1="12" x2="22" y2="12"/>
+    </svg>
+  ),
+  Pencil: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+    </svg>
+  ),
 };
 
 // ============================================================================
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'observations' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
+
+// Route configuration: maps Page to URL paths
+// Routes with :id support deep-linking to specific items
+const routeConfig: Record<Page, string> = {
+  dashboard: '/',
+  commandcenter: '/command',
+  today: '/today',
+  dailycheck: '/daily-check',
+  harvest: '/harvest',
+  forecast: '/forecast',
+  coldstorage: '/cold-storage',
+  observations: '/observations',
+  eventlog: '/event-log',
+  library: '/library',
+  inventory: '/inventory',
+  stock: '/stock',
+  cultures: '/cultures',
+  lineage: '/lineage',
+  grows: '/grows',
+  recipes: '/recipes',
+  labmapping: '/lab-mapping',
+  occupancy: '/occupancy',
+  labels: '/labels',
+  scanner: '/scanner',
+  calculator: '/calculator',
+  spawnrate: '/spawn-rate',
+  pressure: '/pressure-cooking',
+  contamination: '/contamination',
+  efficiency: '/efficiency',
+  analytics: '/analytics',
+  strainanalytics: '/strain-analytics',
+  settings: '/settings',
+  profile: '/profile',
+  devlog: '/devlog',
+};
+
+// Reverse lookup: URL path to Page
+const pathToPage: Record<string, Page> = Object.entries(routeConfig).reduce(
+  (acc, [page, path]) => ({ ...acc, [path]: page as Page }),
+  {} as Record<string, Page>
+);
+
+// Helper to get route path for a page
+const getRoutePath = (page: Page): string => routeConfig[page] || '/';
+
+// Helper to get page from current path
+const getPageFromPath = (pathname: string): Page => {
+  // Handle base paths (e.g., /cultures from /cultures/abc123)
+  const basePath = '/' + pathname.split('/').filter(Boolean)[0] || '';
+  return pathToPage[pathname] || pathToPage[basePath] || 'dashboard';
+};
 
 interface NavItem {
   id: Page;
@@ -243,25 +362,143 @@ interface NavItem {
   icon: React.FC;
 }
 
-const navItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
-  { id: 'today', label: 'Today', icon: Icons.Sun },
-  { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
-  { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
-  { id: 'stock', label: 'Lab Stock', icon: Icons.Package },
-  { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
-  { id: 'lineage', label: 'Lineage', icon: Icons.Culture },
-  { id: 'grows', label: 'Grows', icon: Icons.Grow },
-  { id: 'recipes', label: 'Recipes', icon: Icons.Recipe },
-  { id: 'calculator', label: 'Substrate Calc', icon: Icons.Calculator },
-  { id: 'spawnrate', label: 'Spawn Rate', icon: Icons.Layers },
-  { id: 'pressure', label: 'Pressure Cook', icon: Icons.Thermometer },
-  { id: 'contamination', label: 'Contamination', icon: Icons.AlertTriangle },
-  { id: 'efficiency', label: 'BE Calculator', icon: Icons.TrendingUp },
-  { id: 'analytics', label: 'Analytics', icon: Icons.Chart },
-  { id: 'settings', label: 'Settings', icon: Icons.Settings },
-  { id: 'devlog', label: 'Roadmap', icon: Icons.DevLog },
+interface NavGroup {
+  id: string;
+  label: string;
+  icon: React.FC;
+  items: NavItem[];
+  defaultOpen?: boolean;
+}
+
+// Section Icons for navigation groups
+const SectionIcons = {
+  Command: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+    </svg>
+  ),
+  Library: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+  ),
+  Inventory: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+    </svg>
+  ),
+  Genetics: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M2 15c6.667-6 13.333 0 20-6"/><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993"/><path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993"/><path d="M17 6l-2.5-2.5"/><path d="M14 8l-1.5-1.5"/><path d="M7 18l2.5 2.5"/><path d="M10 16l1.5 1.5"/>
+    </svg>
+  ),
+  Analytics: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>
+    </svg>
+  ),
+  Tools: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+    </svg>
+  ),
+  Settings: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  ),
+};
+
+// Grouped navigation structure - consolidated for clarity
+// Today, Daily Check, and Harvest are now unified in Command Center
+const navGroups: NavGroup[] = [
+  {
+    id: 'command',
+    label: 'Daily Ops',
+    icon: SectionIcons.Command,
+    defaultOpen: true,
+    items: [
+      { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
+      { id: 'commandcenter', label: 'Command Center', icon: Icons.Target },
+      { id: 'forecast', label: 'Harvest Forecast', icon: Icons.TrendingUp },
+      { id: 'coldstorage', label: 'Cold Storage', icon: Icons.Snowflake },
+    ],
+  },
+  {
+    id: 'genetics',
+    label: 'Cultivation',
+    icon: SectionIcons.Genetics,
+    defaultOpen: false,
+    items: [
+      { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
+      { id: 'grows', label: 'Grows', icon: Icons.Grow },
+      { id: 'lineage', label: 'Lineage Tree', icon: Icons.Lineage },
+      { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
+      { id: 'eventlog', label: 'Event Log', icon: Icons.Pencil },
+    ],
+  },
+  {
+    id: 'library',
+    label: 'Knowledge Base',
+    icon: SectionIcons.Library,
+    defaultOpen: false,
+    items: [
+      { id: 'library', label: 'Species & Strains', icon: Icons.Library },
+      { id: 'recipes', label: 'Recipes', icon: Icons.Recipe },
+    ],
+  },
+  {
+    id: 'inventory',
+    label: 'Lab & Storage',
+    icon: SectionIcons.Inventory,
+    defaultOpen: false,
+    items: [
+      { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
+      { id: 'stock', label: 'Stock & Orders', icon: Icons.Package },
+      { id: 'labmapping', label: 'Lab Layout', icon: Icons.Layers },
+      { id: 'occupancy', label: 'Space Tracker', icon: Icons.Grid },
+      { id: 'labels', label: 'Label Maker', icon: Icons.Tag },
+      { id: 'scanner', label: 'QR Scanner', icon: Icons.QRScan },
+    ],
+  },
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    icon: SectionIcons.Analytics,
+    defaultOpen: false,
+    items: [
+      { id: 'analytics', label: 'Overview', icon: Icons.Chart },
+      { id: 'strainanalytics', label: 'Strain Stats', icon: Icons.Target },
+      { id: 'contamination', label: 'Contam Analysis', icon: Icons.AlertTriangle },
+      { id: 'efficiency', label: 'BE Calculator', icon: Icons.TrendingUp },
+    ],
+  },
+  {
+    id: 'tools',
+    label: 'Calculators',
+    icon: SectionIcons.Tools,
+    defaultOpen: false,
+    items: [
+      { id: 'calculator', label: 'Substrate Calc', icon: Icons.Calculator },
+      { id: 'spawnrate', label: 'Spawn Rate', icon: Icons.Layers },
+      { id: 'pressure', label: 'Pressure Cook', icon: Icons.Thermometer },
+    ],
+  },
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: SectionIcons.Settings,
+    defaultOpen: false,
+    items: [
+      { id: 'settings', label: 'Preferences', icon: Icons.Settings },
+      { id: 'profile', label: 'Profile', icon: Icons.Dashboard },
+      { id: 'devlog', label: 'Roadmap', icon: Icons.DevLog },
+    ],
+  },
 ];
+
+// Flat list for backwards compatibility
+const navItems: NavItem[] = navGroups.flatMap(group => group.items);
 
 // ============================================================================
 // STATUS STYLING
@@ -291,80 +528,180 @@ const priorityColors: Record<FeaturePriority, string> = {
 
 interface SidebarProps {
   currentPage: Page;
-  onNavigate: (page: Page) => void;
+  onNavigate: (page: Page, itemId?: string) => void;
   isOpen: boolean;
   onClose: () => void;
   cultureCount: number;
   activeGrowCount: number;
 }
 
+// Helper to find which group contains the current page
+const findGroupForPage = (page: Page): string | null => {
+  for (const group of navGroups) {
+    if (group.items.some(item => item.id === page)) {
+      return group.id;
+    }
+  }
+  return null;
+};
+
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onClose, cultureCount, activeGrowCount }) => {
+  // Track which groups are expanded - initialize based on current page and defaults
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    // Add default open groups
+    navGroups.forEach(group => {
+      if (group.defaultOpen) initial.add(group.id);
+    });
+    // Add group containing current page
+    const currentGroup = findGroupForPage(currentPage);
+    if (currentGroup) initial.add(currentGroup);
+    return initial;
+  });
+
+  // When page changes, ensure its group is expanded
+  useEffect(() => {
+    const currentGroup = findGroupForPage(currentPage);
+    if (currentGroup && !expandedGroups.has(currentGroup)) {
+      setExpandedGroups(prev => new Set([...prev, currentGroup]));
+    }
+  }, [currentPage]);
+
   const handleNavigate = (page: Page) => {
     onNavigate(page);
     onClose(); // Close sidebar on mobile after navigation
+  };
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
   };
 
   return (
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
-      
+
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50
-        w-64 bg-zinc-900 border-r border-zinc-800 
+        w-64 bg-zinc-900 border-r border-zinc-800
         flex flex-col h-full
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Logo */}
         <div className="p-4 border-b border-zinc-800 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <span className="text-xl">🍄</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <span className="text-xl">🍄</span>
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold text-white tracking-tight">MycoLab</h1>
+                <p className="text-xs text-zinc-500">Laboratory Manager</p>
+                <p className="text-[10px] text-zinc-600 font-mono">v{__APP_VERSION__}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-lg font-semibold text-white tracking-tight">MycoLab</h1>
-              <p className="text-xs text-zinc-500">Laboratory Manager</p>
-              <p className="text-[10px] text-zinc-600 font-mono">v{__APP_VERSION__}</p>
-            </div>
+            {/* Mobile close button */}
+            <button
+              onClick={onClose}
+              className="lg:hidden p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              aria-label="Close menu"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
         </div>
 
-        {/* Navigation - scrollable */}
+        {/* Navigation - scrollable with grouped structure */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = currentPage === item.id;
-            const Icon = item.icon;
+          {navGroups.map((group) => {
+            const GroupIcon = group.icon;
+            const isExpanded = expandedGroups.has(group.id);
+            const hasActivePage = group.items.some(item => item.id === currentPage);
+
             return (
-              <button
-                key={item.id}
-                onClick={() => handleNavigate(item.id)}
-                className={`
-                  w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                  transition-all duration-200 group
-                  ${isActive 
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                    : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white border border-transparent'
-                  }
-                `}
-              >
-                <Icon />
-                <span className="truncate">{item.label}</span>
-                {isActive && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
-                )}
-              </button>
+              <div key={group.id} className="mb-1">
+                {/* Group Header */}
+                <button
+                  onClick={() => toggleGroup(group.id)}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
+                    transition-all duration-200
+                    ${hasActivePage
+                      ? 'text-emerald-400'
+                      : 'text-zinc-400 hover:text-white'
+                    }
+                    hover:bg-zinc-800/50
+                  `}
+                >
+                  <GroupIcon />
+                  <span className="flex-1 text-left">{group.label}</span>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                  >
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+
+                {/* Group Items */}
+                <div className={`
+                  overflow-hidden transition-all duration-200 ease-in-out
+                  ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+                `}>
+                  <div className="ml-3 pl-3 border-l border-zinc-800 mt-1 space-y-0.5">
+                    {group.items.map((item) => {
+                      const isActive = currentPage === item.id;
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => handleNavigate(item.id)}
+                          className={`
+                            w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+                            transition-all duration-200
+                            ${isActive
+                              ? 'bg-emerald-500/10 text-emerald-400 font-medium'
+                              : 'text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300'
+                            }
+                          `}
+                        >
+                          <Icon />
+                          <span className="truncate">{item.label}</span>
+                          {isActive && (
+                            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             );
           })}
         </nav>
 
-        {/* Quick Stats - fixed at bottom, collapsible on small screens */}
+        {/* Quick Stats - fixed at bottom */}
         <div className="p-3 border-t border-zinc-800 flex-shrink-0 hidden sm:block">
           <div className="bg-zinc-800/50 rounded-lg p-3 space-y-2">
             <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Quick Stats</p>
@@ -393,7 +730,7 @@ interface HeaderProps {
   title: string;
   subtitle?: string;
   currentPage: Page;
-  onNavigate: (page: Page) => void;
+  onNavigate: (page: Page, itemId?: string) => void;
   onMenuClick: () => void;
   onSearchClick: () => void;
 }
@@ -412,12 +749,13 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
   const newAction = newButtonConfig[currentPage];
 
   return (
-    <header className="h-14 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/30 flex-shrink-0">
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="h-14 border-b border-zinc-800 flex items-center justify-between px-3 sm:px-4 bg-zinc-900/30 flex-shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {/* Mobile menu button */}
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 -ml-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+          className="lg:hidden p-2 -ml-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+          aria-label="Open menu"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
             <line x1="3" y1="12" x2="21" y2="12"/>
@@ -426,24 +764,18 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
           </svg>
         </button>
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-white truncate">{title}</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-white truncate">{title}</h2>
           {subtitle && <p className="text-xs text-zinc-500 truncate hidden sm:block">{subtitle}</p>}
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
         {/* Global Search Trigger */}
         <SearchTrigger onClick={onSearchClick} />
-        {/* Notification Bell - only show dot when there are actual notifications */}
-        <button
-          className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors relative"
-          title="Notifications coming soon"
-        >
-          <Icons.Bell />
-          {/* No hardcoded notification dot - will be dynamic when notifications are implemented */}
-        </button>
+        {/* Notification Bell */}
+        <NotificationBell onNavigateToSettings={() => onNavigate('settings')} />
         {newAction && (
           <button
-            className="flex items-center gap-2 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
             onClick={() => {
               if (currentPage === newAction.page) {
                 // Already on the page, just dispatch the create event
@@ -472,7 +804,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
 // DASHBOARD PAGE
 // ============================================================================
 
-const DashboardPage: React.FC<{ onNavigate: (page: Page) => void }> = ({ onNavigate }) => {
+const DashboardPage: React.FC<{ onNavigate: (page: Page, itemId?: string) => void }> = ({ onNavigate }) => {
   const { state, isLoading, isConnected, activeStrains } = useData();
   
   // Calculate real stats
@@ -695,7 +1027,42 @@ const PlaceholderPage: React.FC<{ title: string; description: string }> = ({ tit
 // ============================================================================
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+  return (
+    <BrowserRouter>
+      <AppWithRouter />
+    </BrowserRouter>
+  );
+};
+
+// Inner component that has access to React Router hooks
+const AppWithRouter: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Handle standalone legal pages (render without app shell)
+  if (location.pathname === '/privacy') {
+    return <PrivacyPolicy />;
+  }
+  if (location.pathname === '/terms') {
+    return <TermsOfService />;
+  }
+
+  // Derive current page from URL
+  const currentPage = useMemo(() => getPageFromPath(location.pathname), [location.pathname]);
+
+  // Extract item ID from URL if present (e.g., /cultures/abc123)
+  const selectedItemId = useMemo(() => {
+    const parts = location.pathname.split('/').filter(Boolean);
+    return parts.length > 1 ? parts[1] : undefined;
+  }, [location.pathname]);
+
+  // Navigation function that updates URL
+  const setCurrentPage = (page: Page, itemId?: string) => {
+    const basePath = getRoutePath(page);
+    const fullPath = itemId ? `${basePath}/${itemId}` : basePath;
+    navigate(fullPath);
+  };
+
   const [state, setState] = useState<AppState>(initialState);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Never show setup wizard - users don't need to configure database credentials
@@ -762,21 +1129,33 @@ const App: React.FC = () => {
   };
 
   const pageConfig: Record<Page, { title: string; subtitle?: string }> = {
-    dashboard: { title: 'Dashboard', subtitle: 'Overview of your mycology lab' },
+    dashboard: { title: 'Lab Command Center', subtitle: 'Real-time operational hub for your mycology lab' },
+    commandcenter: { title: 'Command Center', subtitle: 'Unified daily operations: tasks, room checks, harvests' },
     today: { title: 'Today', subtitle: 'Daily tasks and actionable items' },
+    dailycheck: { title: 'Daily Room Check', subtitle: 'Growing room rounds with harvest estimates' },
+    harvest: { title: 'Harvest Workflow', subtitle: 'Quick harvest recording with auto BE% calculation' },
+    forecast: { title: 'Harvest Forecasting', subtitle: 'Predict stage transitions and forecast upcoming harvests' },
+    coldstorage: { title: 'Cold Storage Check', subtitle: 'Review fridge and cold room inventory' },
     observations: { title: 'Observations', subtitle: 'Timeline of all culture and grow observations' },
+    eventlog: { title: 'Event Logger', subtitle: 'Log events, notes, and observations across your lab' },
+    library: { title: 'Species & Strain Library', subtitle: 'Reference guide with growing parameters and terminology' },
     inventory: { title: 'Lab Inventory', subtitle: 'All cultures, spawn, and grows' },
     stock: { title: 'Lab Stock', subtitle: 'Inventory lots, purchases, and tracking' },
     cultures: { title: 'Culture Library', subtitle: 'Manage your cultures and genetics' },
     lineage: { title: 'Lineage Visualization', subtitle: 'Interactive family tree of your cultures' },
     grows: { title: 'Grow Tracking', subtitle: 'Track your active and completed grows' },
     recipes: { title: 'Recipes', subtitle: 'Agar, LC, substrate formulations' },
+    labmapping: { title: 'Lab Mapping', subtitle: 'Manage rooms, racks, shelves, and storage locations' },
+    occupancy: { title: 'Location Occupancy', subtitle: 'Track items, varieties, and yields across your lab' },
+    labels: { title: 'Label Designer', subtitle: 'Design and print labels with QR codes' },
+    scanner: { title: 'QR Scanner', subtitle: 'Scan labels to access records instantly' },
     calculator: { title: 'Substrate Calculator', subtitle: 'Hydration ratio calculations' },
     spawnrate: { title: 'Spawn Rate Calculator', subtitle: 'Calculate spawn-to-substrate ratios' },
     pressure: { title: 'Pressure Cooking Calculator', subtitle: 'Sterilization times with altitude adjustment' },
     contamination: { title: 'Contamination Analysis', subtitle: 'Track and analyze contamination patterns' },
     efficiency: { title: 'Biological Efficiency', subtitle: 'Calculate and compare BE% across grows' },
     analytics: { title: 'Analytics', subtitle: 'Data visualization and insights' },
+    strainanalytics: { title: 'Strain Performance', subtitle: 'Track success rates, yields, and optimal conditions per strain' },
     settings: { title: 'Settings', subtitle: 'Configure lookups and preferences' },
     profile: { title: 'My Profile', subtitle: 'Manage your account and security settings' },
     devlog: { title: 'Dev Roadmap', subtitle: 'Feature tracker with intelligent prioritization' },
@@ -785,17 +1164,42 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <DashboardPage onNavigate={setCurrentPage} />;
+        return <LabCommandCenter onNavigate={setCurrentPage} />;
+      case 'commandcenter':
+        return <CommandCenter />;
+      // Legacy routes - redirect to unified Command Center
       case 'today':
+      case 'dailycheck':
+      case 'harvest':
+        return <Navigate to="/command" replace />;
+      case 'forecast':
         return (
           <div className="p-6">
-            <TodayView onNavigate={setCurrentPage} />
+            <HarvestForecast />
+          </div>
+        );
+      case 'coldstorage':
+        return (
+          <div className="p-6">
+            <ColdStorageCheck />
           </div>
         );
       case 'observations':
         return (
           <div className="p-6">
             <ObservationTimeline onNavigate={setCurrentPage} />
+          </div>
+        );
+      case 'eventlog':
+        return (
+          <div className="p-6">
+            <EventLogger />
+          </div>
+        );
+      case 'library':
+        return (
+          <div className="p-6">
+            <SpeciesLibrary />
           </div>
         );
       case 'devlog':
@@ -856,12 +1260,42 @@ const App: React.FC = () => {
             <RecipeBuilder />
           </div>
         );
+      case 'labmapping':
+        return (
+          <div className="p-6">
+            <LabMapping />
+          </div>
+        );
+      case 'occupancy':
+        return (
+          <div className="p-6">
+            <LocationOccupancy />
+          </div>
+        );
+      case 'labels':
+        return (
+          <div className="p-6">
+            <LabelDesigner />
+          </div>
+        );
+      case 'scanner':
+        return (
+          <div className="p-6">
+            <div className="max-w-md mx-auto">
+              <QRScanner onNavigate={(page) => {
+                setCurrentPage(page as Page);
+              }} />
+            </div>
+          </div>
+        );
       case 'analytics':
         return (
           <div className="p-6">
             <AnalyticsDashboard />
           </div>
         );
+      case 'strainanalytics':
+        return <StrainPerformanceAnalytics />;
       case 'spawnrate':
         return (
           <div className="p-6">
@@ -892,26 +1326,35 @@ const App: React.FC = () => {
   };
 
   return (
-    <AuthProvider>
-      <DataProvider>
-        <CreationProvider>
-          <AppContext.Provider value={contextValue}>
-            <AuthModal />
-            <CreationModalManager />
-            <AppContent
-              showSetup={showSetup}
-              setShowSetup={setShowSetup}
-              currentPage={currentPage}
-              setCurrentPage={setCurrentPage}
-              sidebarOpen={sidebarOpen}
-              setSidebarOpen={setSidebarOpen}
-              renderPage={renderPage}
-              pageConfig={pageConfig}
-            />
-          </AppContext.Provider>
-        </CreationProvider>
-      </DataProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <DataProvider>
+            <NotificationProvider>
+              <GlobalErrorHandler />
+              <CreationProvider>
+                <AppContext.Provider value={contextValue}>
+                  <AuthModal />
+                  <CreationModalManager />
+                  <ToastContainer />
+                  <AppContent
+                    showSetup={showSetup}
+                    setShowSetup={setShowSetup}
+                    currentPage={currentPage}
+                    setCurrentPage={setCurrentPage}
+                    selectedItemId={selectedItemId}
+                    sidebarOpen={sidebarOpen}
+                    setSidebarOpen={setSidebarOpen}
+                    renderPage={renderPage}
+                    pageConfig={pageConfig}
+                  />
+                </AppContext.Provider>
+              </CreationProvider>
+            </NotificationProvider>
+          </DataProvider>
+        </AuthProvider>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 };
 
@@ -932,7 +1375,8 @@ const AppContent: React.FC<{
   showSetup: boolean;
   setShowSetup: (v: boolean) => void;
   currentPage: Page;
-  setCurrentPage: (page: Page) => void;
+  setCurrentPage: (page: Page, itemId?: string) => void;
+  selectedItemId?: string;
   sidebarOpen: boolean;
   setSidebarOpen: (v: boolean) => void;
   renderPage: () => React.ReactNode;
@@ -942,6 +1386,7 @@ const AppContent: React.FC<{
   setShowSetup,
   currentPage,
   setCurrentPage,
+  selectedItemId,
   sidebarOpen,
   setSidebarOpen,
   renderPage,
@@ -953,6 +1398,33 @@ const AppContent: React.FC<{
   // Calculate real stats from actual data
   const cultureCount = state.cultures.length;
   const activeGrowCount = state.grows.filter(g => g.status === 'active').length;
+
+  // Dispatch event when a deep-linked item ID is present in URL
+  // This allows pages like CultureManagement/GrowManagement to auto-select the item
+  useEffect(() => {
+    if (selectedItemId) {
+      // Map page to item type for the event
+      const pageToType: Partial<Record<Page, string>> = {
+        cultures: 'culture',
+        grows: 'grow',
+        recipes: 'recipe',
+        lineage: 'culture',
+      };
+      const itemType = pageToType[currentPage];
+
+      if (itemType) {
+        // Small delay to ensure the page component has mounted
+        const timer = setTimeout(() => {
+          window.dispatchEvent(
+            new CustomEvent('mycolab:select-item', {
+              detail: { id: selectedItemId, type: itemType },
+            })
+          );
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [selectedItemId, currentPage]);
 
   // Global keyboard shortcut for search (Cmd/Ctrl + K)
   useEffect(() => {
@@ -969,8 +1441,8 @@ const AppContent: React.FC<{
 
   // Handle navigation from search results
   const handleSearchNavigate = (page: Page, itemId?: string, itemType?: string) => {
-    setCurrentPage(page);
-    // Item selection is handled via custom event in GlobalSearch
+    // Navigate with item ID for deep-linking support
+    setCurrentPage(page, itemId);
   };
 
   return (
@@ -1011,6 +1483,8 @@ const AppContent: React.FC<{
             {renderPage()}
           </div>
         </main>
+        {/* Mobile Floating Action Button */}
+        <FloatingActionButton onNavigate={(page: string) => setCurrentPage(page as Page)} />
       </div>
     </>
   );

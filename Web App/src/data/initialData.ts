@@ -1,16 +1,50 @@
 // ============================================================================
 // MYCOLAB - Initial Data & Dev Log
+// This file has been modularized for easier maintenance.
+//
+// Structure:
+// - Sample data (strains, vendors, locations, etc.) stays here
+// - Dev log features are split into: devlog/early-phases.ts, mid-phases.ts,
+//   later-phases.ts, recent-phases.ts
+// - Project scope is in: projectScope.ts
+//
+// To add new dev log features, edit the appropriate phase file in devlog/
 // ============================================================================
 
 import type {
   Strain,
   Vendor,
   Location,
-  VesselType,
+  Container,
   Ingredient,
   DevLogFeature,
   UserPreferences,
 } from '../types';
+
+// Import modularized devlog features
+import { allDevLogFeatures } from './devlog';
+
+// Re-export devlog utilities for convenience
+export {
+  allDevLogFeatures,
+  earlyPhases,
+  midPhases,
+  laterPhases,
+  recentPhases,
+  getFeaturesByStatus,
+  getFeaturesByCategory,
+  getFeaturesByPriority,
+  getCompletedFeatures,
+  getInProgressFeatures,
+  getPlannedFeatures,
+  getDevLogStats,
+} from './devlog';
+
+// Re-export as initialDevLog for backward compatibility with existing imports
+export const initialDevLog: DevLogFeature[] = allDevLogFeatures;
+
+// Re-export projectScope for backward compatibility
+export { projectScope } from './projectScope';
 
 // ----------------------------------------------------------------------------
 // DEFAULT USER PREFERENCES
@@ -162,11 +196,92 @@ export const sampleVendors: Vendor[] = [
 // ----------------------------------------------------------------------------
 
 export const sampleLocations: Location[] = [
+  // Level 1: Facility (root)
   {
-    id: 'loc-001',
-    name: 'Main Lab Fridge',
-    locationType: 'refrigerator',
-    temperatureRange: { min: 2, max: 4 },
+    id: 'loc-facility',
+    name: 'My Lab',
+    level: 'facility',
+    code: 'LAB',
+    path: 'My Lab',
+    capacity: 100,
+    currentOccupancy: 0,
+    sortOrder: 1,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  // Level 2: Rooms
+  {
+    id: 'loc-cleanroom',
+    name: 'Clean Room',
+    parentId: 'loc-facility',
+    level: 'room',
+    roomPurpose: 'inoculation', // Legacy single field
+    roomPurposes: ['inoculation'], // New multi-purpose array
+    code: 'CLN',
+    path: 'My Lab/Clean Room',
+    tempRange: { min: 20, max: 24 },
+    humidityRange: { min: 40, max: 60 },
+    sortOrder: 1,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'loc-incubation',
+    name: 'Incubation Room',
+    parentId: 'loc-facility',
+    level: 'room',
+    roomPurpose: 'colonization', // Legacy single field
+    roomPurposes: ['colonization'], // New multi-purpose array
+    code: 'INC',
+    path: 'My Lab/Incubation Room',
+    tempRange: { min: 24, max: 27 },
+    humidityRange: { min: 70, max: 80 },
+    sortOrder: 2,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'loc-growroom',
+    name: 'Grow Room',
+    parentId: 'loc-facility',
+    level: 'room',
+    roomPurpose: 'fruiting', // Legacy single field (primary purpose)
+    roomPurposes: ['fruiting', 'colonization'], // Multi-purpose: both fruiting AND colonization
+    code: 'GRW',
+    path: 'My Lab/Grow Room',
+    tempRange: { min: 18, max: 22 },
+    humidityRange: { min: 85, max: 95 },
+    sortOrder: 3,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'loc-storage',
+    name: 'Storage Area',
+    parentId: 'loc-facility',
+    level: 'room',
+    roomPurpose: 'storage', // Legacy single field
+    roomPurposes: ['storage'], // New multi-purpose array
+    code: 'STR',
+    path: 'My Lab/Storage Area',
+    sortOrder: 4,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  // Level 3: Zones/Equipment within rooms
+  {
+    id: 'loc-fridge',
+    name: 'Lab Fridge',
+    parentId: 'loc-cleanroom',
+    level: 'zone',
+    code: 'CLN-FRG',
+    path: 'My Lab/Clean Room/Lab Fridge',
+    tempRange: { min: 2, max: 4 },
     capacity: 50,
     currentOccupancy: 12,
     sortOrder: 1,
@@ -175,46 +290,60 @@ export const sampleLocations: Location[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'loc-002',
-    name: 'Incubation Chamber',
-    locationType: 'incubator',
-    temperatureRange: { min: 24, max: 27 },
-    humidityRange: { min: 70, max: 80 },
-    capacity: 20,
-    currentOccupancy: 8,
+    id: 'loc-flowhood',
+    name: 'Flow Hood',
+    parentId: 'loc-cleanroom',
+    level: 'zone',
+    code: 'CLN-FLW',
+    path: 'My Lab/Clean Room/Flow Hood',
+    capacity: 10,
+    currentOccupancy: 0,
     sortOrder: 2,
     isActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'loc-003',
-    name: 'Fruiting Chamber',
-    locationType: 'fruiting_chamber',
-    temperatureRange: { min: 20, max: 24 },
+    id: 'loc-rack1',
+    name: 'Incubation Rack 1',
+    parentId: 'loc-incubation',
+    level: 'rack',
+    code: 'INC-R1',
+    path: 'My Lab/Incubation Room/Incubation Rack 1',
+    tempRange: { min: 24, max: 27 },
+    capacity: 20,
+    currentOccupancy: 8,
+    sortOrder: 1,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'loc-martha',
+    name: 'Martha Tent',
+    parentId: 'loc-growroom',
+    level: 'zone',
+    code: 'GRW-MT',
+    path: 'My Lab/Grow Room/Martha Tent',
+    tempRange: { min: 18, max: 22 },
     humidityRange: { min: 85, max: 95 },
     capacity: 10,
     currentOccupancy: 3,
-    sortOrder: 3,
+    sortOrder: 1,
     isActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'loc-004',
-    name: 'Storage Shelf A',
-    locationType: 'storage',
-    sortOrder: 4,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'loc-005',
-    name: 'Upstairs Closet',
-    locationType: 'storage',
-    description: 'Temperature controlled closet for slow colonization',
-    sortOrder: 5,
+    id: 'loc-shelf-a',
+    name: 'Supply Shelf A',
+    parentId: 'loc-storage',
+    level: 'shelf',
+    code: 'STR-SA',
+    path: 'My Lab/Storage Area/Supply Shelf A',
+    capacity: 30,
+    currentOccupancy: 15,
+    sortOrder: 1,
     isActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -222,18 +351,20 @@ export const sampleLocations: Location[] = [
 ];
 
 // ----------------------------------------------------------------------------
-// SAMPLE VESSEL TYPES
+// SAMPLE CONTAINERS (Unified - replaces VesselTypes and ContainerTypes)
 // ----------------------------------------------------------------------------
 
-export const sampleVesselTypes: VesselType[] = [
+export const sampleContainers: Container[] = [
+  // Culture containers
   {
-    id: 'vessel-001',
+    id: 'container-001',
     name: 'Quart Mason Jar',
-    vesselCategory: 'jar',
+    category: 'jar',
     volumeMl: 946,
     material: 'Glass',
     reusable: true,
     sterile: false,
+    usageContext: ['culture', 'grow'],
     unitCost: 150, // $1.50
     sortOrder: 1,
     isActive: true,
@@ -241,13 +372,14 @@ export const sampleVesselTypes: VesselType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'vessel-002',
+    id: 'container-002',
     name: 'Pint Mason Jar',
-    vesselCategory: 'jar',
+    category: 'jar',
     volumeMl: 473,
     material: 'Glass',
     reusable: true,
     sterile: false,
+    usageContext: ['culture'],
     unitCost: 125,
     sortOrder: 2,
     isActive: true,
@@ -255,13 +387,14 @@ export const sampleVesselTypes: VesselType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'vessel-003',
+    id: 'container-003',
     name: '100mm Petri Dish',
-    vesselCategory: 'plate',
+    category: 'plate',
     volumeMl: 50,
     material: 'Plastic',
     reusable: false,
     sterile: true,
+    usageContext: ['culture'],
     unitCost: 35,
     sortOrder: 3,
     isActive: true,
@@ -269,13 +402,14 @@ export const sampleVesselTypes: VesselType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'vessel-004',
+    id: 'container-004',
     name: '3lb Spawn Bag',
-    vesselCategory: 'bag',
+    category: 'bag',
     volumeMl: 3000,
     material: 'Polypropylene',
     reusable: false,
     sterile: false,
+    usageContext: ['culture', 'grow'],
     unitCost: 75,
     sortOrder: 4,
     isActive: true,
@@ -283,20 +417,68 @@ export const sampleVesselTypes: VesselType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'vessel-005',
+    id: 'container-005',
     name: 'LC Bottle 250ml',
-    vesselCategory: 'bottle',
+    category: 'bottle',
     volumeMl: 250,
     material: 'Borosilicate Glass',
     reusable: true,
     sterile: false,
+    usageContext: ['culture'],
     unitCost: 500,
     sortOrder: 5,
     isActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
+  // Grow containers
+  {
+    id: 'container-006',
+    name: '66qt Monotub',
+    category: 'tub',
+    volumeMl: 62000,
+    material: 'Plastic',
+    reusable: true,
+    usageContext: ['grow'],
+    unitCost: 1500,
+    sortOrder: 6,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'container-007',
+    name: '6qt Shoebox',
+    category: 'tub',
+    volumeMl: 5700,
+    material: 'Plastic',
+    reusable: true,
+    usageContext: ['grow'],
+    unitCost: 500,
+    sortOrder: 7,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'container-008',
+    name: '5 Gallon Bucket',
+    category: 'bucket',
+    volumeMl: 19000,
+    material: 'HDPE Plastic',
+    reusable: true,
+    usageContext: ['grow'],
+    unitCost: 400,
+    sortOrder: 8,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
+
+// Legacy alias for backward compatibility
+/** @deprecated Use sampleContainers instead */
+export const sampleVesselTypes = sampleContainers;
 
 // ----------------------------------------------------------------------------
 // SAMPLE INGREDIENTS
@@ -2827,4 +3009,3 @@ export const projectScope = {
     'Progressive enhancement - core features work offline (PWA)',
   ],
 };
-

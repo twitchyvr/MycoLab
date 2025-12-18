@@ -4,107 +4,101 @@
 // ============================================================================
 
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 import {
   DataStoreState, LookupHelpers,
-  Species, Strain, Location, LocationType, LocationClassification, Vessel, ContainerType, SubstrateType, Supplier,
-  InventoryCategory, InventoryItem, InventoryLot, InventoryUsage, PurchaseOrder, PurchaseOrderItem,
+  Species, Strain, Location, LocationType, LocationClassification, Container, SubstrateType, Supplier,
+  InventoryCategory, InventoryItem, InventoryLot, InventoryUsage, PurchaseOrder,
   Culture, Grow, Recipe, AppSettings,
   CultureObservation, CultureTransfer, GrowObservation, Flush, GrowStage,
-  RecipeCategoryItem, GrainType, LotStatus, OrderStatus, PaymentStatus, UsageType
+  RecipeCategoryItem, GrainType, LotStatus, UsageType,
+  EntityOutcome, ContaminationDetails, OutcomeCategory, OutcomeCode, ContaminationType, ContaminationStage, SuspectedCause
 } from './types';
-import { 
-  supabase, 
-  ensureSession, 
+import {
+  supabase,
+  ensureSession,
   getCurrentUserId,
-  getLocalSettings, 
+  getLocalSettings,
   saveLocalSettings,
-  LocalSettings 
+  LocalSettings
 } from '../lib/supabase';
 
+// Import modularized defaults and transformations
+import { emptyState } from './defaults';
+
 // ============================================================================
-// EMPTY INITIAL STATE (no sample data)
+// OUTCOME DATA TYPES (for function parameters)
 // ============================================================================
 
-// Default recipe categories (built-in, shown for all users)
-const defaultRecipeCategories: RecipeCategoryItem[] = [
-  { id: 'default-agar', name: 'Agar Media', code: 'agar', icon: '🧫', color: 'text-purple-400 bg-purple-950/50', isActive: true },
-  { id: 'default-lc', name: 'Liquid Culture', code: 'liquid_culture', icon: '💧', color: 'text-blue-400 bg-blue-950/50', isActive: true },
-  { id: 'default-grain', name: 'Grain Spawn', code: 'grain_spawn', icon: '🌾', color: 'text-amber-400 bg-amber-950/50', isActive: true },
-  { id: 'default-bulk', name: 'Bulk Substrate', code: 'bulk_substrate', icon: '🪵', color: 'text-emerald-400 bg-emerald-950/50', isActive: true },
-  { id: 'default-casing', name: 'Casing Layer', code: 'casing', icon: '🧱', color: 'text-orange-400 bg-orange-950/50', isActive: true },
-  { id: 'default-other', name: 'Other', code: 'other', icon: '📦', color: 'text-zinc-400 bg-zinc-800', isActive: true },
-];
+export interface EntityOutcomeData {
+  entityType: 'grow' | 'culture' | 'inventory_item' | 'inventory_lot' | 'equipment';
+  entityId: string;
+  entityName?: string;
+  outcomeCategory: OutcomeCategory;
+  outcomeCode: OutcomeCode;
+  outcomeLabel?: string;
+  startedAt?: Date;
+  endedAt?: Date;
+  totalCost?: number;
+  totalYieldWet?: number;
+  totalYieldDry?: number;
+  biologicalEfficiency?: number;
+  flushCount?: number;
+  strainId?: string;
+  strainName?: string;
+  speciesId?: string;
+  speciesName?: string;
+  locationId?: string;
+  locationName?: string;
+  surveyResponses?: Record<string, unknown>;
+  notes?: string;
+}
 
-// Default grain types (built-in spawn grain options)
-const defaultGrainTypes: GrainType[] = [
-  { id: 'default-oat', name: 'Oat Groats', code: 'oat_groats', isActive: true },
-  { id: 'default-rye', name: 'Rye Berries', code: 'rye_berries', isActive: true },
-  { id: 'default-wheat', name: 'Wheat Berries', code: 'wheat', isActive: true },
-  { id: 'default-millet', name: 'Millet', code: 'millet', isActive: true },
-  { id: 'default-popcorn', name: 'Popcorn', code: 'popcorn', isActive: true },
-  { id: 'default-brf', name: 'Brown Rice Flour (BRF)', code: 'brf', isActive: true },
-  { id: 'default-wbs', name: 'Wild Bird Seed', code: 'wbs', isActive: true },
-  { id: 'default-sorghum', name: 'Sorghum', code: 'sorghum', isActive: true },
-];
-
-// Default location types (built-in, customizable by user)
-const defaultLocationTypes: LocationType[] = [
-  { id: 'default-incubation', name: 'Incubation', code: 'incubation', description: 'Warm, dark area for colonization', isActive: true },
-  { id: 'default-fruiting', name: 'Fruiting', code: 'fruiting', description: 'Humid environment with FAE for pinning and growth', isActive: true },
-  { id: 'default-storage', name: 'Storage', code: 'storage', description: 'General storage area', isActive: true },
-  { id: 'default-lab', name: 'Lab', code: 'lab', description: 'Clean lab area for sterile work', isActive: true },
-  { id: 'default-cold-storage', name: 'Cold Storage', code: 'cold_storage', description: 'Refrigerated storage for cultures and supplies', isActive: true },
-  { id: 'default-drying', name: 'Drying', code: 'drying', description: 'Area for drying harvested mushrooms', isActive: true },
-  { id: 'default-other', name: 'Other', code: 'other', description: 'Other location type', isActive: true },
-];
-
-// Default location classifications (built-in, customizable by user)
-const defaultLocationClassifications: LocationClassification[] = [
-  { id: 'default-clean-room', name: 'Clean Room', code: 'clean_room', description: 'Sterile/clean environment', isActive: true },
-  { id: 'default-greenhouse', name: 'Greenhouse', code: 'greenhouse', description: 'Greenhouse or grow tent', isActive: true },
-  { id: 'default-indoor', name: 'Indoor', code: 'indoor', description: 'Indoor room or closet', isActive: true },
-  { id: 'default-outdoor', name: 'Outdoor', code: 'outdoor', description: 'Outdoor growing area', isActive: true },
-  { id: 'default-basement', name: 'Basement', code: 'basement', description: 'Basement or cellar', isActive: true },
-  { id: 'default-garage', name: 'Garage', code: 'garage', description: 'Garage or workshop', isActive: true },
-  { id: 'default-shed', name: 'Shed', code: 'shed', description: 'Outdoor shed or outbuilding', isActive: true },
-  { id: 'default-tent', name: 'Grow Tent', code: 'grow_tent', description: 'Enclosed grow tent', isActive: true },
-  { id: 'default-chamber', name: 'Fruiting Chamber', code: 'fruiting_chamber', description: 'Dedicated fruiting chamber (SGFC, monotub, etc.)', isActive: true },
-];
-
-const emptyState: DataStoreState = {
-  species: [],
-  strains: [],
-  locations: [],
-  locationTypes: [...defaultLocationTypes],
-  locationClassifications: [...defaultLocationClassifications],
-  vessels: [],
-  containerTypes: [],
-  substrateTypes: [],
-  suppliers: [],
-  inventoryCategories: [],
-  recipeCategories: [...defaultRecipeCategories],
-  grainTypes: [...defaultGrainTypes],
-  inventoryItems: [],
-  inventoryLots: [],
-  inventoryUsages: [],
-  purchaseOrders: [],
-  cultures: [],
-  grows: [],
-  recipes: [],
-  settings: {
-    defaultUnits: 'metric',
-    defaultCurrency: 'USD',
-    altitude: 0,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Chicago',
-    notifications: {
-      enabled: true,
-      harvestReminders: true,
-      lowStockAlerts: true,
-      contaminationAlerts: true,
-    },
-  },
-};
+export interface ContaminationDetailsData {
+  contaminationType?: ContaminationType;
+  contaminationStage?: ContaminationStage;
+  daysToDetection?: number;
+  suspectedCause?: SuspectedCause;
+  temperatureAtDetection?: number;
+  humidityAtDetection?: number;
+  images?: string[];
+  notes?: string;
+}
+import {
+  transformStrainFromDb,
+  transformStrainToDb,
+  transformLocationTypeFromDb,
+  transformLocationTypeToDb,
+  transformLocationClassificationFromDb,
+  transformLocationClassificationToDb,
+  transformLocationFromDb,
+  transformLocationToDb,
+  transformContainerFromDb,
+  transformContainerToDb,
+  transformSubstrateTypeFromDb,
+  transformSubstrateTypeToDb,
+  transformInventoryCategoryFromDb,
+  transformInventoryCategoryToDb,
+  transformInventoryItemFromDb,
+  transformRecipeCategoryFromDb,
+  transformRecipeCategoryToDb,
+  transformCultureFromDb,
+  transformCultureToDb,
+  transformGrowFromDb,
+  transformGrowToDb,
+  transformRecipeFromDb,
+  transformRecipeToDb,
+  transformSupplierFromDb,
+  transformSupplierToDb,
+  transformFlushFromDb,
+  transformFlushToDb,
+  transformGrainTypeFromDb,
+  transformGrainTypeToDb,
+  transformInventoryLotFromDb,
+  transformInventoryLotToDb,
+  transformPurchaseOrderFromDb,
+  transformPurchaseOrderToDb,
+} from './transformations';
 
 // ============================================================================
 // SUPABASE CLIENT HELPER
@@ -114,591 +108,6 @@ const emptyState: DataStoreState = {
 // Security: No longer reading credentials from localStorage
 const getSupabaseClient = (): SupabaseClient | null => {
   return supabase;
-};
-
-// ============================================================================
-// DATA TRANSFORMATION UTILITIES
-// ============================================================================
-
-// Transform Strain from DB format
-const transformStrainFromDb = (row: any): Strain => ({
-  id: row.id,
-  name: row.name,
-  speciesId: row.species_id,
-  species: row.species || '',
-  // Variety/Phenotype tracking
-  variety: row.variety,
-  phenotype: row.phenotype,
-  geneticsSource: row.genetics_source,
-  isolationType: row.isolation_type,
-  generation: row.generation,
-  // Growing characteristics
-  difficulty: row.difficulty || 'intermediate',
-  colonizationDays: {
-    min: row.colonization_days_min || 14,
-    max: row.colonization_days_max || 21
-  },
-  fruitingDays: {
-    min: row.fruiting_days_min || 7,
-    max: row.fruiting_days_max || 14
-  },
-  optimalTempColonization: {
-    min: row.optimal_temp_colonization || 24,
-    max: row.optimal_temp_colonization || 27
-  },
-  optimalTempFruiting: {
-    min: row.optimal_temp_fruiting || 20,
-    max: row.optimal_temp_fruiting || 24
-  },
-  // Additional metadata
-  origin: row.origin,
-  description: row.description,
-  notes: row.notes,
-  isActive: row.is_active ?? true,
-});
-
-// Transform Strain to DB format
-const transformStrainToDb = (strain: Partial<Strain>, userId?: string | null) => ({
-  name: strain.name,
-  species_id: strain.speciesId,
-  species: strain.species,
-  // Variety/Phenotype tracking
-  variety: strain.variety,
-  phenotype: strain.phenotype,
-  genetics_source: strain.geneticsSource,
-  isolation_type: strain.isolationType,
-  generation: strain.generation,
-  // Growing characteristics
-  difficulty: strain.difficulty,
-  colonization_days_min: strain.colonizationDays?.min,
-  colonization_days_max: strain.colonizationDays?.max,
-  fruiting_days_min: strain.fruitingDays?.min,
-  fruiting_days_max: strain.fruitingDays?.max,
-  optimal_temp_colonization: strain.optimalTempColonization?.min,
-  optimal_temp_fruiting: strain.optimalTempFruiting?.min,
-  // Additional metadata
-  origin: strain.origin,
-  description: strain.description,
-  notes: strain.notes,
-  is_active: strain.isActive,
-  ...(userId && { user_id: userId }),
-});
-
-// Transform LocationType from DB format
-const transformLocationTypeFromDb = (row: any): LocationType => ({
-  id: row.id,
-  name: row.name,
-  code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
-  description: row.description,
-  notes: row.notes,
-  isActive: row.is_active ?? true,
-});
-
-// Transform LocationType to DB format
-const transformLocationTypeToDb = (lt: Partial<LocationType>, userId?: string | null) => ({
-  name: lt.name,
-  code: lt.code,
-  description: lt.description,
-  notes: lt.notes,
-  is_active: lt.isActive,
-  ...(userId && { user_id: userId }),
-});
-
-// Transform LocationClassification from DB format
-const transformLocationClassificationFromDb = (row: any): LocationClassification => ({
-  id: row.id,
-  name: row.name,
-  code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
-  description: row.description,
-  notes: row.notes,
-  isActive: row.is_active ?? true,
-});
-
-// Transform LocationClassification to DB format
-const transformLocationClassificationToDb = (lc: Partial<LocationClassification>, userId?: string | null) => ({
-  name: lc.name,
-  code: lc.code,
-  description: lc.description,
-  notes: lc.notes,
-  is_active: lc.isActive,
-  ...(userId && { user_id: userId }),
-});
-
-// Transform Location from DB format
-const transformLocationFromDb = (row: any): Location => ({
-  id: row.id,
-  name: row.name,
-  type: row.type || undefined,
-  typeId: row.type_id,
-  classificationId: row.classification_id,
-  tempRange: row.temp_min || row.temp_max ? { min: row.temp_min, max: row.temp_max } : undefined,
-  humidityRange: row.humidity_min || row.humidity_max ? { min: row.humidity_min, max: row.humidity_max } : undefined,
-  hasPower: row.has_power,
-  powerUsage: row.power_usage,
-  hasAirCirculation: row.has_air_circulation,
-  size: row.size,
-  supplierId: row.supplier_id,
-  cost: row.cost ? parseFloat(row.cost) : undefined,
-  procurementDate: row.procurement_date ? new Date(row.procurement_date) : undefined,
-  notes: row.notes,
-  isActive: row.is_active ?? true,
-});
-
-// Helper to filter out default IDs (not valid UUIDs for DB)
-const toDbId = (id: string | undefined): string | null => {
-  if (!id || id.startsWith('default-')) return null;
-  return id;
-};
-
-// Transform Location to DB format
-const transformLocationToDb = (location: Partial<Location>, userId?: string | null) => ({
-  name: location.name,
-  type: location.type,
-  type_id: toDbId(location.typeId),
-  classification_id: toDbId(location.classificationId),
-  temp_min: location.tempRange?.min,
-  temp_max: location.tempRange?.max,
-  humidity_min: location.humidityRange?.min,
-  humidity_max: location.humidityRange?.max,
-  has_power: location.hasPower,
-  power_usage: location.powerUsage,
-  has_air_circulation: location.hasAirCirculation,
-  size: location.size,
-  supplier_id: toDbId(location.supplierId),
-  cost: location.cost,
-  procurement_date: location.procurementDate?.toISOString(),
-  notes: location.notes,
-  is_active: location.isActive,
-  ...(userId && { user_id: userId }),
-});
-
-// Transform Vessel from DB format
-const transformVesselFromDb = (row: any): Vessel => ({
-  id: row.id,
-  name: row.name,
-  type: row.type || 'jar',
-  volumeMl: row.volume_ml,
-  isReusable: row.is_reusable ?? true,
-  notes: row.notes,
-  isActive: row.is_active ?? true,
-});
-
-// Transform Vessel to DB format
-const transformVesselToDb = (vessel: Partial<Vessel>, userId?: string | null) => ({
-  name: vessel.name,
-  type: vessel.type,
-  volume_ml: vessel.volumeMl,
-  is_reusable: vessel.isReusable,
-  notes: vessel.notes,
-  is_active: vessel.isActive,
-  ...(userId && { user_id: userId }),
-});
-
-// Transform ContainerType from DB format
-const transformContainerTypeFromDb = (row: any): ContainerType => ({
-  id: row.id,
-  name: row.name,
-  category: row.category || 'tub',
-  volumeL: row.volume_l ? parseFloat(row.volume_l) : undefined,
-  notes: row.notes,
-  isActive: row.is_active ?? true,
-});
-
-// Transform ContainerType to DB format
-const transformContainerTypeToDb = (ct: Partial<ContainerType>, userId?: string | null) => ({
-  name: ct.name,
-  category: ct.category,
-  volume_l: ct.volumeL,
-  notes: ct.notes,
-  is_active: ct.isActive,
-  ...(userId && { user_id: userId }),
-});
-
-// Transform SubstrateType from DB format
-const transformSubstrateTypeFromDb = (row: any): SubstrateType => ({
-  id: row.id,
-  name: row.name,
-  code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
-  category: row.category || 'bulk',
-  spawnRateRange: {
-    min: row.spawn_rate_min || 10,
-    optimal: row.spawn_rate_optimal || 20,
-    max: row.spawn_rate_max || 30,
-  },
-  fieldCapacity: row.field_capacity,
-  notes: row.notes,
-  isActive: row.is_active ?? true,
-});
-
-// Transform SubstrateType to DB format
-const transformSubstrateTypeToDb = (st: Partial<SubstrateType>, userId?: string | null) => ({
-  name: st.name,
-  code: st.code,
-  category: st.category,
-  spawn_rate_min: st.spawnRateRange?.min,
-  spawn_rate_optimal: st.spawnRateRange?.optimal,
-  spawn_rate_max: st.spawnRateRange?.max,
-  field_capacity: st.fieldCapacity,
-  notes: st.notes,
-  is_active: st.isActive,
-  ...(userId && { user_id: userId }),
-});
-
-// Transform InventoryCategory from DB format
-const transformInventoryCategoryFromDb = (row: any): InventoryCategory => ({
-  id: row.id,
-  name: row.name,
-  color: row.color || '#6b7280',
-  icon: row.icon,
-  isActive: row.is_active ?? true,
-});
-
-// Transform InventoryCategory to DB format
-const transformInventoryCategoryToDb = (cat: Partial<InventoryCategory>, userId?: string | null) => ({
-  name: cat.name,
-  color: cat.color,
-  icon: cat.icon,
-  is_active: cat.isActive,
-  ...(userId && { user_id: userId }),
-});
-
-// Transform RecipeCategoryItem from DB format
-const transformRecipeCategoryFromDb = (row: any): RecipeCategoryItem => ({
-  id: row.id,
-  name: row.name,
-  code: row.code,
-  icon: row.icon || '📦',
-  color: row.color || 'text-zinc-400 bg-zinc-800',
-  isActive: row.is_active ?? true,
-});
-
-// Transform RecipeCategoryItem to DB format
-const transformRecipeCategoryToDb = (cat: Partial<RecipeCategoryItem>, userId?: string | null) => ({
-  name: cat.name,
-  code: cat.code,
-  icon: cat.icon,
-  color: cat.color,
-  is_active: cat.isActive,
-  ...(userId && { user_id: userId }),
-});
-
-// Transform Culture from DB format
-const transformCultureFromDb = (row: any): Culture => ({
-  id: row.id,
-  type: row.type,
-  label: row.label,
-  strainId: row.strain_id,
-  status: row.status || 'active',
-  parentId: row.parent_id,
-  generation: row.generation || 0,
-  locationId: row.location_id,
-  vesselId: row.vessel_id,
-  recipeId: row.recipe_id,
-  volumeMl: row.volume_ml,
-  fillVolumeMl: row.fill_volume_ml,
-  prepDate: row.prep_date,
-  sterilizationDate: row.sterilization_date,
-  healthRating: row.health_rating || 5,
-  notes: row.notes,
-  cost: row.cost || 0,
-  supplierId: row.supplier_id,
-  lotNumber: row.lot_number,
-  expiresAt: row.expires_at ? new Date(row.expires_at) : undefined,
-  createdAt: new Date(row.created_at),
-  updatedAt: new Date(row.updated_at),
-  observations: [],
-  transfers: [],
-});
-
-// Transform Culture to DB format
-const transformCultureToDb = (culture: Partial<Culture>) => {
-  const result: Record<string, any> = {};
-  if (culture.type !== undefined) result.type = culture.type;
-  if (culture.label !== undefined) result.label = culture.label;
-  if (culture.strainId !== undefined) result.strain_id = culture.strainId;
-  if (culture.status !== undefined) result.status = culture.status;
-  if (culture.parentId !== undefined) result.parent_id = culture.parentId;
-  if (culture.generation !== undefined) result.generation = culture.generation;
-  if (culture.locationId !== undefined) result.location_id = culture.locationId;
-  if (culture.vesselId !== undefined) result.vessel_id = culture.vesselId;
-  if (culture.recipeId !== undefined) result.recipe_id = culture.recipeId;
-  if (culture.volumeMl !== undefined) result.volume_ml = culture.volumeMl;
-  if (culture.fillVolumeMl !== undefined) result.fill_volume_ml = culture.fillVolumeMl;
-  if (culture.prepDate !== undefined) result.prep_date = culture.prepDate;
-  if (culture.sterilizationDate !== undefined) result.sterilization_date = culture.sterilizationDate;
-  if (culture.healthRating !== undefined) result.health_rating = culture.healthRating;
-  if (culture.notes !== undefined) result.notes = culture.notes;
-  if (culture.cost !== undefined) result.cost = culture.cost;
-  if (culture.supplierId !== undefined) result.supplier_id = culture.supplierId;
-  if (culture.lotNumber !== undefined) result.lot_number = culture.lotNumber;
-  if (culture.expiresAt !== undefined) result.expires_at = culture.expiresAt instanceof Date ? culture.expiresAt.toISOString() : culture.expiresAt;
-  return result;
-};
-
-// Transform Grow from DB format
-const transformGrowFromDb = (row: any): Grow => ({
-  id: row.id,
-  name: row.name,
-  strainId: row.strain_id,
-  status: row.status || 'active',
-  currentStage: row.current_stage || 'spawning',
-  sourceCultureId: row.source_culture_id,
-  spawnType: row.spawn_type || 'grain',
-  spawnWeight: row.spawn_weight || 0,
-  substrateTypeId: row.substrate_type_id,
-  substrateWeight: row.substrate_weight || 0,
-  spawnRate: row.spawn_rate || 20,
-  containerTypeId: row.container_type_id,
-  containerCount: row.container_count || 1,
-  spawnedAt: new Date(row.spawned_at),
-  colonizationStartedAt: row.colonization_started_at ? new Date(row.colonization_started_at) : undefined,
-  fruitingStartedAt: row.fruiting_started_at ? new Date(row.fruiting_started_at) : undefined,
-  completedAt: row.completed_at ? new Date(row.completed_at) : undefined,
-  locationId: row.location_id,
-  targetTempColonization: row.target_temp_colonization || 24,
-  targetTempFruiting: row.target_temp_fruiting || 22,
-  targetHumidity: row.target_humidity || 90,
-  totalYield: row.total_yield || 0,
-  estimatedCost: row.estimated_cost || 0,
-  notes: row.notes,
-  createdAt: new Date(row.created_at),
-  observations: [],
-  flushes: [],
-});
-
-// Transform Grow to DB format
-const transformGrowToDb = (grow: Partial<Grow>) => {
-  const result: Record<string, any> = {};
-  if (grow.name !== undefined) result.name = grow.name;
-  if (grow.strainId !== undefined) result.strain_id = grow.strainId;
-  if (grow.status !== undefined) result.status = grow.status;
-  if (grow.currentStage !== undefined) result.current_stage = grow.currentStage;
-  if (grow.sourceCultureId !== undefined) result.source_culture_id = grow.sourceCultureId;
-  if (grow.spawnType !== undefined) result.spawn_type = grow.spawnType;
-  if (grow.spawnWeight !== undefined) result.spawn_weight = grow.spawnWeight;
-  if (grow.substrateTypeId !== undefined) result.substrate_type_id = grow.substrateTypeId;
-  if (grow.substrateWeight !== undefined) result.substrate_weight = grow.substrateWeight;
-  if (grow.spawnRate !== undefined) result.spawn_rate = grow.spawnRate;
-  if (grow.containerTypeId !== undefined) result.container_type_id = grow.containerTypeId;
-  if (grow.containerCount !== undefined) result.container_count = grow.containerCount;
-  if (grow.spawnedAt !== undefined) result.spawned_at = grow.spawnedAt instanceof Date ? grow.spawnedAt.toISOString() : grow.spawnedAt;
-  if (grow.colonizationStartedAt !== undefined) result.colonization_started_at = grow.colonizationStartedAt instanceof Date ? grow.colonizationStartedAt.toISOString() : grow.colonizationStartedAt;
-  if (grow.fruitingStartedAt !== undefined) result.fruiting_started_at = grow.fruitingStartedAt instanceof Date ? grow.fruitingStartedAt.toISOString() : grow.fruitingStartedAt;
-  if (grow.completedAt !== undefined) result.completed_at = grow.completedAt instanceof Date ? grow.completedAt.toISOString() : grow.completedAt;
-  if (grow.locationId !== undefined) result.location_id = grow.locationId;
-  if (grow.targetTempColonization !== undefined) result.target_temp_colonization = grow.targetTempColonization;
-  if (grow.targetTempFruiting !== undefined) result.target_temp_fruiting = grow.targetTempFruiting;
-  if (grow.targetHumidity !== undefined) result.target_humidity = grow.targetHumidity;
-  if (grow.totalYield !== undefined) result.total_yield = grow.totalYield;
-  if (grow.estimatedCost !== undefined) result.estimated_cost = grow.estimatedCost;
-  if (grow.notes !== undefined) result.notes = grow.notes;
-  return result;
-};
-
-// Transform Recipe from DB format
-const transformRecipeFromDb = (row: any): Recipe => ({
-  id: row.id,
-  name: row.name,
-  category: row.category,
-  description: row.description || '',
-  yield: {
-    amount: row.yield_amount || 500,
-    unit: row.yield_unit || 'ml'
-  },
-  prepTime: row.prep_time_minutes,
-  sterilizationTime: row.sterilization_time,
-  sterilizationPsi: row.sterilization_psi || 15,
-  ingredients: [],
-  instructions: row.instructions || [],
-  tips: row.tips || [],
-  sourceUrl: row.source_url,
-  costPerBatch: row.cost_per_batch,
-  notes: row.notes,
-  isActive: row.is_active ?? true,
-  createdAt: new Date(row.created_at),
-  updatedAt: new Date(row.updated_at),
-});
-
-// Transform Recipe to DB format
-const transformRecipeToDb = (recipe: Partial<Recipe>) => {
-  const result: Record<string, any> = {};
-  if (recipe.name !== undefined) result.name = recipe.name;
-  if (recipe.category !== undefined) result.category = recipe.category;
-  if (recipe.description !== undefined) result.description = recipe.description;
-  if (recipe.yield !== undefined) {
-    result.yield_amount = recipe.yield.amount;
-    result.yield_unit = recipe.yield.unit;
-  }
-  if (recipe.prepTime !== undefined) result.prep_time_minutes = recipe.prepTime;
-  if (recipe.sterilizationTime !== undefined) result.sterilization_time = recipe.sterilizationTime;
-  if (recipe.sterilizationPsi !== undefined) result.sterilization_psi = recipe.sterilizationPsi;
-  if (recipe.instructions !== undefined) result.instructions = recipe.instructions;
-  if (recipe.tips !== undefined) result.tips = recipe.tips;
-  if (recipe.sourceUrl !== undefined) result.source_url = recipe.sourceUrl;
-  if (recipe.costPerBatch !== undefined) result.cost_per_batch = recipe.costPerBatch;
-  if (recipe.notes !== undefined) result.notes = recipe.notes;
-  if (recipe.isActive !== undefined) result.is_active = recipe.isActive;
-  return result;
-};
-
-// Transform Supplier from DB format
-const transformSupplierFromDb = (row: any): Supplier => ({
-  id: row.id,
-  name: row.name,
-  website: row.website,
-  email: row.email,
-  phone: row.phone,
-  notes: row.notes,
-  isActive: row.is_active ?? true,
-});
-
-// Transform Supplier to DB format
-const transformSupplierToDb = (supplier: Partial<Supplier>, userId?: string | null) => ({
-  name: supplier.name,
-  website: supplier.website,
-  email: supplier.email,
-  phone: supplier.phone,
-  notes: supplier.notes,
-  is_active: supplier.isActive,
-  ...(userId && { user_id: userId }),
-});
-
-// Transform Flush from DB format
-const transformFlushFromDb = (row: any): Flush => ({
-  id: row.id,
-  flushNumber: row.flush_number,
-  harvestDate: new Date(row.harvest_date),
-  wetWeight: row.wet_weight_g,
-  dryWeight: row.dry_weight_g,
-  mushroomCount: row.mushroom_count,
-  quality: row.quality || 'good',
-  notes: row.notes,
-});
-
-// Transform Flush to DB format
-const transformFlushToDb = (flush: Omit<Flush, 'id'>, growId: string) => ({
-  grow_id: growId,
-  flush_number: flush.flushNumber,
-  harvest_date: flush.harvestDate instanceof Date ? flush.harvestDate.toISOString() : flush.harvestDate,
-  wet_weight_g: flush.wetWeight,
-  dry_weight_g: flush.dryWeight,
-  mushroom_count: flush.mushroomCount,
-  quality: flush.quality,
-  notes: flush.notes,
-});
-
-// Transform GrainType from DB format
-const transformGrainTypeFromDb = (row: any): GrainType => ({
-  id: row.id,
-  name: row.name,
-  code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
-  notes: row.notes,
-  isActive: row.is_active ?? true,
-});
-
-// Transform GrainType to DB format
-const transformGrainTypeToDb = (grain: Partial<GrainType>, userId?: string | null) => ({
-  name: grain.name,
-  code: grain.code,
-  notes: grain.notes,
-  is_active: grain.isActive,
-  ...(userId && { user_id: userId }),
-});
-
-// Transform InventoryLot from DB format
-const transformInventoryLotFromDb = (row: any): InventoryLot => ({
-  id: row.id,
-  inventoryItemId: row.inventory_item_id,
-  quantity: parseFloat(row.quantity) || 0,
-  originalQuantity: parseFloat(row.original_quantity) || 0,
-  unit: row.unit || 'g',
-  status: row.status || 'available',
-  purchaseOrderId: row.purchase_order_id,
-  supplierId: row.supplier_id,
-  purchaseDate: row.purchase_date ? new Date(row.purchase_date) : undefined,
-  purchaseCost: row.purchase_cost ? parseFloat(row.purchase_cost) : undefined,
-  locationId: row.location_id,
-  expirationDate: row.expiration_date ? new Date(row.expiration_date) : undefined,
-  lotNumber: row.lot_number,
-  images: row.images || [],
-  notes: row.notes,
-  createdAt: new Date(row.created_at),
-  updatedAt: new Date(row.updated_at),
-  isActive: row.is_active ?? true,
-});
-
-// Transform InventoryLot to DB format
-const transformInventoryLotToDb = (lot: Partial<InventoryLot>) => {
-  const result: Record<string, any> = {};
-  if (lot.inventoryItemId !== undefined) result.inventory_item_id = lot.inventoryItemId;
-  if (lot.quantity !== undefined) result.quantity = lot.quantity;
-  if (lot.originalQuantity !== undefined) result.original_quantity = lot.originalQuantity;
-  if (lot.unit !== undefined) result.unit = lot.unit;
-  if (lot.status !== undefined) result.status = lot.status;
-  if (lot.purchaseOrderId !== undefined) result.purchase_order_id = lot.purchaseOrderId;
-  if (lot.supplierId !== undefined) result.supplier_id = lot.supplierId;
-  if (lot.purchaseDate !== undefined) result.purchase_date = lot.purchaseDate instanceof Date ? lot.purchaseDate.toISOString() : lot.purchaseDate;
-  if (lot.purchaseCost !== undefined) result.purchase_cost = lot.purchaseCost;
-  if (lot.locationId !== undefined) result.location_id = lot.locationId;
-  if (lot.expirationDate !== undefined) result.expiration_date = lot.expirationDate instanceof Date ? lot.expirationDate.toISOString() : lot.expirationDate;
-  if (lot.lotNumber !== undefined) result.lot_number = lot.lotNumber;
-  if (lot.images !== undefined) result.images = lot.images;
-  if (lot.notes !== undefined) result.notes = lot.notes;
-  if (lot.isActive !== undefined) result.is_active = lot.isActive;
-  return result;
-};
-
-// Transform PurchaseOrder from DB format
-const transformPurchaseOrderFromDb = (row: any): PurchaseOrder => ({
-  id: row.id,
-  orderNumber: row.order_number,
-  supplierId: row.supplier_id,
-  status: row.status || 'draft',
-  paymentStatus: row.payment_status || 'unpaid',
-  items: row.items || [],
-  subtotal: parseFloat(row.subtotal) || 0,
-  shipping: parseFloat(row.shipping) || 0,
-  tax: parseFloat(row.tax) || 0,
-  total: parseFloat(row.total) || 0,
-  orderDate: new Date(row.order_date),
-  expectedDate: row.expected_date ? new Date(row.expected_date) : undefined,
-  receivedDate: row.received_date ? new Date(row.received_date) : undefined,
-  trackingNumber: row.tracking_number,
-  trackingUrl: row.tracking_url,
-  orderUrl: row.order_url,
-  receiptImage: row.receipt_image,
-  invoiceImage: row.invoice_image,
-  images: row.images || [],
-  notes: row.notes,
-  createdAt: new Date(row.created_at),
-  updatedAt: new Date(row.updated_at),
-  isActive: row.is_active ?? true,
-});
-
-// Transform PurchaseOrder to DB format
-const transformPurchaseOrderToDb = (order: Partial<PurchaseOrder>) => {
-  const result: Record<string, any> = {};
-  if (order.orderNumber !== undefined) result.order_number = order.orderNumber;
-  if (order.supplierId !== undefined) result.supplier_id = order.supplierId;
-  if (order.status !== undefined) result.status = order.status;
-  if (order.paymentStatus !== undefined) result.payment_status = order.paymentStatus;
-  if (order.items !== undefined) result.items = order.items;
-  if (order.subtotal !== undefined) result.subtotal = order.subtotal;
-  if (order.shipping !== undefined) result.shipping = order.shipping;
-  if (order.tax !== undefined) result.tax = order.tax;
-  if (order.total !== undefined) result.total = order.total;
-  if (order.orderDate !== undefined) result.order_date = order.orderDate instanceof Date ? order.orderDate.toISOString() : order.orderDate;
-  if (order.expectedDate !== undefined) result.expected_date = order.expectedDate instanceof Date ? order.expectedDate.toISOString() : order.expectedDate;
-  if (order.receivedDate !== undefined) result.received_date = order.receivedDate instanceof Date ? order.receivedDate.toISOString() : order.receivedDate;
-  if (order.trackingNumber !== undefined) result.tracking_number = order.trackingNumber;
-  if (order.trackingUrl !== undefined) result.tracking_url = order.trackingUrl;
-  if (order.orderUrl !== undefined) result.order_url = order.orderUrl;
-  if (order.receiptImage !== undefined) result.receipt_image = order.receiptImage;
-  if (order.invoiceImage !== undefined) result.invoice_image = order.invoiceImage;
-  if (order.images !== undefined) result.images = order.images;
-  if (order.notes !== undefined) result.notes = order.notes;
-  if (order.isActive !== undefined) result.is_active = order.isActive;
-  return result;
 };
 
 // ============================================================================
@@ -736,15 +145,10 @@ interface DataContextValue extends LookupHelpers {
   updateLocationClassification: (id: string, updates: Partial<LocationClassification>) => Promise<void>;
   deleteLocationClassification: (id: string) => Promise<void>;
 
-  // Vessel CRUD
-  addVessel: (vessel: Omit<Vessel, 'id'>) => Promise<Vessel>;
-  updateVessel: (id: string, updates: Partial<Vessel>) => Promise<void>;
-  deleteVessel: (id: string) => Promise<void>;
-  
-  // Container Type CRUD
-  addContainerType: (containerType: Omit<ContainerType, 'id'>) => Promise<ContainerType>;
-  updateContainerType: (id: string, updates: Partial<ContainerType>) => Promise<void>;
-  deleteContainerType: (id: string) => Promise<void>;
+  // Container CRUD (unified - replaces Vessel and ContainerType)
+  addContainer: (container: Omit<Container, 'id'>) => Promise<Container>;
+  updateContainer: (id: string, updates: Partial<Container>) => Promise<void>;
+  deleteContainer: (id: string) => Promise<void>;
   
   // Substrate Type CRUD
   addSubstrateType: (substrateType: Omit<SubstrateType, 'id'>) => Promise<SubstrateType>;
@@ -803,11 +207,15 @@ interface DataContextValue extends LookupHelpers {
   // Grow CRUD
   addGrow: (grow: Omit<Grow, 'id' | 'createdAt' | 'observations' | 'flushes' | 'totalYield'>) => Promise<Grow>;
   updateGrow: (id: string, updates: Partial<Grow>) => Promise<void>;
-  deleteGrow: (id: string) => Promise<void>;
+  deleteGrow: (id: string, outcome?: EntityOutcomeData) => Promise<void>;
   advanceGrowStage: (growId: string) => Promise<void>;
   markGrowContaminated: (growId: string, notes?: string) => Promise<void>;
   addGrowObservation: (growId: string, observation: Omit<GrowObservation, 'id'>) => void;
   addFlush: (growId: string, flush: Omit<Flush, 'id' | 'flushNumber'>) => Promise<void>;
+
+  // Outcome Logging
+  saveEntityOutcome: (outcome: EntityOutcomeData) => Promise<EntityOutcome>;
+  saveContaminationDetails: (outcomeId: string, details: ContaminationDetailsData) => Promise<void>;
   
   // Recipe CRUD
   addRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Recipe>;
@@ -874,7 +282,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .select('*')
         .order('name');
       if (locationsError) throw locationsError;
-      
+
+      // Load location types
+      const { data: locationTypesData, error: locationTypesError } = await client
+        .from('location_types')
+        .select('*')
+        .order('name');
+      if (locationTypesError) console.warn('Location types error:', locationTypesError);
+
+      // Load location classifications
+      const { data: locationClassificationsData, error: locationClassificationsError } = await client
+        .from('location_classifications')
+        .select('*')
+        .order('name');
+      if (locationClassificationsError) console.warn('Location classifications error:', locationClassificationsError);
+
       // Load suppliers
       const { data: suppliersData, error: suppliersError } = await client
         .from('suppliers')
@@ -882,19 +304,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .order('name');
       if (suppliersError) throw suppliersError;
       
-      // Load vessels
-      const { data: vesselsData, error: vesselsError } = await client
-        .from('vessels')
+      // Load containers (unified - replaces vessels and container_types)
+      const { data: containersData, error: containersError } = await client
+        .from('containers')
         .select('*')
         .order('name');
-      if (vesselsError) console.warn('Vessels table error:', vesselsError);
-      
-      // Load container types
-      const { data: containerTypesData, error: containerTypesError } = await client
-        .from('container_types')
-        .select('*')
-        .order('name');
-      if (containerTypesError) console.warn('Container types error:', containerTypesError);
+      if (containersError) console.warn('Containers table error:', containersError);
       
       // Load substrate types
       const { data: substrateTypesData, error: substrateTypesError } = await client
@@ -910,12 +325,26 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .order('name');
       if (inventoryCategoriesError) console.warn('Inventory categories error:', inventoryCategoriesError);
 
-      // Load custom recipe categories (personal items from database)
+      // Load inventory items
+      const { data: inventoryItemsData, error: inventoryItemsError } = await client
+        .from('inventory_items')
+        .select('*')
+        .order('name');
+      if (inventoryItemsError) console.warn('Inventory items error:', inventoryItemsError);
+
+      // Load recipe categories
       const { data: recipeCategoriesData, error: recipeCategoriesError } = await client
         .from('recipe_categories')
         .select('*')
         .order('name');
       if (recipeCategoriesError) console.warn('Recipe categories error:', recipeCategoriesError);
+
+      // Load grain types
+      const { data: grainTypesData, error: grainTypesError } = await client
+        .from('grain_types')
+        .select('*')
+        .order('name');
+      if (grainTypesError) console.warn('Grain types error:', grainTypesError);
 
       // Load cultures
       const { data: culturesData, error: culturesError } = await client
@@ -1028,21 +457,20 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         return grow;
       });
 
-      // Merge default recipe categories with custom ones from database
-      const customRecipeCategories = (recipeCategoriesData || []).map(transformRecipeCategoryFromDb);
-      const allRecipeCategories = [...defaultRecipeCategories, ...customRecipeCategories];
-
       setState(prev => ({
         ...prev,
         species,
         strains: (strainsData || []).map(transformStrainFromDb),
         locations: (locationsData || []).map(transformLocationFromDb),
+        locationTypes: (locationTypesData || []).map(transformLocationTypeFromDb),
+        locationClassifications: (locationClassificationsData || []).map(transformLocationClassificationFromDb),
         suppliers: (suppliersData || []).map(transformSupplierFromDb),
-        vessels: (vesselsData || []).map(transformVesselFromDb),
-        containerTypes: (containerTypesData || []).map(transformContainerTypeFromDb),
+        containers: (containersData || []).map(transformContainerFromDb),
         substrateTypes: (substrateTypesData || []).map(transformSubstrateTypeFromDb),
         inventoryCategories: (inventoryCategoriesData || []).map(transformInventoryCategoryFromDb),
-        recipeCategories: allRecipeCategories,
+        inventoryItems: (inventoryItemsData || []).map(transformInventoryItemFromDb),
+        recipeCategories: (recipeCategoriesData || []).map(transformRecipeCategoryFromDb),
+        grainTypes: (grainTypesData || []).map(transformGrainTypeFromDb),
         cultures: (culturesData || []).map(transformCultureFromDb),
         grows: growsWithFlushes,
         recipes: (recipesData || []).map(transformRecipeFromDb),
@@ -1108,8 +536,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const getLocation = useCallback((id: string) => state.locations.find(l => l.id === id), [state.locations]);
   const getLocationType = useCallback((id: string) => state.locationTypes.find(lt => lt.id === id), [state.locationTypes]);
   const getLocationClassification = useCallback((id: string) => state.locationClassifications.find(lc => lc.id === id), [state.locationClassifications]);
-  const getVessel = useCallback((id: string) => state.vessels.find(v => v.id === id), [state.vessels]);
-  const getContainerType = useCallback((id: string) => state.containerTypes.find(c => c.id === id), [state.containerTypes]);
+  const getContainer = useCallback((id: string) => state.containers.find(c => c.id === id), [state.containers]);
   const getSubstrateType = useCallback((id: string) => state.substrateTypes.find(s => s.id === id), [state.substrateTypes]);
   const getSupplier = useCallback((id: string) => state.suppliers.find(s => s.id === id), [state.suppliers]);
   const getInventoryCategory = useCallback((id: string) => state.inventoryCategories.find(c => c.id === id), [state.inventoryCategories]);
@@ -1128,8 +555,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const activeLocations = useMemo(() => state.locations.filter(l => l.isActive), [state.locations]);
   const activeLocationTypes = useMemo(() => state.locationTypes.filter(lt => lt.isActive), [state.locationTypes]);
   const activeLocationClassifications = useMemo(() => state.locationClassifications.filter(lc => lc.isActive), [state.locationClassifications]);
-  const activeVessels = useMemo(() => state.vessels.filter(v => v.isActive), [state.vessels]);
-  const activeContainerTypes = useMemo(() => state.containerTypes.filter(c => c.isActive), [state.containerTypes]);
+  const activeContainers = useMemo(() => state.containers.filter(c => c.isActive), [state.containers]);
   const activeSubstrateTypes = useMemo(() => state.substrateTypes.filter(s => s.isActive), [state.substrateTypes]);
   const activeSuppliers = useMemo(() => state.suppliers.filter(s => s.isActive), [state.suppliers]);
   const activeInventoryCategories = useMemo(() => state.inventoryCategories.filter(c => c.isActive), [state.inventoryCategories]);
@@ -1718,8 +1144,114 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, [generateId]);
 
   const addCultureTransfer = useCallback((cultureId: string, transfer: Omit<CultureTransfer, 'id'>): Culture | null => {
-    return null; // TODO: Implement
-  }, []);
+    // 1. Get source culture
+    const sourceCulture = state.cultures.find(c => c.id === cultureId);
+    if (!sourceCulture) return null;
+
+    const transferId = generateId('trans');
+    const newTransfer: CultureTransfer = { ...transfer, id: transferId };
+
+    // 2. Prepare new culture object if needed
+    let newCulture: Culture | null = null;
+    const isCultureCreation = ['liquid_culture', 'agar', 'slant', 'spore_syringe'].includes(transfer.toType);
+
+    // Check if we should create a new culture (either ID provided or implied by type)
+    if (isCultureCreation && (transfer.toId || !transfer.toId)) { // Create if it's a culture type
+      const targetId = transfer.toId || generateId('cul');
+      // Update transfer with the actual target ID if we generated it
+      newTransfer.toId = targetId;
+
+      const now = new Date();
+
+      // Inherit what we can from parent, use defaults for rest
+      newCulture = {
+        id: targetId,
+        type: transfer.toType as any,
+        label: generateCultureLabel(transfer.toType as any),
+        strainId: sourceCulture.strainId,
+        status: 'colonizing',
+        parentId: sourceCulture.id,
+        generation: (sourceCulture.generation || 0) + 1,
+        locationId: sourceCulture.locationId, // Default to parent location
+        containerId: state.containers.find(c => c.isActive && c.usageContext.includes('culture'))?.id || 'default-container', // Needs selection
+        volumeMl: undefined,
+        fillVolumeMl: undefined,
+        prepDate: new Date().toISOString().split('T')[0],
+        sterilizationDate: undefined,
+        healthRating: 5,
+        notes: `Transferred from ${sourceCulture.label}\n${transfer.notes || ''}`,
+        cost: 0,
+        createdAt: now,
+        updatedAt: now,
+        observations: [],
+        transfers: [],
+      };
+    }
+
+    // 3. Update local state
+    setState(prev => {
+      // Update source culture transfers
+      const updatedCultures = prev.cultures.map(c =>
+        c.id === cultureId
+          ? { ...c, transfers: [...c.transfers, newTransfer], updatedAt: new Date() }
+          : c
+      );
+
+      // Add new culture if created
+      if (newCulture) {
+        updatedCultures.unshift(newCulture);
+      }
+
+      return { ...prev, cultures: updatedCultures };
+    });
+
+    // 4. Persist to Supabase (fire and forget)
+    if (supabase) {
+      (async () => {
+        try {
+          const userId = await getCurrentUserId();
+          if (!userId) return;
+
+          // Insert new culture if created
+          if (newCulture) {
+            const { error: cultureError } = await supabase
+              .from('cultures')
+              .insert({
+                ...transformCultureToDb(newCulture),
+                user_id: userId
+              });
+
+            if (cultureError) {
+              console.error('Failed to persist new culture:', cultureError);
+              return; // Stop if culture creation failed
+            }
+          }
+
+          // Insert transfer record
+          const { error: transferError } = await supabase
+            .from('culture_transfers')
+            .insert({
+              source_culture_id: cultureId,
+              target_culture_id: newTransfer.toId || null,
+              date: transfer.date.toISOString(),
+              notes: transfer.notes,
+              quantity: transfer.quantity,
+              unit: transfer.unit,
+              to_type: transfer.toType,
+              user_id: userId
+            });
+
+          if (transferError) {
+            console.error('Failed to persist transfer:', transferError);
+          }
+        } catch (err) {
+          console.error('Error in addCultureTransfer persistence:', err);
+        }
+      })();
+    }
+
+    return newCulture;
+  }, [state.cultures, state.containers, generateId, generateCultureLabel, supabase]);
 
   // ============================================================================
   // GROW CRUD
@@ -1778,21 +1310,167 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }));
   }, [supabase]);
 
-  const deleteGrow = useCallback(async (id: string) => {
+  // ============================================================================
+  // OUTCOME LOGGING
+  // ============================================================================
+
+  const saveEntityOutcome = useCallback(async (outcomeData: EntityOutcomeData): Promise<EntityOutcome> => {
+    const now = new Date();
+
+    // Calculate duration
+    const startDate = outcomeData.startedAt ? new Date(outcomeData.startedAt) : null;
+    const endDate = outcomeData.endedAt ? new Date(outcomeData.endedAt) : now;
+    const durationDays = startDate
+      ? Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+      : undefined;
+
+    // Build outcome object (id will be assigned by DB or locally)
+    const outcomeBase = {
+      entityType: outcomeData.entityType,
+      entityId: outcomeData.entityId,
+      entityName: outcomeData.entityName,
+      outcomeCategory: outcomeData.outcomeCategory,
+      outcomeCode: outcomeData.outcomeCode,
+      outcomeLabel: outcomeData.outcomeLabel,
+      startedAt: outcomeData.startedAt,
+      endedAt: endDate,
+      durationDays,
+      totalCost: outcomeData.totalCost,
+      totalYieldWet: outcomeData.totalYieldWet,
+      totalYieldDry: outcomeData.totalYieldDry,
+      biologicalEfficiency: outcomeData.biologicalEfficiency,
+      flushCount: outcomeData.flushCount,
+      strainId: outcomeData.strainId,
+      strainName: outcomeData.strainName,
+      speciesId: outcomeData.speciesId,
+      speciesName: outcomeData.speciesName,
+      locationId: outcomeData.locationId,
+      locationName: outcomeData.locationName,
+      surveyResponses: outcomeData.surveyResponses,
+      notes: outcomeData.notes,
+      createdAt: now,
+    };
+
+    if (supabase) {
+      const userId = await getCurrentUserId();
+      // Let database generate UUID - don't send custom ID
+      const { data, error } = await supabase
+        .from('entity_outcomes')
+        .insert({
+          // id is omitted - database will generate UUID via uuid_generate_v4()
+          entity_type: outcomeBase.entityType,
+          entity_id: outcomeBase.entityId,
+          entity_name: outcomeBase.entityName,
+          outcome_category: outcomeBase.outcomeCategory,
+          outcome_code: outcomeBase.outcomeCode,
+          outcome_label: outcomeBase.outcomeLabel,
+          started_at: outcomeBase.startedAt?.toISOString(),
+          ended_at: outcomeBase.endedAt.toISOString(),
+          duration_days: outcomeBase.durationDays,
+          total_cost: outcomeBase.totalCost,
+          total_yield_wet: outcomeBase.totalYieldWet,
+          total_yield_dry: outcomeBase.totalYieldDry,
+          biological_efficiency: outcomeBase.biologicalEfficiency,
+          flush_count: outcomeBase.flushCount,
+          strain_id: outcomeBase.strainId,
+          strain_name: outcomeBase.strainName,
+          species_id: outcomeBase.speciesId,
+          species_name: outcomeBase.speciesName,
+          location_id: outcomeBase.locationId,
+          location_name: outcomeBase.locationName,
+          survey_responses: outcomeBase.surveyResponses || {},
+          notes: outcomeBase.notes,
+          user_id: userId,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Failed to save entity outcome:', error);
+        // Emit error event for user notification (caught by error boundary or global handler)
+        window.dispatchEvent(new CustomEvent('mycolab:error', {
+          detail: {
+            type: 'database',
+            message: 'Failed to save grow survey data',
+            technical: error.message,
+            recoverable: true,
+          }
+        }));
+        // Return outcome with local ID as fallback
+        return { ...outcomeBase, id: generateId('outcome') };
+      }
+
+      // Return outcome with database-generated UUID
+      return { ...outcomeBase, id: data.id };
+    }
+
+    // Offline mode - generate local ID
+    return { ...outcomeBase, id: generateId('outcome') };
+  }, [supabase, generateId]);
+
+  const saveContaminationDetails = useCallback(async (outcomeId: string, details: ContaminationDetailsData): Promise<void> => {
+    if (!supabase) return;
+
+    const userId = await getCurrentUserId();
+    // Let database generate UUID - don't send custom ID
+    const { error } = await supabase
+      .from('contamination_details')
+      .insert({
+        // id is omitted - database will generate UUID via uuid_generate_v4()
+        outcome_id: outcomeId,
+        contamination_type: details.contaminationType,
+        contamination_stage: details.contaminationStage,
+        days_to_detection: details.daysToDetection,
+        suspected_cause: details.suspectedCause,
+        temperature_at_detection: details.temperatureAtDetection,
+        humidity_at_detection: details.humidityAtDetection,
+        images: details.images,
+        notes: details.notes,
+        user_id: userId,
+      });
+
+    if (error) {
+      console.error('Failed to save contamination details:', error);
+      // Emit error event for user notification
+      window.dispatchEvent(new CustomEvent('mycolab:error', {
+        detail: {
+          type: 'database',
+          message: 'Failed to save contamination details',
+          technical: error.message,
+          recoverable: true,
+        }
+      }));
+    }
+  }, [supabase]);
+
+  const deleteGrow = useCallback(async (id: string, outcome?: EntityOutcomeData) => {
+    // If outcome data provided, save it first
+    if (outcome) {
+      const savedOutcome = await saveEntityOutcome(outcome);
+
+      // If it's a contamination outcome, check for contamination details
+      if (outcome.surveyResponses?.contamination && savedOutcome.id) {
+        const contamDetails = outcome.surveyResponses.contamination as ContaminationDetailsData;
+        if (contamDetails.contaminationType || contamDetails.suspectedCause) {
+          await saveContaminationDetails(savedOutcome.id, contamDetails);
+        }
+      }
+    }
+
     if (supabase) {
       const { error } = await supabase
         .from('grows')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
     }
-    
+
     setState(prev => ({
       ...prev,
       grows: prev.grows.filter(g => g.id !== id)
     }));
-  }, [supabase]);
+  }, [supabase, saveEntityOutcome, saveContaminationDetails]);
 
   const stageOrder: GrowStage[] = ['spawning', 'colonization', 'fruiting', 'harvesting', 'completed'];
 
@@ -1853,15 +1531,57 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         ...transformFlushToDb({ ...flush, flushNumber }, growId),
         user_id: userId,
       };
+
+      let flushData: any = null;
+      let insertError: any = null;
+
+      // Try direct insert first
       const { data, error } = await supabase
         .from('flushes')
         .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Check if this is a PostgREST schema cache error (PGRST204)
+        // If so, try the RPC function which bypasses the schema cache
+        if (error.code === 'PGRST204' || error.message?.includes('schema cache')) {
+          console.warn('PostgREST schema cache error detected, trying RPC fallback...');
 
-      const newFlush = transformFlushFromDb(data);
+          // Use RPC function to insert flush (bypasses PostgREST schema cache)
+          const harvestDate = flush.harvestDate instanceof Date
+            ? flush.harvestDate.toISOString().split('T')[0]
+            : flush.harvestDate;
+
+          const { data: rpcData, error: rpcError } = await supabase.rpc('insert_flush', {
+            p_grow_id: growId,
+            p_flush_number: flushNumber,
+            p_harvest_date: harvestDate,
+            p_wet_weight_g: flush.wetWeight,
+            p_dry_weight_g: flush.dryWeight,
+            p_mushroom_count: flush.mushroomCount || null,
+            p_quality: flush.quality || 'good',
+            p_notes: flush.notes || null,
+            p_user_id: userId,
+          });
+
+          if (rpcError) {
+            console.error('RPC fallback also failed:', rpcError);
+            insertError = rpcError;
+          } else {
+            console.log('RPC insert successful:', rpcData);
+            flushData = rpcData;
+          }
+        } else {
+          insertError = error;
+        }
+      } else {
+        flushData = data;
+      }
+
+      if (insertError) throw insertError;
+
+      const newFlush = transformFlushFromDb(flushData);
       setState(prev => ({
         ...prev,
         grows: prev.grows.map(g =>
@@ -1990,98 +1710,52 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // CRUD: Vessels, ContainerTypes, SubstrateTypes, Inventory - NOW WITH DATABASE
   // ============================================================================
 
-  const addVessel = useCallback(async (vessel: Omit<Vessel, 'id'>): Promise<Vessel> => {
+  // Container CRUD (unified - replaces addVessel/addContainerType)
+  const addContainer = useCallback(async (container: Omit<Container, 'id'>): Promise<Container> => {
     if (supabase) {
       // Get current user ID to save as personal item
       const userId = await getCurrentUserId();
       const { data, error } = await supabase
-        .from('vessels')
-        .insert(transformVesselToDb(vessel, userId))
+        .from('containers')
+        .insert(transformContainerToDb(container, userId))
         .select()
         .single();
       if (error) throw error;
-      const newVessel = transformVesselFromDb(data);
-      setState(prev => ({ ...prev, vessels: [...prev.vessels, newVessel] }));
-      return newVessel;
+      const newContainer = transformContainerFromDb(data);
+      setState(prev => ({ ...prev, containers: [...prev.containers, newContainer] }));
+      return newContainer;
     }
     // Fallback for offline
-    const newVessel = { ...vessel, id: generateId('vessel') } as Vessel;
-    setState(prev => ({ ...prev, vessels: [...prev.vessels, newVessel] }));
-    return newVessel;
+    const newContainer = { ...container, id: generateId('container') } as Container;
+    setState(prev => ({ ...prev, containers: [...prev.containers, newContainer] }));
+    return newContainer;
   }, [supabase, generateId]);
 
-  const updateVessel = useCallback(async (id: string, updates: Partial<Vessel>) => {
+  const updateContainer = useCallback(async (id: string, updates: Partial<Container>) => {
     if (supabase) {
       const { error } = await supabase
-        .from('vessels')
-        .update(transformVesselToDb(updates))
+        .from('containers')
+        .update(transformContainerToDb(updates))
         .eq('id', id);
       if (error) throw error;
     }
     setState(prev => ({
       ...prev,
-      vessels: prev.vessels.map(v => v.id === id ? { ...v, ...updates } : v)
+      containers: prev.containers.map(c => c.id === id ? { ...c, ...updates } : c)
     }));
   }, [supabase]);
 
-  const deleteVessel = useCallback(async (id: string) => {
+  const deleteContainer = useCallback(async (id: string) => {
     if (supabase) {
       const { error } = await supabase
-        .from('vessels')
+        .from('containers')
         .update({ is_active: false })
         .eq('id', id);
       if (error) throw error;
     }
     setState(prev => ({
       ...prev,
-      vessels: prev.vessels.map(v => v.id === id ? { ...v, isActive: false } : v)
-    }));
-  }, [supabase]);
-
-  const addContainerType = useCallback(async (containerType: Omit<ContainerType, 'id'>): Promise<ContainerType> => {
-    if (supabase) {
-      // Get current user ID to save as personal item
-      const userId = await getCurrentUserId();
-      const { data, error } = await supabase
-        .from('container_types')
-        .insert(transformContainerTypeToDb(containerType, userId))
-        .select()
-        .single();
-      if (error) throw error;
-      const newCT = transformContainerTypeFromDb(data);
-      setState(prev => ({ ...prev, containerTypes: [...prev.containerTypes, newCT] }));
-      return newCT;
-    }
-    const newCT = { ...containerType, id: generateId('ct') } as ContainerType;
-    setState(prev => ({ ...prev, containerTypes: [...prev.containerTypes, newCT] }));
-    return newCT;
-  }, [supabase, generateId]);
-
-  const updateContainerType = useCallback(async (id: string, updates: Partial<ContainerType>) => {
-    if (supabase) {
-      const { error } = await supabase
-        .from('container_types')
-        .update(transformContainerTypeToDb(updates))
-        .eq('id', id);
-      if (error) throw error;
-    }
-    setState(prev => ({
-      ...prev,
-      containerTypes: prev.containerTypes.map(c => c.id === id ? { ...c, ...updates } : c)
-    }));
-  }, [supabase]);
-
-  const deleteContainerType = useCallback(async (id: string) => {
-    if (supabase) {
-      const { error } = await supabase
-        .from('container_types')
-        .update({ is_active: false })
-        .eq('id', id);
-      if (error) throw error;
-    }
-    setState(prev => ({
-      ...prev,
-      containerTypes: prev.containerTypes.map(c => c.id === id ? { ...c, isActive: false } : c)
+      containers: prev.containers.map(c => c.id === id ? { ...c, isActive: false } : c)
     }));
   }, [supabase]);
 
@@ -2761,10 +2435,10 @@ const loadSettings = async (): Promise<AppSettings> => {
     error,
 
     // Lookup helpers
-    getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getVessel, getContainerType, getSubstrateType,
+    getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
     getInventoryLot, getPurchaseOrder, getCulture, getGrow, getRecipe,
-    activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeVessels, activeContainerTypes,
+    activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeContainers,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes,
 
@@ -2774,8 +2448,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addLocation, updateLocation, deleteLocation,
     addLocationType, updateLocationType, deleteLocationType,
     addLocationClassification, updateLocationClassification, deleteLocationClassification,
-    addVessel, updateVessel, deleteVessel,
-    addContainerType, updateContainerType, deleteContainerType,
+    addContainer, updateContainer, deleteContainer,
     addSubstrateType, updateSubstrateType, deleteSubstrateType,
     addSupplier, updateSupplier, deleteSupplier,
     addInventoryCategory, updateInventoryCategory, deleteInventoryCategory,
@@ -2788,16 +2461,17 @@ const loadSettings = async (): Promise<AppSettings> => {
     getCultureLineage, generateCultureLabel,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
     addGrowObservation, addFlush,
+    saveEntityOutcome, saveContaminationDetails,
     addRecipe, updateRecipe, deleteRecipe, calculateRecipeCost, scaleRecipe,
     updateSettings,
     generateId,
     refreshData,
   }), [
     state, isLoading, isConnected, error,
-    getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getVessel, getContainerType, getSubstrateType,
+    getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
     getInventoryLot, getPurchaseOrder, getCulture, getGrow, getRecipe,
-    activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeVessels, activeContainerTypes,
+    activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeContainers,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes,
     addSpecies, updateSpecies, deleteSpecies,
@@ -2805,8 +2479,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addLocation, updateLocation, deleteLocation,
     addLocationType, updateLocationType, deleteLocationType,
     addLocationClassification, updateLocationClassification, deleteLocationClassification,
-    addVessel, updateVessel, deleteVessel,
-    addContainerType, updateContainerType, deleteContainerType,
+    addContainer, updateContainer, deleteContainer,
     addSubstrateType, updateSubstrateType, deleteSubstrateType,
     addSupplier, updateSupplier, deleteSupplier,
     addInventoryCategory, updateInventoryCategory, deleteInventoryCategory,
@@ -2819,6 +2492,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     getCultureLineage, generateCultureLabel,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
     addGrowObservation, addFlush,
+    saveEntityOutcome, saveContaminationDetails,
     addRecipe, updateRecipe, deleteRecipe, calculateRecipeCost, scaleRecipe,
     updateSettings, generateId, refreshData,
   ]);

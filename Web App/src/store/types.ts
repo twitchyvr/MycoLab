@@ -220,6 +220,21 @@ export interface LocationClassification {
   isActive: boolean;
 }
 
+// Location hierarchy level for farm/lab mapping
+export type LocationLevel = 'facility' | 'room' | 'zone' | 'rack' | 'shelf' | 'slot';
+
+// Room type classifications for process steps
+export type RoomPurpose =
+  | 'pasteurization'
+  | 'inoculation'
+  | 'colonization'
+  | 'fruiting'
+  | 'storage'
+  | 'prep'
+  | 'drying'
+  | 'packaging'
+  | 'general';
+
 export interface Location {
   id: string;
   name: string;
@@ -242,27 +257,64 @@ export interface Location {
   procurementDate?: Date;
   notes?: string;
   isActive: boolean;
+
+  // Hierarchical location support for farm/lab mapping
+  parentId?: string;          // Parent location ID for hierarchy
+  level?: LocationLevel;       // Hierarchy level (facility > room > zone > rack > shelf > slot)
+  roomPurpose?: RoomPurpose;  // @deprecated Use roomPurposes instead - kept for backwards compatibility
+  roomPurposes?: RoomPurpose[]; // Multiple purposes for multi-use rooms (e.g., colonization + fruiting)
+  capacity?: number;          // Maximum items this location can hold
+  currentOccupancy?: number;  // Current number of items
+  sortOrder?: number;         // Display order among siblings
+  path?: string;              // Full path like "Facility/Room A/Rack 1/Shelf 2"
+  code?: string;              // Short code for labeling (e.g., "R1-S2-A")
+  dimensions?: {              // Physical dimensions
+    length?: number;
+    width?: number;
+    height?: number;
+    unit?: 'cm' | 'in' | 'm' | 'ft';
+  };
 }
 
-export interface Vessel {
+// Container categories - unified from former 'vessels' and 'container_types'
+export type ContainerCategory =
+  | 'jar'      // Mason jars, LC jars (culture)
+  | 'bag'      // Spawn bags, grow bags (culture & grow)
+  | 'plate'    // Petri dishes (culture)
+  | 'tube'     // Test tubes, slants (culture)
+  | 'bottle'   // Media bottles (culture)
+  | 'syringe'  // Spore/LC syringes (culture)
+  | 'tub'      // Monotubs, shoeboxes (grow)
+  | 'bucket'   // 5-gallon buckets (grow)
+  | 'bed'      // Outdoor beds (grow)
+  | 'other';
+
+// Usage context for containers
+export type ContainerUsageContext = 'culture' | 'grow';
+
+// Unified Container interface (replaces Vessel and ContainerType)
+export interface Container {
   id: string;
   name: string;
-  type: 'jar' | 'bag' | 'plate' | 'tube' | 'bottle' | 'syringe' | 'other';
-  volumeMl?: number;
+  category: ContainerCategory;
+  volumeMl?: number;  // Volume in ml (liters stored as ml * 1000)
+  dimensions?: {
+    length: number;
+    width: number;
+    height: number;
+    unit?: 'cm' | 'in';
+  };
   isReusable: boolean;
+  usageContext: ContainerUsageContext[];  // What this container can be used for
   notes?: string;
   isActive: boolean;
 }
 
-export interface ContainerType {
-  id: string;
-  name: string;
-  category: 'tub' | 'bag' | 'jar' | 'bucket' | 'bed' | 'other';
-  volumeL?: number;
-  dimensions?: { length: number; width: number; height: number };
-  notes?: string;
-  isActive: boolean;
-}
+// Legacy type aliases for backward compatibility during migration
+/** @deprecated Use Container instead */
+export type Vessel = Container;
+/** @deprecated Use Container instead */
+export type ContainerType = Container;
 
 export interface SubstrateType {
   id: string;
@@ -478,7 +530,7 @@ export interface Culture {
   parentId?: string;
   generation: number;
   locationId: string;
-  vesselId: string;
+  containerId: string;  // Unified: was vesselId
   recipeId?: string;
   volumeMl?: number;
   fillVolumeMl?: number;
@@ -543,7 +595,7 @@ export interface Grow {
   recipeId?: string;
   
   // Container
-  containerTypeId: string;
+  containerId: string;  // Unified: was containerTypeId
   containerCount: number;
   
   // Dates
@@ -625,6 +677,81 @@ export interface Recipe {
 }
 
 // ============================================================================
+// NOTIFICATION TYPES
+// ============================================================================
+
+export type NotificationType = 'info' | 'success' | 'warning' | 'error';
+export type NotificationCategory =
+  | 'culture_expiring'      // Culture viability alerts
+  | 'stage_transition'      // Grow stage change reminders
+  | 'low_inventory'         // Inventory below reorder point
+  | 'harvest_ready'         // Ready to harvest
+  | 'contamination'         // Contamination detected
+  | 'lc_age'                // LC getting too old
+  | 'slow_growth'           // Item not progressing as expected
+  | 'system'                // System notifications
+  | 'user';                 // User-generated notes/reminders
+
+export interface UserNotification {
+  id: string;
+  type: NotificationType;
+  category: NotificationCategory;
+  title: string;
+  message: string;
+  // Optional references
+  entityType?: 'culture' | 'grow' | 'inventory' | 'recipe';
+  entityId?: string;
+  entityName?: string;
+  // Timestamps
+  createdAt: Date;
+  readAt?: Date;
+  dismissedAt?: Date;
+  // Auto-dismiss behavior
+  autoDismiss?: boolean;
+  autoDismissMs?: number;
+  // Actions
+  actionLabel?: string;
+  actionPage?: string;
+}
+
+export interface NotificationRule {
+  id: string;
+  name: string;
+  category: NotificationCategory;
+  enabled: boolean;
+  // Threshold settings
+  thresholdDays?: number;      // Days before expiration to alert
+  thresholdQuantity?: number;  // Inventory quantity threshold
+  thresholdPercent?: number;   // Colonization percent threshold
+  // Notification settings
+  notifyType: NotificationType;
+  repeatIntervalHours?: number; // How often to re-notify (0 = once)
+  // Filters
+  strainIds?: string[];        // Only for specific strains
+  speciesIds?: string[];       // Only for specific species
+  locationIds?: string[];      // Only for specific locations
+  isActive: boolean;
+}
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  // Category toggles
+  cultureExpiring: boolean;
+  stageTransitions: boolean;
+  lowInventory: boolean;
+  harvestReady: boolean;
+  contamination: boolean;
+  lcAge: boolean;
+  slowGrowth: boolean;
+  // Display preferences
+  showToasts: boolean;
+  toastDurationMs: number;
+  soundEnabled: boolean;
+  // Browser push notifications
+  pushEnabled: boolean;
+}
+
+// ============================================================================
 // APP SETTINGS
 // ============================================================================
 
@@ -639,6 +766,207 @@ export interface AppSettings {
     lowStockAlerts: boolean;
     contaminationAlerts: boolean;
   };
+  notificationPreferences?: NotificationPreferences;
+}
+
+// ============================================================================
+// PUBLIC SHARING SYSTEM TYPES
+// Token-based sharing for public/anonymous access to grows, cultures, batches
+// Following API security best practices and EU Digital Product Passport standards
+// ============================================================================
+
+// Entity types that can be shared publicly
+export type ShareableEntityType = 'grow' | 'culture' | 'batch' | 'recipe' | 'lineage';
+
+// Access levels for shared content
+export type ShareAccessLevel = 'customer' | 'auditor';
+
+// Share token for public/anonymous access
+export interface ShareToken {
+  id: string;
+  token: string;  // Opaque random string (NOT JWT per security best practices)
+
+  // What is being shared
+  entityType: ShareableEntityType;
+  entityId: string;
+
+  // Access control
+  accessLevel: ShareAccessLevel;
+  permissions: Record<string, boolean>;  // Additional field-level permissions
+
+  // Expiration & analytics
+  expiresAt: Date;
+  viewCount: number;
+  lastViewedAt?: Date;
+
+  // Revocation
+  isRevoked: boolean;
+  revokedAt?: Date;
+  revokedReason?: string;
+
+  // Ownership
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Field visibility configuration for redaction
+export interface FieldVisibility {
+  // Basic info
+  strain?: boolean;
+  species?: boolean;
+  substrateType?: boolean;
+
+  // Weights/quantities
+  spawnWeight?: boolean;
+  substrateWeight?: boolean;
+
+  // Container/location
+  container?: boolean;
+  location?: boolean;         // General location (e.g., "Pacific Northwest")
+  locationAddress?: boolean;  // Specific address - ALWAYS default false
+
+  // Timeline/dates
+  inoculationDate?: boolean;
+  colonizationDate?: boolean;
+  fruitingDate?: boolean;
+  harvestDates?: boolean;
+
+  // Yields
+  totalYield?: boolean;
+  flushWeights?: boolean;
+  biologicalEfficiency?: boolean;
+
+  // Observations
+  observations?: boolean;
+  photos?: boolean;
+
+  // Lineage (for cultures)
+  lineage?: boolean;
+  generation?: boolean;
+  parentCulture?: boolean;
+
+  // Sensitive data - DEFAULT FALSE
+  cost?: boolean;
+  failures?: boolean;
+  contaminationHistory?: boolean;
+  supplierInfo?: boolean;
+  recipeDetails?: boolean;
+  notes?: boolean;
+  lotNumber?: boolean;
+}
+
+// Batch passport (Digital Product Passport)
+export interface BatchPassport {
+  id: string;
+
+  // Unique passport identifier (shareable, human-readable)
+  // Format: ML-YYYY-MM-NNNN (e.g., "ML-2024-12-0001")
+  passportCode: string;
+
+  // What this passport represents
+  entityType: 'grow' | 'culture' | 'batch';
+  entityId: string;
+
+  // Field visibility configuration
+  fieldVisibility: FieldVisibility;
+
+  // Custom public content (seller-written)
+  publicTitle?: string;
+  publicDescription?: string;
+  publicNotes?: string;
+  sellerName?: string;
+  sellerContact?: string;
+  sellerWebsite?: string;
+
+  // Lineage snapshot (frozen at passport creation)
+  lineageSnapshot?: {
+    ancestors: Array<{
+      id: string;
+      type: string;
+      label: string;
+      strainName?: string;
+      createdAt: string;
+    }>;
+    descendants: Array<{
+      id: string;
+      type: string;
+      label: string;
+      strainName?: string;
+      createdAt: string;
+    }>;
+    capturedAt: string;
+  };
+
+  // QR Code data
+  qrDataUrl?: string;
+  qrShortUrl?: string;
+
+  // Status
+  isPublished: boolean;
+  publishedAt?: Date;
+
+  // Ownership
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Passport view analytics (anonymized)
+export interface PassportView {
+  id: string;
+  passportId: string;
+
+  // Viewer info (anonymous - no PII stored)
+  viewerToken?: string;  // Hashed session token
+  ipHash?: string;       // Hashed IP for fraud detection
+  userAgent?: string;
+  referrer?: string;
+
+  // Geolocation (optional, city-level only)
+  geoCountry?: string;
+  geoRegion?: string;
+
+  viewedAt: Date;
+}
+
+// Redaction preset (template for field visibility)
+export interface RedactionPreset {
+  id: string;
+  name: string;
+  description?: string;
+
+  // Field visibility template
+  fieldVisibility: FieldVisibility;
+
+  // Which entity types this preset applies to
+  appliesTo: Array<'grow' | 'culture' | 'batch'>;
+
+  // Ownership (null = system preset available to all)
+  isSystem: boolean;
+  userId?: string;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Default redaction preset IDs (system presets)
+export const REDACTION_PRESET_IDS = {
+  CUSTOMER_VIEW: '00000000-0000-0000-0100-000000000001',
+  AUDITOR_VIEW: '00000000-0000-0000-0100-000000000002',
+  MINIMAL_VIEW: '00000000-0000-0000-0100-000000000003',
+  GENETICS_FOCUS: '00000000-0000-0000-0100-000000000004',
+} as const;
+
+// Passport analytics summary
+export interface PassportAnalytics {
+  passportId: string;
+  totalViews: number;
+  uniqueViewers: number;
+  viewsByCountry: Record<string, number>;
+  viewsByDay: Array<{ date: string; count: number }>;
+  topReferrers: Array<{ referrer: string; count: number }>;
+  lastViewedAt?: Date;
 }
 
 // ============================================================================
@@ -652,8 +980,7 @@ export interface DataStoreState {
   locations: Location[];
   locationTypes: LocationType[];
   locationClassifications: LocationClassification[];
-  vessels: Vessel[];
-  containerTypes: ContainerType[];
+  containers: Container[];  // Unified: replaces vessels and containerTypes
   substrateTypes: SubstrateType[];
   suppliers: Supplier[];
   inventoryCategories: InventoryCategory[];
@@ -669,6 +996,15 @@ export interface DataStoreState {
   grows: Grow[];
   recipes: Recipe[];
 
+  // Public sharing system
+  shareTokens: ShareToken[];
+  batchPassports: BatchPassport[];
+  redactionPresets: RedactionPreset[];
+
+  // Notifications
+  notifications: UserNotification[];
+  notificationRules: NotificationRule[];
+
   // Settings
   settings: AppSettings;
 }
@@ -677,7 +1013,259 @@ export interface DataStoreState {
 // HELPER TYPES FOR OPERATIONS
 // ============================================================================
 
-export type EntityType = 'species' | 'strain' | 'location' | 'vessel' | 'containerType' | 'substrateType' | 'supplier' | 'inventoryCategory' | 'inventoryItem' | 'culture' | 'grow' | 'recipe';
+export type EntityType = 'species' | 'strain' | 'location' | 'container' | 'substrateType' | 'supplier' | 'inventoryCategory' | 'inventoryItem' | 'culture' | 'grow' | 'recipe';
+
+// ============================================================================
+// OUTCOME LOGGING TYPES
+// Tracks why entities are removed/completed for analytics and insights
+// ============================================================================
+
+// Outcome categories for classification
+export type OutcomeCategory = 'success' | 'failure' | 'neutral' | 'partial';
+
+// Grow-specific outcome codes
+export type GrowOutcomeCode =
+  // Success outcomes
+  | 'completed_success'        // Full cycle, good yield
+  | 'completed_low_yield'      // Completed but below expectations
+  | 'completed_excellent'      // Exceeded yield expectations
+  // Failure outcomes
+  | 'contamination_early'      // Days 1-7 (sterilization/technique)
+  | 'contamination_mid'        // Days 8-21 (environmental)
+  | 'contamination_late'       // Days 22+ (environmental/storage)
+  | 'stalled_colonization'     // Never colonized properly
+  | 'stalled_fruiting'         // Colonized but no pins
+  | 'aborted_user'             // User chose to stop
+  | 'aborted_environmental'    // Environmental failure (power, HVAC)
+  | 'genetics_failure'         // Poor genetics/senescence
+  // Neutral outcomes
+  | 'experiment_ended'         // Research project concluded
+  | 'transferred_out';         // Moved to another grow/user
+
+// Culture-specific outcome codes
+export type CultureOutcomeCode =
+  // Success outcomes
+  | 'exhausted_success'        // Used up all volume successfully
+  | 'archived_healthy'         // Stored for future use
+  // Failure outcomes
+  | 'contamination_bacterial'  // Bacterial contamination
+  | 'contamination_mold'       // Mold contamination
+  | 'contamination_unknown'    // Unknown contamination
+  | 'senescence'               // Genetics degraded
+  | 'media_failure'            // Media issue (pH, drying, etc.)
+  | 'storage_failure'          // Temperature/humidity failure
+  // Neutral outcomes
+  | 'expired_unused'           // Never used, past viability
+  | 'discarded_cleanup'        // Lab cleanup
+  | 'transferred_out';         // Given away/sold
+
+// Inventory-specific outcome codes
+export type InventoryOutcomeCode =
+  | 'consumed_normal'          // Used as expected
+  | 'expired_unused'           // Expired before use
+  | 'damaged'                  // Physical damage
+  | 'contaminated'             // Contamination issue
+  | 'returned'                 // Returned to supplier
+  | 'discarded_quality';       // Quality concerns
+
+// Generic outcome code union
+export type OutcomeCode = GrowOutcomeCode | CultureOutcomeCode | InventoryOutcomeCode;
+
+// Contamination types for detailed tracking
+export type ContaminationType =
+  | 'trichoderma'
+  | 'cobweb'
+  | 'black_mold'
+  | 'penicillium'
+  | 'aspergillus'
+  | 'bacterial'
+  | 'lipstick'
+  | 'wet_spot'
+  | 'yeast'
+  | 'unknown';
+
+// Contamination stage (when detected)
+export type ContaminationStage =
+  | 'agar'
+  | 'liquid_culture'
+  | 'grain_spawn'
+  | 'bulk_colonization'
+  | 'fruiting'
+  | 'storage';
+
+// Suspected cause of contamination
+export type SuspectedCause =
+  | 'sterilization_failure'
+  | 'inoculation_technique'
+  | 'contaminated_source'
+  | 'environmental'
+  | 'substrate_issue'
+  | 'equipment'
+  | 'user_error'
+  | 'unknown';
+
+// Entity outcome record (universal for all entity types)
+export interface EntityOutcome {
+  id: string;
+  entityType: 'grow' | 'culture' | 'inventory_item' | 'inventory_lot' | 'equipment';
+  entityId: string;
+  entityName?: string;
+
+  // Outcome classification
+  outcomeCategory: OutcomeCategory;
+  outcomeCode: OutcomeCode;
+  outcomeLabel?: string;
+
+  // Timing
+  startedAt?: Date;
+  endedAt: Date;
+  durationDays?: number;
+
+  // Financial
+  totalCost?: number;
+  totalRevenue?: number;
+  costPerUnit?: number;
+
+  // Yield (for grows)
+  totalYieldWet?: number;
+  totalYieldDry?: number;
+  biologicalEfficiency?: number;
+  flushCount?: number;
+
+  // References
+  strainId?: string;
+  strainName?: string;
+  speciesId?: string;
+  speciesName?: string;
+  locationId?: string;
+  locationName?: string;
+
+  // Survey data
+  surveyResponses?: Record<string, unknown>;
+
+  // Metadata
+  notes?: string;
+  createdAt: Date;
+}
+
+// Contamination details (linked to outcomes)
+export interface ContaminationDetails {
+  id: string;
+  outcomeId: string;
+  contaminationType?: ContaminationType;
+  contaminationStage?: ContaminationStage;
+  daysToDetection?: number;
+  suspectedCause?: SuspectedCause;
+  temperatureAtDetection?: number;
+  humidityAtDetection?: number;
+  images?: string[];
+  notes?: string;
+  createdAt: Date;
+}
+
+// Exit survey responses (entity-specific questions)
+export interface ExitSurvey {
+  id: string;
+  outcomeId: string;
+  entityType: string;
+
+  // Universal questions
+  baseResponses?: Record<string, unknown>;
+
+  // Type-specific responses
+  specificResponses?: Record<string, unknown>;
+
+  // User experience ratings (1-5)
+  overallSatisfaction?: number;
+  difficultyRating?: number;
+  wouldRepeat?: boolean;
+
+  // Lessons learned
+  whatWorked?: string;
+  whatFailed?: string;
+  wouldChange?: string;
+
+  // Time tracking
+  estimatedHoursSpent?: number;
+
+  completedAt: Date;
+}
+
+// Outcome option for UI selection
+export interface OutcomeOption {
+  code: OutcomeCode;
+  label: string;
+  category: OutcomeCategory;
+  description?: string;
+  icon?: string;
+}
+
+// Grow outcome options for the UI
+export const GROW_OUTCOME_OPTIONS: OutcomeOption[] = [
+  // Success
+  { code: 'completed_success', label: 'Success', category: 'success', description: 'Full cycle, good yield', icon: 'check_circle' },
+  { code: 'completed_excellent', label: 'Excellent', category: 'success', description: 'Exceeded expectations', icon: 'star' },
+  { code: 'completed_low_yield', label: 'Low Yield', category: 'partial', description: 'Completed but below expectations', icon: 'trending_down' },
+  // Contamination
+  { code: 'contamination_early', label: 'Early Contam', category: 'failure', description: 'Days 1-7 (sterilization/technique)', icon: 'warning' },
+  { code: 'contamination_mid', label: 'Mid Contam', category: 'failure', description: 'Days 8-21 (environmental)', icon: 'warning' },
+  { code: 'contamination_late', label: 'Late Contam', category: 'failure', description: 'Days 22+ (environmental/storage)', icon: 'warning' },
+  // Other failures
+  { code: 'stalled_colonization', label: 'Stalled Colonization', category: 'failure', description: 'Never colonized properly', icon: 'pause_circle' },
+  { code: 'stalled_fruiting', label: 'Stalled Fruiting', category: 'failure', description: 'Colonized but no pins', icon: 'pause_circle' },
+  { code: 'genetics_failure', label: 'Genetics Issue', category: 'failure', description: 'Poor genetics/senescence', icon: 'dna' },
+  // Aborted
+  { code: 'aborted_user', label: 'User Aborted', category: 'neutral', description: 'Chose to stop', icon: 'cancel' },
+  { code: 'aborted_environmental', label: 'Environmental Failure', category: 'failure', description: 'Power, HVAC, etc.', icon: 'power_off' },
+  // Neutral
+  { code: 'experiment_ended', label: 'Experiment Ended', category: 'neutral', description: 'Research concluded', icon: 'science' },
+  { code: 'transferred_out', label: 'Transferred', category: 'neutral', description: 'Moved elsewhere', icon: 'move_item' },
+];
+
+// Culture outcome options for the UI
+export const CULTURE_OUTCOME_OPTIONS: OutcomeOption[] = [
+  // Success
+  { code: 'exhausted_success', label: 'Fully Used', category: 'success', description: 'Used up all volume successfully', icon: 'check_circle' },
+  { code: 'archived_healthy', label: 'Archived', category: 'success', description: 'Stored for future use', icon: 'archive' },
+  // Contamination
+  { code: 'contamination_bacterial', label: 'Bacterial Contam', category: 'failure', description: 'Bacterial contamination', icon: 'warning' },
+  { code: 'contamination_mold', label: 'Mold Contam', category: 'failure', description: 'Mold contamination', icon: 'warning' },
+  { code: 'contamination_unknown', label: 'Unknown Contam', category: 'failure', description: 'Unknown contamination', icon: 'warning' },
+  // Other failures
+  { code: 'senescence', label: 'Senescence', category: 'failure', description: 'Genetics degraded over time', icon: 'trending_down' },
+  { code: 'media_failure', label: 'Media Failure', category: 'failure', description: 'pH, drying, or other media issue', icon: 'error' },
+  { code: 'storage_failure', label: 'Storage Failure', category: 'failure', description: 'Temperature/humidity failure', icon: 'thermostat' },
+  // Neutral
+  { code: 'expired_unused', label: 'Expired Unused', category: 'neutral', description: 'Past viability date', icon: 'event_busy' },
+  { code: 'discarded_cleanup', label: 'Lab Cleanup', category: 'neutral', description: 'General cleanup', icon: 'cleaning_services' },
+  { code: 'transferred_out', label: 'Transferred', category: 'neutral', description: 'Given away or sold', icon: 'move_item' },
+];
+
+// Contamination type options for the UI
+export const CONTAMINATION_TYPE_OPTIONS: { code: ContaminationType; label: string; description?: string }[] = [
+  { code: 'trichoderma', label: 'Trichoderma (Green Mold)', description: 'Green/yellow patches, very common' },
+  { code: 'cobweb', label: 'Cobweb Mold', description: 'Gray, wispy, fast-spreading' },
+  { code: 'black_mold', label: 'Black Mold', description: 'Dark black/green spots' },
+  { code: 'penicillium', label: 'Penicillium (Blue-Green)', description: 'Blue-green with white border' },
+  { code: 'aspergillus', label: 'Aspergillus', description: 'Various colors, powdery texture' },
+  { code: 'bacterial', label: 'Bacterial', description: 'Wet, slimy, often smelly' },
+  { code: 'lipstick', label: 'Lipstick Mold', description: 'Bright pink/red spots' },
+  { code: 'wet_spot', label: 'Wet Spot (Bacillus)', description: 'Wet, sour-smelling areas in grain' },
+  { code: 'yeast', label: 'Yeast', description: 'Creamy, pasty appearance' },
+  { code: 'unknown', label: 'Unknown', description: 'Unable to identify' },
+];
+
+// Suspected cause options for the UI
+export const SUSPECTED_CAUSE_OPTIONS: { code: SuspectedCause; label: string; description?: string }[] = [
+  { code: 'sterilization_failure', label: 'Sterilization Failure', description: 'Incomplete sterilization of substrate/equipment' },
+  { code: 'inoculation_technique', label: 'Inoculation Technique', description: 'Contamination during inoculation' },
+  { code: 'contaminated_source', label: 'Contaminated Source', description: 'Source culture was already contaminated' },
+  { code: 'environmental', label: 'Environmental', description: 'Air quality, dust, other grow contams' },
+  { code: 'substrate_issue', label: 'Substrate Issue', description: 'Problem with substrate preparation' },
+  { code: 'equipment', label: 'Equipment', description: 'Contaminated equipment or containers' },
+  { code: 'user_error', label: 'User Error', description: 'Mistake in handling or technique' },
+  { code: 'unknown', label: 'Unknown', description: 'Unable to determine cause' },
+];
 
 export interface LookupHelpers {
   getSpecies: (id: string) => Species | undefined;
@@ -685,8 +1273,7 @@ export interface LookupHelpers {
   getLocation: (id: string) => Location | undefined;
   getLocationType: (id: string) => LocationType | undefined;
   getLocationClassification: (id: string) => LocationClassification | undefined;
-  getVessel: (id: string) => Vessel | undefined;
-  getContainerType: (id: string) => ContainerType | undefined;
+  getContainer: (id: string) => Container | undefined;  // Unified: replaces getVessel and getContainerType
   getSubstrateType: (id: string) => SubstrateType | undefined;
   getSupplier: (id: string) => Supplier | undefined;
   getInventoryCategory: (id: string) => InventoryCategory | undefined;
@@ -705,8 +1292,7 @@ export interface LookupHelpers {
   activeLocations: Location[];
   activeLocationTypes: LocationType[];
   activeLocationClassifications: LocationClassification[];
-  activeVessels: Vessel[];
-  activeContainerTypes: ContainerType[];
+  activeContainers: Container[];  // Unified: replaces activeVessels and activeContainerTypes
   activeSubstrateTypes: SubstrateType[];
   activeSuppliers: Supplier[];
   activeInventoryCategories: InventoryCategory[];

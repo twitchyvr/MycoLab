@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS location_classifications (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- Locations (with enhanced fields for procurement tracking)
+-- Locations (with enhanced fields for procurement tracking and hierarchical organization)
 CREATE TABLE IF NOT EXISTS locations (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
@@ -112,6 +112,20 @@ CREATE TABLE IF NOT EXISTS locations (
   procurement_date DATE,
   notes TEXT,
   is_active BOOLEAN DEFAULT true,
+  -- Hierarchical location fields for farm/lab mapping
+  parent_id UUID REFERENCES locations(id) ON DELETE SET NULL,
+  level TEXT CHECK (level IN ('facility', 'room', 'zone', 'rack', 'shelf', 'slot')),
+  room_purpose TEXT CHECK (room_purpose IN ('pasteurization', 'inoculation', 'colonization', 'fruiting', 'storage', 'prep', 'drying', 'packaging', 'general')),
+  room_purposes TEXT[], -- Array of purposes for multi-use rooms (e.g., both colonization and fruiting)
+  capacity INTEGER,
+  current_occupancy INTEGER DEFAULT 0,
+  sort_order INTEGER DEFAULT 0,
+  path TEXT, -- Full path like "Facility/Room A/Rack 1"
+  code TEXT, -- Short code for labeling (e.g., "R1-S2-A")
+  dimension_length DECIMAL(10,2),
+  dimension_width DECIMAL(10,2),
+  dimension_height DECIMAL(10,2),
+  dimension_unit TEXT CHECK (dimension_unit IN ('cm', 'in', 'm', 'ft')) DEFAULT 'cm',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
@@ -147,15 +161,70 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'procurement_date') THEN
     ALTER TABLE locations ADD COLUMN procurement_date DATE;
   END IF;
+  -- Hierarchical location fields for farm/lab mapping
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'parent_id') THEN
+    ALTER TABLE locations ADD COLUMN parent_id UUID REFERENCES locations(id) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'level') THEN
+    ALTER TABLE locations ADD COLUMN level TEXT CHECK (level IN ('facility', 'room', 'zone', 'rack', 'shelf', 'slot'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'room_purpose') THEN
+    ALTER TABLE locations ADD COLUMN room_purpose TEXT CHECK (room_purpose IN ('pasteurization', 'inoculation', 'colonization', 'fruiting', 'storage', 'prep', 'drying', 'packaging', 'general'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'room_purposes') THEN
+    ALTER TABLE locations ADD COLUMN room_purposes TEXT[];
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'capacity') THEN
+    ALTER TABLE locations ADD COLUMN capacity INTEGER;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'current_occupancy') THEN
+    ALTER TABLE locations ADD COLUMN current_occupancy INTEGER DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'sort_order') THEN
+    ALTER TABLE locations ADD COLUMN sort_order INTEGER DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'path') THEN
+    ALTER TABLE locations ADD COLUMN path TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'code') THEN
+    ALTER TABLE locations ADD COLUMN code TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'dimension_length') THEN
+    ALTER TABLE locations ADD COLUMN dimension_length DECIMAL(10,2);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'dimension_width') THEN
+    ALTER TABLE locations ADD COLUMN dimension_width DECIMAL(10,2);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'dimension_height') THEN
+    ALTER TABLE locations ADD COLUMN dimension_height DECIMAL(10,2);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'dimension_unit') THEN
+    ALTER TABLE locations ADD COLUMN dimension_unit TEXT CHECK (dimension_unit IN ('cm', 'in', 'm', 'ft')) DEFAULT 'cm';
+  END IF;
 END $$;
 
--- Vessels (culture containers)
-CREATE TABLE IF NOT EXISTS vessels (
+-- Containers (unified table for all container types - cultures and grows)
+-- Consolidates the former 'vessels' and 'container_types' tables
+CREATE TABLE IF NOT EXISTS containers (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
-  type TEXT CHECK (type IN ('jar', 'bag', 'plate', 'tube', 'bottle', 'syringe', 'other')) DEFAULT 'jar',
+  -- Unified category combining vessel types and container categories
+  category TEXT CHECK (category IN (
+    'jar', 'bag', 'plate', 'tube', 'bottle', 'syringe',  -- culture containers (formerly vessels)
+    'tub', 'bucket', 'bed',                              -- grow containers (formerly container_types)
+    'other'
+  )) DEFAULT 'jar',
+  -- Volume stored in ml (liters converted to ml for consistency)
   volume_ml INTEGER,
+  -- Physical dimensions (optional, useful for larger grow containers)
+  dimension_length DECIMAL(10,2),
+  dimension_width DECIMAL(10,2),
+  dimension_height DECIMAL(10,2),
+  dimension_unit TEXT CHECK (dimension_unit IN ('cm', 'in')) DEFAULT 'cm',
+  -- Reusability (glass jars = true, bags = false, etc.)
   is_reusable BOOLEAN DEFAULT true,
+  -- Usage context - what this container can be used for
+  usage_context TEXT[] DEFAULT ARRAY['culture', 'grow'],
   notes TEXT,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -163,18 +232,169 @@ CREATE TABLE IF NOT EXISTS vessels (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- Container types (grow containers)
-CREATE TABLE IF NOT EXISTS container_types (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  name TEXT NOT NULL,
-  category TEXT CHECK (category IN ('tub', 'bag', 'bucket', 'bed', 'jar', 'other')) DEFAULT 'tub',
-  volume_l DECIMAL,
-  notes TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
-);
+-- Migration: If old tables exist, migrate data to new containers table
+-- This is idempotent and safe to run multiple times
+DO $$
+BEGIN
+  -- Migrate vessels data if vessels table exists and containers doesn't have the data
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels') THEN
+    INSERT INTO containers (id, name, category, volume_ml, is_reusable, notes, is_active, created_at, updated_at, user_id, usage_context)
+    SELECT id, name, type, volume_ml, is_reusable, notes, is_active, created_at, updated_at, user_id, ARRAY['culture']
+    FROM vessels
+    WHERE NOT EXISTS (SELECT 1 FROM containers WHERE containers.id = vessels.id)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+
+  -- Migrate container_types data if table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types') THEN
+    INSERT INTO containers (id, name, category, volume_ml, is_reusable, notes, is_active, created_at, updated_at, user_id, usage_context)
+    SELECT id, name, category,
+           CASE WHEN volume_l IS NOT NULL THEN (volume_l * 1000)::INTEGER ELSE NULL END,
+           CASE WHEN category IN ('tub', 'bucket', 'bed') THEN false ELSE true END,
+           notes, is_active, created_at, updated_at, user_id, ARRAY['grow']
+    FROM container_types
+    WHERE NOT EXISTS (SELECT 1 FROM containers WHERE containers.id = container_types.id)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END $$;
+
+-- ============================================================================
+-- COLUMN RENAME MIGRATIONS
+-- Migrate old column names to new unified names
+-- This is idempotent - safe to run multiple times
+-- ============================================================================
+DO $$
+BEGIN
+  -- Cultures: vessel_id -> container_id
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'cultures' AND column_name = 'vessel_id'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'cultures' AND column_name = 'container_id'
+  ) THEN
+    ALTER TABLE cultures RENAME COLUMN vessel_id TO container_id;
+    RAISE NOTICE 'Renamed cultures.vessel_id to container_id';
+  END IF;
+
+  -- Grows: container_type_id -> container_id
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'container_type_id'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'container_id'
+  ) THEN
+    ALTER TABLE grows RENAME COLUMN container_type_id TO container_id;
+    RAISE NOTICE 'Renamed grows.container_type_id to container_id';
+  END IF;
+END $$;
+
+-- ============================================================================
+-- FOREIGN KEY MIGRATIONS
+-- Update FK references to point to unified containers table
+-- ============================================================================
+DO $$
+BEGIN
+  -- Only proceed if containers table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'containers') THEN
+
+    -- Drop old FK constraints on cultures (if they exist)
+    IF EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_name = 'cultures_vessel_id_fkey' AND table_name = 'cultures'
+    ) THEN
+      ALTER TABLE cultures DROP CONSTRAINT cultures_vessel_id_fkey;
+      RAISE NOTICE 'Dropped cultures_vessel_id_fkey';
+    END IF;
+
+    IF EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_name = 'cultures_container_id_fkey' AND table_name = 'cultures'
+    ) THEN
+      ALTER TABLE cultures DROP CONSTRAINT cultures_container_id_fkey;
+    END IF;
+
+    -- Add new FK constraint on cultures.container_id -> containers.id
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'cultures' AND column_name = 'container_id'
+    ) THEN
+      BEGIN
+        ALTER TABLE cultures ADD CONSTRAINT cultures_container_id_fkey
+          FOREIGN KEY (container_id) REFERENCES containers(id);
+        RAISE NOTICE 'Added cultures_container_id_fkey';
+      EXCEPTION WHEN duplicate_object THEN
+        NULL; -- Constraint already exists
+      END;
+    END IF;
+
+    -- Drop old FK constraints on grows (if they exist)
+    IF EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_name = 'grows_container_type_id_fkey' AND table_name = 'grows'
+    ) THEN
+      ALTER TABLE grows DROP CONSTRAINT grows_container_type_id_fkey;
+      RAISE NOTICE 'Dropped grows_container_type_id_fkey';
+    END IF;
+
+    IF EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_name = 'grows_container_id_fkey' AND table_name = 'grows'
+    ) THEN
+      ALTER TABLE grows DROP CONSTRAINT grows_container_id_fkey;
+    END IF;
+
+    -- Add new FK constraint on grows.container_id -> containers.id
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'grows' AND column_name = 'container_id'
+    ) THEN
+      BEGIN
+        ALTER TABLE grows ADD CONSTRAINT grows_container_id_fkey
+          FOREIGN KEY (container_id) REFERENCES containers(id);
+        RAISE NOTICE 'Added grows_container_id_fkey';
+      EXCEPTION WHEN duplicate_object THEN
+        NULL; -- Constraint already exists
+      END;
+    END IF;
+
+  END IF;
+END $$;
+
+-- Legacy views: vessels and container_types (for backward compatibility)
+-- Only create these views if the old tables don't exist as BASE TABLEs
+-- This allows both fresh installs and migrations to work
+DO $$
+BEGIN
+  -- Only create vessels view if 'vessels' doesn't exist as a base table
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = 'vessels' AND table_type = 'BASE TABLE'
+  ) THEN
+    -- Drop any existing view first
+    DROP VIEW IF EXISTS vessels;
+    -- Create the view
+    EXECUTE 'CREATE VIEW vessels AS
+      SELECT id, name, category as type, volume_ml, is_reusable, notes, is_active, created_at, updated_at, user_id
+      FROM containers
+      WHERE ''culture'' = ANY(usage_context) OR category IN (''jar'', ''bag'', ''plate'', ''tube'', ''bottle'', ''syringe'')';
+  END IF;
+
+  -- Only create container_types view if 'container_types' doesn't exist as a base table
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = 'container_types' AND table_type = 'BASE TABLE'
+  ) THEN
+    -- Drop any existing view first
+    DROP VIEW IF EXISTS container_types;
+    -- Create the view
+    EXECUTE 'CREATE VIEW container_types AS
+      SELECT id, name, category, (volume_ml::DECIMAL / 1000) as volume_l, notes, is_active, created_at, updated_at, user_id
+      FROM containers
+      WHERE ''grow'' = ANY(usage_context) OR category IN (''tub'', ''bucket'', ''bed'', ''bag'', ''jar'')';
+  END IF;
+END $$;
 
 -- Substrate types
 CREATE TABLE IF NOT EXISTS substrate_types (
@@ -363,7 +583,7 @@ CREATE TABLE IF NOT EXISTS cultures (
   type TEXT CHECK (type IN ('spore_syringe', 'liquid_culture', 'agar', 'slant', 'grain_master', 'grain_spawn', 'other')) DEFAULT 'agar',
   generation INTEGER DEFAULT 0,
   parent_id UUID REFERENCES cultures(id),
-  vessel_id UUID REFERENCES vessels(id),
+  container_id UUID REFERENCES containers(id),  -- Unified: was vessel_id
   location_id UUID REFERENCES locations(id),
   recipe_id UUID REFERENCES recipes(id),
   volume_ml INTEGER,
@@ -408,7 +628,7 @@ CREATE TABLE IF NOT EXISTS grows (
   name TEXT NOT NULL,
   strain_id UUID REFERENCES strains(id),
   source_culture_id UUID REFERENCES cultures(id),
-  container_type_id UUID REFERENCES container_types(id),
+  container_id UUID REFERENCES containers(id),  -- Unified: was container_type_id
   substrate_type_id UUID REFERENCES substrate_types(id),
   location_id UUID REFERENCES locations(id),
   stage TEXT CHECK (stage IN ('spawning', 'colonizing', 'fruiting', 'harvesting', 'completed', 'contaminated')) DEFAULT 'spawning',
@@ -448,10 +668,88 @@ CREATE TABLE IF NOT EXISTS flushes (
   harvest_date DATE,
   wet_weight_g DECIMAL,
   dry_weight_g DECIMAL,
+  mushroom_count INTEGER,
+  quality TEXT CHECK (quality IN ('excellent', 'good', 'fair', 'poor')) DEFAULT 'good',
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
+
+-- Add missing columns to flushes table (idempotent migration)
+DO $$ BEGIN
+  ALTER TABLE flushes ADD COLUMN IF NOT EXISTS mushroom_count INTEGER;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE flushes ADD COLUMN IF NOT EXISTS quality TEXT DEFAULT 'good';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Add check constraint for quality values (if not exists)
+DO $$ BEGIN
+  ALTER TABLE flushes ADD CONSTRAINT flushes_quality_check
+    CHECK (quality IN ('excellent', 'good', 'fair', 'poor'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ============================================================================
+-- FLUSHES TABLE MIGRATION: Rename weight columns to include units
+-- This fixes the column name mismatch where the app expects _g suffix
+-- ============================================================================
+DO $$
+BEGIN
+  -- Check if we have the OLD column names (wet_weight, dry_weight without _g)
+  -- and need to migrate to the NEW names (wet_weight_g, dry_weight_g)
+
+  -- Step 1: Add new columns if they don't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'flushes' AND column_name = 'wet_weight_g'
+  ) THEN
+    ALTER TABLE flushes ADD COLUMN wet_weight_g DECIMAL;
+    RAISE NOTICE 'Added wet_weight_g column';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'flushes' AND column_name = 'dry_weight_g'
+  ) THEN
+    ALTER TABLE flushes ADD COLUMN dry_weight_g DECIMAL;
+    RAISE NOTICE 'Added dry_weight_g column';
+  END IF;
+
+  -- Step 2: Copy data from old columns to new columns (if old columns exist)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'flushes' AND column_name = 'wet_weight'
+  ) THEN
+    -- Copy data where new column is null but old column has data
+    UPDATE flushes SET wet_weight_g = wet_weight
+    WHERE wet_weight_g IS NULL AND wet_weight IS NOT NULL;
+    RAISE NOTICE 'Migrated wet_weight data to wet_weight_g';
+
+    -- Drop the old column
+    ALTER TABLE flushes DROP COLUMN wet_weight;
+    RAISE NOTICE 'Dropped old wet_weight column';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'flushes' AND column_name = 'dry_weight'
+  ) THEN
+    -- Copy data where new column is null but old column has data
+    UPDATE flushes SET dry_weight_g = dry_weight
+    WHERE dry_weight_g IS NULL AND dry_weight IS NOT NULL;
+    RAISE NOTICE 'Migrated dry_weight data to dry_weight_g';
+
+    -- Drop the old column
+    ALTER TABLE flushes DROP COLUMN dry_weight;
+    RAISE NOTICE 'Dropped old dry_weight column';
+  END IF;
+
+  RAISE NOTICE 'Flushes table migration complete';
+END $$;
 
 -- Recipe ingredients
 CREATE TABLE IF NOT EXISTS recipe_ingredients (
@@ -2796,8 +3094,17 @@ ALTER TABLE strains ENABLE ROW LEVEL SECURITY;
 ALTER TABLE location_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE location_classifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE vessels ENABLE ROW LEVEL SECURITY;
-ALTER TABLE container_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE containers ENABLE ROW LEVEL SECURITY;
+-- Legacy: Enable RLS on vessels/container_types only if they exist as tables
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels' AND table_type = 'BASE TABLE') THEN
+    ALTER TABLE vessels ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types' AND table_type = 'BASE TABLE') THEN
+    ALTER TABLE container_types ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 ALTER TABLE substrate_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_categories ENABLE ROW LEVEL SECURITY;
@@ -2909,25 +3216,37 @@ DROP POLICY IF EXISTS "locations_insert" ON locations;
 DROP POLICY IF EXISTS "locations_update" ON locations;
 DROP POLICY IF EXISTS "locations_delete" ON locations;
 
--- Vessels
-DROP POLICY IF EXISTS "anon_vessels_select" ON vessels;
-DROP POLICY IF EXISTS "anon_vessels_insert" ON vessels;
-DROP POLICY IF EXISTS "anon_vessels_update" ON vessels;
-DROP POLICY IF EXISTS "anon_vessels_delete" ON vessels;
-DROP POLICY IF EXISTS "vessels_select" ON vessels;
-DROP POLICY IF EXISTS "vessels_insert" ON vessels;
-DROP POLICY IF EXISTS "vessels_update" ON vessels;
-DROP POLICY IF EXISTS "vessels_delete" ON vessels;
+-- Containers (unified table - replaces vessels and container_types)
+DROP POLICY IF EXISTS "containers_select" ON containers;
+DROP POLICY IF EXISTS "containers_insert" ON containers;
+DROP POLICY IF EXISTS "containers_update" ON containers;
+DROP POLICY IF EXISTS "containers_delete" ON containers;
 
--- Container types
-DROP POLICY IF EXISTS "anon_container_types_select" ON container_types;
-DROP POLICY IF EXISTS "anon_container_types_insert" ON container_types;
-DROP POLICY IF EXISTS "anon_container_types_update" ON container_types;
-DROP POLICY IF EXISTS "anon_container_types_delete" ON container_types;
-DROP POLICY IF EXISTS "container_types_select" ON container_types;
-DROP POLICY IF EXISTS "container_types_insert" ON container_types;
-DROP POLICY IF EXISTS "container_types_update" ON container_types;
-DROP POLICY IF EXISTS "container_types_delete" ON container_types;
+-- Legacy: Drop vessel/container_types policies only if they exist as tables (not views)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels' AND table_type = 'BASE TABLE') THEN
+    DROP POLICY IF EXISTS "anon_vessels_select" ON vessels;
+    DROP POLICY IF EXISTS "anon_vessels_insert" ON vessels;
+    DROP POLICY IF EXISTS "anon_vessels_update" ON vessels;
+    DROP POLICY IF EXISTS "anon_vessels_delete" ON vessels;
+    DROP POLICY IF EXISTS "vessels_select" ON vessels;
+    DROP POLICY IF EXISTS "vessels_insert" ON vessels;
+    DROP POLICY IF EXISTS "vessels_update" ON vessels;
+    DROP POLICY IF EXISTS "vessels_delete" ON vessels;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types' AND table_type = 'BASE TABLE') THEN
+    DROP POLICY IF EXISTS "anon_container_types_select" ON container_types;
+    DROP POLICY IF EXISTS "anon_container_types_insert" ON container_types;
+    DROP POLICY IF EXISTS "anon_container_types_update" ON container_types;
+    DROP POLICY IF EXISTS "anon_container_types_delete" ON container_types;
+    DROP POLICY IF EXISTS "container_types_select" ON container_types;
+    DROP POLICY IF EXISTS "container_types_insert" ON container_types;
+    DROP POLICY IF EXISTS "container_types_update" ON container_types;
+    DROP POLICY IF EXISTS "container_types_delete" ON container_types;
+  END IF;
+END $$;
 
 -- Substrate types
 DROP POLICY IF EXISTS "anon_substrate_types_select" ON substrate_types;
@@ -3159,17 +3478,29 @@ CREATE POLICY "locations_insert" ON locations FOR INSERT WITH CHECK (user_id = a
 CREATE POLICY "locations_update" ON locations FOR UPDATE USING (user_id = auth.uid() OR is_admin());
 CREATE POLICY "locations_delete" ON locations FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Vessels policies (shared defaults + user's own)
-CREATE POLICY "vessels_select" ON vessels FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "vessels_insert" ON vessels FOR INSERT WITH CHECK (user_id = auth.uid());
-CREATE POLICY "vessels_update" ON vessels FOR UPDATE USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "vessels_delete" ON vessels FOR DELETE USING (user_id = auth.uid() OR is_admin());
+-- Containers policies (unified table - replaces vessels and container_types)
+CREATE POLICY "containers_select" ON containers FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "containers_insert" ON containers FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "containers_update" ON containers FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "containers_delete" ON containers FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
--- Container types policies (shared defaults + user's own)
-CREATE POLICY "container_types_select" ON container_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "container_types_insert" ON container_types FOR INSERT WITH CHECK (user_id = auth.uid());
-CREATE POLICY "container_types_update" ON container_types FOR UPDATE USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "container_types_delete" ON container_types FOR DELETE USING (user_id = auth.uid() OR is_admin());
+-- Legacy: Create vessel/container_types policies only if they exist as base tables (not views)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels' AND table_type = 'BASE TABLE') THEN
+    CREATE POLICY "vessels_select" ON vessels FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+    CREATE POLICY "vessels_insert" ON vessels FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY "vessels_update" ON vessels FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+    CREATE POLICY "vessels_delete" ON vessels FOR DELETE USING (user_id = auth.uid() OR is_admin());
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types' AND table_type = 'BASE TABLE') THEN
+    CREATE POLICY "container_types_select" ON container_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+    CREATE POLICY "container_types_insert" ON container_types FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY "container_types_update" ON container_types FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+    CREATE POLICY "container_types_delete" ON container_types FOR DELETE USING (user_id = auth.uid() OR is_admin());
+  END IF;
+END $$;
 
 -- Substrate types policies (shared defaults + user's own)
 CREATE POLICY "substrate_types_select" ON substrate_types FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
@@ -3406,6 +3737,939 @@ BEGIN
 END $$;
 
 -- ============================================================================
+-- DAILY CHECK TABLES (dev-040)
+-- ============================================================================
+
+-- Daily room checks for growing rooms
+CREATE TABLE IF NOT EXISTS daily_checks (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  location_id UUID REFERENCES locations(id) ON DELETE CASCADE,
+  check_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  check_type TEXT CHECK (check_type IN ('growing_room', 'cool_room', 'general')) DEFAULT 'growing_room',
+
+  -- Growing room specific
+  harvest_estimate_7day DECIMAL,
+  needs_attention BOOLEAN DEFAULT false,
+  attention_reason TEXT,
+  flag_for_recheck BOOLEAN DEFAULT false,
+  needs_harvest_assistance BOOLEAN DEFAULT false,
+
+  -- Cool room specific
+  inventory_count INTEGER,
+  stock_levels JSONB,
+
+  -- General
+  notes TEXT,
+  photos TEXT[],
+  checked_by UUID REFERENCES auth.users(id),
+  checked_at TIMESTAMPTZ DEFAULT NOW(),
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Harvest forecast tracking
+CREATE TABLE IF NOT EXISTS harvest_forecasts (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  daily_check_id UUID REFERENCES daily_checks(id) ON DELETE CASCADE,
+  forecast_date DATE NOT NULL,
+  estimated_weight_grams DECIMAL,
+  pickers_needed INTEGER,
+  confidence TEXT CHECK (confidence IN ('low', 'medium', 'high')) DEFAULT 'medium',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Room status tracking for grow cycle planning
+CREATE TABLE IF NOT EXISTS room_statuses (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  location_id UUID REFERENCES locations(id) ON DELETE CASCADE,
+  status TEXT CHECK (status IN ('empty', 'filling', 'colonizing', 'pinning', 'fruiting', 'harvesting', 'resting', 'cleaning')) DEFAULT 'empty',
+  strain_ids UUID[],
+  block_count INTEGER DEFAULT 0,
+  estimated_ready_date DATE,
+  last_harvest_date DATE,
+  total_yield_grams DECIMAL DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for daily check tables
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_daily_checks_location_id ON daily_checks(location_id);
+  CREATE INDEX IF NOT EXISTS idx_daily_checks_check_date ON daily_checks(check_date DESC);
+  CREATE INDEX IF NOT EXISTS idx_daily_checks_user_id ON daily_checks(user_id);
+  CREATE INDEX IF NOT EXISTS idx_harvest_forecasts_daily_check_id ON harvest_forecasts(daily_check_id);
+  CREATE INDEX IF NOT EXISTS idx_room_statuses_location_id ON room_statuses(location_id);
+END $$;
+
+-- Enable RLS for daily check tables
+ALTER TABLE daily_checks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE harvest_forecasts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE room_statuses ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for daily_checks
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own daily_checks" ON daily_checks;
+  DROP POLICY IF EXISTS "Users can insert their own daily_checks" ON daily_checks;
+  DROP POLICY IF EXISTS "Users can update their own daily_checks" ON daily_checks;
+  DROP POLICY IF EXISTS "Users can delete their own daily_checks" ON daily_checks;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own daily_checks"
+  ON daily_checks FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own daily_checks"
+  ON daily_checks FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own daily_checks"
+  ON daily_checks FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own daily_checks"
+  ON daily_checks FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- RLS Policies for harvest_forecasts
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own harvest_forecasts" ON harvest_forecasts;
+  DROP POLICY IF EXISTS "Users can insert their own harvest_forecasts" ON harvest_forecasts;
+  DROP POLICY IF EXISTS "Users can update their own harvest_forecasts" ON harvest_forecasts;
+  DROP POLICY IF EXISTS "Users can delete their own harvest_forecasts" ON harvest_forecasts;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own harvest_forecasts"
+  ON harvest_forecasts FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own harvest_forecasts"
+  ON harvest_forecasts FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own harvest_forecasts"
+  ON harvest_forecasts FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own harvest_forecasts"
+  ON harvest_forecasts FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- RLS Policies for room_statuses
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own room_statuses" ON room_statuses;
+  DROP POLICY IF EXISTS "Users can insert their own room_statuses" ON room_statuses;
+  DROP POLICY IF EXISTS "Users can update their own room_statuses" ON room_statuses;
+  DROP POLICY IF EXISTS "Users can delete their own room_statuses" ON room_statuses;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own room_statuses"
+  ON room_statuses FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own room_statuses"
+  ON room_statuses FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own room_statuses"
+  ON room_statuses FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own room_statuses"
+  ON room_statuses FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- LAB EVENTS (General purpose event logging - dev-062)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS lab_events (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  category TEXT CHECK (category IN ('observation', 'maintenance', 'harvest', 'inoculation', 'transfer', 'contamination', 'environmental', 'supply', 'milestone', 'note', 'other')) DEFAULT 'observation',
+  title TEXT NOT NULL,
+  description TEXT,
+  entity_type TEXT CHECK (entity_type IN ('culture', 'grow', 'location', 'equipment', 'general')),
+  entity_id UUID,
+  entity_name TEXT,
+  severity TEXT CHECK (severity IN ('info', 'success', 'warning', 'critical')) DEFAULT 'info',
+  tags TEXT[],
+  images TEXT[],
+  metadata JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for lab_events
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_lab_events_user_id ON lab_events(user_id);
+  CREATE INDEX IF NOT EXISTS idx_lab_events_timestamp ON lab_events(timestamp DESC);
+  CREATE INDEX IF NOT EXISTS idx_lab_events_category ON lab_events(category);
+  CREATE INDEX IF NOT EXISTS idx_lab_events_entity ON lab_events(entity_type, entity_id);
+END $$;
+
+-- Enable RLS for lab_events
+ALTER TABLE lab_events ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for lab_events
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own lab_events" ON lab_events;
+  DROP POLICY IF EXISTS "Users can insert their own lab_events" ON lab_events;
+  DROP POLICY IF EXISTS "Users can update their own lab_events" ON lab_events;
+  DROP POLICY IF EXISTS "Users can delete their own lab_events" ON lab_events;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own lab_events"
+  ON lab_events FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own lab_events"
+  ON lab_events FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own lab_events"
+  ON lab_events FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own lab_events"
+  ON lab_events FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- LIBRARY SUGGESTIONS (Community contribution system)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS library_suggestions (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  suggestion_type TEXT CHECK (suggestion_type IN ('species', 'strain', 'correction', 'addition', 'other')) NOT NULL,
+  target_species_id UUID REFERENCES species(id) ON DELETE SET NULL,
+  target_strain_id UUID REFERENCES strains(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  proposed_changes JSONB,
+  source_url TEXT,
+  source_notes TEXT,
+  status TEXT CHECK (status IN ('pending', 'approved', 'rejected', 'needs_info')) DEFAULT 'pending',
+  admin_notes TEXT,
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for library_suggestions
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_library_suggestions_user_id ON library_suggestions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_library_suggestions_status ON library_suggestions(status);
+  CREATE INDEX IF NOT EXISTS idx_library_suggestions_type ON library_suggestions(suggestion_type);
+END $$;
+
+-- Enable RLS for library_suggestions
+ALTER TABLE library_suggestions ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for library_suggestions
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own library_suggestions" ON library_suggestions;
+  DROP POLICY IF EXISTS "Admins can view all library_suggestions" ON library_suggestions;
+  DROP POLICY IF EXISTS "Users can insert their own library_suggestions" ON library_suggestions;
+  DROP POLICY IF EXISTS "Users can update their own pending suggestions" ON library_suggestions;
+  DROP POLICY IF EXISTS "Admins can update all library_suggestions" ON library_suggestions;
+  DROP POLICY IF EXISTS "Users can delete their own pending suggestions" ON library_suggestions;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own library_suggestions"
+  ON library_suggestions FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can view all library_suggestions"
+  ON library_suggestions FOR SELECT
+  USING (EXISTS (SELECT 1 FROM user_profiles WHERE user_id = auth.uid() AND is_admin = true));
+
+CREATE POLICY "Users can insert their own library_suggestions"
+  ON library_suggestions FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own pending suggestions"
+  ON library_suggestions FOR UPDATE
+  USING (auth.uid() = user_id AND status = 'pending');
+
+CREATE POLICY "Admins can update all library_suggestions"
+  ON library_suggestions FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM user_profiles WHERE user_id = auth.uid() AND is_admin = true));
+
+CREATE POLICY "Users can delete their own pending suggestions"
+  ON library_suggestions FOR DELETE
+  USING (auth.uid() = user_id AND status = 'pending');
+
+-- ============================================================================
+-- COLD STORAGE CHECKS (dev-042)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS cold_storage_checks (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  check_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
+  location_name TEXT,
+  item_type TEXT CHECK (item_type IN ('culture', 'spawn', 'substrate', 'ingredient', 'other')) NOT NULL,
+  item_id UUID,
+  item_name TEXT NOT NULL,
+  result TEXT CHECK (result IN ('good', 'attention', 'remove')) NOT NULL,
+  notes TEXT,
+  expiry_date DATE,
+  quantity INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for cold_storage_checks
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_cold_storage_checks_user_id ON cold_storage_checks(user_id);
+  CREATE INDEX IF NOT EXISTS idx_cold_storage_checks_date ON cold_storage_checks(check_date DESC);
+  CREATE INDEX IF NOT EXISTS idx_cold_storage_checks_location ON cold_storage_checks(location_id);
+  CREATE INDEX IF NOT EXISTS idx_cold_storage_checks_item ON cold_storage_checks(item_type, item_id);
+END $$;
+
+-- Enable RLS for cold_storage_checks
+ALTER TABLE cold_storage_checks ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for cold_storage_checks
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own cold_storage_checks" ON cold_storage_checks;
+  DROP POLICY IF EXISTS "Users can insert their own cold_storage_checks" ON cold_storage_checks;
+  DROP POLICY IF EXISTS "Users can update their own cold_storage_checks" ON cold_storage_checks;
+  DROP POLICY IF EXISTS "Users can delete their own cold_storage_checks" ON cold_storage_checks;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own cold_storage_checks"
+  ON cold_storage_checks FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own cold_storage_checks"
+  ON cold_storage_checks FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own cold_storage_checks"
+  ON cold_storage_checks FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own cold_storage_checks"
+  ON cold_storage_checks FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- OUTCOME LOGGING TABLES (v18)
+-- Tracks why entities are removed/completed for analytics and insights
+-- ============================================================================
+
+-- Entity outcomes (universal for all entity types: grows, cultures, inventory)
+CREATE TABLE IF NOT EXISTS entity_outcomes (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('grow', 'culture', 'inventory_item', 'inventory_lot', 'equipment')),
+  entity_id UUID NOT NULL,
+  entity_name TEXT,  -- Denormalized for historical reference
+
+  -- Outcome classification
+  outcome_category TEXT NOT NULL CHECK (outcome_category IN ('success', 'failure', 'neutral', 'partial')),
+  outcome_code TEXT NOT NULL,  -- From taxonomy (e.g., 'contamination_early', 'completed_success')
+  outcome_label TEXT,  -- Human-readable version
+
+  -- Timing
+  started_at TIMESTAMPTZ,      -- When entity was created/started
+  ended_at TIMESTAMPTZ DEFAULT NOW(),
+  duration_days INTEGER,       -- Calculated from dates
+
+  -- Financial
+  total_cost DECIMAL(10,2),
+  total_revenue DECIMAL(10,2),       -- For harvests that were sold
+  cost_per_unit DECIMAL(10,4),       -- Calculated efficiency
+
+  -- Yield (for grows)
+  total_yield_wet DECIMAL(10,2),
+  total_yield_dry DECIMAL(10,2),
+  biological_efficiency DECIMAL(5,2),
+  flush_count INTEGER,
+
+  -- References (denormalized for historical queries)
+  strain_id UUID,
+  strain_name TEXT,
+  species_id UUID,
+  species_name TEXT,
+  location_id UUID,
+  location_name TEXT,
+
+  -- Survey data (JSONB for flexibility)
+  survey_responses JSONB DEFAULT '{}',
+
+  -- Metadata
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for entity_outcomes
+CREATE INDEX IF NOT EXISTS idx_entity_outcomes_entity ON entity_outcomes(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_entity_outcomes_user ON entity_outcomes(user_id);
+CREATE INDEX IF NOT EXISTS idx_entity_outcomes_outcome ON entity_outcomes(outcome_category, outcome_code);
+CREATE INDEX IF NOT EXISTS idx_entity_outcomes_strain ON entity_outcomes(strain_id);
+CREATE INDEX IF NOT EXISTS idx_entity_outcomes_ended_at ON entity_outcomes(ended_at);
+
+-- Enable RLS on entity_outcomes
+ALTER TABLE entity_outcomes ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for entity_outcomes
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own entity_outcomes" ON entity_outcomes;
+  DROP POLICY IF EXISTS "Users can insert their own entity_outcomes" ON entity_outcomes;
+  DROP POLICY IF EXISTS "Users can update their own entity_outcomes" ON entity_outcomes;
+  DROP POLICY IF EXISTS "Users can delete their own entity_outcomes" ON entity_outcomes;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own entity_outcomes"
+  ON entity_outcomes FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own entity_outcomes"
+  ON entity_outcomes FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own entity_outcomes"
+  ON entity_outcomes FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own entity_outcomes"
+  ON entity_outcomes FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Contamination details (linked to outcomes for detailed contam analysis)
+CREATE TABLE IF NOT EXISTS contamination_details (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  outcome_id UUID REFERENCES entity_outcomes(id) ON DELETE CASCADE,
+
+  contamination_type TEXT CHECK (contamination_type IN (
+    'trichoderma', 'cobweb', 'black_mold', 'penicillium',
+    'aspergillus', 'bacterial', 'lipstick', 'wet_spot', 'yeast', 'unknown'
+  )),
+  contamination_stage TEXT CHECK (contamination_stage IN (
+    'agar', 'liquid_culture', 'grain_spawn', 'bulk_colonization', 'fruiting', 'storage'
+  )),
+  days_to_detection INTEGER,
+  suspected_cause TEXT CHECK (suspected_cause IN (
+    'sterilization_failure', 'inoculation_technique', 'contaminated_source',
+    'environmental', 'substrate_issue', 'equipment', 'user_error', 'unknown'
+  )),
+
+  -- Environment at time of contamination
+  temperature_at_detection DECIMAL(5,2),
+  humidity_at_detection DECIMAL(5,2),
+
+  -- Photo evidence
+  images TEXT[],
+
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for contamination_details
+CREATE INDEX IF NOT EXISTS idx_contamination_details_outcome ON contamination_details(outcome_id);
+CREATE INDEX IF NOT EXISTS idx_contamination_details_type ON contamination_details(contamination_type);
+CREATE INDEX IF NOT EXISTS idx_contamination_details_cause ON contamination_details(suspected_cause);
+CREATE INDEX IF NOT EXISTS idx_contamination_details_user ON contamination_details(user_id);
+
+-- Enable RLS on contamination_details
+ALTER TABLE contamination_details ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for contamination_details
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own contamination_details" ON contamination_details;
+  DROP POLICY IF EXISTS "Users can insert their own contamination_details" ON contamination_details;
+  DROP POLICY IF EXISTS "Users can update their own contamination_details" ON contamination_details;
+  DROP POLICY IF EXISTS "Users can delete their own contamination_details" ON contamination_details;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own contamination_details"
+  ON contamination_details FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own contamination_details"
+  ON contamination_details FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own contamination_details"
+  ON contamination_details FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own contamination_details"
+  ON contamination_details FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Exit surveys (entity-specific questions and user feedback)
+CREATE TABLE IF NOT EXISTS exit_surveys (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  outcome_id UUID REFERENCES entity_outcomes(id) ON DELETE CASCADE,
+  entity_type TEXT NOT NULL,
+
+  -- Universal questions (stored as JSONB)
+  base_responses JSONB DEFAULT '{}',
+
+  -- Type-specific responses (stored as JSONB)
+  specific_responses JSONB DEFAULT '{}',
+
+  -- User experience ratings (1-5)
+  overall_satisfaction INTEGER CHECK (overall_satisfaction BETWEEN 1 AND 5),
+  difficulty_rating INTEGER CHECK (difficulty_rating BETWEEN 1 AND 5),
+  would_repeat BOOLEAN,
+
+  -- Lessons learned
+  what_worked TEXT,
+  what_failed TEXT,
+  would_change TEXT,
+
+  -- Time tracking
+  estimated_hours_spent DECIMAL(6,2),
+
+  completed_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for exit_surveys
+CREATE INDEX IF NOT EXISTS idx_exit_surveys_outcome ON exit_surveys(outcome_id);
+CREATE INDEX IF NOT EXISTS idx_exit_surveys_entity_type ON exit_surveys(entity_type);
+CREATE INDEX IF NOT EXISTS idx_exit_surveys_user ON exit_surveys(user_id);
+
+-- Enable RLS on exit_surveys
+ALTER TABLE exit_surveys ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for exit_surveys
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Users can view their own exit_surveys" ON exit_surveys;
+  DROP POLICY IF EXISTS "Users can insert their own exit_surveys" ON exit_surveys;
+  DROP POLICY IF EXISTS "Users can update their own exit_surveys" ON exit_surveys;
+  DROP POLICY IF EXISTS "Users can delete their own exit_surveys" ON exit_surveys;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "Users can view their own exit_surveys"
+  ON exit_surveys FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own exit_surveys"
+  ON exit_surveys FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own exit_surveys"
+  ON exit_surveys FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own exit_surveys"
+  ON exit_surveys FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- RPC FUNCTIONS (Direct SQL to bypass PostgREST schema cache issues)
+-- ============================================================================
+
+-- Function to insert a flush record directly (bypasses PostgREST schema cache)
+-- This is a workaround for PGRST204 errors when PostgREST cache is stale
+CREATE OR REPLACE FUNCTION insert_flush(
+  p_grow_id UUID,
+  p_flush_number INTEGER,
+  p_harvest_date DATE,
+  p_wet_weight_g DECIMAL,
+  p_dry_weight_g DECIMAL DEFAULT NULL,
+  p_mushroom_count INTEGER DEFAULT NULL,
+  p_quality TEXT DEFAULT 'good',
+  p_notes TEXT DEFAULT NULL,
+  p_user_id UUID DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_result JSONB;
+  v_flush_id UUID;
+BEGIN
+  -- Use provided user_id or get from auth context
+  v_user_id := COALESCE(p_user_id, auth.uid());
+
+  -- Validate that caller owns this grow (RLS check)
+  IF NOT EXISTS (
+    SELECT 1 FROM grows WHERE id = p_grow_id AND (user_id = v_user_id OR user_id IS NULL)
+  ) THEN
+    RAISE EXCEPTION 'Access denied: You do not own this grow record';
+  END IF;
+
+  -- Insert the flush record
+  INSERT INTO flushes (
+    grow_id,
+    flush_number,
+    harvest_date,
+    wet_weight_g,
+    dry_weight_g,
+    mushroom_count,
+    quality,
+    notes,
+    user_id
+  ) VALUES (
+    p_grow_id,
+    p_flush_number,
+    p_harvest_date,
+    p_wet_weight_g,
+    p_dry_weight_g,
+    p_mushroom_count,
+    p_quality,
+    p_notes,
+    v_user_id
+  )
+  RETURNING id INTO v_flush_id;
+
+  -- Return the inserted record as JSONB
+  SELECT jsonb_build_object(
+    'id', f.id,
+    'grow_id', f.grow_id,
+    'flush_number', f.flush_number,
+    'harvest_date', f.harvest_date,
+    'wet_weight_g', f.wet_weight_g,
+    'dry_weight_g', f.dry_weight_g,
+    'mushroom_count', f.mushroom_count,
+    'quality', f.quality,
+    'notes', f.notes,
+    'created_at', f.created_at,
+    'user_id', f.user_id
+  ) INTO v_result
+  FROM flushes f
+  WHERE f.id = v_flush_id;
+
+  RETURN v_result;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION insert_flush TO authenticated;
+GRANT EXECUTE ON FUNCTION insert_flush TO anon;
+
+-- ============================================================================
+-- PUBLIC SHARING SYSTEM (v21)
+-- Token-based sharing for public/anonymous access to grows, cultures, batches
+-- Following API security best practices: opaque tokens, expiration, revocation
+-- ============================================================================
+
+-- Share tokens for public/anonymous access
+CREATE TABLE IF NOT EXISTS share_tokens (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  -- Token is opaque random string (NOT JWT per security best practices)
+  token TEXT UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+
+  -- What is being shared
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('grow', 'culture', 'batch', 'recipe', 'lineage')),
+  entity_id UUID NOT NULL,
+
+  -- Access control
+  access_level TEXT DEFAULT 'customer' CHECK (access_level IN ('customer', 'auditor')),
+  permissions JSONB DEFAULT '{}',
+
+  -- Expiration & analytics
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days'),
+  view_count INTEGER DEFAULT 0,
+  last_viewed_at TIMESTAMPTZ,
+
+  -- Revocation
+  is_revoked BOOLEAN DEFAULT false,
+  revoked_at TIMESTAMPTZ,
+  revoked_reason TEXT,
+
+  -- Ownership
+  created_by UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Batch passports (Digital Product Passport following EU ESPR/GS1 standards)
+CREATE TABLE IF NOT EXISTS batch_passports (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- Unique passport identifier (shareable, human-readable)
+  -- Format: ML-YYYY-MM-NNNN (e.g., "ML-2024-12-0001")
+  passport_code TEXT UNIQUE NOT NULL,
+
+  -- What this passport represents
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('grow', 'culture', 'batch')),
+  entity_id UUID NOT NULL,
+
+  -- Public/Redacted field configuration
+  -- JSON object mapping field names to visibility (true=show, false=hide)
+  -- e.g., {"strain": true, "cost": false, "location_address": false}
+  field_visibility JSONB DEFAULT '{}',
+
+  -- Custom public content (seller-written)
+  public_title TEXT,
+  public_description TEXT,
+  public_notes TEXT,
+  seller_name TEXT,
+  seller_contact TEXT,
+  seller_website TEXT,
+
+  -- Lineage snapshot (frozen at passport creation to prevent post-hoc modifications)
+  -- Stores full lineage tree including ancestors and descendants
+  lineage_snapshot JSONB,
+
+  -- QR Code data
+  qr_data_url TEXT,
+  qr_short_url TEXT,
+
+  -- Status
+  is_published BOOLEAN DEFAULT false,
+  published_at TIMESTAMPTZ,
+
+  -- Ownership
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- View analytics for passports (anonymized, no PII stored)
+CREATE TABLE IF NOT EXISTS passport_views (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  passport_id UUID REFERENCES batch_passports(id) ON DELETE CASCADE,
+
+  -- Viewer info (anonymous - no PII stored)
+  viewer_token TEXT, -- Hashed session token for unique visitor tracking
+  ip_hash TEXT, -- Hashed IP for fraud detection (not stored raw)
+  user_agent TEXT,
+  referrer TEXT,
+
+  -- Geolocation (optional, city-level only for privacy)
+  geo_country TEXT,
+  geo_region TEXT,
+
+  viewed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Field redaction presets (templates for common visibility patterns)
+CREATE TABLE IF NOT EXISTS redaction_presets (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+
+  -- Field visibility template
+  -- JSON object mapping field names to visibility
+  field_visibility JSONB NOT NULL,
+
+  -- Which entity types this preset applies to
+  applies_to TEXT[] DEFAULT ARRAY['grow', 'culture', 'batch'],
+
+  -- Ownership (null = system preset available to all)
+  is_system BOOLEAN DEFAULT false,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for share_tokens
+CREATE INDEX IF NOT EXISTS idx_share_tokens_token ON share_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_share_tokens_entity ON share_tokens(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_share_tokens_created_by ON share_tokens(created_by);
+CREATE INDEX IF NOT EXISTS idx_share_tokens_expires_at ON share_tokens(expires_at);
+
+-- Indexes for batch_passports
+CREATE INDEX IF NOT EXISTS idx_batch_passports_code ON batch_passports(passport_code);
+CREATE INDEX IF NOT EXISTS idx_batch_passports_entity ON batch_passports(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_batch_passports_user_id ON batch_passports(user_id);
+CREATE INDEX IF NOT EXISTS idx_batch_passports_published ON batch_passports(is_published) WHERE is_published = true;
+
+-- Indexes for passport_views
+CREATE INDEX IF NOT EXISTS idx_passport_views_passport_id ON passport_views(passport_id);
+CREATE INDEX IF NOT EXISTS idx_passport_views_viewed_at ON passport_views(viewed_at);
+
+-- Indexes for redaction_presets
+CREATE INDEX IF NOT EXISTS idx_redaction_presets_user_id ON redaction_presets(user_id);
+CREATE INDEX IF NOT EXISTS idx_redaction_presets_system ON redaction_presets(is_system) WHERE is_system = true;
+
+-- ============================================================================
+-- RLS POLICIES FOR PUBLIC SHARING SYSTEM
+-- ============================================================================
+
+-- Enable RLS on share_tokens
+ALTER TABLE share_tokens ENABLE ROW LEVEL SECURITY;
+
+-- Owners can manage their own share tokens
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'share_tokens' AND policyname = 'share_tokens_owner_all') THEN
+    EXECUTE 'CREATE POLICY share_tokens_owner_all ON share_tokens FOR ALL USING (auth.uid() = created_by)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Enable RLS on batch_passports
+ALTER TABLE batch_passports ENABLE ROW LEVEL SECURITY;
+
+-- Owners can manage their own passports
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'batch_passports' AND policyname = 'batch_passports_owner_all') THEN
+    EXECUTE 'CREATE POLICY batch_passports_owner_all ON batch_passports FOR ALL USING (auth.uid() = user_id)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Published passports are publicly readable (for anonymous passport viewing)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'batch_passports' AND policyname = 'batch_passports_public_read') THEN
+    EXECUTE 'CREATE POLICY batch_passports_public_read ON batch_passports FOR SELECT USING (is_published = true)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Enable RLS on passport_views
+ALTER TABLE passport_views ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can insert views (for anonymous tracking)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'passport_views' AND policyname = 'passport_views_insert') THEN
+    EXECUTE 'CREATE POLICY passport_views_insert ON passport_views FOR INSERT WITH CHECK (true)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Only passport owners can read their own views
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'passport_views' AND policyname = 'passport_views_owner_read') THEN
+    EXECUTE 'CREATE POLICY passport_views_owner_read ON passport_views FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM batch_passports bp
+        WHERE bp.id = passport_views.passport_id
+        AND bp.user_id = auth.uid()
+      )
+    )';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Enable RLS on redaction_presets
+ALTER TABLE redaction_presets ENABLE ROW LEVEL SECURITY;
+
+-- System presets are readable by all authenticated users
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'redaction_presets' AND policyname = 'redaction_presets_system_read') THEN
+    EXECUTE 'CREATE POLICY redaction_presets_system_read ON redaction_presets FOR SELECT USING (is_system = true)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Users can manage their own presets
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'redaction_presets' AND policyname = 'redaction_presets_owner_all') THEN
+    EXECUTE 'CREATE POLICY redaction_presets_owner_all ON redaction_presets FOR ALL USING (auth.uid() = user_id)';
+  END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ============================================================================
+-- HELPER FUNCTIONS FOR PUBLIC SHARING
+-- ============================================================================
+
+-- Function to generate unique passport codes
+CREATE OR REPLACE FUNCTION generate_passport_code()
+RETURNS TEXT AS $$
+DECLARE
+  v_year TEXT;
+  v_month TEXT;
+  v_seq INTEGER;
+  v_code TEXT;
+BEGIN
+  v_year := TO_CHAR(NOW(), 'YYYY');
+  v_month := TO_CHAR(NOW(), 'MM');
+
+  -- Get the next sequence number for this month
+  SELECT COALESCE(MAX(
+    CAST(SUBSTRING(passport_code FROM 12 FOR 4) AS INTEGER)
+  ), 0) + 1 INTO v_seq
+  FROM batch_passports
+  WHERE passport_code LIKE 'ML-' || v_year || '-' || v_month || '-%';
+
+  v_code := 'ML-' || v_year || '-' || v_month || '-' || LPAD(v_seq::TEXT, 4, '0');
+
+  RETURN v_code;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to record passport view (for anonymous tracking)
+CREATE OR REPLACE FUNCTION record_passport_view(
+  p_passport_code TEXT,
+  p_viewer_token TEXT DEFAULT NULL,
+  p_ip_hash TEXT DEFAULT NULL,
+  p_user_agent TEXT DEFAULT NULL,
+  p_referrer TEXT DEFAULT NULL,
+  p_geo_country TEXT DEFAULT NULL,
+  p_geo_region TEXT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_passport_id UUID;
+  v_view_id UUID;
+BEGIN
+  -- Find the passport
+  SELECT id INTO v_passport_id
+  FROM batch_passports
+  WHERE passport_code = p_passport_code
+    AND is_published = true;
+
+  IF v_passport_id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Passport not found or not published');
+  END IF;
+
+  -- Record the view
+  INSERT INTO passport_views (
+    passport_id, viewer_token, ip_hash, user_agent, referrer, geo_country, geo_region
+  ) VALUES (
+    v_passport_id, p_viewer_token, p_ip_hash, p_user_agent, p_referrer, p_geo_country, p_geo_region
+  ) RETURNING id INTO v_view_id;
+
+  RETURN jsonb_build_object('success', true, 'view_id', v_view_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION generate_passport_code TO authenticated;
+GRANT EXECUTE ON FUNCTION record_passport_view TO anon;
+GRANT EXECUTE ON FUNCTION record_passport_view TO authenticated;
+
+-- ============================================================================
 -- SCHEMA VERSION (for tracking migrations)
 -- ============================================================================
 
@@ -3416,12 +4680,60 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 15)
-ON CONFLICT (id) DO UPDATE SET version = 15, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 21)
+ON CONFLICT (id) DO UPDATE SET version = 21, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v21 (2024-12): PUBLIC SHARING SYSTEM - Token-based sharing for public access:
+--               - share_tokens: Opaque tokens for public/anonymous access to grows,
+--                 cultures, batches. Follows API security best practices with expiration,
+--                 revocation, and rate limiting support. Access levels: customer, auditor.
+--               - batch_passports: Digital Product Passports following EU ESPR/GS1 standards.
+--                 Unique human-readable codes (ML-YYYY-MM-NNNN), frozen lineage snapshots,
+--                 field visibility configuration for redaction.
+--               - passport_views: Anonymized analytics for passport views. No PII stored,
+--                 only hashed tokens and city-level geolocation.
+--               - redaction_presets: Field visibility templates (Customer, Auditor, Minimal).
+--                 System presets available to all, users can create custom presets.
+--               - Helper functions: generate_passport_code(), record_passport_view()
+--               - Full RLS policies and indexes for all tables
+-- v20 (2024-12): CRITICAL FIX - Flushes table column name migration:
+--               - Database had: wet_weight, dry_weight (integer)
+--               - App expected: wet_weight_g, dry_weight_g (DECIMAL)
+--               - Migration adds _g suffix columns, copies data, drops old columns
+--               - Transformation code now handles both column names defensively
+--               - Root cause: CREATE TABLE IF NOT EXISTS didn't update existing table
+--               - Lesson: Always check actual DB schema vs expected schema
+-- v19 (2024-12): Added RPC function to bypass PostgREST schema cache issues:
+--               - insert_flush: Direct SQL function for inserting flush records
+--                 Bypasses PostgREST schema cache (PGRST204 errors)
+--                 Returns inserted record as JSONB
+--                 Includes RLS validation for grow ownership
+-- v18 (2024-12): Added outcome logging system for analytics and insights:
+--               - entity_outcomes: Universal outcome tracking for grows, cultures, inventory
+--                 Captures outcome category (success/failure/neutral/partial), outcome codes,
+--                 timing, financials, yield data, and survey responses (JSONB)
+--               - contamination_details: Detailed contamination tracking linked to outcomes
+--                 Includes contam type, stage, suspected cause, environment data
+--               - exit_surveys: User feedback and lessons learned on entity removal
+--                 Satisfaction ratings, difficulty, what worked/failed/would change
+--               - Full RLS policies and indexes for all new tables
+-- v17 (2024-12): Added new features tables:
+--               - lab_events: General purpose event logging (dev-062)
+--                 Supports observations, maintenance, harvests, transfers, etc.
+--                 Links to cultures, grows, locations with full tagging system
+--               - library_suggestions: Community contribution system for Library
+--                 Allows users to suggest species/strain changes, admin approval workflow
+--               - cold_storage_checks: Cold storage inventory checks (dev-042)
+--                 Track fridge/cold room inventory health during daily checks
+--               - Full RLS policies and indexes for all new tables
+-- v16 (2024-12): Added daily check and harvest workflow tables (dev-040, dev-184):
+--               - daily_checks: Room-by-room daily inspection tracking
+--               - harvest_forecasts: 7-day harvest predictions
+--               - room_statuses: Room lifecycle tracking (empty, colonizing, fruiting, etc.)
+--               - Full RLS policies and indexes for all tables
 -- v15 (2024-12): Fix species seed data re-run safety:
 --               - Added conditional check to skip seeding if 5+ species exist
 --               - Added partial unique index on species.name for global species

@@ -196,6 +196,9 @@ CREATE TABLE IF NOT EXISTS culture_transfers (
   target_culture_id UUID REFERENCES cultures(id),
   date TIMESTAMPTZ DEFAULT NOW(),
   notes TEXT,
+  quantity DECIMAL,
+  unit TEXT,
+  to_type TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
@@ -672,3 +675,17 @@ ON CONFLICT (id) DO UPDATE SET version = 1, updated_at = NOW();
 -- ============================================================================
 -- If you see this, the schema was applied successfully!
 -- You can now connect your MycoLab app to this database.
+
+-- Add missing columns to culture_transfers
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'culture_transfers' AND column_name = 'quantity') THEN
+    ALTER TABLE culture_transfers ADD COLUMN quantity DECIMAL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'culture_transfers' AND column_name = 'unit') THEN
+    ALTER TABLE culture_transfers ADD COLUMN unit TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'culture_transfers' AND column_name = 'to_type') THEN
+    ALTER TABLE culture_transfers ADD COLUMN to_type TEXT;
+  END IF;
+END $$;

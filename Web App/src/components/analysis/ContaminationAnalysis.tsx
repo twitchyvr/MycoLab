@@ -237,16 +237,29 @@ const Icons = {
   Filter: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
   X: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
   ChevronDown: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="6 9 12 15 18 9"/></svg>,
+  ChevronRight: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="9 18 15 12 9 6"/></svg>,
   Info: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
+  Edit: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  ExternalLink: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>,
+  Save: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+  Calendar: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  Clock: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  MapPin: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
 };
 
 export const ContaminationAnalysis: React.FC = () => {
-  const { state, getStrain, getLocation } = useData();
+  const { state, getStrain, getLocation, updateCulture, updateGrow } = useData();
   const [activeTab, setActiveTab] = useState<'log' | 'analysis' | 'knowledge'>('log');
   const [showLogForm, setShowLogForm] = useState(false);
   const [selectedContamType, setSelectedContamType] = useState<ContaminationType | null>(null);
   const [filterType, setFilterType] = useState<ContaminationType | 'all'>('all');
   const [filterStage, setFilterStage] = useState<ContaminationStage | 'all'>('all');
+  const [selectedEvent, setSelectedEvent] = useState<ContaminationEvent | null>(null);
+  const [editingEvent, setEditingEvent] = useState<{
+    type: ContaminationType;
+    suspectedCause: SuspectedCause;
+    notes: string;
+  } | null>(null);
 
   // Derive contamination events from actual contaminated cultures and grows
   const events = useMemo(() => {
@@ -497,12 +510,23 @@ export const ContaminationAnalysis: React.FC = () => {
               const typeInfo = contamKnowledge[event.type];
               const stageInfo = stageConfig[event.stage];
               const causeInfo = causeConfig[event.suspectedCause];
-              
+
               return (
-                <div key={event.id} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors">
+                <button
+                  key={event.id}
+                  onClick={() => {
+                    setSelectedEvent(event);
+                    setEditingEvent({
+                      type: event.type,
+                      suspectedCause: event.suspectedCause,
+                      notes: event.notes || '',
+                    });
+                  }}
+                  className="w-full text-left bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 hover:border-zinc-600 hover:bg-zinc-900/70 transition-all cursor-pointer group"
+                >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-red-950/50 border border-red-800/50 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-lg bg-red-950/50 border border-red-800/50 flex items-center justify-center text-red-400">
                         <Icons.AlertTriangle />
                       </div>
                       <div>
@@ -514,9 +538,14 @@ export const ContaminationAnalysis: React.FC = () => {
                         <p className={`text-sm font-medium ${typeInfo.color}`}>{typeInfo.name}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-zinc-400">{event.dateDetected.toLocaleDateString()}</p>
-                      <p className="text-xs text-zinc-500">Day {event.daysSinceInoculation}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-sm text-zinc-400">{event.dateDetected.toLocaleDateString()}</p>
+                        <p className="text-xs text-zinc-500">Day {event.daysSinceInoculation}</p>
+                      </div>
+                      <div className="text-zinc-500 group-hover:text-zinc-300 transition-colors">
+                        <Icons.ChevronRight />
+                      </div>
                     </div>
                   </div>
 
@@ -540,7 +569,7 @@ export const ContaminationAnalysis: React.FC = () => {
                   </div>
 
                   {event.notes && (
-                    <p className="text-sm text-zinc-400 mb-3">{event.notes}</p>
+                    <p className="text-sm text-zinc-400 mb-3 line-clamp-2">{event.notes}</p>
                   )}
 
                   <div className="pt-3 border-t border-zinc-800">
@@ -549,15 +578,30 @@ export const ContaminationAnalysis: React.FC = () => {
                       <span className="text-zinc-400">{getTimingDiagnosis(event.daysSinceInoculation, event.stage)}</span>
                     </p>
                   </div>
-                </div>
+                </button>
               );
             })}
+
+            {filteredEvents.length === 0 && (
+              <div className="text-center py-12 text-zinc-500">
+                <Icons.AlertTriangle />
+                <p className="mt-2">No contamination events found</p>
+                <p className="text-sm text-zinc-600">Mark a culture or grow as contaminated to track events here</p>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {activeTab === 'analysis' && (
         <div className="grid md:grid-cols-2 gap-6">
+          {analysis.totalEvents === 0 && (
+            <div className="md:col-span-2 text-center py-12 text-zinc-500">
+              <Icons.TrendingUp />
+              <p className="mt-2">No data to analyze yet</p>
+              <p className="text-sm text-zinc-600">Contamination events will be analyzed here once they occur</p>
+            </div>
+          )}
           {/* By Type */}
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
             <h3 className="text-sm font-medium text-zinc-400 mb-4">By Contamination Type</h3>
@@ -567,7 +611,7 @@ export const ContaminationAnalysis: React.FC = () => {
                 .sort(([, a], [, b]) => b - a)
                 .map(([type, count]) => {
                   const info = contamKnowledge[type as ContaminationType];
-                  const percent = Math.round((count / analysis.totalEvents) * 100);
+                  const percent = analysis.totalEvents > 0 ? Math.round((count / analysis.totalEvents) * 100) : 0;
                   return (
                     <div key={type} className="flex items-center gap-3">
                       <div className="flex-1">
@@ -597,7 +641,7 @@ export const ContaminationAnalysis: React.FC = () => {
                 .sort(([, a], [, b]) => b - a)
                 .map(([stage, count]) => {
                   const info = stageConfig[stage as ContaminationStage];
-                  const percent = Math.round((count / analysis.totalEvents) * 100);
+                  const percent = analysis.totalEvents > 0 ? Math.round((count / analysis.totalEvents) * 100) : 0;
                   return (
                     <div key={stage} className="flex items-center gap-3">
                       <div className="flex-1">
@@ -627,7 +671,7 @@ export const ContaminationAnalysis: React.FC = () => {
                 .sort(([, a], [, b]) => b - a)
                 .map(([cause, count]) => {
                   const info = causeConfig[cause as SuspectedCause];
-                  const percent = Math.round((count / analysis.totalEvents) * 100);
+                  const percent = analysis.totalEvents > 0 ? Math.round((count / analysis.totalEvents) * 100) : 0;
                   return (
                     <div key={cause} className="flex items-center gap-3">
                       <div className="flex-1">
@@ -655,7 +699,7 @@ export const ContaminationAnalysis: React.FC = () => {
               {Object.entries(analysis.byStrain)
                 .sort(([, a], [, b]) => b - a)
                 .map(([strain, count]) => {
-                  const percent = Math.round((count / analysis.totalEvents) * 100);
+                  const percent = analysis.totalEvents > 0 ? Math.round((count / analysis.totalEvents) * 100) : 0;
                   return (
                     <div key={strain} className="flex items-center gap-3">
                       <div className="flex-1">
@@ -854,17 +898,232 @@ export const ContaminationAnalysis: React.FC = () => {
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button 
+              <button
                 onClick={() => setShowLogForm(false)}
                 className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium border border-zinc-700"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => setShowLogForm(false)}
                 className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium"
               >
                 Log Event
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Event Detail Modal */}
+      {selectedEvent && editingEvent && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-950/50 border border-red-800/50 flex items-center justify-center text-red-400">
+                  <Icons.AlertTriangle />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">{selectedEvent.itemLabel}</h3>
+                  <p className="text-sm text-zinc-400">{selectedEvent.strainName}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedEvent(null);
+                  setEditingEvent(null);
+                }}
+                className="text-zinc-400 hover:text-white p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <Icons.X />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Quick Stats */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 text-zinc-400 mb-1">
+                    <Icons.Calendar />
+                    <span className="text-xs">Detected</span>
+                  </div>
+                  <p className="text-white font-medium">{selectedEvent.dateDetected.toLocaleDateString()}</p>
+                </div>
+                <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 text-zinc-400 mb-1">
+                    <Icons.Clock />
+                    <span className="text-xs">Day</span>
+                  </div>
+                  <p className="text-white font-medium">{selectedEvent.daysSinceInoculation}</p>
+                </div>
+                <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 text-zinc-400 mb-1">
+                    <Icons.MapPin />
+                    <span className="text-xs">Location</span>
+                  </div>
+                  <p className="text-white font-medium text-sm truncate">{selectedEvent.locationName || 'Not set'}</p>
+                </div>
+              </div>
+
+              {/* Stage Badge */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-zinc-400">Stage:</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium bg-zinc-800 ${stageConfig[selectedEvent.stage].color}`}>
+                  {stageConfig[selectedEvent.stage].label}
+                </span>
+              </div>
+
+              {/* Editable Fields */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">Contamination Type</label>
+                  <select
+                    value={editingEvent.type}
+                    onChange={e => setEditingEvent({ ...editingEvent, type: e.target.value as ContaminationType })}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                  >
+                    {Object.entries(contamKnowledge).map(([key, info]) => (
+                      <option key={key} value={key}>{info.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">Suspected Cause</label>
+                  <select
+                    value={editingEvent.suspectedCause}
+                    onChange={e => setEditingEvent({ ...editingEvent, suspectedCause: e.target.value as SuspectedCause })}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                  >
+                    {Object.entries(causeConfig).map(([key, info]) => (
+                      <option key={key} value={key}>{info.icon} {info.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">Notes</label>
+                  <textarea
+                    value={editingEvent.notes}
+                    onChange={e => setEditingEvent({ ...editingEvent, notes: e.target.value })}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white h-24 resize-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                    placeholder="Add notes about this contamination event..."
+                  />
+                </div>
+              </div>
+
+              {/* Knowledge Card */}
+              <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Icons.Book />
+                  <span className={`font-medium ${contamKnowledge[editingEvent.type].color}`}>
+                    {contamKnowledge[editingEvent.type].name}
+                  </span>
+                </div>
+                <p className="text-sm text-zinc-400 mb-3">{contamKnowledge[editingEvent.type].appearance}</p>
+                <div className="bg-zinc-900/50 rounded p-3">
+                  <p className="text-xs text-zinc-500 mb-1">Timing Diagnosis</p>
+                  <p className="text-sm text-zinc-300">{getTimingDiagnosis(selectedEvent.daysSinceInoculation, selectedEvent.stage)}</p>
+                </div>
+              </div>
+
+              {/* Context Info */}
+              {(selectedEvent.grainType || selectedEvent.substrateType || selectedEvent.pcTime) && (
+                <div className="bg-zinc-800/30 border border-zinc-800 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-zinc-400 mb-3">Process Context</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedEvent.grainType && (
+                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-amber-900/30 text-amber-400 border border-amber-800/50">
+                        Grain: {selectedEvent.grainType}
+                      </span>
+                    )}
+                    {selectedEvent.substrateType && (
+                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-900/30 text-emerald-400 border border-emerald-800/50">
+                        Substrate: {selectedEvent.substrateType}
+                      </span>
+                    )}
+                    {selectedEvent.pcTime && (
+                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-900/30 text-blue-400 border border-blue-800/50">
+                        PC Time: {selectedEvent.pcTime} min @ {selectedEvent.pcPsi || 15} PSI
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Prevention Tips */}
+              <div className="bg-emerald-950/20 border border-emerald-800/30 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-emerald-400 mb-3">Prevention Tips</h4>
+                <ul className="space-y-2">
+                  {contamKnowledge[editingEvent.type].prevention.map((tip, i) => (
+                    <li key={i} className="text-sm text-zinc-300 flex items-start gap-2">
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="sticky bottom-0 bg-zinc-900 border-t border-zinc-800 p-4 flex gap-3">
+              <button
+                onClick={() => {
+                  // Navigate to source item
+                  const isCulture = selectedEvent.id.startsWith('culture-');
+                  const itemId = selectedEvent.itemId;
+                  // Use window.dispatchEvent to navigate (this would need to integrate with the app's navigation)
+                  window.dispatchEvent(new CustomEvent('navigate', {
+                    detail: { page: isCulture ? 'cultures' : 'grows', itemId }
+                  }));
+                  setSelectedEvent(null);
+                  setEditingEvent(null);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium border border-zinc-700 transition-colors"
+              >
+                <Icons.ExternalLink />
+                View {selectedEvent.id.startsWith('culture-') ? 'Culture' : 'Grow'}
+              </button>
+              <div className="flex-1" />
+              <button
+                onClick={() => {
+                  setSelectedEvent(null);
+                  setEditingEvent(null);
+                }}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium border border-zinc-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  // Save changes to the source item
+                  const isCulture = selectedEvent.id.startsWith('culture-');
+                  const itemId = selectedEvent.itemId;
+
+                  if (isCulture) {
+                    await updateCulture(itemId, {
+                      notes: editingEvent.notes,
+                      // Store contamination details in notes for now
+                      // Future: add contaminationType and suspectedCause fields to culture
+                    });
+                  } else {
+                    await updateGrow(itemId, {
+                      notes: editingEvent.notes,
+                      // Store contamination details in notes for now
+                      // Future: add contaminationType and suspectedCause fields to grow
+                    });
+                  }
+
+                  setSelectedEvent(null);
+                  setEditingEvent(null);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <Icons.Save />
+                Save Changes
               </button>
             </div>
           </div>

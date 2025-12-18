@@ -1,28 +1,30 @@
 // ============================================================================
-// GROW MANAGEMENT (v2 - Using Shared Data Store)
-// Full CRUD for grow tracking with stage progression and harvest logging
+// GROW MANAGEMENT (v3 - Reimagined for Growers)
+// Kanban view, inline actions, Today's Focus, mobile-friendly
 // ============================================================================
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useData } from '../../store';
-import type { Grow, GrowStage, GrowStatus, GrowObservation, Flush } from '../../store/types';
+import type { Grow, GrowStage, GrowStatus, GrowObservation, Flush, GrowOutcomeCode } from '../../store/types';
 import { StandardDropdown } from '../common/StandardDropdown';
+import { ExitSurveyModal, ExitSurveyData } from '../surveys';
 
 // Draft key for localStorage
 const GROW_DRAFT_KEY = 'mycolab-grow-draft';
 
-// Stage configurations
-const stageConfig: Record<GrowStage, { label: string; icon: string; color: string }> = {
-  spawning: { label: 'Spawning', icon: '🌱', color: 'text-purple-400 bg-purple-950/50' },
-  colonization: { label: 'Colonization', icon: '🔵', color: 'text-blue-400 bg-blue-950/50' },
-  fruiting: { label: 'Fruiting', icon: '🍄', color: 'text-emerald-400 bg-emerald-950/50' },
-  harvesting: { label: 'Harvesting', icon: '✂️', color: 'text-amber-400 bg-amber-950/50' },
-  completed: { label: 'Completed', icon: '✅', color: 'text-green-400 bg-green-950/50' },
-  contaminated: { label: 'Contaminated', icon: '☠️', color: 'text-red-400 bg-red-950/50' },
-  aborted: { label: 'Aborted', icon: '⛔', color: 'text-zinc-400 bg-zinc-800' },
+// Stage configurations with enhanced styling
+const stageConfig: Record<GrowStage, { label: string; icon: string; color: string; bgColor: string; borderColor: string }> = {
+  spawning: { label: 'Spawning', icon: '🌱', color: 'text-purple-400', bgColor: 'bg-purple-950/30', borderColor: 'border-purple-800/50' },
+  colonization: { label: 'Colonizing', icon: '🔵', color: 'text-blue-400', bgColor: 'bg-blue-950/30', borderColor: 'border-blue-800/50' },
+  fruiting: { label: 'Fruiting', icon: '🍄', color: 'text-emerald-400', bgColor: 'bg-emerald-950/30', borderColor: 'border-emerald-800/50' },
+  harvesting: { label: 'Harvesting', icon: '✂️', color: 'text-amber-400', bgColor: 'bg-amber-950/30', borderColor: 'border-amber-800/50' },
+  completed: { label: 'Complete', icon: '✅', color: 'text-green-400', bgColor: 'bg-green-950/30', borderColor: 'border-green-800/50' },
+  contaminated: { label: 'Contaminated', icon: '☠️', color: 'text-red-400', bgColor: 'bg-red-950/30', borderColor: 'border-red-800/50' },
+  aborted: { label: 'Aborted', icon: '⛔', color: 'text-zinc-400', bgColor: 'bg-zinc-800/50', borderColor: 'border-zinc-700' },
 };
 
 const stageOrder: GrowStage[] = ['spawning', 'colonization', 'fruiting', 'harvesting', 'completed'];
+const activeStages: GrowStage[] = ['spawning', 'colonization', 'fruiting', 'harvesting'];
 
 // Icons
 const Icons = {
@@ -32,55 +34,19 @@ const Icons = {
   Trash: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
   Grid: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
   List: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
+  Kanban: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>,
   ChevronRight: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="9 18 15 12 9 6"/></svg>,
+  ChevronDown: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="6 9 12 15 18 9"/></svg>,
+  ChevronUp: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="18 15 12 9 6 15"/></svg>,
+  Check: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="20 6 9 17 4 12"/></svg>,
   Clipboard: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>,
   Scale: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M12 3v18M3 12h18M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg>,
-};
-
-// Stage timeline component
-const StageTimeline: React.FC<{ currentStage: GrowStage }> = ({ currentStage }) => {
-  if (currentStage === 'contaminated' || currentStage === 'aborted') {
-    const config = stageConfig[currentStage];
-    return (
-      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${config.color}`}>
-        <span>{config.icon}</span>
-        <span>{config.label}</span>
-      </div>
-    );
-  }
-
-  const currentIndex = stageOrder.indexOf(currentStage);
-
-  return (
-    <div className="flex items-center gap-1">
-      {stageOrder.map((stage, i) => {
-        const config = stageConfig[stage];
-        const isPast = i < currentIndex;
-        const isCurrent = i === currentIndex;
-        const isFuture = i > currentIndex;
-
-        return (
-          <React.Fragment key={stage}>
-            {i > 0 && (
-              <div className={`w-3 h-0.5 ${isPast ? 'bg-emerald-500' : 'bg-zinc-700'}`} />
-            )}
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                isCurrent
-                  ? 'bg-emerald-500 text-white'
-                  : isPast
-                  ? 'bg-emerald-500/30 text-emerald-400'
-                  : 'bg-zinc-800 text-zinc-600'
-              }`}
-              title={config.label}
-            >
-              {isCurrent ? config.icon : i + 1}
-            </div>
-          </React.Fragment>
-        );
-      })}
-    </div>
-  );
+  Edit: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  AlertCircle: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  Clock: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  ArrowRight: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+  Eye: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  Zap: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
 };
 
 // Days active calculator
@@ -89,17 +55,411 @@ const daysActive = (startDate: Date, endDate?: Date): number => {
   return Math.floor((end.getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
 };
 
+// ============================================================================
+// KANBAN CARD COMPONENT
+// ============================================================================
+interface GrowCardProps {
+  grow: Grow;
+  strain: { name: string } | undefined;
+  container: { name: string } | undefined;
+  location: { name: string } | undefined;
+  isExpanded: boolean;
+  isHarvesting: boolean;
+  onToggleExpand: () => void;
+  onAdvanceStage: () => void;
+  onRecordHarvest: (wetWeight: number, dryWeight: number, quality: Flush['quality'], notes: string, mushroomCount?: number) => void;
+  onMarkContaminated: () => void;
+  onComplete: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onLogObservation: () => void;
+  compact?: boolean;
+}
+
+const GrowCard: React.FC<GrowCardProps> = ({
+  grow, strain, container, location, isExpanded, isHarvesting,
+  onToggleExpand, onAdvanceStage, onRecordHarvest, onMarkContaminated,
+  onComplete, onEdit, onDelete, onLogObservation, compact
+}) => {
+  const [harvestForm, setHarvestForm] = useState({ wetWeight: 0, dryWeight: 0, quality: 'good' as Flush['quality'], notes: '', mushroomCount: undefined as number | undefined });
+  const [showHarvestForm, setShowHarvestForm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const days = daysActive(grow.spawnedAt, grow.completedAt);
+  const config = stageConfig[grow.currentStage];
+  const isTerminal = ['completed', 'contaminated', 'aborted'].includes(grow.currentStage);
+  const canHarvest = ['fruiting', 'harvesting'].includes(grow.currentStage);
+  const nextStage = !isTerminal ? stageOrder[stageOrder.indexOf(grow.currentStage) + 1] : null;
+
+  const handleSubmitHarvest = async () => {
+    if (!harvestForm.wetWeight) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onRecordHarvest(
+        harvestForm.wetWeight,
+        harvestForm.dryWeight || Math.round(harvestForm.wetWeight * 0.1),
+        harvestForm.quality,
+        harvestForm.notes,
+        harvestForm.mushroomCount
+      );
+      setHarvestForm({ wetWeight: 0, dryWeight: 0, quality: 'good', notes: '', mushroomCount: undefined });
+      setShowHarvestForm(false);
+    } catch (err: any) {
+      console.error('Failed to save harvest:', err);
+      const message = err?.message || err?.error?.message || 'Failed to save harvest. Please try again.';
+      setSaveError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // BE% calculation (rough estimate)
+  const bePercent = grow.substrateWeight > 0
+    ? Math.round((grow.totalYield / (grow.substrateWeight / 1000)) * 10) / 10
+    : 0;
+
+  return (
+    <div className={`${config.bgColor} border ${config.borderColor} rounded-xl overflow-hidden transition-all duration-200 hover:border-opacity-100`}>
+      {/* Card Header - Always Visible */}
+      <div className="p-3">
+        {/* Top row: Name + Quick Actions */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex-1 min-w-0">
+            <h4 className="font-semibold text-white truncate">{grow.name}</h4>
+            <p className="text-xs text-zinc-400 truncate">{strain?.name || 'Unknown strain'}</p>
+          </div>
+
+          {/* Quick action for advancing */}
+          {!isTerminal && grow.currentStage !== 'harvesting' && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onAdvanceStage(); }}
+              className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 rounded-lg transition-colors flex-shrink-0"
+              title={`Advance to ${nextStage ? stageConfig[nextStage].label : 'next stage'}`}
+            >
+              <Icons.ArrowRight />
+            </button>
+          )}
+          {grow.currentStage === 'harvesting' && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onComplete(); }}
+              className="p-1.5 bg-green-500/20 hover:bg-green-500/40 text-green-400 rounded-lg transition-colors flex-shrink-0"
+              title="Complete Grow"
+            >
+              <Icons.Check />
+            </button>
+          )}
+        </div>
+
+        {/* Stats Row */}
+        <div className="flex items-center gap-3 text-xs">
+          <span className="flex items-center gap-1 text-zinc-400">
+            <Icons.Clock />
+            {days}d
+          </span>
+          {grow.flushes.length > 0 && (
+            <span className="text-amber-400">
+              {grow.flushes.length} flush{grow.flushes.length !== 1 ? 'es' : ''}
+            </span>
+          )}
+          {grow.totalYield > 0 && (
+            <span className="text-emerald-400 font-medium">{grow.totalYield}g</span>
+          )}
+          {bePercent > 0 && (
+            <span className="text-blue-400 text-xs">{bePercent}% BE</span>
+          )}
+        </div>
+
+        {/* Inline Harvest Button */}
+        {canHarvest && !showHarvestForm && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowHarvestForm(true); }}
+            className="mt-3 w-full py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+          >
+            <Icons.Scale />
+            Record Harvest
+          </button>
+        )}
+
+        {/* Inline Harvest Form */}
+        {showHarvestForm && (
+          <div className="mt-3 p-3 bg-zinc-900/50 rounded-lg space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="text-center text-xs text-zinc-400 mb-2">
+              Flush #{grow.flushes.length + 1}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Wet (g) *</label>
+                <input
+                  type="number"
+                  value={harvestForm.wetWeight || ''}
+                  onChange={e => setHarvestForm(prev => ({ ...prev, wetWeight: parseFloat(e.target.value) || 0 }))}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-white text-sm"
+                  placeholder="0"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Dry (g)</label>
+                <input
+                  type="number"
+                  value={harvestForm.dryWeight || ''}
+                  onChange={e => setHarvestForm(prev => ({ ...prev, dryWeight: parseFloat(e.target.value) || 0 }))}
+                  placeholder={harvestForm.wetWeight ? `~${Math.round(harvestForm.wetWeight * 0.1)}` : '0'}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-white text-sm"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              {(['excellent', 'good', 'fair', 'poor'] as const).map(q => (
+                <button
+                  key={q}
+                  onClick={() => setHarvestForm(prev => ({ ...prev, quality: q }))}
+                  className={`py-1 rounded text-xs font-medium transition-all ${
+                    harvestForm.quality === q
+                      ? q === 'excellent' ? 'bg-emerald-500 text-white' :
+                        q === 'good' ? 'bg-blue-500 text-white' :
+                        q === 'fair' ? 'bg-amber-500 text-white' :
+                        'bg-red-500 text-white'
+                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  }`}
+                >
+                  {q.charAt(0).toUpperCase()}
+                </button>
+              ))}
+            </div>
+            {saveError && (
+              <div className="p-2 bg-red-950/50 border border-red-800/50 rounded text-xs text-red-400">
+                {saveError}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowHarvestForm(false); setSaveError(null); }}
+                className="flex-1 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-xs font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitHarvest}
+                disabled={!harvestForm.wetWeight || isSaving}
+                className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded text-xs font-medium"
+              >
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Expandable Details */}
+      <button
+        onClick={onToggleExpand}
+        className="w-full px-3 py-1.5 bg-zinc-900/30 border-t border-zinc-800/50 flex items-center justify-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+      >
+        {isExpanded ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
+        {isExpanded ? 'Less' : 'More'}
+      </button>
+
+      {isExpanded && (
+        <div className="p-3 pt-0 space-y-3 border-t border-zinc-800/50">
+          {/* Details */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span className="text-zinc-500">Container</span>
+              <p className="text-white">{container?.name || 'Unknown'}</p>
+            </div>
+            <div>
+              <span className="text-zinc-500">Location</span>
+              <p className="text-white">{location?.name || 'Unknown'}</p>
+            </div>
+            <div>
+              <span className="text-zinc-500">Spawn Rate</span>
+              <p className="text-white">{grow.spawnRate}%</p>
+            </div>
+            <div>
+              <span className="text-zinc-500">Started</span>
+              <p className="text-white">{new Date(grow.spawnedAt).toLocaleDateString()}</p>
+            </div>
+          </div>
+
+          {/* Flush History */}
+          {grow.flushes.length > 0 && (
+            <div>
+              <p className="text-xs text-zinc-500 mb-2">Harvest History</p>
+              <div className="flex gap-1 overflow-x-auto pb-1">
+                {grow.flushes.map((flush, i) => (
+                  <div key={flush.id} className="flex-shrink-0 px-2 py-1 bg-zinc-800/50 rounded text-xs">
+                    <span className="text-zinc-400">F{i + 1}:</span>{' '}
+                    <span className="text-emerald-400 font-medium">{flush.wetWeight}g</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-2 border-t border-zinc-800/50">
+            <button
+              onClick={(e) => { e.stopPropagation(); onLogObservation(); }}
+              className="flex-1 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-xs font-medium flex items-center justify-center gap-1"
+            >
+              <Icons.Clipboard />
+              Log
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded"
+            >
+              <Icons.Edit />
+            </button>
+            {!isTerminal && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onMarkContaminated(); }}
+                className="p-1.5 bg-red-950/50 hover:bg-red-950 text-red-400 rounded"
+                title="Mark Contaminated"
+              >
+                ☠️
+              </button>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="p-1.5 bg-red-950/50 hover:bg-red-950 text-red-400 rounded"
+              title="Remove Grow"
+            >
+              <Icons.Trash />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================================
+// TODAY'S FOCUS COMPONENT
+// ============================================================================
+interface FocusTask {
+  id: string;
+  grow: Grow;
+  type: 'ready-to-advance' | 'ready-to-harvest' | 'needs-attention' | 'overdue';
+  message: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+const TodaysFocus: React.FC<{
+  tasks: FocusTask[];
+  onAdvanceStage: (growId: string) => void;
+  onRecordHarvest: (growId: string) => void;
+  onSelectGrow: (grow: Grow) => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+}> = ({ tasks, onAdvanceStage, onRecordHarvest, onSelectGrow, collapsed, onToggleCollapse }) => {
+  if (tasks.length === 0) return null;
+
+  const highPriority = tasks.filter(t => t.priority === 'high');
+  const otherTasks = tasks.filter(t => t.priority !== 'high');
+
+  return (
+    <div className="bg-gradient-to-r from-amber-950/30 to-orange-950/30 border border-amber-800/30 rounded-xl overflow-hidden">
+      <button
+        onClick={onToggleCollapse}
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-amber-900/10 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-amber-400 text-lg">⚡</span>
+          <div className="text-left">
+            <h3 className="text-white font-semibold">Today's Focus</h3>
+            <p className="text-xs text-amber-400/70">{tasks.length} task{tasks.length !== 1 ? 's' : ''} need attention</p>
+          </div>
+        </div>
+        {collapsed ? <Icons.ChevronDown /> : <Icons.ChevronUp />}
+      </button>
+
+      {!collapsed && (
+        <div className="px-4 pb-4 space-y-2">
+          {highPriority.map(task => (
+            <div
+              key={task.id}
+              className="flex items-center justify-between p-3 bg-amber-950/30 border border-amber-800/30 rounded-lg"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{stageConfig[task.grow.currentStage].icon}</span>
+                <div>
+                  <p className="text-white font-medium text-sm">{task.grow.name}</p>
+                  <p className="text-xs text-amber-400">{task.message}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {task.type === 'ready-to-advance' && (
+                  <button
+                    onClick={() => onAdvanceStage(task.grow.id)}
+                    className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-medium flex items-center gap-1"
+                  >
+                    <Icons.ArrowRight />
+                    Advance
+                  </button>
+                )}
+                {task.type === 'ready-to-harvest' && (
+                  <button
+                    onClick={() => onRecordHarvest(task.grow.id)}
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-medium flex items-center gap-1"
+                  >
+                    <Icons.Scale />
+                    Harvest
+                  </button>
+                )}
+                <button
+                  onClick={() => onSelectGrow(task.grow)}
+                  className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg"
+                >
+                  <Icons.Eye />
+                </button>
+              </div>
+            </div>
+          ))}
+          {otherTasks.length > 0 && highPriority.length > 0 && (
+            <div className="border-t border-amber-800/20 pt-2 mt-2" />
+          )}
+          {otherTasks.slice(0, 3).map(task => (
+            <div
+              key={task.id}
+              className="flex items-center justify-between p-2 bg-zinc-900/30 rounded-lg"
+            >
+              <div className="flex items-center gap-2">
+                <span>{stageConfig[task.grow.currentStage].icon}</span>
+                <span className="text-sm text-zinc-300">{task.grow.name}</span>
+                <span className="text-xs text-zinc-500">- {task.message}</span>
+              </div>
+              <button
+                onClick={() => onSelectGrow(task.grow)}
+                className="text-zinc-400 hover:text-white"
+              >
+                <Icons.ChevronRight />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 export const GrowManagement: React.FC = () => {
   const {
     state,
     activeStrains,
     activeLocations,
-    activeContainerTypes,
+    activeContainers,
     activeSubstrateTypes,
     activeGrainTypes,
     getStrain,
     getLocation,
-    getContainerType,
+    getContainer,
     getSubstrateType,
     getGrainType,
     getCulture,
@@ -116,17 +476,24 @@ export const GrowManagement: React.FC = () => {
   const cultures = state.cultures;
 
   // UI State
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  type ViewMode = 'kanban' | 'grid' | 'list';
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStage, setFilterStage] = useState<GrowStage | 'all'>('all');
-  const [filterStatus, setFilterStatus] = useState<GrowStatus | 'all'>('all');
   const [filterStrain, setFilterStrain] = useState<string | 'all'>('all');
-  const [sortBy, setSortBy] = useState<'date' | 'name' | 'yield' | 'stage'>('date');
-  const [selectedGrow, setSelectedGrow] = useState<Grow | null>(null);
-  const [detailTab, setDetailTab] = useState<'overview' | 'timeline' | 'harvests'>('overview');
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [harvestingCard, setHarvestingCard] = useState<string | null>(null);
+  const [todaysFocusCollapsed, setTodaysFocusCollapsed] = useState(false);
+
+  // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showObservationModal, setShowObservationModal] = useState(false);
-  const [showHarvestModal, setShowHarvestModal] = useState(false);
+  const [showDetailPanel, setShowDetailPanel] = useState(false);
+  const [selectedGrow, setSelectedGrow] = useState<Grow | null>(null);
+  const [showExitSurveyModal, setShowExitSurveyModal] = useState(false);
+  const [exitSurveyGrow, setExitSurveyGrow] = useState<Grow | null>(null);
+  const [preselectedOutcome, setPreselectedOutcome] = useState<GrowOutcomeCode | undefined>(undefined);
   const [hasDraft, setHasDraft] = useState(false);
 
   // Form type
@@ -138,10 +505,10 @@ export const GrowManagement: React.FC = () => {
     spawnWeight: number;
     substrateTypeId: string;
     substrateWeight: number;
-    containerTypeId: string;
+    containerId: string;
     containerCount: number;
     locationId: string;
-    inoculationDate: string; // ISO date string for the date input
+    inoculationDate: string;
     targetTempColonization: number;
     targetTempFruiting: number;
     targetHumidity: number;
@@ -149,7 +516,6 @@ export const GrowManagement: React.FC = () => {
     notes: string;
   }
 
-  // Get today's date in YYYY-MM-DD format for date input default
   const getTodayString = () => new Date().toISOString().split('T')[0];
 
   const defaultFormState: GrowFormState = {
@@ -160,7 +526,7 @@ export const GrowManagement: React.FC = () => {
     spawnWeight: 500,
     substrateTypeId: '',
     substrateWeight: 2000,
-    containerTypeId: '',
+    containerId: '',
     containerCount: 1,
     locationId: '',
     inoculationDate: getTodayString(),
@@ -171,25 +537,26 @@ export const GrowManagement: React.FC = () => {
     notes: '',
   };
 
-  // Initialize form with draft if exists
   const getInitialFormState = (): GrowFormState => {
     const saved = localStorage.getItem(GROW_DRAFT_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Ensure inoculationDate exists (handle old drafts without this field)
-        return {
-          ...defaultFormState,
-          ...parsed,
-          inoculationDate: parsed.inoculationDate || getTodayString(),
-        };
+        return { ...defaultFormState, ...parsed, inoculationDate: parsed.inoculationDate || getTodayString() };
       } catch (e) {}
     }
     return defaultFormState;
   };
 
-  // Form state
   const [newGrow, setNewGrow] = useState<GrowFormState>(getInitialFormState);
+  const [editGrow, setEditGrow] = useState<GrowFormState & { id: string }>({ ...defaultFormState, id: '' });
+
+  const [newObservation, setNewObservation] = useState({
+    type: 'general' as GrowObservation['type'],
+    title: '',
+    notes: '',
+    colonizationPercent: undefined as number | undefined,
+  });
 
   // Check for draft on mount
   useEffect(() => {
@@ -197,10 +564,10 @@ export const GrowManagement: React.FC = () => {
     setHasDraft(!!saved);
   }, []);
 
-  // Auto-save draft when form changes
+  // Auto-save draft
   useEffect(() => {
     if (showCreateModal) {
-      const hasData = newGrow.strainId || newGrow.name || newGrow.substrateTypeId || newGrow.containerTypeId;
+      const hasData = newGrow.strainId || newGrow.name || newGrow.substrateTypeId || newGrow.containerId;
       if (hasData) {
         localStorage.setItem(GROW_DRAFT_KEY, JSON.stringify(newGrow));
         setHasDraft(true);
@@ -208,13 +575,11 @@ export const GrowManagement: React.FC = () => {
     }
   }, [newGrow, showCreateModal]);
 
-  // Clear draft
   const clearDraft = () => {
     localStorage.removeItem(GROW_DRAFT_KEY);
     setHasDraft(false);
   };
 
-  // Load draft
   const loadDraft = () => {
     const saved = localStorage.getItem(GROW_DRAFT_KEY);
     if (saved) {
@@ -225,39 +590,17 @@ export const GrowManagement: React.FC = () => {
     }
   };
 
-  const [newObservation, setNewObservation] = useState({
-    type: 'general' as GrowObservation['type'],
-    title: '',
-    notes: '',
-    colonizationPercent: undefined as number | undefined,
-  });
-
-  const [newHarvest, setNewHarvest] = useState({
-    wetWeight: 0,
-    dryWeight: 0,
-    mushroomCount: undefined as number | undefined,
-    quality: 'good' as Flush['quality'],
-    notes: '',
-  });
-
-  // Listen for header "New" button click
+  // Event listeners
   useEffect(() => {
     const handleCreateNew = (event: CustomEvent) => {
-      if (event.detail?.page === 'grows') {
-        setShowCreateModal(true);
-      }
+      if (event.detail?.page === 'grows') setShowCreateModal(true);
     };
-    window.addEventListener('mycolab:create-new', handleCreateNew as EventListener);
-    return () => window.removeEventListener('mycolab:create-new', handleCreateNew as EventListener);
-  }, []);
-
-  // Listen for select-item and edit-item events from Lab Inventory
-  useEffect(() => {
     const handleSelectItem = (event: CustomEvent) => {
       if (event.detail?.type === 'grow') {
         const grow = grows.find(g => g.id === event.detail.id);
         if (grow) {
           setSelectedGrow(grow);
+          setShowDetailPanel(true);
         }
       }
     };
@@ -266,17 +609,148 @@ export const GrowManagement: React.FC = () => {
         const grow = grows.find(g => g.id === event.detail.id);
         if (grow) {
           setSelectedGrow(grow);
-          // For now, just select it - could open edit modal in future
+          openEditModal(grow);
         }
       }
     };
+    window.addEventListener('mycolab:create-new', handleCreateNew as EventListener);
     window.addEventListener('mycolab:select-item', handleSelectItem as EventListener);
     window.addEventListener('mycolab:edit-item', handleEditItem as EventListener);
     return () => {
+      window.removeEventListener('mycolab:create-new', handleCreateNew as EventListener);
       window.removeEventListener('mycolab:select-item', handleSelectItem as EventListener);
       window.removeEventListener('mycolab:edit-item', handleEditItem as EventListener);
     };
   }, [grows]);
+
+  // Sync selectedGrow with state
+  useEffect(() => {
+    if (selectedGrow) {
+      const updated = grows.find(g => g.id === selectedGrow.id);
+      if (updated) {
+        if (JSON.stringify(updated) !== JSON.stringify(selectedGrow)) {
+          setSelectedGrow(updated);
+        }
+      } else {
+        setSelectedGrow(null);
+        setShowDetailPanel(false);
+      }
+    }
+  }, [grows, selectedGrow]);
+
+  // Filtered grows
+  const filteredGrows = useMemo(() => {
+    let result = [...grows];
+
+    if (!showCompleted) {
+      result = result.filter(g => !['completed', 'contaminated', 'aborted'].includes(g.currentStage));
+    }
+
+    if (filterStrain !== 'all') {
+      result = result.filter(g => g.strainId === filterStrain);
+    }
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(g =>
+        g.name.toLowerCase().includes(q) ||
+        getStrain(g.strainId)?.name.toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [grows, showCompleted, filterStrain, searchQuery, getStrain]);
+
+  // Grows grouped by stage for Kanban view
+  const growsByStage = useMemo(() => {
+    const stages = showCompleted ? [...stageOrder, 'contaminated' as GrowStage, 'aborted' as GrowStage] : activeStages;
+    return stages.reduce((acc, stage) => {
+      acc[stage] = filteredGrows.filter(g => g.currentStage === stage);
+      return acc;
+    }, {} as Record<GrowStage, Grow[]>);
+  }, [filteredGrows, showCompleted]);
+
+  // Today's Focus tasks
+  const focusTasks = useMemo((): FocusTask[] => {
+    const tasks: FocusTask[] = [];
+
+    grows.filter(g => g.status === 'active').forEach(grow => {
+      const days = daysActive(grow.spawnedAt);
+
+      // Ready to advance from colonization (typically 10-14 days)
+      if (grow.currentStage === 'colonization' && days >= 14) {
+        tasks.push({
+          id: `${grow.id}-advance`,
+          grow,
+          type: 'ready-to-advance',
+          message: 'May be ready for fruiting',
+          priority: days >= 21 ? 'high' : 'medium',
+        });
+      }
+
+      // Ready to harvest
+      if (grow.currentStage === 'fruiting' && days >= 7) {
+        tasks.push({
+          id: `${grow.id}-harvest`,
+          grow,
+          type: 'ready-to-harvest',
+          message: 'Check for harvest readiness',
+          priority: 'high',
+        });
+      }
+
+      // Harvesting stage reminder
+      if (grow.currentStage === 'harvesting') {
+        tasks.push({
+          id: `${grow.id}-harvesting`,
+          grow,
+          type: 'ready-to-harvest',
+          message: `${grow.flushes.length} flush${grow.flushes.length !== 1 ? 'es' : ''} recorded`,
+          priority: 'high',
+        });
+      }
+
+      // Spawning stage taking too long
+      if (grow.currentStage === 'spawning' && days >= 7) {
+        tasks.push({
+          id: `${grow.id}-slow`,
+          grow,
+          type: 'needs-attention',
+          message: 'Still in spawning after 7 days',
+          priority: 'medium',
+        });
+      }
+    });
+
+    return tasks.sort((a, b) => {
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    });
+  }, [grows]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const active = grows.filter(g => g.status === 'active');
+    const byStage = activeStages.reduce((acc, stage) => {
+      acc[stage] = active.filter(g => g.currentStage === stage).length;
+      return acc;
+    }, {} as Record<string, number>);
+    const totalYield = grows.reduce((sum, g) => sum + g.totalYield, 0);
+
+    return { active: active.length, byStage, totalYield };
+  }, [grows]);
+
+  // Used strains
+  const usedStrainIds = useMemo(() => [...new Set(grows.map(g => g.strainId))], [grows]);
+
+  // Ready cultures for dropdown
+  const readyCultureOptions = useMemo(() =>
+    cultures.filter(c => ['active', 'ready'].includes(c.status)).map(c => ({
+      id: c.id,
+      name: `${c.label} - ${getStrain(c.strainId)?.name || 'Unknown'}`,
+    })),
+    [cultures, getStrain]
+  );
 
   // Calculated spawn rate
   const calculatedSpawnRate = useMemo(() => {
@@ -284,82 +758,25 @@ export const GrowManagement: React.FC = () => {
     return Math.round((newGrow.spawnWeight / (newGrow.spawnWeight + newGrow.substrateWeight)) * 100);
   }, [newGrow.spawnWeight, newGrow.substrateWeight]);
 
-  // Filtered and sorted grows
-  const filteredGrows = useMemo(() => {
-    let result = [...grows];
+  // Handlers
+  const toggleCardExpand = useCallback((growId: string) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(growId)) next.delete(growId);
+      else next.add(growId);
+      return next;
+    });
+  }, []);
 
-    if (filterStage !== 'all') result = result.filter(g => g.currentStage === filterStage);
-    if (filterStatus !== 'all') result = result.filter(g => g.status === filterStatus);
-    if (filterStrain !== 'all') result = result.filter(g => g.strainId === filterStrain);
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(g =>
-        g.name.toLowerCase().includes(q) ||
-        getStrain(g.strainId)?.name.toLowerCase().includes(q) ||
-        g.notes.toLowerCase().includes(q)
-      );
-    }
-
-    switch (sortBy) {
-      case 'date':
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        break;
-      case 'name':
-        result.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'yield':
-        result.sort((a, b) => b.totalYield - a.totalYield);
-        break;
-      case 'stage':
-        result.sort((a, b) => stageOrder.indexOf(a.currentStage) - stageOrder.indexOf(b.currentStage));
-        break;
-    }
-
-    return result;
-  }, [grows, filterStage, filterStatus, filterStrain, searchQuery, sortBy, getStrain]);
-
-  // Stats
-  const stats = useMemo(() => {
-    const active = grows.filter(g => g.status === 'active');
-    const completed = grows.filter(g => g.status === 'completed');
-    const failed = grows.filter(g => g.status === 'failed');
-    const totalYield = grows.reduce((sum, g) => sum + g.totalYield, 0);
-    const avgYield = completed.length > 0 ? totalYield / completed.length : 0;
-    const totalCost = grows.reduce((sum, g) => sum + g.estimatedCost, 0);
-
-    return { active: active.length, completed: completed.length, failed: failed.length, totalYield, avgYield, totalCost };
-  }, [grows]);
-
-  // Used strains
-  const usedStrainIds = useMemo(() => [...new Set(grows.map(g => g.strainId))], [grows]);
-
-  // Ready cultures for source selection
-  const readyCultures = useMemo(() =>
-    cultures.filter(c => ['active', 'ready'].includes(c.status)),
-    [cultures]
-  );
-
-  // Ready cultures formatted for dropdown
-  const readyCultureOptions = useMemo(() =>
-    readyCultures.map(c => ({
-      id: c.id,
-      name: `${c.label} - ${getStrain(c.strainId)?.name || 'Unknown'}`,
-    })),
-    [readyCultures, getStrain]
-  );
-
-  // Create grow handler
   const handleCreateGrow = () => {
-    if (!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerTypeId || !newGrow.locationId) return;
+    if (!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerId || !newGrow.locationId) return;
 
     const strain = getStrain(newGrow.strainId);
-    const container = getContainerType(newGrow.containerTypeId);
+    const container = getContainer(newGrow.containerId);
     const grainType = getGrainType(newGrow.grainTypeId);
-    const existingCount = grows.filter(g => g.strainId === newGrow.strainId && getContainerType(g.containerTypeId)?.id === newGrow.containerTypeId).length;
+    const existingCount = grows.filter(g => g.strainId === newGrow.strainId && getContainer(g.containerId)?.id === newGrow.containerId).length;
     const autoName = newGrow.name || `${strain?.name || 'Unknown'} ${container?.name || 'Grow'} #${existingCount + 1}`;
 
-    // Parse the inoculation date - use noon to avoid timezone issues
     const inoculationDate = newGrow.inoculationDate
       ? new Date(newGrow.inoculationDate + 'T12:00:00')
       : new Date();
@@ -375,7 +792,7 @@ export const GrowManagement: React.FC = () => {
       substrateTypeId: newGrow.substrateTypeId,
       substrateWeight: newGrow.substrateWeight,
       spawnRate: calculatedSpawnRate,
-      containerTypeId: newGrow.containerTypeId,
+      containerId: newGrow.containerId,
       containerCount: newGrow.containerCount,
       spawnedAt: inoculationDate,
       locationId: newGrow.locationId,
@@ -387,33 +804,81 @@ export const GrowManagement: React.FC = () => {
     });
 
     setShowCreateModal(false);
-    clearDraft(); // Clear draft on successful creation
+    clearDraft();
     setNewGrow(defaultFormState);
   };
 
-  // Advance stage handler
-  const handleAdvanceStage = () => {
-    if (!selectedGrow) return;
-    advanceGrowStage(selectedGrow.id);
-    setTimeout(() => {
-      const updated = state.grows.find(g => g.id === selectedGrow.id);
-      if (updated) setSelectedGrow(updated);
-    }, 0);
+  const openEditModal = (grow: Grow) => {
+    setEditGrow({
+      id: grow.id,
+      name: grow.name,
+      strainId: grow.strainId,
+      sourceCultureId: grow.sourceCultureId || '',
+      grainTypeId: '',
+      spawnWeight: grow.spawnWeight,
+      substrateTypeId: grow.substrateTypeId,
+      substrateWeight: grow.substrateWeight,
+      containerId: grow.containerId,
+      containerCount: grow.containerCount,
+      locationId: grow.locationId,
+      inoculationDate: new Date(grow.spawnedAt).toISOString().split('T')[0],
+      targetTempColonization: grow.targetTempColonization || 24,
+      targetTempFruiting: grow.targetTempFruiting || 22,
+      targetHumidity: grow.targetHumidity || 90,
+      estimatedCost: grow.estimatedCost,
+      notes: grow.notes,
+    });
+    setShowEditModal(true);
   };
 
-  // Mark contaminated handler
-  const handleMarkContaminated = () => {
-    if (!selectedGrow) return;
-    if (confirm('Mark this grow as contaminated? This action cannot be undone.')) {
-      markGrowContaminated(selectedGrow.id);
-      setTimeout(() => {
-        const updated = state.grows.find(g => g.id === selectedGrow.id);
-        if (updated) setSelectedGrow(updated);
-      }, 0);
-    }
+  const handleUpdateGrow = async () => {
+    if (!editGrow.id || !editGrow.strainId || !editGrow.substrateTypeId || !editGrow.containerId || !editGrow.locationId) return;
+
+    const inoculationDate = editGrow.inoculationDate
+      ? new Date(editGrow.inoculationDate + 'T12:00:00')
+      : new Date();
+
+    const newSpawnRate = editGrow.spawnWeight && editGrow.substrateWeight
+      ? Math.round((editGrow.spawnWeight / (editGrow.spawnWeight + editGrow.substrateWeight)) * 100)
+      : 0;
+
+    await updateGrow(editGrow.id, {
+      name: editGrow.name,
+      strainId: editGrow.strainId,
+      sourceCultureId: editGrow.sourceCultureId || undefined,
+      spawnWeight: editGrow.spawnWeight,
+      substrateTypeId: editGrow.substrateTypeId,
+      substrateWeight: editGrow.substrateWeight,
+      spawnRate: newSpawnRate,
+      containerId: editGrow.containerId,
+      containerCount: editGrow.containerCount,
+      locationId: editGrow.locationId,
+      spawnedAt: inoculationDate,
+      targetTempColonization: editGrow.targetTempColonization,
+      targetTempFruiting: editGrow.targetTempFruiting,
+      targetHumidity: editGrow.targetHumidity,
+      estimatedCost: editGrow.estimatedCost,
+      notes: editGrow.notes,
+    });
+
+    setShowEditModal(false);
   };
 
-  // Add observation handler
+  const handleAdvanceStage = async (growId: string) => {
+    await advanceGrowStage(growId);
+  };
+
+  const handleRecordHarvest = async (growId: string, wetWeight: number, dryWeight: number, quality: Flush['quality'], notes: string, mushroomCount?: number) => {
+    await addFlush(growId, {
+      harvestDate: new Date(),
+      wetWeight,
+      dryWeight,
+      quality,
+      notes,
+      mushroomCount,
+    });
+  };
+
   const handleAddObservation = () => {
     if (!selectedGrow || !newObservation.title) return;
 
@@ -426,95 +891,148 @@ export const GrowManagement: React.FC = () => {
       colonizationPercent: newObservation.colonizationPercent,
     });
 
-    setTimeout(() => {
-      const updated = state.grows.find(g => g.id === selectedGrow.id);
-      if (updated) setSelectedGrow(updated);
-    }, 0);
-
     setShowObservationModal(false);
     setNewObservation({ type: 'general', title: '', notes: '', colonizationPercent: undefined });
   };
 
-  // Add harvest handler
-  const handleAddHarvest = () => {
-    if (!selectedGrow || !newHarvest.wetWeight) return;
-
-    addFlush(selectedGrow.id, {
-      harvestDate: new Date(),
-      wetWeight: newHarvest.wetWeight,
-      dryWeight: newHarvest.dryWeight || Math.round(newHarvest.wetWeight * 0.1),
-      mushroomCount: newHarvest.mushroomCount,
-      quality: newHarvest.quality,
-      notes: newHarvest.notes,
-    });
-
-    setTimeout(() => {
-      const updated = state.grows.find(g => g.id === selectedGrow.id);
-      if (updated) setSelectedGrow(updated);
-    }, 0);
-
-    setShowHarvestModal(false);
-    setNewHarvest({ wetWeight: 0, dryWeight: 0, mushroomCount: undefined, quality: 'good', notes: '' });
+  // Exit survey handlers
+  const openExitSurvey = (grow: Grow, preselected?: GrowOutcomeCode) => {
+    setExitSurveyGrow(grow);
+    setPreselectedOutcome(preselected);
+    setShowExitSurveyModal(true);
   };
 
-  // Delete handler
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this grow?')) {
-      deleteGrow(id);
-      if (selectedGrow?.id === id) setSelectedGrow(null);
+  const handleExitSurveyComplete = async (surveyData: ExitSurveyData) => {
+    if (!exitSurveyGrow) return;
+
+    const strain = getStrain(exitSurveyGrow.strainId);
+    const location = getLocation(exitSurveyGrow.locationId);
+
+    const outcomeData = {
+      entityType: 'grow' as const,
+      entityId: exitSurveyGrow.id,
+      entityName: exitSurveyGrow.name,
+      outcomeCategory: surveyData.outcomeCategory,
+      outcomeCode: surveyData.outcomeCode,
+      outcomeLabel: surveyData.outcomeLabel,
+      startedAt: exitSurveyGrow.spawnedAt,
+      endedAt: new Date(),
+      totalCost: exitSurveyGrow.estimatedCost,
+      totalYieldWet: exitSurveyGrow.totalYield,
+      flushCount: exitSurveyGrow.flushes.length,
+      strainId: exitSurveyGrow.strainId,
+      strainName: strain?.name,
+      locationId: exitSurveyGrow.locationId,
+      locationName: location?.name,
+      surveyResponses: {
+        contamination: surveyData.contamination,
+        feedback: surveyData.feedback,
+      },
+      notes: surveyData.feedback?.notes,
+    };
+
+    await deleteGrow(exitSurveyGrow.id, outcomeData);
+
+    setShowExitSurveyModal(false);
+    setExitSurveyGrow(null);
+    setPreselectedOutcome(undefined);
+    if (selectedGrow?.id === exitSurveyGrow.id) {
+      setSelectedGrow(null);
+      setShowDetailPanel(false);
     }
   };
 
+  const handleSkipSurvey = async () => {
+    if (!exitSurveyGrow) return;
+
+    if (confirm('Delete this grow without logging the outcome? This data helps track patterns.')) {
+      await deleteGrow(exitSurveyGrow.id);
+      setShowExitSurveyModal(false);
+      setExitSurveyGrow(null);
+      setPreselectedOutcome(undefined);
+      if (selectedGrow?.id === exitSurveyGrow.id) {
+        setSelectedGrow(null);
+        setShowDetailPanel(false);
+      }
+    }
+  };
+
+  const handleMarkContaminatedWithSurvey = (grow: Grow) => {
+    const days = daysActive(grow.spawnedAt);
+    let outcomeCode: GrowOutcomeCode = 'contamination_mid';
+    if (days <= 7) outcomeCode = 'contamination_early';
+    else if (days > 21) outcomeCode = 'contamination_late';
+    openExitSurvey(grow, outcomeCode);
+  };
+
+  const handleCompleteGrow = (grow: Grow) => {
+    openExitSurvey(grow, 'completed_success');
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white">Grow Tracker</h2>
-          <p className="text-zinc-400 text-sm">Track your cultivation projects from spawn to harvest</p>
+          <p className="text-zinc-400 text-sm">
+            {stats.active} active grow{stats.active !== 1 ? 's' : ''} • {stats.totalYield}g total yield
+          </p>
         </div>
-        {hasDraft && !showCreateModal && (
-          <button
-            onClick={loadDraft}
-            className="flex items-center gap-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 rounded-lg text-sm font-medium transition-colors"
-          >
-            <span>📝</span>
-            Continue Draft
-          </button>
-        )}
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-          <p className="text-xs text-zinc-500">Active</p>
-          <p className="text-2xl font-bold text-emerald-400">{stats.active}</p>
-        </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-          <p className="text-xs text-zinc-500">Completed</p>
-          <p className="text-2xl font-bold text-green-400">{stats.completed}</p>
-        </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-          <p className="text-xs text-zinc-500">Failed</p>
-          <p className="text-2xl font-bold text-red-400">{stats.failed}</p>
-        </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-          <p className="text-xs text-zinc-500">Total Yield</p>
-          <p className="text-2xl font-bold text-white">{stats.totalYield}g</p>
-        </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-          <p className="text-xs text-zinc-500">Avg Yield</p>
-          <p className="text-2xl font-bold text-white">{stats.avgYield.toFixed(1)}g</p>
-        </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-          <p className="text-xs text-zinc-500">Total Cost</p>
-          <p className="text-2xl font-bold text-white">${stats.totalCost.toFixed(0)}</p>
+        <div className="flex items-center gap-2">
+          {hasDraft && !showCreateModal && (
+            <button
+              onClick={loadDraft}
+              className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 rounded-lg text-sm font-medium"
+            >
+              📝 Continue Draft
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Today's Focus */}
+      <TodaysFocus
+        tasks={focusTasks}
+        onAdvanceStage={handleAdvanceStage}
+        onRecordHarvest={(growId) => {
+          const grow = grows.find(g => g.id === growId);
+          if (grow) {
+            setSelectedGrow(grow);
+            setExpandedCards(prev => new Set(prev).add(growId));
+          }
+        }}
+        onSelectGrow={(grow) => {
+          setSelectedGrow(grow);
+          setShowDetailPanel(true);
+        }}
+        collapsed={todaysFocusCollapsed}
+        onToggleCollapse={() => setTodaysFocusCollapsed(!todaysFocusCollapsed)}
+      />
+
+      {/* Stage Summary Bar */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {activeStages.map(stage => {
+          const config = stageConfig[stage];
+          const count = stats.byStage[stage] || 0;
+          return (
+            <div
+              key={stage}
+              className={`flex-shrink-0 px-3 py-2 rounded-lg border ${config.bgColor} ${config.borderColor}`}
+            >
+              <div className="flex items-center gap-2">
+                <span>{config.icon}</span>
+                <span className="text-sm font-medium text-white">{count}</span>
+                <span className={`text-xs ${config.color}`}>{config.label}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex-1 min-w-64 relative">
+        <div className="flex-1 min-w-48 relative">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
             <Icons.Search />
           </div>
@@ -528,29 +1046,6 @@ export const GrowManagement: React.FC = () => {
         </div>
 
         <select
-          value={filterStage}
-          onChange={e => setFilterStage(e.target.value as GrowStage | 'all')}
-          className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
-        >
-          <option value="all">All Stages</option>
-          {Object.entries(stageConfig).map(([key, config]) => (
-            <option key={key} value={key}>{config.icon} {config.label}</option>
-          ))}
-        </select>
-
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value as GrowStatus | 'all')}
-          className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
-        >
-          <option value="all">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="paused">Paused</option>
-          <option value="completed">Completed</option>
-          <option value="failed">Failed</option>
-        </select>
-
-        <select
           value={filterStrain}
           onChange={e => setFilterStrain(e.target.value)}
           className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
@@ -562,342 +1057,211 @@ export const GrowManagement: React.FC = () => {
           })}
         </select>
 
-        <select
-          value={sortBy}
-          onChange={e => setSortBy(e.target.value as typeof sortBy)}
-          className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
-        >
-          <option value="date">Sort by Date</option>
-          <option value="name">Sort by Name</option>
-          <option value="yield">Sort by Yield</option>
-          <option value="stage">Sort by Stage</option>
-        </select>
+        <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showCompleted}
+            onChange={e => setShowCompleted(e.target.checked)}
+            className="rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+          />
+          Show completed
+        </label>
 
         <div className="flex bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-2 transition-colors ${viewMode === 'grid' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-400 hover:text-white'}`}
-          >
-            <Icons.Grid />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-400 hover:text-white'}`}
-          >
-            <Icons.List />
-          </button>
+          {[
+            { mode: 'kanban' as ViewMode, icon: <Icons.Kanban />, label: 'Kanban' },
+            { mode: 'grid' as ViewMode, icon: <Icons.Grid />, label: 'Grid' },
+            { mode: 'list' as ViewMode, icon: <Icons.List />, label: 'List' },
+          ].map(({ mode, icon, label }) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              className={`p-2 transition-colors ${viewMode === mode ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-400 hover:text-white'}`}
+              title={label}
+            >
+              {icon}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex gap-6">
-        {/* Grid/List View */}
-        <div className="flex-1">
-          {viewMode === 'grid' ? (
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filteredGrows.map(grow => {
-                const strain = getStrain(grow.strainId);
-                const container = getContainerType(grow.containerTypeId);
-                const days = daysActive(grow.spawnedAt, grow.completedAt);
+      {/* Main Content Area */}
+      {viewMode === 'kanban' ? (
+        // Kanban View - horizontal scroll on desktop for better readability
+        <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="flex flex-col sm:flex-row gap-4 min-w-max sm:min-w-0">
+            {(showCompleted ? [...activeStages, 'completed' as GrowStage] : activeStages).map(stage => {
+              const config = stageConfig[stage];
+              const stageGrows = growsByStage[stage] || [];
 
-                return (
-                  <div
-                    key={grow.id}
-                    onClick={() => setSelectedGrow(grow)}
-                    className={`bg-zinc-900/50 border rounded-xl p-4 cursor-pointer transition-all hover:border-zinc-600 ${
-                      selectedGrow?.id === grow.id ? 'border-emerald-600' : 'border-zinc-800'
-                    }`}
-                  >
-                    {/* Stage Timeline */}
-                    <div className="mb-3">
-                      <StageTimeline currentStage={grow.currentStage} />
+              return (
+                <div key={stage} className="flex flex-col w-full sm:w-72 md:w-80 lg:w-[340px] flex-shrink-0">
+                  {/* Column Header */}
+                  <div className={`flex items-center justify-between px-3 py-2 rounded-t-xl ${config.bgColor} border ${config.borderColor} border-b-0`}>
+                    <div className="flex items-center gap-2">
+                      <span>{config.icon}</span>
+                      <span className={`font-medium ${config.color}`}>{config.label}</span>
                     </div>
-
-                    {/* Name & Strain */}
-                    <div className="mb-3">
-                      <p className="font-semibold text-white">{grow.name}</p>
-                      <p className="text-xs text-zinc-500">{strain?.name}</p>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                      <div className="bg-zinc-800/50 rounded p-2">
-                        <p className="text-xs text-zinc-500">Days</p>
-                        <p className="text-sm font-medium text-white">{days}</p>
-                      </div>
-                      <div className="bg-zinc-800/50 rounded p-2">
-                        <p className="text-xs text-zinc-500">Flushes</p>
-                        <p className="text-sm font-medium text-white">{grow.flushes.length}</p>
-                      </div>
-                      <div className="bg-zinc-800/50 rounded p-2">
-                        <p className="text-xs text-zinc-500">Yield</p>
-                        <p className="text-sm font-medium text-emerald-400">{grow.totalYield}g</p>
-                      </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between text-xs text-zinc-500 pt-3 border-t border-zinc-800">
-                      <span>{container?.name}</span>
-                      <span>{grow.spawnRate}% spawn rate</span>
-                    </div>
+                    <span className="text-xs bg-zinc-900/50 px-2 py-0.5 rounded-full text-zinc-400">
+                      {stageGrows.length}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="text-left p-3 text-sm font-medium text-zinc-400">Grow</th>
-                    <th className="text-left p-3 text-sm font-medium text-zinc-400">Strain</th>
-                    <th className="text-left p-3 text-sm font-medium text-zinc-400">Stage</th>
-                    <th className="text-left p-3 text-sm font-medium text-zinc-400">Days</th>
-                    <th className="text-left p-3 text-sm font-medium text-zinc-400">Flushes</th>
-                    <th className="text-left p-3 text-sm font-medium text-zinc-400">Yield</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredGrows.map(grow => {
-                    const strain = getStrain(grow.strainId);
-                    const config = stageConfig[grow.currentStage];
-                    const days = daysActive(grow.spawnedAt, grow.completedAt);
 
-                    return (
-                      <tr
+                  {/* Column Content */}
+                  <div className={`flex-1 p-2 space-y-2 bg-zinc-900/30 border ${config.borderColor} border-t-0 rounded-b-xl min-h-[200px]`}>
+                    {stageGrows.map(grow => (
+                      <GrowCard
                         key={grow.id}
-                        onClick={() => setSelectedGrow(grow)}
-                        className={`border-b border-zinc-800/50 cursor-pointer hover:bg-zinc-800/30 ${
-                          selectedGrow?.id === grow.id ? 'bg-emerald-950/20' : ''
-                        }`}
-                      >
-                        <td className="p-3 font-medium text-white">{grow.name}</td>
-                        <td className="p-3 text-sm text-white">{strain?.name}</td>
-                        <td className="p-3">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${config.color}`}>
-                            <span>{config.icon}</span>
-                            <span>{config.label}</span>
-                          </span>
-                        </td>
-                        <td className="p-3 text-sm text-zinc-400">{days}</td>
-                        <td className="p-3 text-sm text-zinc-400">{grow.flushes.length}</td>
-                        <td className="p-3 text-sm font-medium text-emerald-400">{grow.totalYield}g</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Detail Panel */}
-        {selectedGrow && (
-          <div className="w-96 bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 h-fit sticky top-6 max-h-[calc(100vh-200px)] overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-bold text-white">{selectedGrow.name}</h3>
-                <p className="text-sm text-zinc-400">{getStrain(selectedGrow.strainId)?.name}</p>
-              </div>
-              <button onClick={() => setSelectedGrow(null)} className="text-zinc-400 hover:text-white">
-                <Icons.X />
-              </button>
-            </div>
-
-            {/* Stage */}
-            <div className="mb-4">
-              <StageTimeline currentStage={selectedGrow.currentStage} />
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-1 mb-4 bg-zinc-800 rounded-lg p-1">
-              {(['overview', 'timeline', 'harvests'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setDetailTab(tab)}
-                  className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${
-                    detailTab === tab ? 'bg-emerald-500 text-white' : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab Content */}
-            {detailTab === 'overview' && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-zinc-500">Days Active</p>
-                    <p className="text-xl font-bold text-white">{daysActive(selectedGrow.spawnedAt, selectedGrow.completedAt)}</p>
-                  </div>
-                  <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-zinc-500">Total Yield</p>
-                    <p className="text-xl font-bold text-emerald-400">{selectedGrow.totalYield}g</p>
-                  </div>
-                </div>
-
-                <div className="text-sm space-y-2">
-                  <div className="flex justify-between py-2 border-b border-zinc-800">
-                    <span className="text-zinc-500">Container</span>
-                    <span className="text-white">{getContainerType(selectedGrow.containerTypeId)?.name} x{selectedGrow.containerCount}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-zinc-800">
-                    <span className="text-zinc-500">Substrate</span>
-                    <span className="text-white">{getSubstrateType(selectedGrow.substrateTypeId)?.name}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-zinc-800">
-                    <span className="text-zinc-500">Spawn Rate</span>
-                    <span className="text-white">{selectedGrow.spawnRate}%</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-zinc-800">
-                    <span className="text-zinc-500">Location</span>
-                    <span className="text-white">{getLocation(selectedGrow.locationId)?.name}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-zinc-800">
-                    <span className="text-zinc-500">Spawned</span>
-                    <span className="text-white">{new Date(selectedGrow.spawnedAt).toLocaleDateString()}</span>
-                  </div>
-                  {selectedGrow.sourceCultureId && (
-                    <div className="flex justify-between py-2 border-b border-zinc-800">
-                      <span className="text-zinc-500">Source</span>
-                      <span className="text-white">{getCulture(selectedGrow.sourceCultureId)?.label}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between py-2 border-b border-zinc-800">
-                    <span className="text-zinc-500">Est. Cost</span>
-                    <span className="text-white">${selectedGrow.estimatedCost.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                {selectedGrow.notes && (
-                  <div>
-                    <p className="text-xs text-zinc-500 mb-1">Notes</p>
-                    <p className="text-sm text-zinc-300 bg-zinc-800/50 rounded p-2">{selectedGrow.notes}</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {detailTab === 'timeline' && (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {selectedGrow.observations.slice().reverse().map(obs => (
-                  <div key={obs.id} className="bg-zinc-800/50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`px-1.5 py-0.5 rounded text-xs ${stageConfig[obs.stage].color}`}>
-                        {stageConfig[obs.stage].icon}
-                      </span>
-                      <span className="text-sm font-medium text-white">{obs.title}</span>
-                    </div>
-                    <p className="text-xs text-zinc-400 mb-1">{new Date(obs.date).toLocaleDateString()}</p>
-                    {obs.notes && <p className="text-xs text-zinc-300">{obs.notes}</p>}
-                    {obs.colonizationPercent !== undefined && (
-                      <div className="mt-2">
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-zinc-500">Colonization</span>
-                          <span className="text-white">{obs.colonizationPercent}%</span>
-                        </div>
-                        <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${obs.colonizationPercent}%` }} />
-                        </div>
+                        grow={grow}
+                        strain={getStrain(grow.strainId)}
+                        container={getContainer(grow.containerId)}
+                        location={getLocation(grow.locationId)}
+                        isExpanded={expandedCards.has(grow.id)}
+                        isHarvesting={harvestingCard === grow.id}
+                        onToggleExpand={() => toggleCardExpand(grow.id)}
+                        onAdvanceStage={() => handleAdvanceStage(grow.id)}
+                        onRecordHarvest={(wet, dry, quality, notes, count) => handleRecordHarvest(grow.id, wet, dry, quality, notes, count)}
+                        onMarkContaminated={() => handleMarkContaminatedWithSurvey(grow)}
+                        onComplete={() => handleCompleteGrow(grow)}
+                        onEdit={() => openEditModal(grow)}
+                        onDelete={() => openExitSurvey(grow)}
+                        onLogObservation={() => {
+                          setSelectedGrow(grow);
+                          setShowObservationModal(true);
+                        }}
+                      />
+                    ))}
+                    {stageGrows.length === 0 && (
+                      <div className="text-center py-8 text-zinc-600 text-sm">
+                        No grows in {config.label.toLowerCase()}
                       </div>
                     )}
                   </div>
-                ))}
-                {selectedGrow.observations.length === 0 && (
-                  <p className="text-sm text-zinc-500 text-center py-4">No observations yet</p>
-                )}
-              </div>
-            )}
-
-            {detailTab === 'harvests' && (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {selectedGrow.flushes.map(flush => (
-                  <div key={flush.id} className="bg-zinc-800/50 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-white">Flush #{flush.flushNumber}</span>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        flush.quality === 'excellent' ? 'bg-emerald-950/50 text-emerald-400' :
-                        flush.quality === 'good' ? 'bg-blue-950/50 text-blue-400' :
-                        flush.quality === 'fair' ? 'bg-amber-950/50 text-amber-400' :
-                        'bg-red-950/50 text-red-400'
-                      }`}>
-                        {flush.quality}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div>
-                        <p className="text-zinc-500">Wet</p>
-                        <p className="text-white font-medium">{flush.wetWeight}g</p>
-                      </div>
-                      <div>
-                        <p className="text-zinc-500">Dry</p>
-                        <p className="text-emerald-400 font-medium">{flush.dryWeight}g</p>
-                      </div>
-                      {flush.mushroomCount && (
-                        <div>
-                          <p className="text-zinc-500">Count</p>
-                          <p className="text-white font-medium">{flush.mushroomCount}</p>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-zinc-500 mt-2">{new Date(flush.harvestDate).toLocaleDateString()}</p>
-                  </div>
-                ))}
-                {selectedGrow.flushes.length === 0 && (
-                  <p className="text-sm text-zinc-500 text-center py-4">No harvests yet</p>
-                )}
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2 pt-4 mt-4 border-t border-zinc-800">
-              {!['completed', 'contaminated', 'aborted'].includes(selectedGrow.currentStage) && (
-                <button
-                  onClick={handleAdvanceStage}
-                  className="flex-1 flex items-center justify-center gap-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium"
-                >
-                  <Icons.ChevronRight />
-                  Advance
-                </button>
-              )}
-              {['fruiting', 'harvesting'].includes(selectedGrow.currentStage) && (
-                <button
-                  onClick={() => setShowHarvestModal(true)}
-                  className="flex-1 flex items-center justify-center gap-1 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg text-sm font-medium"
-                >
-                  <Icons.Scale />
-                  Harvest
-                </button>
-              )}
-              <button
-                onClick={() => setShowObservationModal(true)}
-                className="flex-1 flex items-center justify-center gap-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium"
-              >
-                <Icons.Clipboard />
-                Log
-              </button>
-              {!['completed', 'contaminated', 'aborted'].includes(selectedGrow.currentStage) && (
-                <button
-                  onClick={handleMarkContaminated}
-                  className="p-2 bg-red-950/50 hover:bg-red-950 text-red-400 rounded-lg text-sm"
-                  title="Mark Contaminated"
-                >
-                  ☠️
-                </button>
-              )}
-              <button
-                onClick={() => handleDelete(selectedGrow.id)}
-                className="p-2 bg-red-950/50 hover:bg-red-950 text-red-400 rounded-lg"
-              >
-                <Icons.Trash />
-              </button>
-            </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      ) : viewMode === 'grid' ? (
+        // Grid View
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredGrows.map(grow => (
+            <GrowCard
+              key={grow.id}
+              grow={grow}
+              strain={getStrain(grow.strainId)}
+              container={getContainer(grow.containerId)}
+              location={getLocation(grow.locationId)}
+              isExpanded={expandedCards.has(grow.id)}
+              isHarvesting={harvestingCard === grow.id}
+              onToggleExpand={() => toggleCardExpand(grow.id)}
+              onAdvanceStage={() => handleAdvanceStage(grow.id)}
+              onRecordHarvest={(wet, dry, quality, notes, count) => handleRecordHarvest(grow.id, wet, dry, quality, notes, count)}
+              onMarkContaminated={() => handleMarkContaminatedWithSurvey(grow)}
+              onComplete={() => handleCompleteGrow(grow)}
+              onEdit={() => openEditModal(grow)}
+              onDelete={() => openExitSurvey(grow)}
+              onLogObservation={() => {
+                setSelectedGrow(grow);
+                setShowObservationModal(true);
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        // List View
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-zinc-800">
+                <th className="text-left p-3 text-sm font-medium text-zinc-400">Grow</th>
+                <th className="text-left p-3 text-sm font-medium text-zinc-400">Stage</th>
+                <th className="text-left p-3 text-sm font-medium text-zinc-400">Days</th>
+                <th className="text-left p-3 text-sm font-medium text-zinc-400">Flushes</th>
+                <th className="text-left p-3 text-sm font-medium text-zinc-400">Yield</th>
+                <th className="text-left p-3 text-sm font-medium text-zinc-400">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredGrows.map(grow => {
+                const strain = getStrain(grow.strainId);
+                const config = stageConfig[grow.currentStage];
+                const days = daysActive(grow.spawnedAt, grow.completedAt);
+                const isTerminal = ['completed', 'contaminated', 'aborted'].includes(grow.currentStage);
+
+                return (
+                  <tr key={grow.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                    <td className="p-3">
+                      <p className="font-medium text-white">{grow.name}</p>
+                      <p className="text-xs text-zinc-500">{strain?.name}</p>
+                    </td>
+                    <td className="p-3">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${config.bgColor} ${config.color}`}>
+                        <span>{config.icon}</span>
+                        <span>{config.label}</span>
+                      </span>
+                    </td>
+                    <td className="p-3 text-sm text-zinc-400">{days}</td>
+                    <td className="p-3 text-sm text-zinc-400">{grow.flushes.length}</td>
+                    <td className="p-3 text-sm font-medium text-emerald-400">{grow.totalYield}g</td>
+                    <td className="p-3">
+                      <div className="flex gap-1">
+                        {!isTerminal && grow.currentStage !== 'harvesting' && (
+                          <button
+                            onClick={() => handleAdvanceStage(grow.id)}
+                            className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 rounded"
+                            title="Advance Stage"
+                          >
+                            <Icons.ArrowRight />
+                          </button>
+                        )}
+                        {['fruiting', 'harvesting'].includes(grow.currentStage) && (
+                          <button
+                            onClick={() => {
+                              setSelectedGrow(grow);
+                              setExpandedCards(new Set([grow.id]));
+                            }}
+                            className="p-1.5 bg-amber-500/20 hover:bg-amber-500/40 text-amber-400 rounded"
+                            title="Record Harvest"
+                          >
+                            <Icons.Scale />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openEditModal(grow)}
+                          className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded"
+                          title="Edit"
+                        >
+                          <Icons.Edit />
+                        </button>
+                        <button
+                          onClick={() => openExitSurvey(grow)}
+                          className="p-1.5 bg-red-950/50 hover:bg-red-950 text-red-400 rounded"
+                          title="Remove"
+                        >
+                          <Icons.Trash />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {filteredGrows.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-zinc-500 mb-4">No grows found</p>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium"
+          >
+            Start Your First Grow
+          </button>
+        </div>
+      )}
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -905,11 +1269,7 @@ export const GrowManagement: React.FC = () => {
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-white">New Grow</h3>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-zinc-400 hover:text-white"
-                title="Close (draft will be saved)"
-              >
+              <button onClick={() => setShowCreateModal(false)} className="text-zinc-400 hover:text-white">
                 <Icons.X />
               </button>
             </div>
@@ -943,7 +1303,6 @@ export const GrowManagement: React.FC = () => {
                   onChange={value => setNewGrow(prev => ({ ...prev, sourceCultureId: value }))}
                   options={readyCultureOptions}
                   placeholder="None"
-                  entityType="culture"
                   fieldName="sourceCultureId"
                 />
               </div>
@@ -1003,12 +1362,12 @@ export const GrowManagement: React.FC = () => {
                 <StandardDropdown
                   label="Container"
                   required
-                  value={newGrow.containerTypeId}
-                  onChange={value => setNewGrow(prev => ({ ...prev, containerTypeId: value }))}
-                  options={activeContainerTypes}
+                  value={newGrow.containerId}
+                  onChange={value => setNewGrow(prev => ({ ...prev, containerId: value }))}
+                  options={activeContainers.filter(c => c.usageContext.includes('grow'))}
                   placeholder="Select..."
-                  entityType="containerType"
-                  fieldName="containerTypeId"
+                  entityType="container"
+                  fieldName="containerId"
                 />
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Count</label>
@@ -1078,20 +1437,113 @@ export const GrowManagement: React.FC = () => {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  // Draft is already auto-saved, just close the modal
-                  setShowCreateModal(false);
-                }}
+                onClick={() => setShowCreateModal(false)}
                 className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 rounded-lg font-medium"
               >
                 Save Draft
               </button>
               <button
                 onClick={handleCreateGrow}
-                disabled={!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerTypeId || !newGrow.locationId}
+                disabled={!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerId || !newGrow.locationId}
                 className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
               >
                 Create Grow
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white">Edit Grow</h3>
+              <button onClick={() => setShowEditModal(false)} className="text-zinc-400 hover:text-white">
+                <Icons.X />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-zinc-400 mb-2">Name</label>
+                <input
+                  type="text"
+                  value={editGrow.name}
+                  onChange={e => setEditGrow(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <StandardDropdown
+                  label="Strain"
+                  required
+                  value={editGrow.strainId}
+                  onChange={value => setEditGrow(prev => ({ ...prev, strainId: value }))}
+                  options={activeStrains}
+                  placeholder="Select..."
+                  entityType="strain"
+                  fieldName="strainId"
+                />
+                <StandardDropdown
+                  label="Location"
+                  required
+                  value={editGrow.locationId}
+                  onChange={value => setEditGrow(prev => ({ ...prev, locationId: value }))}
+                  options={activeLocations}
+                  placeholder="Select..."
+                  entityType="location"
+                  fieldName="locationId"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Inoculation Date</label>
+                  <input
+                    type="date"
+                    value={editGrow.inoculationDate}
+                    onChange={e => setEditGrow(prev => ({ ...prev, inoculationDate: e.target.value }))}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white [color-scheme:dark]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Estimated Cost ($)</label>
+                  <input
+                    type="number"
+                    value={editGrow.estimatedCost}
+                    onChange={e => setEditGrow(prev => ({ ...prev, estimatedCost: parseFloat(e.target.value) || 0 }))}
+                    step="0.01"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-zinc-400 mb-2">Notes</label>
+                <textarea
+                  value={editGrow.notes}
+                  onChange={e => setEditGrow(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={3}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateGrow}
+                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium"
+              >
+                Save Changes
               </button>
             </div>
           </div>
@@ -1178,105 +1630,21 @@ export const GrowManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Harvest Modal */}
-      {showHarvestModal && selectedGrow && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Record Harvest</h3>
-              <button onClick={() => setShowHarvestModal(false)} className="text-zinc-400 hover:text-white">
-                <Icons.X />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-                <p className="text-xs text-zinc-500">This will be</p>
-                <p className="text-xl font-bold text-white">Flush #{selectedGrow.flushes.length + 1}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Wet Weight (g) *</label>
-                  <input
-                    type="number"
-                    value={newHarvest.wetWeight || ''}
-                    onChange={e => setNewHarvest(prev => ({ ...prev, wetWeight: parseFloat(e.target.value) || 0 }))}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Dry Weight (g)</label>
-                  <input
-                    type="number"
-                    value={newHarvest.dryWeight || ''}
-                    onChange={e => setNewHarvest(prev => ({ ...prev, dryWeight: parseFloat(e.target.value) || 0 }))}
-                    placeholder={newHarvest.wetWeight ? `~${Math.round(newHarvest.wetWeight * 0.1)}` : ''}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Mushroom Count</label>
-                <input
-                  type="number"
-                  value={newHarvest.mushroomCount || ''}
-                  onChange={e => setNewHarvest(prev => ({ ...prev, mushroomCount: parseInt(e.target.value) || undefined }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Quality</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['excellent', 'good', 'fair', 'poor'] as const).map(q => (
-                    <button
-                      key={q}
-                      onClick={() => setNewHarvest(prev => ({ ...prev, quality: q }))}
-                      className={`py-2 rounded-lg text-xs font-medium transition-all ${
-                        newHarvest.quality === q
-                          ? q === 'excellent' ? 'bg-emerald-500 text-white' :
-                            q === 'good' ? 'bg-blue-500 text-white' :
-                            q === 'fair' ? 'bg-amber-500 text-white' :
-                            'bg-red-500 text-white'
-                          : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                      }`}
-                    >
-                      {q.charAt(0).toUpperCase() + q.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Notes</label>
-                <textarea
-                  value={newHarvest.notes}
-                  onChange={e => setNewHarvest(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={2}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowHarvestModal(false)}
-                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddHarvest}
-                disabled={!newHarvest.wetWeight}
-                className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
-              >
-                Record
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Exit Survey Modal */}
+      {exitSurveyGrow && (
+        <ExitSurveyModal
+          isOpen={showExitSurveyModal}
+          onClose={() => {
+            setShowExitSurveyModal(false);
+            setExitSurveyGrow(null);
+            setPreselectedOutcome(undefined);
+          }}
+          onComplete={handleExitSurveyComplete}
+          onSkip={handleSkipSurvey}
+          entityType="grow"
+          entityName={exitSurveyGrow.name}
+          preselectedOutcome={preselectedOutcome}
+        />
       )}
     </div>
   );

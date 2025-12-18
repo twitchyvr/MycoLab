@@ -60,16 +60,54 @@ export interface Vendor extends LookupItem {
   tags: string[];
 }
 
+// Location hierarchy level for farm/lab mapping
+export type LocationLevel = 'facility' | 'room' | 'zone' | 'rack' | 'shelf' | 'slot';
+
+// Room type classifications for process steps
+export type RoomPurpose =
+  | 'pasteurization'
+  | 'inoculation'
+  | 'colonization'
+  | 'fruiting'
+  | 'storage'
+  | 'prep'
+  | 'drying'
+  | 'packaging'
+  | 'general';
+
 export interface Location extends LookupItem {
-  locationType: 'room' | 'shelf' | 'refrigerator' | 'freezer' | 'incubator' | 'fruiting_chamber' | 'storage' | 'rack' | 'slot' | 'pasteurization' | 'inoculation' | 'colonization' | 'grow' | 'cold_room' | 'other';
+  // Legacy type fields (for backwards compatibility)
+  locationType?: 'room' | 'shelf' | 'refrigerator' | 'freezer' | 'incubator' | 'fruiting_chamber' | 'storage' | 'rack' | 'slot' | 'pasteurization' | 'inoculation' | 'colonization' | 'grow' | 'cold_room' | 'other';
   processStep?: 'pasteurization' | 'inoculation' | 'colonization' | 'fruiting' | 'storage' | 'shipping';
-  parentLocationId?: UUID; // For hierarchical locations (e.g., Shelf 1 in Fridge A)
-  temperatureRange?: { min: number; max: number }; // Celsius
+  parentLocationId?: UUID; // Legacy field
+
+  // Environmental ranges
+  temperatureRange?: { min: number; max: number }; // Celsius (legacy name)
+  tempRange?: { min: number; max: number }; // Celsius (new name)
   humidityRange?: { min: number; max: number };    // Percentage
   co2Range?: { min: number; max: number };         // PPM
+
+  // Capacity tracking
   capacity?: number;
   currentOccupancy?: number;
+
+  // Additional attributes
   isBio?: boolean;  // For organic/BIO certification tracking
+
+  // Hierarchical location support for farm/lab mapping
+  parentId?: UUID;             // Parent location ID for hierarchy
+  level?: LocationLevel;       // Hierarchy level (facility > room > zone > rack > shelf > slot)
+  roomPurpose?: RoomPurpose;   // @deprecated Use roomPurposes instead - kept for backwards compatibility
+  roomPurposes?: RoomPurpose[]; // Multiple purposes for multi-use rooms (e.g., colonization + fruiting)
+  // sortOrder inherited from LookupItem - Display order among siblings
+  path?: string;               // Full path like "Facility/Room A/Rack 1/Shelf 2"
+  code?: string;               // Short code for labeling (e.g., "R1-S2-A")
+  dimensions?: {               // Physical dimensions
+    length?: number;
+    width?: number;
+    height?: number;
+    unit?: 'cm' | 'in' | 'm' | 'ft';
+  };
 }
 
 // Environmental reading for room metrics history
@@ -130,14 +168,31 @@ export interface RoomStatus extends Timestamped {
   notes?: string;
 }
 
-export interface VesselType extends LookupItem {
-  vesselCategory: 'jar' | 'bag' | 'plate' | 'tube' | 'bottle' | 'tub' | 'tray' | 'other';
-  volumeMl?: number;
+// Unified Container type (replaces separate VesselType and ContainerType)
+export type ContainerCategory =
+  | 'jar' | 'bag' | 'plate' | 'tube' | 'bottle' | 'syringe'   // Culture containers
+  | 'tub' | 'bucket' | 'bed' | 'other';                        // Grow containers
+
+export type ContainerUsageContext = 'culture' | 'grow';
+
+export interface Container extends LookupItem {
+  category: ContainerCategory;
+  volumeMl?: number;                         // Volume in milliliters (unified unit)
+  dimensions?: {
+    length: number;
+    width: number;
+    height: number;
+    unit?: 'cm' | 'in';
+  };
   material?: string;
   reusable: boolean;
-  sterile: boolean;
+  sterile?: boolean;
+  usageContext: ContainerUsageContext[];     // Whether for culture, grow, or both
   unitCost?: Currency;
 }
+
+/** @deprecated Use Container instead */
+export type VesselType = Container;
 
 export interface Ingredient extends LookupItem {
   ingredientCategory: 'grain' | 'substrate' | 'supplement' | 'agar' | 'liquid_culture' | 'chemical' | 'other';
@@ -211,8 +266,8 @@ export interface Culture extends Auditable, SoftDeletable {
   
   // Physical Properties
   cultureType: CultureType;
-  vesselTypeId: UUID;
-  vesselType?: VesselType;
+  containerId: UUID;
+  container?: Container;
   volumeMl?: number;        // Container's total capacity
   fillVolumeMl?: number;    // Actual amount of media in container
   
@@ -364,7 +419,7 @@ export interface SpawnColonizationData {
   inoculantCultureId: UUID;
   spawnMediumType: string; // grain type, etc.
   spawnIngredients: RecipeIngredient[];
-  spawnVesselTypeId: UUID;
+  spawnContainerId: UUID;  // Unified: was spawnVesselTypeId
   spawnQuantity: number;
   spawnWeightGrams: number;
   colonizationPercentage: number;
@@ -381,7 +436,7 @@ export interface BulkColonizationData {
   substrateType: string;
   substrateIngredients: RecipeIngredient[];
   substrateWeightGrams: number;
-  containerTypeId: UUID;
+  containerId: UUID;
   surfaceConditions: string;
   colonizationPercentage: number;
   targetTemperature: number;
@@ -703,7 +758,7 @@ export interface AppState {
   strains: Strain[];
   vendors: Vendor[];
   locations: Location[];
-  vesselTypes: VesselType[];
+  containers: Container[];
   ingredients: Ingredient[];
   tools: Tool[];
   procedures: Procedure[];
