@@ -693,6 +693,64 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ============================================================================
+-- FLUSHES TABLE MIGRATION: Rename weight columns to include units
+-- This fixes the column name mismatch where the app expects _g suffix
+-- ============================================================================
+DO $$
+BEGIN
+  -- Check if we have the OLD column names (wet_weight, dry_weight without _g)
+  -- and need to migrate to the NEW names (wet_weight_g, dry_weight_g)
+
+  -- Step 1: Add new columns if they don't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'flushes' AND column_name = 'wet_weight_g'
+  ) THEN
+    ALTER TABLE flushes ADD COLUMN wet_weight_g DECIMAL;
+    RAISE NOTICE 'Added wet_weight_g column';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'flushes' AND column_name = 'dry_weight_g'
+  ) THEN
+    ALTER TABLE flushes ADD COLUMN dry_weight_g DECIMAL;
+    RAISE NOTICE 'Added dry_weight_g column';
+  END IF;
+
+  -- Step 2: Copy data from old columns to new columns (if old columns exist)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'flushes' AND column_name = 'wet_weight'
+  ) THEN
+    -- Copy data where new column is null but old column has data
+    UPDATE flushes SET wet_weight_g = wet_weight
+    WHERE wet_weight_g IS NULL AND wet_weight IS NOT NULL;
+    RAISE NOTICE 'Migrated wet_weight data to wet_weight_g';
+
+    -- Drop the old column
+    ALTER TABLE flushes DROP COLUMN wet_weight;
+    RAISE NOTICE 'Dropped old wet_weight column';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'flushes' AND column_name = 'dry_weight'
+  ) THEN
+    -- Copy data where new column is null but old column has data
+    UPDATE flushes SET dry_weight_g = dry_weight
+    WHERE dry_weight_g IS NULL AND dry_weight IS NOT NULL;
+    RAISE NOTICE 'Migrated dry_weight data to dry_weight_g';
+
+    -- Drop the old column
+    ALTER TABLE flushes DROP COLUMN dry_weight;
+    RAISE NOTICE 'Dropped old dry_weight column';
+  END IF;
+
+  RAISE NOTICE 'Flushes table migration complete';
+END $$;
+
 -- Recipe ingredients
 CREATE TABLE IF NOT EXISTS recipe_ingredients (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -4330,12 +4388,19 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 19)
-ON CONFLICT (id) DO UPDATE SET version = 19, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 20)
+ON CONFLICT (id) DO UPDATE SET version = 20, updated_at = NOW();
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v20 (2024-12): CRITICAL FIX - Flushes table column name migration:
+--               - Database had: wet_weight, dry_weight (integer)
+--               - App expected: wet_weight_g, dry_weight_g (DECIMAL)
+--               - Migration adds _g suffix columns, copies data, drops old columns
+--               - Transformation code now handles both column names defensively
+--               - Root cause: CREATE TABLE IF NOT EXISTS didn't update existing table
+--               - Lesson: Always check actual DB schema vs expected schema
 -- v19 (2024-12): Added RPC function to bypass PostgREST schema cache issues:
 --               - insert_flush: Direct SQL function for inserting flush records
 --                 Bypasses PostgREST schema cache (PGRST204 errors)
