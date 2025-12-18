@@ -1291,7 +1291,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                 >
                   <span className="text-emerald-400"><Icons.Grow /></span>
                   <span className="text-sm text-zinc-300">{g.name}</span>
-                  <span className="text-xs text-zinc-500">{g.stage}</span>
+                  <span className="text-xs text-zinc-500">{g.currentStage}</span>
                 </button>
               ))}
             </div>

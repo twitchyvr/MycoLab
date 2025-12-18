@@ -2280,6 +2280,79 @@ custom IDs like 'outcome-mjbw2cne-h7jx2' which caused Postgres error 22P02.
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  // =============================================================================
+  // PHASE 40: MYCELIUM NAVIGATION SYSTEM
+  // Organic, mushroom-themed navigation redesign
+  // =============================================================================
+  {
+    id: 'dev-1200',
+    title: 'Mycelium Navigation System - Complete Redesign',
+    description: 'Unique, mushroom-themed navigation system inspired by fungal networks. Three main components: MyceliumHub (network-style full navigation), SporeMenu (radial FAB), GrowthTrail (organic breadcrumbs). Mobile and desktop optimized.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 20,
+    actualHours: 11,
+    completedAt: timestamp(),
+    notes: `Mycelium Navigation System - Complete Implementation:
+
+**Vision:**
+- Navigation inspired by the organic, interconnected nature of mycelial networks
+- Pages as "fruiting bodies" connected by mycelial threads
+- Bioluminescent glow effects for active states
+- Organic animations throughout
+
+**MyceliumHub Component:**
+- Full-screen network visualization overlay
+- Category clusters arranged radially
+- Connection threads showing page relationships
+- Search integration with visual filtering
+- Keyboard shortcut: Cmd/Ctrl + .
+
+**SporeMenu Component:**
+- Radial quick-access FAB (replaces standard FAB)
+- Mushroom cap button that "disperses spores" when opened
+- Quick access to most-used pages (Dashboard, Cultures, Grows, etc.)
+- Touch-friendly for mobile
+
+**GrowthTrail Component:**
+- Organic breadcrumb navigation
+- Mycelium-thread styled connectors
+- Shows related pages based on connections
+- Category indicator with glow effect
+- Compact version for mobile
+
+**Organic Animations:**
+- bioluminescence: Pulsing glow effect
+- sporeDisperse: Radial expansion animation
+- drawThread: SVG path animation for connections
+- fruitingEmergence: Bounce-in for nodes
+- hyphalGrowth: Clip-path expansion
+- threadPulse: Subtle connection pulsing
+
+**Files Created:**
+- components/navigation/types.ts
+- components/navigation/navData.ts
+- components/navigation/MyceliumHub.tsx
+- components/navigation/SporeMenu.tsx
+- components/navigation/GrowthTrail.tsx
+- components/navigation/index.ts
+
+**Files Updated:**
+- App.tsx (integration, navigation history, keyboard shortcuts)
+- styles/globals.css (new animation keyframes)
+- tailwind.config.js (animation extensions)
+
+**Accessibility:**
+- Full keyboard navigation
+- Screen reader labels
+- Focus management
+- Reduced motion support via CSS
+- ARIA attributes throughout`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
