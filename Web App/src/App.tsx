@@ -50,7 +50,7 @@ import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
 import { ObservationTimeline, EventLogger } from './components/observations';
 import { ProfilePage } from './components/profile';
 import { FloatingActionButton, LabCommandCenter } from './components/dashboard';
-import { LabMapping, LocationOccupancy } from './components/locations';
+import { LabMapping, LocationOccupancy, LabSpaces } from './components/locations';
 import { LabelDesigner } from './components/labels';
 import { QRScanner } from './components/qr';
 import { ColdStorageCheck } from './components/dailycheck';
@@ -303,7 +303,7 @@ const Icons = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
 
 // Route configuration: maps Page to URL paths
 // Routes with :id support deep-linking to specific items
@@ -324,6 +324,7 @@ const routeConfig: Record<Page, string> = {
   lineage: '/lineage',
   grows: '/grows',
   recipes: '/recipes',
+  labspaces: '/lab-spaces',
   labmapping: '/lab-mapping',
   occupancy: '/occupancy',
   labels: '/labels',
@@ -455,8 +456,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
       { id: 'stock', label: 'Stock & Orders', icon: Icons.Package },
-      { id: 'labmapping', label: 'Lab Layout', icon: Icons.Layers },
-      { id: 'occupancy', label: 'Space Tracker', icon: Icons.Grid },
+      { id: 'labspaces', label: 'Lab Spaces', icon: Icons.Layers },
       { id: 'labels', label: 'Label Maker', icon: Icons.Tag },
       { id: 'scanner', label: 'QR Scanner', icon: Icons.QRScan },
     ],
@@ -1145,6 +1145,7 @@ const AppWithRouter: React.FC = () => {
     lineage: { title: 'Lineage Visualization', subtitle: 'Interactive family tree of your cultures' },
     grows: { title: 'Grow Tracking', subtitle: 'Track your active and completed grows' },
     recipes: { title: 'Recipes', subtitle: 'Agar, LC, substrate formulations' },
+    labspaces: { title: 'Lab Spaces', subtitle: 'Manage locations, chambers, and track occupancy' },
     labmapping: { title: 'Lab Mapping', subtitle: 'Manage rooms, racks, shelves, and storage locations' },
     occupancy: { title: 'Location Occupancy', subtitle: 'Track items, varieties, and yields across your lab' },
     labels: { title: 'Label Designer', subtitle: 'Design and print labels with QR codes' },
@@ -1260,18 +1261,21 @@ const AppWithRouter: React.FC = () => {
             <RecipeBuilder />
           </div>
         );
+      case 'labspaces':
+        return (
+          <div className="p-6">
+            <LabSpaces onNavigate={(page, itemId) => {
+              setCurrentPage(page as Page);
+              if (itemId) {
+                window.dispatchEvent(new CustomEvent('mycolab:select-item', { detail: { type: page, id: itemId } }));
+              }
+            }} />
+          </div>
+        );
+      // Legacy routes - redirect to unified Lab Spaces
       case 'labmapping':
-        return (
-          <div className="p-6">
-            <LabMapping />
-          </div>
-        );
       case 'occupancy':
-        return (
-          <div className="p-6">
-            <LocationOccupancy />
-          </div>
-        );
+        return <Navigate to="/lab-spaces" replace />;
       case 'labels':
         return (
           <div className="p-6">
