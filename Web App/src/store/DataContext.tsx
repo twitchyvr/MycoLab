@@ -1506,15 +1506,57 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         ...transformFlushToDb({ ...flush, flushNumber }, growId),
         user_id: userId,
       };
+
+      let flushData: any = null;
+      let insertError: any = null;
+
+      // Try direct insert first
       const { data, error } = await supabase
         .from('flushes')
         .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Check if this is a PostgREST schema cache error (PGRST204)
+        // If so, try the RPC function which bypasses the schema cache
+        if (error.code === 'PGRST204' || error.message?.includes('schema cache')) {
+          console.warn('PostgREST schema cache error detected, trying RPC fallback...');
 
-      const newFlush = transformFlushFromDb(data);
+          // Use RPC function to insert flush (bypasses PostgREST schema cache)
+          const harvestDate = flush.harvestDate instanceof Date
+            ? flush.harvestDate.toISOString().split('T')[0]
+            : flush.harvestDate;
+
+          const { data: rpcData, error: rpcError } = await supabase.rpc('insert_flush', {
+            p_grow_id: growId,
+            p_flush_number: flushNumber,
+            p_harvest_date: harvestDate,
+            p_wet_weight_g: flush.wetWeight,
+            p_dry_weight_g: flush.dryWeight,
+            p_mushroom_count: flush.mushroomCount || null,
+            p_quality: flush.quality || 'good',
+            p_notes: flush.notes || null,
+            p_user_id: userId,
+          });
+
+          if (rpcError) {
+            console.error('RPC fallback also failed:', rpcError);
+            insertError = rpcError;
+          } else {
+            console.log('RPC insert successful:', rpcData);
+            flushData = rpcData;
+          }
+        } else {
+          insertError = error;
+        }
+      } else {
+        flushData = data;
+      }
+
+      if (insertError) throw insertError;
+
+      const newFlush = transformFlushFromDb(flushData);
       setState(prev => ({
         ...prev,
         grows: prev.grows.map(g =>

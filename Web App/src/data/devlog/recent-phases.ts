@@ -1535,6 +1535,43 @@ Benefits:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-920',
+    title: 'Flush Save RPC Fallback for PostgREST Schema Cache Issues',
+    description: 'Added RPC function fallback to bypass PostgREST schema cache errors (PGRST204) when saving harvests.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 1,
+    actualHours: 0.75,
+    completedAt: timestamp(),
+    notes: `**Problem**: PostgREST schema cache not refreshing after schema changes
+- Error: "Could not find the 'dry_weight_g' column of 'flushes' in the schema cache"
+- The column exists in the database, but PostgREST's cached schema is stale
+- Running schema SQL and restarting Supabase didn't fix it
+
+**Root Cause Analysis**:
+- The schema SQL is correct (dry_weight_g exists at line 670)
+- The transformation code correctly maps dryWeight → dry_weight_g
+- PGRST204 is specifically a PostgREST schema cache error
+- This is a Supabase infrastructure issue, not a code issue
+
+**Solution**: Created RPC function to bypass PostgREST cache
+1. Added insert_flush() PostgreSQL function in schema
+   - Uses direct SQL INSERT, bypasses PostgREST API
+   - Includes RLS validation for grow ownership
+   - Returns inserted record as JSONB
+2. Updated addFlush() in DataContext to:
+   - Try direct insert first
+   - On PGRST204 error, fall back to RPC function
+   - Log warnings to console for debugging
+
+**Files Updated:**
+- supabase-schema.sql (added insert_flush RPC function, v19)
+- store/DataContext.tsx (added RPC fallback logic)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
