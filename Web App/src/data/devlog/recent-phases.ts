@@ -2583,7 +2583,7 @@ Created comprehensive weight utilities (utils/weight.ts):
     id: 'dev-1204',
     title: 'Fix Data Not Loading After Email Login',
     description: 'Fixed bug where data would not display after logging in with email/password, but worked correctly with Google OAuth. Root cause was DataContext not listening to auth state changes.',
-    category: 'bug',
+    category: 'bug_fix',
     status: 'completed',
     priority: 'critical',
     estimatedHours: 2,
