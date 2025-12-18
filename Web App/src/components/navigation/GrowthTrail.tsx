@@ -122,7 +122,7 @@ const RelatedPages: React.FC<RelatedPagesProps> = ({ currentPage, onNavigate }) 
             title={`Go to ${node.label}`}
           >
             <Icon className="w-3 h-3" />
-            <span className="text-[10px] hidden sm:inline">{node.shortLabel || node.label}</span>
+            <span className="text-[10px]">{node.shortLabel || node.label}</span>
           </button>
         );
       })}
@@ -205,10 +205,8 @@ export const GrowthTrail: React.FC<GrowthTrailProps> = ({
           ))}
         </div>
 
-        {/* Related pages (desktop only) */}
-        <div className="hidden lg:flex">
-          <RelatedPages currentPage={currentPage} onNavigate={onNavigate} />
-        </div>
+        {/* Related pages - visible on all screens */}
+        <RelatedPages currentPage={currentPage} onNavigate={onNavigate} />
       </div>
 
       {/* Right: Category indicator */}

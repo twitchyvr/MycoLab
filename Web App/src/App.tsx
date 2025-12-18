@@ -50,6 +50,8 @@ import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
 import { ObservationTimeline, EventLogger } from './components/observations';
 import { ProfilePage } from './components/profile';
 import { FloatingActionButton, LabCommandCenter } from './components/dashboard';
+import { GrowthTrail } from './components/navigation';
+import type { Page as NavPage } from './components/navigation';
 import { LabMapping, LocationOccupancy, LabSpaces } from './components/locations';
 import { LabelDesigner } from './components/labels';
 import { QRScanner } from './components/qr';
@@ -1398,6 +1400,18 @@ const AppContent: React.FC<{
 }) => {
   const { state } = useData();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [previousPages, setPreviousPages] = useState<Page[]>([]);
+
+  // Track navigation history for breadcrumb trail
+  useEffect(() => {
+    setPreviousPages(prev => {
+      // Don't duplicate if navigating to the same page
+      if (prev[prev.length - 1] === currentPage) return prev;
+      // Keep last 5 pages for trail
+      const updated = [...prev, currentPage].slice(-5);
+      return updated;
+    });
+  }, [currentPage]);
 
   // Calculate real stats from actual data
   const cultureCount = state.cultures.length;
@@ -1483,6 +1497,13 @@ const AppContent: React.FC<{
             onNavigate={setCurrentPage}
             onMenuClick={() => setSidebarOpen(true)}
             onSearchClick={() => setIsSearchOpen(true)}
+          />
+          {/* GrowthTrail breadcrumb - visible on all screen sizes */}
+          <GrowthTrail
+            currentPage={currentPage as NavPage}
+            previousPages={previousPages as NavPage[]}
+            onNavigate={(page) => setCurrentPage(page as Page)}
+            onOpenHub={() => setSidebarOpen(true)}
           />
           <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
             {renderPage()}
