@@ -1315,7 +1315,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // ============================================================================
 
   const saveEntityOutcome = useCallback(async (outcomeData: EntityOutcomeData): Promise<EntityOutcome> => {
-    const id = generateId('outcome');
     const now = new Date();
 
     // Calculate duration
@@ -1325,8 +1324,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       ? Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
       : undefined;
 
-    const outcome: EntityOutcome = {
-      id,
+    // Build outcome object (id will be assigned by DB or locally)
+    const outcomeBase = {
       entityType: outcomeData.entityType,
       entityId: outcomeData.entityId,
       entityName: outcomeData.entityName,
@@ -1354,52 +1353,70 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
     if (supabase) {
       const userId = await getCurrentUserId();
-      const { error } = await supabase
+      // Let database generate UUID - don't send custom ID
+      const { data, error } = await supabase
         .from('entity_outcomes')
         .insert({
-          id: outcome.id,
-          entity_type: outcome.entityType,
-          entity_id: outcome.entityId,
-          entity_name: outcome.entityName,
-          outcome_category: outcome.outcomeCategory,
-          outcome_code: outcome.outcomeCode,
-          outcome_label: outcome.outcomeLabel,
-          started_at: outcome.startedAt?.toISOString(),
-          ended_at: outcome.endedAt.toISOString(),
-          duration_days: outcome.durationDays,
-          total_cost: outcome.totalCost,
-          total_yield_wet: outcome.totalYieldWet,
-          total_yield_dry: outcome.totalYieldDry,
-          biological_efficiency: outcome.biologicalEfficiency,
-          flush_count: outcome.flushCount,
-          strain_id: outcome.strainId,
-          strain_name: outcome.strainName,
-          species_id: outcome.speciesId,
-          species_name: outcome.speciesName,
-          location_id: outcome.locationId,
-          location_name: outcome.locationName,
-          survey_responses: outcome.surveyResponses || {},
-          notes: outcome.notes,
+          // id is omitted - database will generate UUID via uuid_generate_v4()
+          entity_type: outcomeBase.entityType,
+          entity_id: outcomeBase.entityId,
+          entity_name: outcomeBase.entityName,
+          outcome_category: outcomeBase.outcomeCategory,
+          outcome_code: outcomeBase.outcomeCode,
+          outcome_label: outcomeBase.outcomeLabel,
+          started_at: outcomeBase.startedAt?.toISOString(),
+          ended_at: outcomeBase.endedAt.toISOString(),
+          duration_days: outcomeBase.durationDays,
+          total_cost: outcomeBase.totalCost,
+          total_yield_wet: outcomeBase.totalYieldWet,
+          total_yield_dry: outcomeBase.totalYieldDry,
+          biological_efficiency: outcomeBase.biologicalEfficiency,
+          flush_count: outcomeBase.flushCount,
+          strain_id: outcomeBase.strainId,
+          strain_name: outcomeBase.strainName,
+          species_id: outcomeBase.speciesId,
+          species_name: outcomeBase.speciesName,
+          location_id: outcomeBase.locationId,
+          location_name: outcomeBase.locationName,
+          survey_responses: outcomeBase.surveyResponses || {},
+          notes: outcomeBase.notes,
           user_id: userId,
-        });
+        })
+        .select()
+        .single();
 
       if (error) {
         console.error('Failed to save entity outcome:', error);
-        // Don't throw - we don't want to block the delete operation
+        // Emit error event for user notification (caught by error boundary or global handler)
+        window.dispatchEvent(new CustomEvent('mycolab:error', {
+          detail: {
+            type: 'database',
+            message: 'Failed to save grow survey data',
+            technical: error.message,
+            recoverable: true,
+          }
+        }));
+        // Return outcome with local ID as fallback
+        return { ...outcomeBase, id: generateId('outcome') };
       }
+
+      // Return outcome with database-generated UUID
+      return { ...outcomeBase, id: data.id };
     }
 
-    return outcome;
+    // Offline mode - generate local ID
+    return { ...outcomeBase, id: generateId('outcome') };
   }, [supabase, generateId]);
 
   const saveContaminationDetails = useCallback(async (outcomeId: string, details: ContaminationDetailsData): Promise<void> => {
     if (!supabase) return;
 
     const userId = await getCurrentUserId();
+    // Let database generate UUID - don't send custom ID
     const { error } = await supabase
       .from('contamination_details')
       .insert({
-        id: generateId('contam'),
+        // id is omitted - database will generate UUID via uuid_generate_v4()
         outcome_id: outcomeId,
         contamination_type: details.contaminationType,
         contamination_stage: details.contaminationStage,
@@ -1414,9 +1431,17 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
     if (error) {
       console.error('Failed to save contamination details:', error);
-      // Don't throw - we don't want to block the delete operation
+      // Emit error event for user notification
+      window.dispatchEvent(new CustomEvent('mycolab:error', {
+        detail: {
+          type: 'database',
+          message: 'Failed to save contamination details',
+          technical: error.message,
+          recoverable: true,
+        }
+      }));
     }
-  }, [supabase, generateId]);
+  }, [supabase]);
 
   const deleteGrow = useCallback(async (id: string, outcome?: EntityOutcomeData) => {
     // If outcome data provided, save it first

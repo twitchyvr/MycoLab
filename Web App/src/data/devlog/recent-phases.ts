@@ -1609,6 +1609,66 @@ The PGRST204 error was NOT a schema cache issue - the columns literally did not 
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-922',
+    title: 'UUID Format Fix & Global Error Handling System',
+    description: 'Fixed entity_outcomes UUID format mismatch causing grow survey save failures. Implemented comprehensive user-facing error handling so users never need to check developer console.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 4,
+    actualHours: 2,
+    completedAt: timestamp(),
+    notes: `**User Problem:**
+- Grow exit survey appeared to work but silently failed to save
+- Error only visible in browser developer console
+- Users had no indication their survey data wasn't saved
+
+**Root Cause - UUID Format Mismatch:**
+The database expects UUID format for entity_outcomes.id but the code was generating
+custom IDs like 'outcome-mjbw2cne-h7jx2' which caused Postgres error 22P02.
+
+**Fix #1 - Database ID Generation:**
+- Removed custom ID generation in saveEntityOutcome() and saveContaminationDetails()
+- Let Postgres generate UUIDs via uuid_generate_v4() (schema already has DEFAULT)
+- Use .select().single() to retrieve the DB-generated UUID after insert
+- Same pattern already used correctly in addCulture(), addGrow(), etc.
+
+**Fix #2 - Global Error Handler:**
+- Created GlobalErrorHandler component that:
+  - Listens for 'mycolab:error' custom events
+  - Displays user-friendly toast notifications
+  - Logs errors for potential bug reporting
+  - Catches unhandled promise rejections
+  - Stores error history in localStorage (last 50 errors)
+
+**Fix #3 - Error Boundary:**
+- Created ErrorBoundary component that:
+  - Catches React component crashes
+  - Shows graceful fallback UI instead of white screen
+  - Allows user feedback submission
+  - Provides "Try Again", "Reload", "Go Home" actions
+  - Shows optional technical details for debugging
+
+**Industry Best Practices Applied:**
+1. Database as authority for ID generation (UUID)
+2. Never require users to check dev console for errors
+3. User-friendly error messages (not raw error codes)
+4. Error logging for support/debugging without user involvement
+5. Graceful degradation (fallback to local ID if DB save fails)
+6. Error boundary prevents full app crash
+
+**Files Created:**
+- components/errors/GlobalErrorHandler.tsx
+- components/errors/ErrorBoundary.tsx
+- components/errors/index.ts
+
+**Files Updated:**
+- store/DataContext.tsx (UUID fix, error events)
+- App.tsx (added ErrorBoundary, GlobalErrorHandler)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 
   // =============================================================================
   // PHASE 31: PUBLIC SHARING & BATCH PASSPORTS
