@@ -96,6 +96,13 @@ export const emptyState: DataStoreState = {
   recipes: [],
   // Historical tracking
   entityOutcomes: [],
+  // Immutable history tables (append-only audit trail)
+  observationHistory: [],
+  harvestHistory: [],
+  transferHistory: [],
+  stageTransitions: [],
+  dataAmendmentLog: [],
+  bulkOperations: [],
   // Public sharing system
   shareTokens: [],
   batchPassports: [],
