@@ -1384,12 +1384,22 @@ const AppWithRouter: React.FC = () => {
 };
 
 // Component to manage EntityFormModal visibility based on creation context
+// Note: Entity types with dedicated wizards (culture, grow) should NOT show EntityFormModal
+const ENTITY_TYPES_WITH_DEDICATED_WIZARDS = ['culture', 'grow'];
+
 const CreationModalManager: React.FC = () => {
-  const { isCreating, clearAllDrafts } = useCreation();
+  const { isCreating, clearAllDrafts, currentDraft } = useCreation();
+
+  // Don't show EntityFormModal if the current draft has a dedicated wizard
+  const shouldShowModal = Boolean(
+    isCreating &&
+    currentDraft &&
+    !ENTITY_TYPES_WITH_DEDICATED_WIZARDS.includes(currentDraft.entityType)
+  );
 
   return (
     <EntityFormModal
-      isOpen={isCreating}
+      isOpen={shouldShowModal}
       onClose={clearAllDrafts}
     />
   );

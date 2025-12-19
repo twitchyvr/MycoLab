@@ -21,6 +21,7 @@ import {
   getCurrentUserId,
   getLocalSettings,
   saveLocalSettings,
+  isAnonymousUser,
   LocalSettings
 } from '../lib/supabase';
 
@@ -309,36 +310,52 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       const result = await loadAllDataOptimized(client);
 
       const loadTime = Date.now() - startTime;
-      console.log(`[DataContext] Loaded data in ${loadTime}ms (optimized parallel loading)`);
+      // Only log in development to reduce production noise
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[DataContext] Loaded data in ${loadTime}ms (optimized parallel loading)`);
+      }
 
       if (result.errors.length > 0) {
         console.warn('[DataContext] Some tables had errors:', result.errors);
       }
 
       // Load user settings separately (requires user ID)
-      const currentUserId = await getCachedUserId();
-      let loadedSettings = state.settings;
+      // Get current settings from localStorage as fallback (not from state to avoid dependency cycles)
+      const localSettings = getLocalSettings();
+      let loadedSettings: AppSettings = {
+        defaultUnits: localSettings.defaultUnits,
+        defaultCurrency: localSettings.defaultCurrency,
+        altitude: localSettings.altitude,
+        timezone: localSettings.timezone,
+        notifications: localSettings.notifications,
+      };
 
-      if (currentUserId) {
-        const { data: settingsData, error: settingsError } = await client
-          .from('user_settings')
-          .select('*')
-          .eq('user_id', currentUserId)
-          .maybeSingle();
+      // Only load settings from database for non-anonymous users
+      // Anonymous users use localStorage only (RLS policies block them)
+      const isAnon = await isAnonymousUser();
+      if (!isAnon) {
+        const currentUserId = await getCachedUserId();
+        if (currentUserId) {
+          const { data: settingsData, error: settingsError } = await client
+            .from('user_settings')
+            .select('*')
+            .eq('user_id', currentUserId)
+            .maybeSingle();
 
-        if (!settingsError && settingsData) {
-          loadedSettings = {
-            defaultUnits: settingsData.default_units || 'metric',
-            defaultCurrency: settingsData.default_currency || 'USD',
-            altitude: settingsData.altitude || 0,
-            timezone: settingsData.timezone || 'America/Chicago',
-            notifications: {
-              enabled: settingsData.notifications_enabled ?? true,
-              harvestReminders: settingsData.harvest_reminders ?? true,
-              lowStockAlerts: settingsData.low_stock_alerts ?? true,
-              contaminationAlerts: settingsData.contamination_alerts ?? true,
-            },
-          };
+          if (!settingsError && settingsData) {
+            loadedSettings = {
+              defaultUnits: settingsData.default_units || 'metric',
+              defaultCurrency: settingsData.default_currency || 'USD',
+              altitude: settingsData.altitude || 0,
+              timezone: settingsData.timezone || 'America/Chicago',
+              notifications: {
+                enabled: settingsData.notifications_enabled ?? true,
+                harvestReminders: settingsData.harvest_reminders ?? true,
+                lowStockAlerts: settingsData.low_stock_alerts ?? true,
+                contaminationAlerts: settingsData.contamination_alerts ?? true,
+              },
+            };
+          }
         }
       }
 
@@ -369,11 +386,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       setIsConnected(true);
       localStorage.setItem('mycolab-last-sync', new Date().toISOString());
 
-      // Log performance metrics
-      if (result.timing) {
+      // Log performance metrics (only in development)
+      if (result.timing && process.env.NODE_ENV === 'development') {
         const tableCount = Object.keys(result.timing.tables).length;
         const sequentialTime = Object.values(result.timing.tables).reduce((a, b) => a + b, 0);
-        const savings = Math.round(((sequentialTime - loadTime) / sequentialTime) * 100);
+        // Avoid NaN when sequentialTime is 0 (all cached)
+        const savings = sequentialTime > 0 ? Math.round(((sequentialTime - loadTime) / sequentialTime) * 100) : 0;
         console.log(`[DataContext] Parallel loading: ${tableCount} tables, saved ~${savings}% time`);
       }
 
@@ -384,7 +402,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [getCachedUserId, state.settings]);
+  }, [getCachedUserId]); // Note: state.settings removed to prevent infinite reload loop
 
   // Set up real-time subscriptions for cross-tab sync
   const realtimeCleanupRef = React.useRef<(() => void) | null>(null);
@@ -662,7 +680,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       async (event, session) => {
         // Reload data when user signs in (with a real account, not anonymous)
         if (event === 'SIGNED_IN' && session?.user && !session.user.is_anonymous) {
-          console.log('[DataContext] Auth state changed to SIGNED_IN, reloading data...');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[DataContext] Auth state changed to SIGNED_IN, reloading data...');
+          }
           const client = getSupabaseClient();
           if (client) {
             await loadDataFromSupabase(client);
@@ -671,7 +691,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
         // Also reload on TOKEN_REFRESHED to ensure we have fresh data after token refresh
         if (event === 'TOKEN_REFRESHED' && session?.user && !session.user.is_anonymous) {
-          console.log('[DataContext] Token refreshed, ensuring data is current...');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[DataContext] Token refreshed, ensuring data is current...');
+          }
           // Only reload if we haven't loaded recently (within last 5 seconds)
           const lastSync = localStorage.getItem('mycolab-last-sync');
           if (lastSync) {
@@ -2751,18 +2773,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   if (updates.timezone !== undefined) localUpdates.timezone = updates.timezone;
   if (updates.notifications) localUpdates.notifications = updates.notifications;
   saveLocalSettings(localUpdates);
-  
-  console.log('Settings saved to localStorage');
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Settings saved to localStorage');
+  }
 
   // Try to persist to database if Supabase is configured
   if (supabase) {
     try {
-      // Ensure we have a session (creates anonymous user if needed)
+      // Ensure we have a session
       const session = await ensureSession();
       const userId = session?.user?.id;
-      
-      if (!userId) {
-        // This is expected for anonymous sessions, don't log as warning
+      const isAnonymous = session?.user?.is_anonymous;
+
+      // Skip database sync for anonymous users (they use localStorage only)
+      if (!userId || isAnonymous) {
         return;
       }
       
@@ -2788,26 +2813,26 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .maybeSingle();
       
       if (selectError) {
-        // Only log schema errors once to avoid spam
-        if (selectError.code === 'PGRST116' || selectError.message?.includes('does not exist')) {
-          console.warn('user_settings table not found. Run supabase-schema.sql to create it.');
+        // Only log schema errors in development
+        if (process.env.NODE_ENV === 'development') {
+          if (selectError.code === 'PGRST116' || selectError.message?.includes('does not exist')) {
+            console.warn('[Settings] user_settings table not found. Run supabase-schema.sql.');
+          }
         }
         return;
       }
-      
+
       if (existing) {
         // Update existing row
         const { error: updateError } = await supabase
           .from('user_settings')
           .update(dbUpdates)
           .eq('id', existing.id);
-          
-        if (updateError) {
-          // Silently fail - localStorage already has the data
-          console.debug('Settings DB update failed (localStorage backup active):', updateError.message);
-        } else {
-          console.log('Settings synced to database');
+
+        if (updateError && process.env.NODE_ENV === 'development') {
+          console.debug('[Settings] DB update failed (localStorage backup active):', updateError.message);
         }
+        // No need to log success
       } else {
         // Insert new row with user_id
         const { error: insertError } = await supabase
@@ -2816,13 +2841,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
             user_id: userId,
             ...dbUpdates
           });
-          
-        if (insertError) {
-          // Silently fail - localStorage already has the data
-          console.debug('Settings DB insert failed (localStorage backup active):', insertError.message);
-        } else {
-          console.log('Settings created in database');
+
+        if (insertError && process.env.NODE_ENV === 'development') {
+          console.debug('[Settings] DB insert failed (localStorage backup active):', insertError.message);
         }
+        // No need to log success
       }
     } catch (err) {
       // Silently fail - settings are in localStorage
@@ -2839,7 +2862,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 const loadSettings = async (): Promise<AppSettings> => {
   // Start with localStorage settings as default
   const localSettings = getLocalSettings();
-  
+
   const defaultAppSettings: AppSettings = {
     defaultUnits: localSettings.defaultUnits,
     defaultCurrency: localSettings.defaultCurrency,
@@ -2853,21 +2876,29 @@ const loadSettings = async (): Promise<AppSettings> => {
     try {
       const session = await ensureSession();
       const userId = session?.user?.id;
-      
-      if (userId) {
+      const isAnonymous = session?.user?.is_anonymous;
+
+      // Only load settings for non-anonymous users (anonymous users use localStorage only)
+      // This prevents RLS errors and unnecessary API calls
+      if (userId && !isAnonymous) {
         const { data, error } = await supabase
           .from('user_settings')
           .select('*')
           .eq('user_id', userId)
           .maybeSingle();
-        
+
         if (error) {
-          console.error('Error loading settings from database:', error);
+          // Only log errors in development to avoid console spam
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[Settings] Error loading from database:', error.message);
+          }
           return defaultAppSettings;
         }
-        
+
         if (data) {
-          console.log('Settings loaded from database');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Settings] Loaded from database');
+          }
           return {
             defaultUnits: data.default_units as 'metric' | 'imperial',
             defaultCurrency: data.default_currency,
@@ -2880,17 +2911,17 @@ const loadSettings = async (): Promise<AppSettings> => {
               contaminationAlerts: data.contamination_alerts,
             },
           };
-        } else {
-          // No settings in database yet, use localStorage and sync to DB
-          console.log('No database settings found, using localStorage');
-          // Optionally sync localStorage to database here
         }
+        // No settings in database yet, use localStorage (no need to log)
       }
     } catch (err) {
-      console.error('Error loading settings:', err);
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[Settings] Error loading:', err);
+      }
     }
   }
-  
+
   return defaultAppSettings;
 };
 
