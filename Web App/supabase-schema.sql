@@ -5198,8 +5198,8 @@ CREATE POLICY "schema_version_select" ON schema_version
 
 -- No INSERT/UPDATE/DELETE policies - only service role can modify schema_version
 
-INSERT INTO schema_version (id, version) VALUES (1, 22)
-ON CONFLICT (id) DO UPDATE SET version = 22, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 23)
+ON CONFLICT (id) DO UPDATE SET version = 23, updated_at = NOW();
 
 -- ============================================================================
 -- v22 MIGRATIONS: Cost Tracking & Asset Classification
@@ -5453,6 +5453,10 @@ END $$;
 --                - community_tips, important_facts, typical_yield, flush_count
 --                - shelf_life_days_min/max
 --                Updated seed data with accurate temperatures and parameters for 20+ species
+-- v23 (2025-12): Added account linking functions for multi-provider auth:
+--                - check_email_account() - Check if email exists, return provider info
+--                - migrate_user_data() - Transfer data between user accounts
+--                Enables users to link Google and email accounts with same email
 -- v10 (2025-12): Enhanced strains table with taxonomy tracking:
 --                - variety, phenotype, genetics_source, isolation_type
 --                - generation, origin, description fields
@@ -5483,6 +5487,220 @@ END $$;
 -- v3: Added purchase orders and inventory lots
 -- v2: Added location types, classifications, and enhanced fields
 -- v1: Initial schema
+
+-- ============================================================================
+-- ACCOUNT LINKING FUNCTIONS
+-- Functions to support linking accounts with the same email from different providers
+-- ============================================================================
+
+-- Function to check if an email exists in the system and get account info
+-- Returns NULL if email doesn't exist, otherwise returns account details
+-- This is safe to call from client as it only returns non-sensitive info
+CREATE OR REPLACE FUNCTION check_email_account(p_email TEXT)
+RETURNS TABLE (
+  exists_in_system BOOLEAN,
+  has_password BOOLEAN,
+  has_google BOOLEAN,
+  user_id UUID,
+  created_at TIMESTAMPTZ
+) AS $$
+DECLARE
+  v_user_id UUID;
+  v_has_password BOOLEAN := false;
+  v_has_google BOOLEAN := false;
+  v_created_at TIMESTAMPTZ;
+BEGIN
+  -- Look up the user by email in auth.users
+  SELECT au.id, au.created_at INTO v_user_id, v_created_at
+  FROM auth.users au
+  WHERE LOWER(au.email) = LOWER(p_email)
+  LIMIT 1;
+
+  IF v_user_id IS NULL THEN
+    -- Email doesn't exist in system
+    RETURN QUERY SELECT false, false, false, NULL::UUID, NULL::TIMESTAMPTZ;
+    RETURN;
+  END IF;
+
+  -- Check what identity providers are linked
+  SELECT
+    bool_or(ai.provider = 'email') OR EXISTS (
+      SELECT 1 FROM auth.users u WHERE u.id = v_user_id AND u.encrypted_password IS NOT NULL AND u.encrypted_password != ''
+    ),
+    bool_or(ai.provider = 'google')
+  INTO v_has_password, v_has_google
+  FROM auth.identities ai
+  WHERE ai.user_id = v_user_id;
+
+  -- Return the results
+  RETURN QUERY SELECT true, COALESCE(v_has_password, false), COALESCE(v_has_google, false), v_user_id, v_created_at;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+-- Function to migrate all user data from one account to another
+-- This is used when linking accounts to consolidate data under one user_id
+-- Only the authenticated user can migrate TO their own account
+CREATE OR REPLACE FUNCTION migrate_user_data(
+  p_from_user_id UUID,
+  p_to_user_id UUID
+)
+RETURNS TABLE (
+  success BOOLEAN,
+  tables_updated INT,
+  message TEXT
+) AS $$
+DECLARE
+  v_tables_updated INT := 0;
+  v_current_user_id UUID;
+BEGIN
+  -- Get the current authenticated user
+  v_current_user_id := auth.uid();
+
+  -- Security check: can only migrate TO your own account
+  IF v_current_user_id IS NULL OR v_current_user_id != p_to_user_id THEN
+    RETURN QUERY SELECT false, 0, 'You can only migrate data to your own account'::TEXT;
+    RETURN;
+  END IF;
+
+  -- Security check: cannot migrate from your own account (that would be weird)
+  IF p_from_user_id = p_to_user_id THEN
+    RETURN QUERY SELECT false, 0, 'Source and destination accounts are the same'::TEXT;
+    RETURN;
+  END IF;
+
+  -- Migrate data from all tables (update user_id)
+  -- Using exception handlers to continue even if some tables fail
+
+  -- Cultures
+  BEGIN
+    UPDATE cultures SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating cultures: %', SQLERRM;
+  END;
+
+  -- Grows
+  BEGIN
+    UPDATE grows SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating grows: %', SQLERRM;
+  END;
+
+  -- Recipes
+  BEGIN
+    UPDATE recipes SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating recipes: %', SQLERRM;
+  END;
+
+  -- Inventory items
+  BEGIN
+    UPDATE inventory_items SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating inventory_items: %', SQLERRM;
+  END;
+
+  -- User settings (merge - keep destination settings if they exist)
+  BEGIN
+    INSERT INTO user_settings (user_id, default_units, default_currency, altitude, timezone,
+                               notifications_enabled, harvest_reminders, low_stock_alerts, contamination_alerts)
+    SELECT p_to_user_id, default_units, default_currency, altitude, timezone,
+           notifications_enabled, harvest_reminders, low_stock_alerts, contamination_alerts
+    FROM user_settings WHERE user_id = p_from_user_id
+    ON CONFLICT (user_id) DO NOTHING;
+    -- Delete old settings
+    DELETE FROM user_settings WHERE user_id = p_from_user_id;
+    v_tables_updated := v_tables_updated + 1;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating user_settings: %', SQLERRM;
+  END;
+
+  -- Strains (user-created strains)
+  BEGIN
+    UPDATE strains SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating strains: %', SQLERRM;
+  END;
+
+  -- Species (user-created species)
+  BEGIN
+    UPDATE species SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating species: %', SQLERRM;
+  END;
+
+  -- Locations
+  BEGIN
+    UPDATE locations SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating locations: %', SQLERRM;
+  END;
+
+  -- Vessels
+  BEGIN
+    UPDATE vessels SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating vessels: %', SQLERRM;
+  END;
+
+  -- Suppliers
+  BEGIN
+    UPDATE suppliers SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating suppliers: %', SQLERRM;
+  END;
+
+  -- Flushes (via grows, but has its own user_id)
+  BEGIN
+    UPDATE flushes SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating flushes: %', SQLERRM;
+  END;
+
+  -- Culture observations
+  BEGIN
+    UPDATE culture_observations SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating culture_observations: %', SQLERRM;
+  END;
+
+  -- Grow observations
+  BEGIN
+    UPDATE grow_observations SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating grow_observations: %', SQLERRM;
+  END;
+
+  -- Culture transfers
+  BEGIN
+    UPDATE culture_transfers SET user_id = p_to_user_id WHERE user_id = p_from_user_id;
+    IF FOUND THEN v_tables_updated := v_tables_updated + 1; END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Error migrating culture_transfers: %', SQLERRM;
+  END;
+
+  -- Note: We don't migrate user_profiles - each auth user needs their own profile
+  -- The old user_profile can be cleaned up separately or will be orphaned
+
+  RETURN QUERY SELECT true, v_tables_updated,
+    format('Successfully migrated data from %s tables', v_tables_updated)::TEXT;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION check_email_account(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION migrate_user_data(UUID, UUID) TO authenticated;
 
 -- ============================================================================
 -- SUCCESS MESSAGE
