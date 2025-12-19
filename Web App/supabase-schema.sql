@@ -1658,6 +1658,31 @@ BEGIN
 END $$;
 
 -- ============================================================================
+-- CULTURE_TRANSFERS TABLE MIGRATIONS
+-- Add missing columns used by the application for transfer tracking
+-- ============================================================================
+DO $$
+BEGIN
+  -- Quantity transferred
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'culture_transfers' AND column_name = 'quantity') THEN
+    ALTER TABLE culture_transfers ADD COLUMN quantity DECIMAL;
+    RAISE NOTICE 'Added quantity column to culture_transfers';
+  END IF;
+
+  -- Unit of measurement (ml, cc, pieces, etc.)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'culture_transfers' AND column_name = 'unit') THEN
+    ALTER TABLE culture_transfers ADD COLUMN unit TEXT DEFAULT 'ml';
+    RAISE NOTICE 'Added unit column to culture_transfers';
+  END IF;
+
+  -- Transfer destination type (liquid_culture, agar, grow, etc.)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'culture_transfers' AND column_name = 'to_type') THEN
+    ALTER TABLE culture_transfers ADD COLUMN to_type TEXT;
+    RAISE NOTICE 'Added to_type column to culture_transfers';
+  END IF;
+END $$;
+
+-- ============================================================================
 -- RECIPES TABLE MIGRATIONS
 -- Add missing columns used by the application
 -- ============================================================================

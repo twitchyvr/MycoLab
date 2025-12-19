@@ -2995,6 +2995,67 @@ Added auth state listener in DataContext that:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1213',
+    title: 'Culture Transfers Table Schema Fix - Missing Columns',
+    description: 'Fixed culture_transfers table schema to include quantity, unit, and to_type columns required by the application for transfer tracking.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 1,
+    completedAt: timestamp(),
+    notes: `Database schema bug fix for culture transfer recording:
+
+**Problem:**
+- User reported PGRST204 error when attempting culture transfers
+- Error: "Could not find the 'source_culture_id' column of 'culture_transfers' in the schema cache"
+- Code was trying to insert columns that didn't exist in the database schema
+- Transfer functionality was completely broken for Supabase users
+
+**Root Cause Analysis:**
+- The culture_transfers table was created with basic columns (source_culture_id, target_culture_id, date, notes, user_id)
+- Later development added transfer tracking features requiring additional columns
+- Code in DataContext.tsx was inserting: quantity, unit, to_type
+- These columns were never added to supabase-schema.sql migration
+
+**Columns Added to culture_transfers:**
+1. quantity (DECIMAL) - Amount transferred (e.g., 5 for 5ml)
+2. unit (TEXT, default 'ml') - Unit of measurement (ml, cc, pieces)
+3. to_type (TEXT) - Transfer destination type (liquid_culture, agar, grow, etc.)
+
+**Database Schema Audit Performed:**
+- Verified cultures table columns match transformCultureToDb() - OK
+- Verified grows table columns match transformGrowToDb() - OK
+- Verified flushes table columns match transformFlushToDb() - OK
+- Verified entity_outcomes columns match saveEntityOutcome() - OK
+- Verified contamination_details columns match saveContaminationDetails() - OK
+- Verified inventory_lots columns match transformInventoryLotToDb() - OK
+- Verified purchase_orders columns match transformPurchaseOrderToDb() - OK
+- Verified notification_delivery_log columns match NotificationService.logDelivery() - OK
+- Verified user_profiles table exists and columns match AuthContext usage - OK
+- All 15+ transformation functions in transformations.ts verified against schema
+
+**Fix Applied:**
+- Added CULTURE_TRANSFERS TABLE MIGRATIONS block to supabase-schema.sql
+- Uses idempotent IF NOT EXISTS pattern
+- Includes RAISE NOTICE for migration logging
+- Follows same pattern as other table migrations
+
+**User Action Required:**
+- Re-run supabase-schema.sql in Supabase SQL Editor
+- PostgREST schema cache will auto-refresh after table changes
+- If cache issues persist, can trigger reload via Supabase dashboard
+
+**Prevention:**
+- This is another instance of schema drift between code and database
+- CLAUDE.md mandates checking SQL files before every commit
+- Any database column changes must be reflected in schema file
+
+**Files Changed:**
+- supabase-schema.sql (added CULTURE_TRANSFERS TABLE MIGRATIONS block at line 1660)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
