@@ -8,7 +8,8 @@ import { useData, EntityOutcomeData } from '../../store';
 import { CultureWizard } from './CultureWizard';
 import { NumericInput } from '../common/NumericInput';
 import { EntityDisposalModal, DisposalOutcome } from '../common/EntityDisposalModal';
-import type { Culture, CultureType, CultureStatus, CultureObservation, PreparedSpawn, ContaminationType, SuspectedCause } from '../../store/types';
+import { RecordHistoryTab } from '../common/RecordHistoryTab';
+import type { Culture, CultureType, CultureStatus, CultureObservation, PreparedSpawn, ContaminationType, SuspectedCause, AmendmentType } from '../../store/types';
 
 // Type configurations
 const cultureTypeConfig: Record<CultureType, { label: string; icon: string; prefix: string }> = {
@@ -37,6 +38,7 @@ const Icons = {
   List: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
   Share: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
   Clipboard: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>,
+  History: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
 };
 
 // Health bar component
@@ -89,6 +91,8 @@ export const CultureManagement: React.FC = () => {
     addCultureTransfer,
     addPreparedSpawn,
     inoculatePreparedSpawn,
+    amendCulture,
+    archiveCulture,
   } = useData();
 
   const cultures = state.cultures;
@@ -106,6 +110,7 @@ export const CultureManagement: React.FC = () => {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showDisposalModal, setShowDisposalModal] = useState(false);
   const [cultureToDispose, setCultureToDispose] = useState<Culture | null>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   const [newObservation, setNewObservation] = useState({
     type: 'general' as CultureObservation['type'],
@@ -836,6 +841,13 @@ export const CultureManagement: React.FC = () => {
                 Transfer
               </button>
               <button
+                onClick={() => setShowHistoryModal(true)}
+                className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-lg"
+                title="View History"
+              >
+                <Icons.History />
+              </button>
+              <button
                 onClick={() => handleDelete(selectedCulture)}
                 className="p-2 bg-red-950/50 hover:bg-red-950 text-red-400 rounded-lg"
                 title="Dispose Culture"
@@ -1282,6 +1294,47 @@ export const CultureManagement: React.FC = () => {
         entityId={cultureToDispose?.id}
         showContaminationDetails={true}
       />
+
+      {/* History Modal */}
+      {showHistoryModal && selectedCulture && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowHistoryModal(false)}
+          />
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl">
+            <div className="sticky top-0 bg-zinc-900 border-b border-zinc-700 px-6 py-4 z-10 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-100">
+                Record History - {selectedCulture.label}
+              </h2>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <Icons.X />
+              </button>
+            </div>
+            <div className="p-6">
+              <RecordHistoryTab
+                entityType="culture"
+                record={selectedCulture}
+                recordLabel={selectedCulture.label}
+                onAmend={async (changes, amendmentType, reason) => {
+                  await amendCulture(selectedCulture.id, changes as Partial<Culture>, amendmentType, reason);
+                  // Refresh selected culture after amendment
+                  const updated = state.cultures.find(c => c.recordGroupId === selectedCulture.recordGroupId && c.isCurrent);
+                  if (updated) setSelectedCulture(updated);
+                }}
+                onArchive={async (reason) => {
+                  await archiveCulture(selectedCulture.id, reason);
+                  setShowHistoryModal(false);
+                  setSelectedCulture(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

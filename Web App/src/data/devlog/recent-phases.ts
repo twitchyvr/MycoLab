@@ -3620,7 +3620,7 @@ All grower settings PLUS Admin Console:
     status: 'in_progress',
     priority: 'high',
     estimatedHours: 40,
-    actualHours: 8,
+    actualHours: 16,
     notes: `Complete immutable database design document created (IMMUTABLE_DATABASE_DESIGN.md):
 
 **IMPLEMENTATION STATUS (v24 schema):**
@@ -3631,9 +3631,14 @@ All grower settings PLUS Admin Console:
 - [x] Transformation functions for all history tables
 - [x] UI: RecordHistory component (timeline view)
 - [x] UI: AmendmentModal component (edit with reason)
-- [ ] DataContext amend/archive operations (partial)
-- [ ] Integration with existing CRUD operations
-- [ ] History tab on Culture/Grow detail pages
+- [x] UI: RecordHistoryTab component (modal wrapper with amend/archive)
+- [x] DataContext: amendCulture, archiveCulture operations
+- [x] DataContext: amendGrow, archiveGrow operations
+- [x] DataContext: getRecordHistory, getAmendmentLog helpers
+- [x] History modal integrated into CultureManagement
+- [x] History modal integrated into GrowManagement
+- [ ] Integration with existing CRUD operations (wire up to SQL stored procedures)
+- [ ] Prepared spawn amend/archive operations
 
 **Phase 1 Complete - Schema and Core Types:**
 

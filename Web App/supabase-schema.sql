@@ -6821,7 +6821,9 @@ GRANT EXECUTE ON FUNCTION archive_record(TEXT, UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_record_history(TEXT, UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_record_at_time(TEXT, UUID, TIMESTAMPTZ) TO authenticated;
 
-RAISE NOTICE 'Immutable database architecture migration complete!';
+DO $$ BEGIN
+  RAISE NOTICE 'Immutable database architecture migration complete!';
+END $$;
 
 -- ============================================================================
 -- SUCCESS MESSAGE
