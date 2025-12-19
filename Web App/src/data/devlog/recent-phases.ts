@@ -3515,6 +3515,53 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1224',
+    title: 'Release Preparation: Critical Bug Fixes',
+    description: 'Comprehensive bug fixes to stabilize app for release: fixed infinite data reload loop, reduced excessive production logging, fixed EntityFormModal showing for cultures/grows with dedicated wizards, and improved anonymous user handling for settings.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 4,
+    actualHours: 3,
+    completedAt: timestamp(),
+    notes: `Release preparation bug fixes:
+
+**Fix #1 - Infinite Data Reload Loop:**
+- Problem: DataContext loadDataFromSupabase had state.settings in dependency array
+- This caused: settings load → state update → dependency change → reload → infinite loop
+- Console showed repeated "[EntityLoader] Loaded 21 tables" and NaN% time savings
+- Solution: Removed state.settings from dependency array, use getLocalSettings() instead
+
+**Fix #2 - NaN% in Performance Logging:**
+- Problem: Division by zero when sequentialTime is 0 (all cached)
+- Solution: Added guard: sequentialTime > 0 ? calculation : 0
+
+**Fix #3 - Excessive Production Logging:**
+- Problem: All console.log statements ran in production, causing noise
+- Solution: Wrapped informational logs in process.env.NODE_ENV === 'development'
+- Kept error logs for production debugging
+
+**Fix #4 - "Unknown entity type: culture" Popup:**
+- Problem: CultureWizard uses CreationContext to save drafts
+- EntityFormModal showed for ALL drafts, including culture/grow types
+- But EntityFormModal doesn't have forms for culture/grow (they have dedicated wizards)
+- Solution: CreationModalManager now checks ENTITY_TYPES_WITH_DEDICATED_WIZARDS
+- EntityFormModal only shows for reference entities (strains, containers, etc.)
+
+**Fix #5 - Anonymous User Settings Errors:**
+- Problem: user_settings RLS policies block anonymous users
+- But app was trying to load settings for anonymous users → access control errors
+- Solution: Check isAnonymousUser() before attempting database settings load
+- Anonymous users now use localStorage-only settings (graceful fallback)
+
+**Files Changed:**
+- src/App.tsx (CreationModalManager with dedicated wizard check)
+- src/store/DataContext.tsx (removed state.settings dependency, added anonymous checks, dev-only logging)
+- src/lib/db/EntityLoader.ts (NaN guard, dev-only logging)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

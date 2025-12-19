@@ -141,17 +141,20 @@ export class EntityLoader implements IEntityLoader {
 
     const totalTime = Date.now() - startTime;
 
-    // Log performance metrics
-    console.log(`[EntityLoader] Loaded ${tables.length} tables in ${totalTime}ms`);
-    if (parallel) {
-      const sequentialTime = Object.values(tableResults).reduce(
-        (sum, r) => sum + r.timing,
-        0
-      );
-      const savings = Math.round(((sequentialTime - totalTime) / sequentialTime) * 100);
-      console.log(
-        `[EntityLoader] Parallel loading saved ~${savings}% time (${sequentialTime}ms sequential vs ${totalTime}ms parallel)`
-      );
+    // Log performance metrics only in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[EntityLoader] Loaded ${tables.length} tables in ${totalTime}ms`);
+      if (parallel) {
+        const sequentialTime = Object.values(tableResults).reduce(
+          (sum, r) => sum + r.timing,
+          0
+        );
+        // Avoid NaN when sequentialTime is 0 (all cached)
+        const savings = sequentialTime > 0 ? Math.round(((sequentialTime - totalTime) / sequentialTime) * 100) : 0;
+        console.log(
+          `[EntityLoader] Parallel loading saved ~${savings}% time (${sequentialTime}ms sequential vs ${totalTime}ms parallel)`
+        );
+      }
     }
 
     return {
