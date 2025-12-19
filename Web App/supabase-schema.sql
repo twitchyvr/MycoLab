@@ -1117,6 +1117,23 @@ CREATE TABLE IF NOT EXISTS notification_delivery_log (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Verification codes - temporary codes for email/SMS verification
+CREATE TABLE IF NOT EXISTS verification_codes (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+
+  -- Verification details
+  type TEXT NOT NULL CHECK (type IN ('email', 'sms')),
+  code TEXT NOT NULL,
+  recipient TEXT NOT NULL,  -- email address or phone number
+
+  -- Expiration
+  expires_at TIMESTAMPTZ NOT NULL,
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Notification templates - customizable message templates
 CREATE TABLE IF NOT EXISTS notification_templates (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -1210,6 +1227,8 @@ CREATE INDEX IF NOT EXISTS idx_notification_delivery_log_user_id ON notification
 CREATE INDEX IF NOT EXISTS idx_notification_delivery_log_status ON notification_delivery_log(status);
 CREATE INDEX IF NOT EXISTS idx_notification_delivery_log_created_at ON notification_delivery_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_notification_templates_event_category ON notification_templates(event_category);
+CREATE INDEX IF NOT EXISTS idx_verification_codes_user_id ON verification_codes(user_id);
+CREATE INDEX IF NOT EXISTS idx_verification_codes_expires_at ON verification_codes(expires_at);
 
 -- Function to automatically create user profile on signup
 CREATE OR REPLACE FUNCTION handle_new_user()
@@ -3516,6 +3535,7 @@ ALTER TABLE notification_channels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notification_event_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notification_delivery_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notification_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE verification_codes ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- ROW LEVEL SECURITY POLICIES
@@ -3577,6 +3597,11 @@ DROP POLICY IF EXISTS "notification_templates_select" ON notification_templates;
 DROP POLICY IF EXISTS "notification_templates_insert" ON notification_templates;
 DROP POLICY IF EXISTS "notification_templates_update" ON notification_templates;
 DROP POLICY IF EXISTS "notification_templates_delete" ON notification_templates;
+
+-- Verification codes
+DROP POLICY IF EXISTS "verification_codes_select" ON verification_codes;
+DROP POLICY IF EXISTS "verification_codes_insert" ON verification_codes;
+DROP POLICY IF EXISTS "verification_codes_delete" ON verification_codes;
 
 -- Species
 DROP POLICY IF EXISTS "anon_species_select" ON species;
@@ -3881,6 +3906,11 @@ CREATE POLICY "notification_templates_select" ON notification_templates FOR SELE
 CREATE POLICY "notification_templates_insert" ON notification_templates FOR INSERT WITH CHECK (is_admin());
 CREATE POLICY "notification_templates_update" ON notification_templates FOR UPDATE USING (is_admin());
 CREATE POLICY "notification_templates_delete" ON notification_templates FOR DELETE USING (is_admin() AND is_system = false);
+
+-- Verification codes policies (users can only see/delete their own, service role can insert)
+CREATE POLICY "verification_codes_select" ON verification_codes FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "verification_codes_insert" ON verification_codes FOR INSERT WITH CHECK (true);  -- Allow service role
+CREATE POLICY "verification_codes_delete" ON verification_codes FOR DELETE USING (user_id = auth.uid());
 
 -- Species policies (shared defaults + user's own)
 CREATE POLICY "species_select" ON species FOR SELECT USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
