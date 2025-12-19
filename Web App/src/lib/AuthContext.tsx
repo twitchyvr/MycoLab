@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured, ensureSession, isAnonymousUser, clearLocalData, isAnonymousAuthAvailable } from './supabase';
+import { notificationService } from '../store/NotificationService';
 
 // ============================================================================
 // TYPES
@@ -142,6 +143,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setIsLoading(false);
+
+        // Set user ID for notification service
+        notificationService.setUserId(newSession?.user?.id ?? null);
 
         if (newSession?.user) {
           setIsAnonymous(newSession.user.is_anonymous ?? false);
