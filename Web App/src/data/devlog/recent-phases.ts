@@ -3562,6 +3562,56 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1225',
+    title: 'Entity Disposal Tracking & Historical Audit Trail',
+    description: 'Implemented append-only historical tracking for entity disposal. When cultures, containers, inventory, or equipment are disposed, users select an outcome reason (success, failure, neutral) which is saved to entity_outcomes table. This preserves complete historical records for analytics and traceability - nothing is ever truly deleted.',
+    category: 'core',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 6,
+    actualHours: 4,
+    completedAt: timestamp(),
+    notes: `Comprehensive entity disposal tracking implementation:
+
+**New Types & Options:**
+- Added PhysicalOutcomeCode type for containers, equipment (dropped_broken, seal_failure, electrical_failure, lost, etc.)
+- Added CONTAINER_OUTCOME_OPTIONS with success (Contents Used, Cleaned & Stored), failure (Contaminated, Damaged, Dropped/Broken), neutral (Discarded, Given Away, Lost)
+- Added INVENTORY_OUTCOME_OPTIONS for inventory items/lots
+- Added EQUIPMENT_OUTCOME_OPTIONS for equipment lifecycle tracking
+- Added ENTITY_OUTCOME_OPTIONS map and getOutcomeOptionsForEntity() helper
+
+**New Component:**
+- Created EntityDisposalModal - generic reusable modal for any entity type
+- Grouped outcomes by category (success/failure/neutral) with color coding
+- Optional contamination details form (type, suspected cause)
+- Notes field for additional context
+- Historical record notice explaining data preservation
+
+**Culture Disposal Flow:**
+- Updated deleteCulture() to accept optional EntityOutcomeData
+- Saves outcome to entity_outcomes table before deletion
+- Contamination details saved to contamination_details if relevant
+- CultureManagement now uses EntityDisposalModal instead of confirm()
+
+**Auto-Prompt for Depletion:**
+- When culture transfer depletes source (fillVolumeMl <= 0)
+- Auto-updates status to 'depleted'
+- Automatically opens disposal modal to capture outcome
+
+**Data Model:**
+- Append-only pattern: outcome records are immutable
+- entity_outcomes preserves: entity info, timing, costs, strain/species, notes
+- Supports future analytics: success rates, contamination patterns, cost tracking
+
+**Files Changed:**
+- src/store/types.ts (new outcome types and options)
+- src/store/DataContext.tsx (updated deleteCulture with outcome param, moved after saveEntityOutcome)
+- src/components/common/EntityDisposalModal.tsx (new component)
+- src/components/cultures/CultureManagement.tsx (disposal modal integration, auto-prompt on depletion)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

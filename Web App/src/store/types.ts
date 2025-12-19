@@ -1376,8 +1376,24 @@ export type InventoryOutcomeCode =
   | 'aborted_bad_data'         // Data entry error, record invalid
   | 'aborted_restart';         // Starting over, discarding old data
 
+// Physical/general outcome codes (apply to containers, equipment, etc.)
+export type PhysicalOutcomeCode =
+  | 'exhausted_success'        // Used completely
+  | 'archived_healthy'         // Stored/retired properly
+  | 'contamination_unknown'    // Contaminated
+  | 'storage_failure'          // Storage/malfunction issue
+  | 'dropped_broken'           // Dropped or broken
+  | 'seal_failure'             // Seal/lid failure (containers)
+  | 'electrical_failure'       // Electrical failure (equipment)
+  | 'discarded_cleanup'        // General disposal
+  | 'transferred_out'          // Given away/sold
+  | 'lost'                     // Cannot locate
+  | 'returned'                 // Returned to supplier
+  // Data correction outcomes (excluded from analytics)
+  | 'aborted_bad_data';        // Data entry error, record invalid
+
 // Generic outcome code union
-export type OutcomeCode = GrowOutcomeCode | CultureOutcomeCode | InventoryOutcomeCode;
+export type OutcomeCode = GrowOutcomeCode | CultureOutcomeCode | InventoryOutcomeCode | PhysicalOutcomeCode;
 
 // Contamination types for detailed tracking
 export type ContaminationType =
@@ -1415,7 +1431,7 @@ export type SuspectedCause =
 // Entity outcome record (universal for all entity types)
 export interface EntityOutcome {
   id: string;
-  entityType: 'grow' | 'culture' | 'inventory_item' | 'inventory_lot' | 'equipment';
+  entityType: 'grow' | 'culture' | 'container' | 'inventory_item' | 'inventory_lot' | 'equipment';
   entityId: string;
   entityName?: string;
 
@@ -1580,6 +1596,77 @@ export const SUSPECTED_CAUSE_OPTIONS: { code: SuspectedCause; label: string; des
   { code: 'user_error', label: 'User Error', description: 'Mistake in handling or technique' },
   { code: 'unknown', label: 'Unknown', description: 'Unable to determine cause' },
 ];
+
+// Container outcome options for the UI
+export const CONTAINER_OUTCOME_OPTIONS: OutcomeOption[] = [
+  // Success
+  { code: 'exhausted_success', label: 'Contents Used', category: 'success', description: 'Container emptied, contents used successfully', icon: 'check_circle' },
+  { code: 'archived_healthy', label: 'Cleaned & Stored', category: 'success', description: 'Container cleaned and stored for reuse', icon: 'archive' },
+  // Failures
+  { code: 'contamination_unknown', label: 'Contaminated', category: 'failure', description: 'Container or contents were contaminated', icon: 'warning' },
+  { code: 'storage_failure', label: 'Damaged', category: 'failure', description: 'Container broken, cracked, or damaged', icon: 'broken_image' },
+  // Physical damage
+  { code: 'dropped_broken', label: 'Dropped/Broken', category: 'failure', description: 'Accidentally dropped or broken', icon: 'broken_image' },
+  { code: 'seal_failure', label: 'Seal Failed', category: 'failure', description: 'Lid or seal compromised', icon: 'error' },
+  // Neutral
+  { code: 'discarded_cleanup', label: 'Discarded', category: 'neutral', description: 'General cleanup or disposal', icon: 'delete' },
+  { code: 'transferred_out', label: 'Given Away', category: 'neutral', description: 'Given to another cultivator', icon: 'move_item' },
+  { code: 'lost', label: 'Lost', category: 'neutral', description: 'Cannot locate container', icon: 'help' },
+  // Data Correction
+  { code: 'aborted_bad_data', label: 'Bad Data Entry', category: 'neutral', description: 'Data entry error - record invalid', icon: 'error_outline' },
+];
+
+// Inventory item outcome options for the UI
+export const INVENTORY_OUTCOME_OPTIONS: OutcomeOption[] = [
+  // Success
+  { code: 'exhausted_success', label: 'Fully Used', category: 'success', description: 'All inventory consumed in production', icon: 'check_circle' },
+  { code: 'archived_healthy', label: 'Stored', category: 'success', description: 'Put in storage for future use', icon: 'archive' },
+  // Failures
+  { code: 'contamination_unknown', label: 'Contaminated', category: 'failure', description: 'Item contaminated or spoiled', icon: 'warning' },
+  { code: 'storage_failure', label: 'Storage Failure', category: 'failure', description: 'Improper storage ruined item', icon: 'thermostat' },
+  { code: 'dropped_broken', label: 'Dropped/Broken', category: 'failure', description: 'Accidentally dropped or broken', icon: 'broken_image' },
+  // Neutral
+  { code: 'expired_unused', label: 'Expired', category: 'neutral', description: 'Past expiration date', icon: 'event_busy' },
+  { code: 'discarded_cleanup', label: 'Discarded', category: 'neutral', description: 'General cleanup or disposal', icon: 'delete' },
+  { code: 'transferred_out', label: 'Given Away', category: 'neutral', description: 'Given or sold to someone else', icon: 'move_item' },
+  { code: 'lost', label: 'Lost', category: 'neutral', description: 'Cannot locate item', icon: 'help' },
+  { code: 'returned', label: 'Returned', category: 'neutral', description: 'Returned to supplier', icon: 'undo' },
+  // Data Correction
+  { code: 'aborted_bad_data', label: 'Bad Data Entry', category: 'neutral', description: 'Data entry error - record invalid', icon: 'error_outline' },
+];
+
+// Equipment outcome options for the UI
+export const EQUIPMENT_OUTCOME_OPTIONS: OutcomeOption[] = [
+  // Success
+  { code: 'archived_healthy', label: 'Retired', category: 'success', description: 'Equipment retired after useful service', icon: 'archive' },
+  { code: 'exhausted_success', label: 'Worn Out', category: 'success', description: 'Equipment used until end of life', icon: 'check_circle' },
+  // Failures
+  { code: 'storage_failure', label: 'Malfunction', category: 'failure', description: 'Equipment stopped working', icon: 'error' },
+  { code: 'dropped_broken', label: 'Broken', category: 'failure', description: 'Physically broken or damaged', icon: 'broken_image' },
+  { code: 'electrical_failure', label: 'Electrical Failure', category: 'failure', description: 'Electrical or power issue', icon: 'power_off' },
+  // Neutral
+  { code: 'discarded_cleanup', label: 'Disposed', category: 'neutral', description: 'Disposed of or recycled', icon: 'delete' },
+  { code: 'transferred_out', label: 'Sold/Given Away', category: 'neutral', description: 'Sold or given to someone else', icon: 'move_item' },
+  { code: 'lost', label: 'Lost', category: 'neutral', description: 'Cannot locate equipment', icon: 'help' },
+  { code: 'returned', label: 'Returned', category: 'neutral', description: 'Returned to seller/manufacturer', icon: 'undo' },
+  // Data Correction
+  { code: 'aborted_bad_data', label: 'Bad Data Entry', category: 'neutral', description: 'Data entry error - record invalid', icon: 'error_outline' },
+];
+
+// Map entity types to their outcome options
+export const ENTITY_OUTCOME_OPTIONS: Record<string, OutcomeOption[]> = {
+  grow: GROW_OUTCOME_OPTIONS,
+  culture: CULTURE_OUTCOME_OPTIONS,
+  container: CONTAINER_OUTCOME_OPTIONS,
+  inventory_item: INVENTORY_OUTCOME_OPTIONS,
+  inventory_lot: INVENTORY_OUTCOME_OPTIONS,
+  equipment: EQUIPMENT_OUTCOME_OPTIONS,
+};
+
+// Helper to get outcome options for an entity type
+export const getOutcomeOptionsForEntity = (entityType: string): OutcomeOption[] => {
+  return ENTITY_OUTCOME_OPTIONS[entityType] || CULTURE_OUTCOME_OPTIONS; // Default to culture options
+};
 
 export interface LookupHelpers {
   getSpecies: (id: string) => Species | undefined;
