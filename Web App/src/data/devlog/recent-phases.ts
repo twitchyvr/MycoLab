@@ -2666,12 +2666,27 @@ Created comprehensive weight utilities (utils/weight.ts):
 - Admin "Email/SMS Config" tab with:
   - Service status cards (configured/not configured)
   - Test notification sending
-  - Edge Function code templates for SendGrid, Twilio, and config-check
+  - Environment variable reference guide
   - Setup instructions with external documentation links
 
+**Netlify Functions (Completed):**
+- send-notification-email.ts - SendGrid email delivery
+- send-notification-sms.ts - Twilio SMS delivery
+- send-verification.ts - Email/SMS verification code sending
+- verify-code.ts - Verification code validation
+- check-notification-config.ts - Service status checking
+- send-test-notification.ts - Test email/SMS sending
+
+**Environment Variables (Netlify Dashboard):**
+- SENDGRID_API_KEY - For email notifications
+- TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER - For SMS
+- SUPABASE_URL, SUPABASE_SERVICE_KEY - For verification code storage
+
+**Database Schema:**
+- Added verification_codes table with RLS policies
+
 **Next Steps:**
-- Deploy Supabase Edge Functions for email/SMS delivery (use templates provided in Admin panel)
-- Configure environment variables in Supabase dashboard (SENDGRID_API_KEY, TWILIO_*)
+- Configure environment variables in Netlify dashboard
 - Integrate notification triggers in DataContext operations
 - Add notification history view in Settings`,
     createdAt: timestamp(),

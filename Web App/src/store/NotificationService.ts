@@ -1,6 +1,6 @@
 // ============================================================================
 // NOTIFICATION SERVICE
-// Handles email/SMS notification delivery via Supabase Edge Functions
+// Handles email/SMS notification delivery via Netlify Functions
 // ============================================================================
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -126,10 +126,11 @@ export class NotificationService {
     }
 
     try {
-      // Call Supabase Edge Function for email delivery
-      // This function should be deployed to handle actual email sending via SendGrid/Resend/etc.
-      const { data, error } = await this.supabase!.functions.invoke('send-notification-email', {
-        body: {
+      // Call Netlify Function for email delivery
+      const response = await fetch('/api/send-notification-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           to: email,
           subject: payload.title,
           body: payload.message,
@@ -139,21 +140,23 @@ export class NotificationService {
           entityId: payload.entityId,
           entityName: payload.entityName,
           metadata: payload.metadata,
-        },
+        }),
       });
 
-      if (error) {
+      const data = await response.json();
+
+      if (!response.ok) {
         return {
           success: false,
           channelType: 'email',
-          error: error.message,
+          error: data.error || 'Failed to send email',
         };
       }
 
       return {
         success: true,
         channelType: 'email',
-        messageId: data?.messageId,
+        messageId: data.messageId,
       };
     } catch (err) {
       return {
@@ -188,31 +191,34 @@ export class NotificationService {
     }
 
     try {
-      // Call Supabase Edge Function for SMS delivery
-      // This function should be deployed to handle actual SMS sending via Twilio/etc.
-      const { data, error } = await this.supabase!.functions.invoke('send-notification-sms', {
-        body: {
+      // Call Netlify Function for SMS delivery
+      const response = await fetch('/api/send-notification-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           to: phoneNumber,
           message: `[MycoLab] ${payload.title}: ${payload.message}`,
           category: payload.category,
           priority: payload.priority,
           entityType: payload.entityType,
           entityId: payload.entityId,
-        },
+        }),
       });
 
-      if (error) {
+      const data = await response.json();
+
+      if (!response.ok) {
         return {
           success: false,
           channelType: 'sms',
-          error: error.message,
+          error: data.error || 'Failed to send SMS',
         };
       }
 
       return {
         success: true,
         channelType: 'sms',
-        messageId: data?.messageId,
+        messageId: data.messageId,
       };
     } catch (err) {
       return {
@@ -377,17 +383,21 @@ export class NotificationService {
   // ============================================================================
 
   async sendEmailVerification(email: string): Promise<{ success: boolean; error?: string }> {
-    if (!this.supabase) {
-      return { success: false, error: 'No Supabase connection' };
+    if (!this.userId) {
+      return { success: false, error: 'No user ID set' };
     }
 
     try {
-      const { error } = await this.supabase.functions.invoke('send-verification-email', {
-        body: { email, userId: this.userId },
+      const response = await fetch('/api/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'email', recipient: email, userId: this.userId }),
       });
 
-      if (error) {
-        return { success: false, error: error.message };
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Failed to send verification email' };
       }
 
       return { success: true };
@@ -397,17 +407,21 @@ export class NotificationService {
   }
 
   async sendSmsVerification(phoneNumber: string): Promise<{ success: boolean; error?: string }> {
-    if (!this.supabase) {
-      return { success: false, error: 'No Supabase connection' };
+    if (!this.userId) {
+      return { success: false, error: 'No user ID set' };
     }
 
     try {
-      const { error } = await this.supabase.functions.invoke('send-verification-sms', {
-        body: { phoneNumber, userId: this.userId },
+      const response = await fetch('/api/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'sms', recipient: phoneNumber, userId: this.userId }),
       });
 
-      if (error) {
-        return { success: false, error: error.message };
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Failed to send verification SMS' };
       }
 
       return { success: true };
@@ -417,20 +431,24 @@ export class NotificationService {
   }
 
   async verifyCode(type: 'email' | 'sms', code: string): Promise<{ success: boolean; error?: string }> {
-    if (!this.supabase) {
-      return { success: false, error: 'No Supabase connection' };
+    if (!this.userId) {
+      return { success: false, error: 'No user ID set' };
     }
 
     try {
-      const { data, error } = await this.supabase.functions.invoke('verify-notification-channel', {
-        body: { type, code, userId: this.userId },
+      const response = await fetch('/api/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, code, userId: this.userId }),
       });
 
-      if (error) {
-        return { success: false, error: error.message };
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Invalid verification code' };
       }
 
-      return { success: data?.verified === true };
+      return { success: data.verified === true };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }

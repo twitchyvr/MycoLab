@@ -1,5 +1,6 @@
 // ============================================================================
 // ADMIN NOTIFICATION CONFIG - Configure email/SMS notification services
+// Uses Netlify Functions for email (SendGrid) and SMS (Twilio) delivery
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
@@ -32,7 +33,6 @@ interface AdminNotificationConfigProps {
 
 export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = ({ isConnected }) => {
   const { isAdmin } = useAuth();
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -61,59 +61,52 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
     }
   }, [error]);
 
-  // Check service status
+  // Check service status via Netlify Functions
   const checkServiceStatus = async () => {
-    if (!isConnected) {
-      setError('Not connected to database');
-      return;
-    }
-
     setCheckingStatus(true);
     setError(null);
 
     try {
-      const { supabase } = await import('../../lib/supabase');
-      if (!supabase) {
-        setError('Supabase client not available');
-        return;
-      }
-
       // Check email service
       try {
-        const { data: emailData, error: emailError } = await supabase.functions.invoke('check-notification-config', {
-          body: { service: 'email' },
+        const emailResponse = await fetch('/api/check-notification-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ service: 'email' }),
         });
+        const emailData = await emailResponse.json();
 
-        if (emailError) {
-          setEmailStatus({ configured: false, error: emailError.message });
+        if (!emailResponse.ok) {
+          setEmailStatus({ configured: false, error: emailData.error });
         } else {
           setEmailStatus({
-            configured: emailData?.configured || false,
-            provider: emailData?.provider,
-            lastTest: emailData?.lastTest,
+            configured: emailData.configured || false,
+            provider: emailData.provider,
           });
         }
       } catch (e: any) {
-        setEmailStatus({ configured: false, error: e.message || 'Failed to check email service' });
+        setEmailStatus({ configured: false, error: 'Could not reach notification service' });
       }
 
       // Check SMS service
       try {
-        const { data: smsData, error: smsError } = await supabase.functions.invoke('check-notification-config', {
-          body: { service: 'sms' },
+        const smsResponse = await fetch('/api/check-notification-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ service: 'sms' }),
         });
+        const smsData = await smsResponse.json();
 
-        if (smsError) {
-          setSmsStatus({ configured: false, error: smsError.message });
+        if (!smsResponse.ok) {
+          setSmsStatus({ configured: false, error: smsData.error });
         } else {
           setSmsStatus({
-            configured: smsData?.configured || false,
-            provider: smsData?.provider,
-            lastTest: smsData?.lastTest,
+            configured: smsData.configured || false,
+            provider: smsData.provider,
           });
         }
       } catch (e: any) {
-        setSmsStatus({ configured: false, error: e.message || 'Failed to check SMS service' });
+        setSmsStatus({ configured: false, error: 'Could not reach notification service' });
       }
     } catch (err: any) {
       setError(`Failed to check service status: ${err.message}`);
@@ -124,12 +117,12 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
 
   // Check status on mount
   useEffect(() => {
-    if (isConnected && isAdmin) {
+    if (isAdmin) {
       checkServiceStatus();
     }
-  }, [isConnected, isAdmin]);
+  }, [isAdmin]);
 
-  // Send test notification
+  // Send test notification via Netlify Functions
   const sendTestNotification = async (type: 'email' | 'sms') => {
     const recipient = type === 'email' ? testEmail : testPhone;
     if (!recipient) {
@@ -141,28 +134,26 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
     setError(null);
 
     try {
-      const { supabase } = await import('../../lib/supabase');
-      if (!supabase) {
-        setError('Supabase client not available');
-        return;
-      }
-
-      const { data, error: sendError } = await supabase.functions.invoke('send-test-notification', {
-        body: {
+      const response = await fetch('/api/send-test-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           type,
           recipient,
           message: `This is a test notification from MycoLab sent at ${new Date().toLocaleString()}`,
-        },
+        }),
       });
 
-      if (sendError) {
-        setError(`Failed to send test ${type}: ${sendError.message}`);
-      } else if (data?.success) {
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || `Failed to send test ${type}`);
+      } else if (data.success) {
         setSuccess(`Test ${type} sent successfully!`);
         if (type === 'email') setTestEmail('');
         else setTestPhone('');
       } else {
-        setError(data?.error || `Failed to send test ${type}`);
+        setError(data.error || `Failed to send test ${type}`);
       }
     } catch (err: any) {
       setError(`Failed to send test ${type}: ${err.message}`);
@@ -188,7 +179,7 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
           <div>
             <p className="text-sm font-medium text-blue-300">Email & SMS Service Configuration</p>
             <p className="text-sm text-zinc-400 mt-1">
-              Configure notification services using Supabase Edge Functions. Credentials are stored securely as environment variables.
+              Configure notification services using <strong>Netlify Functions</strong>. Set environment variables in your Netlify dashboard.
             </p>
           </div>
         </div>
@@ -220,7 +211,7 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
               <div>
                 <h3 className="text-white font-medium">Email Service</h3>
                 <p className="text-xs text-zinc-500">
-                  {emailStatus.provider || 'SendGrid / Resend'}
+                  {emailStatus.provider || 'SendGrid'}
                 </p>
               </div>
             </div>
@@ -268,19 +259,20 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
 
           {!emailStatus.configured && (
             <div className="text-sm text-zinc-400 space-y-2">
-              <p>To configure email notifications:</p>
+              <p>To enable email notifications:</p>
               <ol className="list-decimal list-inside space-y-1 text-xs">
-                <li>Create a Supabase Edge Function named <code className="bg-zinc-800 px-1 rounded">send-notification-email</code></li>
-                <li>Add environment variables: <code className="bg-zinc-800 px-1 rounded">SENDGRID_API_KEY</code> or <code className="bg-zinc-800 px-1 rounded">RESEND_API_KEY</code></li>
-                <li>Deploy the function</li>
+                <li>Go to <strong>Netlify Dashboard</strong> → Site Settings → Environment Variables</li>
+                <li>Add: <code className="bg-zinc-800 px-1 rounded">SENDGRID_API_KEY</code></li>
+                <li>Optional: <code className="bg-zinc-800 px-1 rounded">FROM_EMAIL</code>, <code className="bg-zinc-800 px-1 rounded">FROM_NAME</code></li>
+                <li>Redeploy your site</li>
               </ol>
               <a
-                href="https://supabase.com/docs/guides/functions"
+                href="https://sendgrid.com/en-us/solutions/email-api"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs mt-2"
               >
-                Supabase Edge Functions Docs <Icons.ExternalLink />
+                Get SendGrid API Key <Icons.ExternalLink />
               </a>
             </div>
           )}
@@ -344,25 +336,25 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
 
           {!smsStatus.configured && (
             <div className="text-sm text-zinc-400 space-y-2">
-              <p>To configure SMS notifications:</p>
+              <p>To enable SMS notifications:</p>
               <ol className="list-decimal list-inside space-y-1 text-xs">
-                <li>Create a Supabase Edge Function named <code className="bg-zinc-800 px-1 rounded">send-notification-sms</code></li>
-                <li>Add environment variables:
+                <li>Go to <strong>Netlify Dashboard</strong> → Site Settings → Environment Variables</li>
+                <li>Add these variables:
                   <ul className="list-disc list-inside ml-4 mt-1">
                     <li><code className="bg-zinc-800 px-1 rounded">TWILIO_ACCOUNT_SID</code></li>
                     <li><code className="bg-zinc-800 px-1 rounded">TWILIO_AUTH_TOKEN</code></li>
                     <li><code className="bg-zinc-800 px-1 rounded">TWILIO_PHONE_NUMBER</code></li>
                   </ul>
                 </li>
-                <li>Deploy the function</li>
+                <li>Redeploy your site</li>
               </ol>
               <a
-                href="https://www.twilio.com/docs/messaging/quickstart"
+                href="https://www.twilio.com/try-twilio"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs mt-2"
               >
-                Twilio SMS Quickstart <Icons.ExternalLink />
+                Get Twilio Account <Icons.ExternalLink />
               </a>
             </div>
           )}
@@ -381,126 +373,42 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
         </button>
       </div>
 
-      {/* Edge Function Templates */}
+      {/* Environment Variables Reference */}
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
-        <h3 className="text-white font-medium mb-3">Edge Function Templates</h3>
+        <h3 className="text-white font-medium mb-3">Environment Variables Reference</h3>
         <p className="text-sm text-zinc-400 mb-4">
-          Copy these templates to quickly set up your Supabase Edge Functions for notifications.
+          Add these in your <a href="https://app.netlify.com" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Netlify Dashboard</a> → Site Settings → Environment Variables
         </p>
 
         <div className="space-y-4">
-          <details className="group">
-            <summary className="cursor-pointer text-sm text-blue-400 hover:text-blue-300 flex items-center gap-2">
-              <span className="transform group-open:rotate-90 transition-transform">▶</span>
-              send-notification-email (SendGrid)
-            </summary>
-            <pre className="mt-2 p-3 bg-zinc-950 rounded-lg text-xs text-zinc-300 overflow-x-auto">
-{`import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+          <div>
+            <h4 className="text-sm font-medium text-emerald-400 mb-2">Email (SendGrid)</h4>
+            <div className="bg-zinc-950 rounded-lg p-3 text-xs font-mono space-y-1">
+              <div><span className="text-purple-400">SENDGRID_API_KEY</span>=<span className="text-zinc-500">your_sendgrid_api_key</span></div>
+              <div><span className="text-purple-400">FROM_EMAIL</span>=<span className="text-zinc-500">noreply@yourdomain.com</span> <span className="text-zinc-600"># optional</span></div>
+              <div><span className="text-purple-400">FROM_NAME</span>=<span className="text-zinc-500">MycoLab</span> <span className="text-zinc-600"># optional</span></div>
+            </div>
+          </div>
 
-const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY')
-const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@mycolab.app'
+          <div>
+            <h4 className="text-sm font-medium text-emerald-400 mb-2">SMS (Twilio)</h4>
+            <div className="bg-zinc-950 rounded-lg p-3 text-xs font-mono space-y-1">
+              <div><span className="text-purple-400">TWILIO_ACCOUNT_SID</span>=<span className="text-zinc-500">your_account_sid</span></div>
+              <div><span className="text-purple-400">TWILIO_AUTH_TOKEN</span>=<span className="text-zinc-500">your_auth_token</span></div>
+              <div><span className="text-purple-400">TWILIO_PHONE_NUMBER</span>=<span className="text-zinc-500">+15551234567</span></div>
+            </div>
+          </div>
 
-serve(async (req) => {
-  const { to, subject, body, category } = await req.json()
-
-  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Bearer \${SENDGRID_API_KEY}\`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: FROM_EMAIL, name: 'MycoLab' },
-      subject,
-      content: [{ type: 'text/plain', value: body }],
-    }),
-  })
-
-  return new Response(JSON.stringify({
-    success: response.ok,
-    messageId: response.headers.get('x-message-id')
-  }))
-})`}
-            </pre>
-          </details>
-
-          <details className="group">
-            <summary className="cursor-pointer text-sm text-blue-400 hover:text-blue-300 flex items-center gap-2">
-              <span className="transform group-open:rotate-90 transition-transform">▶</span>
-              send-notification-sms (Twilio)
-            </summary>
-            <pre className="mt-2 p-3 bg-zinc-950 rounded-lg text-xs text-zinc-300 overflow-x-auto">
-{`import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-
-const ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID')
-const AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')
-const FROM_NUMBER = Deno.env.get('TWILIO_PHONE_NUMBER')
-
-serve(async (req) => {
-  const { to, message } = await req.json()
-
-  const auth = btoa(\`\${ACCOUNT_SID}:\${AUTH_TOKEN}\`)
-  const response = await fetch(
-    \`https://api.twilio.com/2010-04-01/Accounts/\${ACCOUNT_SID}/Messages.json\`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': \`Basic \${auth}\`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        To: to,
-        From: FROM_NUMBER,
-        Body: message,
-      }),
-    }
-  )
-
-  const data = await response.json()
-  return new Response(JSON.stringify({
-    success: response.ok,
-    messageId: data.sid
-  }))
-})`}
-            </pre>
-          </details>
-
-          <details className="group">
-            <summary className="cursor-pointer text-sm text-blue-400 hover:text-blue-300 flex items-center gap-2">
-              <span className="transform group-open:rotate-90 transition-transform">▶</span>
-              check-notification-config
-            </summary>
-            <pre className="mt-2 p-3 bg-zinc-950 rounded-lg text-xs text-zinc-300 overflow-x-auto">
-{`import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-
-serve(async (req) => {
-  const { service } = await req.json()
-
-  if (service === 'email') {
-    const configured = !!Deno.env.get('SENDGRID_API_KEY') ||
-                       !!Deno.env.get('RESEND_API_KEY')
-    return new Response(JSON.stringify({
-      configured,
-      provider: Deno.env.get('SENDGRID_API_KEY') ? 'SendGrid' :
-                Deno.env.get('RESEND_API_KEY') ? 'Resend' : null
-    }))
-  }
-
-  if (service === 'sms') {
-    const configured = !!Deno.env.get('TWILIO_ACCOUNT_SID') &&
-                       !!Deno.env.get('TWILIO_AUTH_TOKEN') &&
-                       !!Deno.env.get('TWILIO_PHONE_NUMBER')
-    return new Response(JSON.stringify({
-      configured,
-      provider: configured ? 'Twilio' : null
-    }))
-  }
-
-  return new Response(JSON.stringify({ error: 'Invalid service' }), { status: 400 })
-})`}
-            </pre>
-          </details>
+          <div>
+            <h4 className="text-sm font-medium text-emerald-400 mb-2">Supabase (for verification codes)</h4>
+            <div className="bg-zinc-950 rounded-lg p-3 text-xs font-mono space-y-1">
+              <div><span className="text-purple-400">SUPABASE_URL</span>=<span className="text-zinc-500">https://your-project.supabase.co</span></div>
+              <div><span className="text-purple-400">SUPABASE_SERVICE_KEY</span>=<span className="text-zinc-500">your_service_role_key</span></div>
+            </div>
+            <p className="text-xs text-zinc-500 mt-2">
+              Note: Use the <strong>service_role</strong> key (not anon key) for server-side operations. Find it in Supabase → Settings → API.
+            </p>
+          </div>
         </div>
       </div>
     </div>
