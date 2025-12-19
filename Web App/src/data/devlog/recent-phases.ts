@@ -2924,6 +2924,43 @@ Added auth state listener in DataContext that:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1212',
+    title: 'Fix Analytics Dashboard Harvest Heatmap Accuracy',
+    description: 'Fixed harvest activity heatmap to use actual flush harvest dates instead of grow completion dates. Added drill-down functionality to view harvest details by clicking on any day.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 1,
+    completedAt: timestamp(),
+    notes: `Analytics Dashboard harvest heatmap accuracy fix:
+
+**Problems Fixed:**
+- Heatmap was using grow completion dates (completedAt) instead of actual flush harvest dates
+- No way to drill-down and see details of what was harvested on each day
+- Potential division by zero errors in BE calculations
+- Success rate calculation could produce NaN with certain data
+
+**Solutions Implemented:**
+- Harvest heatmap now iterates through all flushes and uses their harvestDate field
+- Added click-to-drill-down: clicking a day shows all harvests with grow name, strain, flush number, weights, and quality
+- Fixed BE calculations to filter out grows with zero substrate weight
+- Fixed success rate to only divide by finishedGrows (completed + contaminated)
+- Fixed strain/substrate performance calculations to handle zero substrate weight
+
+**UI Enhancements:**
+- Clickable heatmap cells with cursor pointer on days with harvests
+- Selected day highlighted with ring indicator
+- Drill-down panel shows all harvests for selected day
+- Quality color coding (excellent=green, good=blue, fair=yellow, poor=red)
+- Empty state message when no harvests in time period
+- "Click a day to see details" hint text
+
+**Files Changed:**
+- components/analytics/AnalyticsDashboard.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
