@@ -4316,6 +4316,16 @@ BEGIN
   CREATE INDEX IF NOT EXISTS idx_inventory_usages_lot_id ON inventory_usages(lot_id);
   CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier_id ON purchase_orders(supplier_id);
 
+  -- Performance optimization indexes (added for parallel loading)
+  CREATE INDEX IF NOT EXISTS idx_inventory_items_user_id ON inventory_items(user_id);
+  CREATE INDEX IF NOT EXISTS idx_grows_created_at ON grows(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_cultures_created_at ON cultures(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_locations_user_id ON locations(user_id);
+  CREATE INDEX IF NOT EXISTS idx_recipes_user_id ON recipes(user_id);
+  CREATE INDEX IF NOT EXISTS idx_flushes_harvest_date ON flushes(harvest_date DESC);
+  CREATE INDEX IF NOT EXISTS idx_inventory_lots_created_at ON inventory_lots(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_purchase_orders_created_at ON purchase_orders(created_at DESC);
+
   -- Admin notifications indexes
   CREATE INDEX IF NOT EXISTS idx_admin_notifications_type ON admin_notifications(type);
   CREATE INDEX IF NOT EXISTS idx_admin_notifications_is_read ON admin_notifications(is_read);

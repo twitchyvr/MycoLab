@@ -3386,6 +3386,135 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1223',
+    title: 'Database Connection & Query Optimization',
+    description: 'Comprehensive database optimization layer with parallel query execution, caching, request deduplication, retry logic, real-time subscriptions, O(1) lookups, write batching, and connection health monitoring. Designed for scalability to thousands of users.',
+    category: 'core',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 24,
+    actualHours: 16,
+    completedAt: timestamp(),
+    notes: `Major database optimization for scalability and reliability:
+
+**Problem:**
+- Sequential query execution (25 queries one-by-one, ~2.5s load time)
+- No caching or request deduplication
+- No retry logic for transient failures
+- No real-time subscriptions for cross-tab sync
+- O(n) array lookups for entity access
+- getCurrentUserId() called 30+ times without caching
+- No connection health monitoring
+
+**Solution - New Database Service Layer (src/lib/db/):**
+
+**1. QueryCache.ts - LRU Cache with TTL:**
+- Configurable max size and TTL per entry
+- Eviction strategies: lru, fifo, ttl
+- Pattern-based invalidation (string or regex)
+- Cache statistics tracking (hits, misses, hit rate)
+
+**2. RequestDeduplicator.ts - Prevent Duplicate Requests:**
+- Shares promises for identical concurrent requests
+- Auto-cleanup of completed requests
+- Timeout-based cleanup for safety
+- Query key generation helpers
+
+**3. QueryExecutor.ts - Core Query Execution:**
+- Retry logic with exponential backoff (3 attempts)
+- Retryable error detection (network, timeout, rate limit)
+- Query timeout support (30s default)
+- Integrates caching and deduplication
+- Detailed timing metrics
+
+**4. ConnectionManager.ts - Health Monitoring:**
+- Heartbeat polling (30s interval)
+- Automatic reconnection with exponential backoff
+- Network online/offline event listeners
+- State change callbacks for UI updates
+- Connection health metrics (latency, uptime)
+
+**5. RealtimeManager.ts - Cross-Tab Sync:**
+- Supabase real-time subscriptions
+- Event debouncing (100ms default)
+- Per-table subscription limits
+- Auto-reconnect on channel errors
+- Cleanup on unsubscribe
+
+**6. BatchWriter.ts - Write Batching:**
+- Groups operations by table and type
+- Batch insert/update/upsert/delete
+- Configurable flush interval and batch size
+- Error handling per batch
+
+**7. EntityLoader.ts - Parallel Loading:**
+- Parallel query execution with configurable concurrency
+- Priority-based loading (core lookups first)
+- TABLE_CONFIGS for all 20+ tables
+- Minimal load config for critical data
+
+**8. LookupMaps.ts - O(1) Entity Lookups:**
+- LookupMap<T> for ID-based lookups
+- IndexedLookupMap<T> for secondary indexes
+- EntityStore for centralized entity storage
+- React hooks for map access
+
+**9. DataLoader.ts - DataContext Integration:**
+- loadAllDataOptimized() replaces sequential loading
+- setupRealtimeSync() for subscription setup
+- createLookupMaps() for typed map creation
+- Special handling for flushes → grows mapping
+
+**10. useDatabase.ts - React Hooks:**
+- useDatabase() for full database access
+- useEntity() for O(1) single entity lookup
+- useFilteredEntities() for filtered queries
+- useConnectionStatus() for connection state
+
+**11. DatabaseService.ts - Orchestration:**
+- Main entry point for all services
+- Singleton pattern with getDatabaseService()
+- Initialize/dispose lifecycle management
+
+**Performance Improvements:**
+- Parallel loading: 25 queries execute concurrently
+- Cache hit rate: Reduces duplicate fetches
+- Request deduplication: Prevents race conditions
+- O(1) lookups: Map-based instead of array.find()
+- Cached user ID: Single fetch per session
+
+**Database Indexes Added (supabase-schema.sql):**
+- idx_inventory_items_user_id
+- idx_grows_created_at
+- idx_cultures_created_at
+- idx_locations_user_id
+- idx_recipes_user_id
+- idx_flushes_harvest_date
+- idx_inventory_lots_created_at
+- idx_purchase_orders_created_at
+
+**Files Created:**
+- src/lib/db/types.ts
+- src/lib/db/QueryCache.ts
+- src/lib/db/RequestDeduplicator.ts
+- src/lib/db/QueryExecutor.ts
+- src/lib/db/ConnectionManager.ts
+- src/lib/db/RealtimeManager.ts
+- src/lib/db/BatchWriter.ts
+- src/lib/db/EntityLoader.ts
+- src/lib/db/LookupMaps.ts
+- src/lib/db/DataLoader.ts
+- src/lib/db/useDatabase.ts
+- src/lib/db/DatabaseService.ts
+- src/lib/db/index.ts
+
+**Files Modified:**
+- src/store/DataContext.tsx (parallel loading integration)
+- supabase-schema.sql (performance indexes)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
