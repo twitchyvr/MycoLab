@@ -5481,6 +5481,13 @@ END $$;
 --               phone, notes) for existing databases
 -- v6 (2025-12): Added admin_notifications table for admin alerting system
 --               with automatic notifications for user signups
+-- v19 (2025-12): Settings & Admin overhaul:
+--               - user_settings: Added experience_level, advanced_mode, has_completed_setup_wizard,
+--                 show_tooltips, show_guided_workflows for first-time wizard and UI complexity control
+--               - library_suggestions: Expanded suggestion_type to include all library entity types
+--                 (container, substrate_type, grain_type, supplier, etc.)
+--               - suggestion_messages: New table for admin-user communication on suggestions
+--               - Full RLS policies for new/modified tables
 -- v5 (2025-12): Added populate_default_user_data function with error handling
 --               to prevent signup failures from FK violations
 -- v4: Added user_profiles table and admin functionality
@@ -5701,6 +5708,220 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION check_email_account(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION migrate_user_data(UUID, UUID) TO authenticated;
+
+-- SETTINGS & ADMIN OVERHAUL (v19)
+-- ============================================================================
+
+-- Add experience level and setup wizard columns to user_settings
+DO $$
+BEGIN
+  -- Experience level for UI complexity control
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'experience_level') THEN
+    ALTER TABLE user_settings ADD COLUMN experience_level TEXT
+      CHECK (experience_level IN ('beginner', 'intermediate', 'advanced', 'expert'))
+      DEFAULT 'intermediate';
+    RAISE NOTICE 'Added experience_level to user_settings';
+  END IF;
+
+  -- Advanced mode override (shows all options regardless of experience level)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'advanced_mode') THEN
+    ALTER TABLE user_settings ADD COLUMN advanced_mode BOOLEAN DEFAULT false;
+    RAISE NOTICE 'Added advanced_mode to user_settings';
+  END IF;
+
+  -- Track if user has completed the first-time setup wizard
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'has_completed_setup_wizard') THEN
+    ALTER TABLE user_settings ADD COLUMN has_completed_setup_wizard BOOLEAN DEFAULT false;
+    RAISE NOTICE 'Added has_completed_setup_wizard to user_settings';
+  END IF;
+
+  -- Show tooltips and explanatory text
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'show_tooltips') THEN
+    ALTER TABLE user_settings ADD COLUMN show_tooltips BOOLEAN DEFAULT true;
+    RAISE NOTICE 'Added show_tooltips to user_settings';
+  END IF;
+
+  -- Show guided workflows (step-by-step wizards)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'show_guided_workflows') THEN
+    ALTER TABLE user_settings ADD COLUMN show_guided_workflows BOOLEAN DEFAULT true;
+    RAISE NOTICE 'Added show_guided_workflows to user_settings';
+  END IF;
+
+  RAISE NOTICE 'Experience level and setup wizard columns migration complete';
+END $$;
+
+-- Expand library_suggestions suggestion_type to include all library entity types
+-- First, drop the existing constraint, then add the new one
+DO $$
+BEGIN
+  -- Drop existing constraint if it exists
+  ALTER TABLE library_suggestions DROP CONSTRAINT IF EXISTS library_suggestions_suggestion_type_check;
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'library_suggestions table does not exist yet';
+END $$;
+
+DO $$
+BEGIN
+  -- Add new expanded constraint
+  ALTER TABLE library_suggestions ADD CONSTRAINT library_suggestions_suggestion_type_check
+    CHECK (suggestion_type IN (
+      'species',
+      'strain',
+      'container',
+      'substrate_type',
+      'grain_type',
+      'supplier',
+      'inventory_category',
+      'location_type',
+      'location_classification',
+      'correction',  -- For corrections to existing entries
+      'addition',    -- For additions to existing entries
+      'other'        -- Catch-all
+    ));
+  RAISE NOTICE 'Updated library_suggestions suggestion_type constraint';
+EXCEPTION
+  WHEN duplicate_object THEN
+    RAISE NOTICE 'library_suggestions_suggestion_type_check constraint already exists';
+  WHEN undefined_table THEN
+    RAISE NOTICE 'library_suggestions table does not exist yet';
+END $$;
+
+-- Add rejection_reason column if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'library_suggestions' AND column_name = 'rejection_reason') THEN
+    ALTER TABLE library_suggestions ADD COLUMN rejection_reason TEXT;
+    RAISE NOTICE 'Added rejection_reason to library_suggestions';
+  END IF;
+END $$;
+
+-- Expand status options for library_suggestions
+DO $$
+BEGIN
+  -- Drop existing constraint if it exists
+  ALTER TABLE library_suggestions DROP CONSTRAINT IF EXISTS library_suggestions_status_check;
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'library_suggestions table does not exist yet';
+END $$;
+
+DO $$
+BEGIN
+  -- Add new expanded constraint with more workflow states
+  ALTER TABLE library_suggestions ADD CONSTRAINT library_suggestions_status_check
+    CHECK (status IN (
+      'pending',           -- Awaiting admin review
+      'under_review',      -- Admin is actively reviewing
+      'changes_requested', -- Admin requested changes from user
+      'approved',          -- Accepted, added to library
+      'rejected',          -- Not accepted
+      'merged',            -- Already existed, merged with existing
+      'needs_info'         -- Keeping for backward compatibility
+    ));
+  RAISE NOTICE 'Updated library_suggestions status constraint';
+EXCEPTION
+  WHEN duplicate_object THEN
+    RAISE NOTICE 'library_suggestions_status_check constraint already exists';
+  WHEN undefined_table THEN
+    RAISE NOTICE 'library_suggestions table does not exist yet';
+END $$;
+
+-- ============================================================================
+-- SUGGESTION MESSAGES (Admin-User communication)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS suggestion_messages (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  suggestion_id UUID NOT NULL REFERENCES library_suggestions(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  is_admin_message BOOLEAN DEFAULT false,
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for suggestion_messages
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_suggestion_messages_suggestion_id ON suggestion_messages(suggestion_id);
+  CREATE INDEX IF NOT EXISTS idx_suggestion_messages_user_id ON suggestion_messages(user_id);
+  CREATE INDEX IF NOT EXISTS idx_suggestion_messages_unread ON suggestion_messages(suggestion_id, is_read) WHERE is_read = false;
+END $$;
+
+-- Enable RLS for suggestion_messages
+ALTER TABLE suggestion_messages ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for suggestion_messages
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "suggestion_messages_select_own" ON suggestion_messages;
+  DROP POLICY IF EXISTS "suggestion_messages_select_admin" ON suggestion_messages;
+  DROP POLICY IF EXISTS "suggestion_messages_insert" ON suggestion_messages;
+  DROP POLICY IF EXISTS "suggestion_messages_update_read" ON suggestion_messages;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- Users can view messages on their own suggestions
+CREATE POLICY "suggestion_messages_select_own"
+  ON suggestion_messages FOR SELECT
+  USING (
+    is_not_anonymous() AND (
+      user_id = auth.uid() OR
+      EXISTS (
+        SELECT 1 FROM library_suggestions ls
+        WHERE ls.id = suggestion_messages.suggestion_id
+        AND ls.user_id = auth.uid()
+      )
+    )
+  );
+
+-- Admins can view all messages
+CREATE POLICY "suggestion_messages_select_admin"
+  ON suggestion_messages FOR SELECT
+  USING (is_admin());
+
+-- Users and admins can insert messages on relevant suggestions
+CREATE POLICY "suggestion_messages_insert"
+  ON suggestion_messages FOR INSERT
+  WITH CHECK (
+    is_not_anonymous() AND
+    user_id = auth.uid() AND
+    (
+      -- User can message on their own suggestion
+      EXISTS (
+        SELECT 1 FROM library_suggestions ls
+        WHERE ls.id = suggestion_id
+        AND ls.user_id = auth.uid()
+      )
+      OR
+      -- Admin can message on any suggestion
+      is_admin()
+    )
+  );
+
+-- Users can mark messages as read
+CREATE POLICY "suggestion_messages_update_read"
+  ON suggestion_messages FOR UPDATE
+  USING (
+    is_not_anonymous() AND (
+      -- User can update read status on their own messages
+      EXISTS (
+        SELECT 1 FROM library_suggestions ls
+        WHERE ls.id = suggestion_messages.suggestion_id
+        AND ls.user_id = auth.uid()
+      )
+      OR is_admin()
+    )
+  );
+
+-- Add trigger for updated_at on suggestion_messages (using existing update_updated_at function)
+DROP TRIGGER IF EXISTS update_suggestion_messages_updated_at ON suggestion_messages;
+-- Note: suggestion_messages doesn't have updated_at column, so no trigger needed
 
 -- ============================================================================
 -- SUCCESS MESSAGE

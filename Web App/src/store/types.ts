@@ -910,6 +910,10 @@ export interface NotificationTemplate {
 // APP SETTINGS
 // ============================================================================
 
+// Experience level for UI complexity control
+// Controls which features, options, and guidance are shown
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
+
 export interface AppSettings {
   defaultUnits: 'metric' | 'imperial';
   defaultCurrency: string;
@@ -931,6 +935,75 @@ export interface AppSettings {
   notificationEmailVerified?: boolean;
   quietHoursStart?: string;  // HH:MM format
   quietHoursEnd?: string;    // HH:MM format
+
+  // Experience level and setup wizard (v19)
+  experienceLevel?: ExperienceLevel;        // Controls UI complexity
+  advancedMode?: boolean;                   // Override to show all options
+  hasCompletedSetupWizard?: boolean;        // First-time wizard completed
+  showTooltips?: boolean;                   // Show explanatory tooltips
+  showGuidedWorkflows?: boolean;            // Show step-by-step wizards
+}
+
+// ============================================================================
+// LIBRARY SUGGESTIONS SYSTEM
+// For users to propose new library entries that admins can approve/reject
+// ============================================================================
+
+// Types of library entries that can be suggested
+export type SuggestionType =
+  | 'species'
+  | 'strain'
+  | 'container'
+  | 'substrate_type'
+  | 'grain_type'
+  | 'supplier'
+  | 'inventory_category'
+  | 'location_type'
+  | 'location_classification'
+  | 'correction'    // Corrections to existing entries
+  | 'addition'      // Additions to existing entries
+  | 'other';
+
+// Workflow status for suggestions
+export type SuggestionStatus =
+  | 'pending'           // Awaiting admin review
+  | 'under_review'      // Admin is actively reviewing
+  | 'changes_requested' // Admin requested changes
+  | 'approved'          // Accepted, added to library
+  | 'rejected'          // Not accepted
+  | 'merged'            // Already existed, merged
+  | 'needs_info';       // Backward compatibility
+
+// Library suggestion submitted by user
+export interface LibrarySuggestion {
+  id: string;
+  suggestionType: SuggestionType;
+  targetSpeciesId?: string;           // For corrections/additions to species
+  targetStrainId?: string;            // For corrections/additions to strains
+  title: string;
+  description?: string;
+  proposedChanges?: Record<string, any>;  // JSONB data for the suggestion
+  sourceUrl?: string;                 // Reference URL
+  sourceNotes?: string;               // Notes about the source
+  status: SuggestionStatus;
+  adminNotes?: string;                // Internal admin notes
+  rejectionReason?: string;           // Shown to user if rejected
+  reviewedAt?: Date;
+  reviewedBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  userId: string;
+}
+
+// Message in suggestion conversation thread
+export interface SuggestionMessage {
+  id: string;
+  suggestionId: string;
+  userId: string;
+  message: string;
+  isAdminMessage: boolean;
+  isRead: boolean;
+  createdAt: Date;
 }
 
 // ============================================================================
