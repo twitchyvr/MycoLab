@@ -5,11 +5,12 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useData } from '../../store';
-import type { Grow, GrowStage, GrowStatus, GrowObservation, Flush, GrowOutcomeCode } from '../../store/types';
+import type { Grow, GrowStage, GrowStatus, GrowObservation, Flush, GrowOutcomeCode, AmendmentType } from '../../store/types';
 import { StandardDropdown } from '../common/StandardDropdown';
 import { NumericInput } from '../common/NumericInput';
 import { WeightInput } from '../common/WeightInput';
 import { ExitSurveyModal, ExitSurveyData } from '../surveys';
+import { RecordHistoryTab } from '../common/RecordHistoryTab';
 
 // Draft key for localStorage
 const GROW_DRAFT_KEY = 'mycolab-grow-draft';
@@ -49,6 +50,7 @@ const Icons = {
   ArrowRight: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
   Eye: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
   Zap: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+  History: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
 };
 
 // Days active calculator
@@ -75,13 +77,14 @@ interface GrowCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onLogObservation: () => void;
+  onViewHistory: () => void;
   compact?: boolean;
 }
 
 const GrowCard: React.FC<GrowCardProps> = ({
   grow, strain, container, location, isExpanded, isHarvesting,
   onToggleExpand, onAdvanceStage, onRecordHarvest, onMarkContaminated,
-  onComplete, onEdit, onDelete, onLogObservation, compact
+  onComplete, onEdit, onDelete, onLogObservation, onViewHistory, compact
 }) => {
   const [harvestForm, setHarvestForm] = useState({ wetWeight: 0, dryWeight: 0, quality: 'good' as Flush['quality'], notes: '', mushroomCount: undefined as number | undefined });
   const [showHarvestForm, setShowHarvestForm] = useState(false);
@@ -311,6 +314,13 @@ const GrowCard: React.FC<GrowCardProps> = ({
             >
               <Icons.Edit />
             </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onViewHistory(); }}
+              className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded"
+              title="View History"
+            >
+              <Icons.History />
+            </button>
             {!isTerminal && (
               <button
                 onClick={(e) => { e.stopPropagation(); onMarkContaminated(); }}
@@ -467,6 +477,8 @@ export const GrowManagement: React.FC = () => {
     markGrowContaminated,
     addGrowObservation,
     addFlush,
+    amendGrow,
+    archiveGrow,
   } = useData();
 
   const grows = state.grows;
@@ -492,6 +504,8 @@ export const GrowManagement: React.FC = () => {
   const [exitSurveyGrow, setExitSurveyGrow] = useState<Grow | null>(null);
   const [preselectedOutcome, setPreselectedOutcome] = useState<GrowOutcomeCode | undefined>(undefined);
   const [hasDraft, setHasDraft] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyGrow, setHistoryGrow] = useState<Grow | null>(null);
 
   // Form type
   interface GrowFormState {
@@ -1126,6 +1140,10 @@ export const GrowManagement: React.FC = () => {
                           setSelectedGrow(grow);
                           setShowObservationModal(true);
                         }}
+                        onViewHistory={() => {
+                          setHistoryGrow(grow);
+                          setShowHistoryModal(true);
+                        }}
                       />
                     ))}
                     {stageGrows.length === 0 && (
@@ -1161,6 +1179,10 @@ export const GrowManagement: React.FC = () => {
               onLogObservation={() => {
                 setSelectedGrow(grow);
                 setShowObservationModal(true);
+              }}
+              onViewHistory={() => {
+                setHistoryGrow(grow);
+                setShowHistoryModal(true);
               }}
             />
           ))}
@@ -1639,6 +1661,47 @@ export const GrowManagement: React.FC = () => {
           entityName={exitSurveyGrow.name}
           preselectedOutcome={preselectedOutcome}
         />
+      )}
+
+      {/* History Modal */}
+      {showHistoryModal && historyGrow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowHistoryModal(false)}
+          />
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl">
+            <div className="sticky top-0 bg-zinc-900 border-b border-zinc-700 px-6 py-4 z-10 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-100">
+                Record History - {historyGrow.name}
+              </h2>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <Icons.X />
+              </button>
+            </div>
+            <div className="p-6">
+              <RecordHistoryTab
+                entityType="grow"
+                record={historyGrow}
+                recordLabel={historyGrow.name}
+                onAmend={async (changes, amendmentType, reason) => {
+                  await amendGrow(historyGrow.id, changes as Partial<Grow>, amendmentType, reason);
+                  // Refresh history grow after amendment
+                  const updated = state.grows.find(g => g.recordGroupId === historyGrow.recordGroupId && g.isCurrent);
+                  if (updated) setHistoryGrow(updated);
+                }}
+                onArchive={async (reason) => {
+                  await archiveGrow(historyGrow.id, reason);
+                  setShowHistoryModal(false);
+                  setHistoryGrow(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

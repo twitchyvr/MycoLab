@@ -13,7 +13,9 @@ import {
   CultureObservation, CultureTransfer, GrowObservation, Flush, GrowStage,
   RecipeCategoryItem, GrainType, LotStatus, UsageType,
   EntityOutcome, ContaminationDetails, OutcomeCategory, OutcomeCode, ContaminationType, ContaminationStage, SuspectedCause,
-  PreparedSpawn, PreparedSpawnStatus
+  PreparedSpawn, PreparedSpawnStatus,
+  // Immutable database types
+  AmendmentType, RecordVersionSummary, DataAmendmentLogEntry,
 } from './types';
 import {
   supabase,
@@ -249,13 +251,49 @@ interface DataContextValue extends LookupHelpers {
   deleteRecipe: (id: string) => Promise<void>;
   calculateRecipeCost: (recipe: Recipe) => number;
   scaleRecipe: (recipe: Recipe, scaleFactor: number) => Recipe;
-  
+
   // Settings
   updateSettings: (updates: Partial<AppSettings>) => void;
-  
+
   // Utility
   generateId: (prefix: string) => string;
   refreshData: () => Promise<void>;
+
+  // ============================================================================
+  // IMMUTABLE RECORD OPERATIONS
+  // Append-only pattern: amend creates new version, archive soft-deletes
+  // ============================================================================
+
+  // Amend a culture (creates new version, marks old as superseded)
+  amendCulture: (
+    originalId: string,
+    changes: Partial<Culture>,
+    amendmentType: AmendmentType,
+    reason: string
+  ) => Promise<Culture>;
+
+  // Archive a culture (soft-delete with reason)
+  archiveCulture: (id: string, reason: string) => Promise<void>;
+
+  // Amend a grow (creates new version, marks old as superseded)
+  amendGrow: (
+    originalId: string,
+    changes: Partial<Grow>,
+    amendmentType: AmendmentType,
+    reason: string
+  ) => Promise<Grow>;
+
+  // Archive a grow (soft-delete with reason)
+  archiveGrow: (id: string, reason: string) => Promise<void>;
+
+  // Get version history for a record
+  getRecordHistory: (
+    entityType: 'culture' | 'grow' | 'prepared_spawn',
+    recordGroupId: string
+  ) => RecordVersionSummary[];
+
+  // Get amendment log for a record
+  getAmendmentLog: (recordGroupId: string) => DataAmendmentLogEntry[];
 }
 
 // ============================================================================
@@ -1834,6 +1872,338 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }));
   }, [supabase, saveEntityOutcome, saveContaminationDetails]);
 
+  // ============================================================================
+  // IMMUTABLE RECORD OPERATIONS
+  // Amend creates new version, Archive soft-deletes with reason
+  // ============================================================================
+
+  /**
+   * Amend a culture record (creates new version, marks old as superseded)
+   * This follows the immutable database pattern - original record is preserved
+   */
+  const amendCulture = useCallback(async (
+    originalId: string,
+    changes: Partial<Culture>,
+    amendmentType: AmendmentType,
+    reason: string
+  ): Promise<Culture> => {
+    const original = state.cultures.find(c => c.id === originalId);
+    if (!original) throw new Error(`Culture not found: ${originalId}`);
+
+    const now = new Date();
+    const newId = generateId('cul');
+    const recordGroupId = original.recordGroupId || original.id;
+    const newVersion = (original.version || 1) + 1;
+
+    // Create the new version with changes applied
+    const newCulture: Culture = {
+      ...original,
+      ...changes,
+      id: newId,
+      version: newVersion,
+      recordGroupId: recordGroupId,
+      isCurrent: true,
+      validFrom: now,
+      validTo: undefined,
+      supersededById: undefined,
+      isArchived: false,
+      amendmentType: amendmentType,
+      amendmentReason: reason,
+      amendsRecordId: originalId,
+      updatedAt: now,
+    };
+
+    // Update original to mark as superseded
+    const updatedOriginal: Partial<Culture> = {
+      isCurrent: false,
+      validTo: now,
+      supersededById: newId,
+    };
+
+    if (supabase) {
+      // Update original record
+      const { error: updateError } = await supabase
+        .from('cultures')
+        .update({
+          is_current: false,
+          valid_to: now.toISOString(),
+          superseded_by_id: newId,
+        })
+        .eq('id', originalId);
+
+      if (updateError) throw updateError;
+
+      // Insert new version
+      const userId = await getCurrentUserId();
+      const { error: insertError } = await supabase
+        .from('cultures')
+        .insert({
+          ...transformCultureToDb(newCulture),
+          id: newId,
+          user_id: userId,
+        });
+
+      if (insertError) throw insertError;
+
+      // Log to amendment log
+      await supabase.from('data_amendment_log').insert({
+        entity_type: 'cultures',
+        original_record_id: originalId,
+        new_record_id: newId,
+        record_group_id: recordGroupId,
+        amendment_type: amendmentType,
+        reason: reason,
+        amended_by: userId,
+        user_id: userId,
+      });
+    }
+
+    // Update local state
+    setState(prev => ({
+      ...prev,
+      cultures: prev.cultures
+        .map(c => c.id === originalId ? { ...c, ...updatedOriginal } : c)
+        .concat([newCulture]),
+    }));
+
+    return newCulture;
+  }, [state.cultures, supabase, generateId]);
+
+  /**
+   * Archive a culture record (soft-delete with reason)
+   */
+  const archiveCulture = useCallback(async (id: string, reason: string): Promise<void> => {
+    const culture = state.cultures.find(c => c.id === id);
+    if (!culture) throw new Error(`Culture not found: ${id}`);
+
+    const now = new Date();
+    const userId = await getCurrentUserId();
+
+    const updates = {
+      isArchived: true,
+      archivedAt: now,
+      archivedBy: userId || undefined,
+      archiveReason: reason,
+      isCurrent: false,
+      validTo: now,
+    };
+
+    if (supabase) {
+      const { error } = await supabase
+        .from('cultures')
+        .update({
+          is_archived: true,
+          archived_at: now.toISOString(),
+          archived_by: userId,
+          archive_reason: reason,
+          is_current: false,
+          valid_to: now.toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Log to amendment log
+      await supabase.from('data_amendment_log').insert({
+        entity_type: 'cultures',
+        original_record_id: id,
+        new_record_id: id,
+        record_group_id: culture.recordGroupId || id,
+        amendment_type: 'archive',
+        reason: reason,
+        amended_by: userId,
+        user_id: userId,
+      });
+    }
+
+    setState(prev => ({
+      ...prev,
+      cultures: prev.cultures.map(c => c.id === id ? { ...c, ...updates } : c),
+    }));
+  }, [state.cultures, supabase]);
+
+  /**
+   * Amend a grow record (creates new version, marks old as superseded)
+   */
+  const amendGrow = useCallback(async (
+    originalId: string,
+    changes: Partial<Grow>,
+    amendmentType: AmendmentType,
+    reason: string
+  ): Promise<Grow> => {
+    const original = state.grows.find(g => g.id === originalId);
+    if (!original) throw new Error(`Grow not found: ${originalId}`);
+
+    const now = new Date();
+    const newId = generateId('grow');
+    const recordGroupId = original.recordGroupId || original.id;
+    const newVersion = (original.version || 1) + 1;
+
+    // Create the new version with changes applied
+    const newGrow: Grow = {
+      ...original,
+      ...changes,
+      id: newId,
+      version: newVersion,
+      recordGroupId: recordGroupId,
+      isCurrent: true,
+      validFrom: now,
+      validTo: undefined,
+      supersededById: undefined,
+      isArchived: false,
+      amendmentType: amendmentType,
+      amendmentReason: reason,
+      amendsRecordId: originalId,
+    };
+
+    // Update original to mark as superseded
+    const updatedOriginal: Partial<Grow> = {
+      isCurrent: false,
+      validTo: now,
+      supersededById: newId,
+    };
+
+    if (supabase) {
+      // Update original record
+      const { error: updateError } = await supabase
+        .from('grows')
+        .update({
+          is_current: false,
+          valid_to: now.toISOString(),
+          superseded_by_id: newId,
+        })
+        .eq('id', originalId);
+
+      if (updateError) throw updateError;
+
+      // Insert new version
+      const userId = await getCurrentUserId();
+      const { error: insertError } = await supabase
+        .from('grows')
+        .insert({
+          ...transformGrowToDb(newGrow),
+          id: newId,
+          user_id: userId,
+        });
+
+      if (insertError) throw insertError;
+
+      // Log to amendment log
+      await supabase.from('data_amendment_log').insert({
+        entity_type: 'grows',
+        original_record_id: originalId,
+        new_record_id: newId,
+        record_group_id: recordGroupId,
+        amendment_type: amendmentType,
+        reason: reason,
+        amended_by: userId,
+        user_id: userId,
+      });
+    }
+
+    // Update local state
+    setState(prev => ({
+      ...prev,
+      grows: prev.grows
+        .map(g => g.id === originalId ? { ...g, ...updatedOriginal } : g)
+        .concat([newGrow]),
+    }));
+
+    return newGrow;
+  }, [state.grows, supabase, generateId]);
+
+  /**
+   * Archive a grow record (soft-delete with reason)
+   */
+  const archiveGrow = useCallback(async (id: string, reason: string): Promise<void> => {
+    const grow = state.grows.find(g => g.id === id);
+    if (!grow) throw new Error(`Grow not found: ${id}`);
+
+    const now = new Date();
+    const userId = await getCurrentUserId();
+
+    const updates = {
+      isArchived: true,
+      archivedAt: now,
+      archivedBy: userId || undefined,
+      archiveReason: reason,
+      isCurrent: false,
+      validTo: now,
+    };
+
+    if (supabase) {
+      const { error } = await supabase
+        .from('grows')
+        .update({
+          is_archived: true,
+          archived_at: now.toISOString(),
+          archived_by: userId,
+          archive_reason: reason,
+          is_current: false,
+          valid_to: now.toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Log to amendment log
+      await supabase.from('data_amendment_log').insert({
+        entity_type: 'grows',
+        original_record_id: id,
+        new_record_id: id,
+        record_group_id: grow.recordGroupId || id,
+        amendment_type: 'archive',
+        reason: reason,
+        amended_by: userId,
+        user_id: userId,
+      });
+    }
+
+    setState(prev => ({
+      ...prev,
+      grows: prev.grows.map(g => g.id === id ? { ...g, ...updates } : g),
+    }));
+  }, [state.grows, supabase]);
+
+  /**
+   * Get version history for a record (returns all versions sorted by version number)
+   */
+  const getRecordHistory = useCallback((
+    entityType: 'culture' | 'grow' | 'prepared_spawn',
+    recordGroupId: string
+  ): RecordVersionSummary[] => {
+    let records: Array<{ id: string; version?: number; isCurrent?: boolean; validFrom?: Date; validTo?: Date; amendmentType?: AmendmentType; amendmentReason?: string }> = [];
+
+    if (entityType === 'culture') {
+      records = state.cultures.filter(c => (c.recordGroupId || c.id) === recordGroupId);
+    } else if (entityType === 'grow') {
+      records = state.grows.filter(g => (g.recordGroupId || g.id) === recordGroupId);
+    } else if (entityType === 'prepared_spawn') {
+      records = state.preparedSpawn.filter(p => (p.recordGroupId || p.id) === recordGroupId);
+    }
+
+    return records
+      .map(r => ({
+        id: r.id,
+        version: r.version || 1,
+        isCurrent: r.isCurrent ?? true,
+        validFrom: r.validFrom || new Date(),
+        validTo: r.validTo,
+        amendmentType: r.amendmentType || 'original',
+        amendmentReason: r.amendmentReason,
+      }))
+      .sort((a, b) => a.version - b.version);
+  }, [state.cultures, state.grows, state.preparedSpawn]);
+
+  /**
+   * Get amendment log entries for a record group
+   */
+  const getAmendmentLog = useCallback((recordGroupId: string): DataAmendmentLogEntry[] => {
+    return state.dataAmendmentLog
+      .filter(entry => entry.recordGroupId === recordGroupId)
+      .sort((a, b) => new Date(b.amendedAt).getTime() - new Date(a.amendedAt).getTime());
+  }, [state.dataAmendmentLog]);
+
   const stageOrder: GrowStage[] = ['spawning', 'colonization', 'fruiting', 'harvesting', 'completed'];
 
   const advanceGrowStage = useCallback(async (growId: string) => {
@@ -2974,10 +3344,11 @@ const loadSettings = async (): Promise<AppSettings> => {
     addInventoryLot, updateInventoryLot, deleteInventoryLot, adjustLotQuantity, getLotsForItem,
     addPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, receiveOrder, generateOrderNumber,
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
-    getCultureLineage, generateCultureLabel,
+    getCultureLineage, generateCultureLabel, amendCulture, archiveCulture,
     addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn,
-    addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
+    addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated, amendGrow, archiveGrow,
     addGrowObservation, addFlush,
+    getRecordHistory, getAmendmentLog,
     calculateCultureCostPerMl, calculateSourceCultureCost, calculateGrowInventoryCost,
     recalculateGrowCosts, getLabValuation,
     saveEntityOutcome, saveContaminationDetails,
@@ -3008,10 +3379,11 @@ const loadSettings = async (): Promise<AppSettings> => {
     addInventoryLot, updateInventoryLot, deleteInventoryLot, adjustLotQuantity, getLotsForItem,
     addPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, receiveOrder, generateOrderNumber,
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
-    getCultureLineage, generateCultureLabel,
+    getCultureLineage, generateCultureLabel, amendCulture, archiveCulture,
     addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn,
-    addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
+    addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated, amendGrow, archiveGrow,
     addGrowObservation, addFlush,
+    getRecordHistory, getAmendmentLog,
     calculateCultureCostPerMl, calculateSourceCultureCost, calculateGrowInventoryCost,
     recalculateGrowCosts, getLabValuation,
     saveEntityOutcome, saveContaminationDetails,
