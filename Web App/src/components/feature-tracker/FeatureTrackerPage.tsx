@@ -28,6 +28,12 @@ import {
   extractAllTags,
   getRecommendedFeatures,
 } from '../../data/feature-tracker';
+import {
+  buildDependencyGraph,
+  getGraphVisualizationData,
+  getFeatureImpact,
+  getWouldUnblock,
+} from '../../data/feature-tracker/utils/dependencies';
 import { FeatureCard } from './shared/FeatureCard';
 import { StatusBadge, PriorityBadge, MilestoneBadge } from './shared/StatusBadge';
 
@@ -129,6 +135,541 @@ const VIEW_MODES: { id: ViewMode; label: string; icon: React.FC; mobileHidden?: 
   { id: 'timeline', label: 'Timeline', icon: Icons.Calendar, mobileHidden: true },
   { id: 'dependency', label: 'Dependencies', icon: Icons.GitBranch, mobileHidden: true },
 ];
+
+// ============================================================================
+// TIMELINE VIEW COMPONENT
+// ============================================================================
+
+interface TimelineViewProps {
+  features: Feature[];
+  expandedFeatures: Set<string>;
+  onToggleExpand: (id: string) => void;
+}
+
+const TimelineView: React.FC<TimelineViewProps> = ({ features, expandedFeatures, onToggleExpand }) => {
+  // Group features by completion month/year
+  const timelineData = useMemo(() => {
+    const completed = features
+      .filter(f => f.status === 'completed' && f.completedAt)
+      .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
+
+    const inProgress = features
+      .filter(f => f.status === 'in_progress' || f.status === 'testing')
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+    const planned = features
+      .filter(f => f.status === 'planned')
+      .sort((a, b) => {
+        const priorityOrder: Record<FeaturePriority, number> = { critical: 0, high: 1, medium: 2, low: 3, wishlist: 4 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+
+    // Group completed by month
+    const completedByMonth = new Map<string, Feature[]>();
+    for (const feature of completed) {
+      const date = new Date(feature.completedAt!);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const existing = completedByMonth.get(key) || [];
+      existing.push(feature);
+      completedByMonth.set(key, existing);
+    }
+
+    return { completed, inProgress, planned, completedByMonth };
+  }, [features]);
+
+  const formatMonthKey = (key: string): string => {
+    const [year, month] = key.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const formatDate = (dateStr: string): string => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  if (features.length === 0) {
+    return (
+      <div className="text-center py-12 text-zinc-500">
+        <Icons.Calendar />
+        <p className="mt-2">No features to display</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      {/* Currently Active Section */}
+      {timelineData.inProgress.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-3 h-3 rounded-full bg-amber-500 animate-pulse" />
+            <h3 className="text-lg font-bold text-amber-400">Currently Active</h3>
+            <span className="text-sm text-zinc-500">({timelineData.inProgress.length})</span>
+          </div>
+          <div className="ml-6 pl-6 border-l-2 border-amber-500/30 space-y-3">
+            {timelineData.inProgress.map(feature => (
+              <div
+                key={feature.id}
+                className="relative group cursor-pointer"
+                onClick={() => onToggleExpand(feature.id)}
+              >
+                <div className="absolute -left-[29px] w-4 h-4 rounded-full bg-amber-500/20 border-2 border-amber-500 group-hover:scale-125 transition-transform" />
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 hover:border-amber-500/50 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <PriorityBadge priority={feature.priority} size="sm" />
+                        <StatusBadge status={feature.status} size="sm" />
+                      </div>
+                      <h4 className="font-medium text-zinc-100">{feature.title}</h4>
+                      <p className="text-xs text-zinc-500 mt-1">
+                        Updated {formatDate(feature.updatedAt)}
+                      </p>
+                    </div>
+                    {feature.estimatedHours && (
+                      <div className="text-right text-xs text-zinc-500">
+                        <span className="text-amber-400">{feature.estimatedHours}h</span> est
+                      </div>
+                    )}
+                  </div>
+                  {expandedFeatures.has(feature.id) && feature.description && (
+                    <p className="text-sm text-zinc-400 mt-3 pt-3 border-t border-zinc-800">
+                      {feature.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Up Next Section */}
+      {timelineData.planned.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <h3 className="text-lg font-bold text-blue-400">Up Next</h3>
+            <span className="text-sm text-zinc-500">({timelineData.planned.length})</span>
+          </div>
+          <div className="ml-6 pl-6 border-l-2 border-blue-500/30 space-y-3">
+            {timelineData.planned.slice(0, 5).map(feature => (
+              <div
+                key={feature.id}
+                className="relative group cursor-pointer"
+                onClick={() => onToggleExpand(feature.id)}
+              >
+                <div className="absolute -left-[29px] w-4 h-4 rounded-full bg-blue-500/20 border-2 border-blue-500 group-hover:scale-125 transition-transform" />
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 hover:border-blue-500/50 transition-colors">
+                  <div className="flex items-center gap-2 mb-1">
+                    <PriorityBadge priority={feature.priority} size="sm" />
+                  </div>
+                  <h4 className="font-medium text-zinc-100">{feature.title}</h4>
+                  {expandedFeatures.has(feature.id) && feature.description && (
+                    <p className="text-sm text-zinc-400 mt-3 pt-3 border-t border-zinc-800">
+                      {feature.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+            {timelineData.planned.length > 5 && (
+              <p className="text-sm text-zinc-500 pl-4">
+                +{timelineData.planned.length - 5} more planned
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Completed Timeline */}
+      {timelineData.completedByMonth.size > 0 && (
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-3 h-3 rounded-full bg-emerald-500" />
+            <h3 className="text-lg font-bold text-emerald-400">Completed</h3>
+            <span className="text-sm text-zinc-500">({timelineData.completed.length})</span>
+          </div>
+          <div className="ml-6 pl-6 border-l-2 border-emerald-500/30 space-y-6">
+            {Array.from(timelineData.completedByMonth.entries()).map(([monthKey, monthFeatures]) => (
+              <div key={monthKey}>
+                <div className="relative">
+                  <div className="absolute -left-[33px] px-2 py-0.5 text-xs font-medium bg-emerald-950 text-emerald-400 border border-emerald-500/30 rounded">
+                    {formatMonthKey(monthKey)}
+                  </div>
+                </div>
+                <div className="pt-6 space-y-2">
+                  {monthFeatures.map(feature => (
+                    <div
+                      key={feature.id}
+                      className="relative group cursor-pointer"
+                      onClick={() => onToggleExpand(feature.id)}
+                    >
+                      <div className="absolute -left-[29px] w-4 h-4 rounded-full bg-emerald-500/20 border-2 border-emerald-500/50 group-hover:border-emerald-500 group-hover:scale-125 transition-all" />
+                      <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-lg p-3 hover:border-emerald-500/30 transition-colors">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-500">✓</span>
+                            <span className="text-zinc-300">{feature.title}</span>
+                          </div>
+                          <span className="text-xs text-zinc-500">
+                            {formatDate(feature.completedAt!)}
+                          </span>
+                        </div>
+                        {expandedFeatures.has(feature.id) && (
+                          <div className="mt-2 pt-2 border-t border-zinc-800/50 text-sm text-zinc-500">
+                            {feature.actualHours && (
+                              <span className="text-emerald-400">{feature.actualHours}h</span>
+                            )}
+                            {feature.description && (
+                              <p className="mt-1">{feature.description}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state for completed */}
+      {timelineData.completed.length === 0 && timelineData.inProgress.length === 0 && timelineData.planned.length === 0 && (
+        <div className="text-center py-12 text-zinc-500">
+          <Icons.Calendar />
+          <p className="mt-2">No timeline data available</p>
+          <p className="text-xs text-zinc-600 mt-1">
+            Features with dates will appear here
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================================
+// DEPENDENCY VIEW COMPONENT
+// ============================================================================
+
+interface DependencyViewProps {
+  features: Feature[];
+  expandedFeatures: Set<string>;
+  onToggleExpand: (id: string) => void;
+}
+
+const DependencyView: React.FC<DependencyViewProps> = ({ features, expandedFeatures, onToggleExpand }) => {
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+
+  const graphData = useMemo(() => {
+    const graph = buildDependencyGraph(features);
+    const vizData = getGraphVisualizationData(graph);
+    return { graph, ...vizData };
+  }, [features]);
+
+  const selectedNodeData = useMemo(() => {
+    if (!selectedNode) return null;
+    const node = graphData.graph.nodes.get(selectedNode);
+    if (!node) return null;
+
+    const impact = getFeatureImpact(selectedNode, graphData.graph);
+    const wouldUnblock = getWouldUnblock(selectedNode, graphData.graph);
+
+    return {
+      node,
+      impact,
+      wouldUnblock,
+    };
+  }, [selectedNode, graphData.graph]);
+
+  // Get the depth levels for visualization
+  const nodesByDepth = useMemo(() => {
+    const levels = new Map<number, typeof graphData.nodes>();
+    for (const node of graphData.nodes) {
+      const existing = levels.get(node.depth) || [];
+      existing.push(node);
+      levels.set(node.depth, existing);
+    }
+    return levels;
+  }, [graphData.nodes]);
+
+  const maxDepth = useMemo(() => {
+    return Math.max(...Array.from(nodesByDepth.keys()), 0);
+  }, [nodesByDepth]);
+
+  if (features.length === 0) {
+    return (
+      <div className="text-center py-12 text-zinc-500">
+        <Icons.GitBranch />
+        <p className="mt-2">No features to display</p>
+      </div>
+    );
+  }
+
+  // Check if there are any dependencies
+  const hasDependencies = graphData.edges.length > 0;
+
+  if (!hasDependencies) {
+    return (
+      <div className="text-center py-12 text-zinc-500">
+        <Icons.GitBranch />
+        <p className="mt-2">No dependencies defined</p>
+        <p className="text-xs text-zinc-600 mt-1">
+          Features with dependencies will show their relationships here
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Main Graph Visualization */}
+      <div className="lg:col-span-2 bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-zinc-100">Dependency Graph</h3>
+          <div className="flex items-center gap-4 text-xs text-zinc-500">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-amber-500" />
+              <span>Critical Path</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full border-2 border-red-500" />
+              <span>Blocked</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-emerald-500" />
+              <span>Ready</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Critical Path */}
+        {graphData.graph.criticalPath.length > 0 && (
+          <div className="mb-6 p-4 bg-amber-950/30 border border-amber-500/30 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-amber-400 font-medium">🔥 Critical Path</span>
+              <span className="text-xs text-amber-400/70">
+                ({graphData.graph.criticalPath.length} features)
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {graphData.graph.criticalPath.map((id, index) => {
+                const node = graphData.graph.nodes.get(id);
+                if (!node) return null;
+                return (
+                  <React.Fragment key={id}>
+                    <button
+                      onClick={() => setSelectedNode(id)}
+                      className={`px-2 py-1 text-sm rounded-lg transition-colors ${
+                        selectedNode === id
+                          ? 'bg-amber-500 text-zinc-900'
+                          : 'bg-amber-950/50 text-amber-300 hover:bg-amber-900/50'
+                      }`}
+                    >
+                      {node.feature.title}
+                    </button>
+                    {index < graphData.graph.criticalPath.length - 1 && (
+                      <span className="text-amber-500">→</span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Graph by Depth Level */}
+        <div className="space-y-4">
+          {Array.from(nodesByDepth.entries()).sort((a, b) => a[0] - b[0]).map(([depth, nodes]) => (
+            <div key={depth}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-zinc-500 font-medium">Level {depth}</span>
+                <div className="flex-1 h-px bg-zinc-800" />
+                <span className="text-xs text-zinc-600">{nodes.length} features</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {nodes.map(node => {
+                  const isSelected = selectedNode === node.id;
+                  const isOnCriticalPath = node.isCriticalPath;
+                  const isBlocked = !node.isReady;
+                  const status = node.status;
+
+                  let bgColor = 'bg-zinc-800 hover:bg-zinc-700';
+                  let borderColor = 'border-zinc-700';
+                  let textColor = 'text-zinc-300';
+
+                  if (status === 'completed') {
+                    bgColor = 'bg-emerald-950/50 hover:bg-emerald-900/50';
+                    borderColor = 'border-emerald-500/30';
+                    textColor = 'text-emerald-400';
+                  } else if (isBlocked) {
+                    borderColor = 'border-red-500/50';
+                  } else if (isOnCriticalPath) {
+                    bgColor = 'bg-amber-950/50 hover:bg-amber-900/50';
+                    borderColor = 'border-amber-500/30';
+                    textColor = 'text-amber-300';
+                  } else if (node.isReady) {
+                    borderColor = 'border-emerald-500/30';
+                  }
+
+                  if (isSelected) {
+                    borderColor = 'border-emerald-500';
+                    bgColor = 'bg-emerald-950/50';
+                  }
+
+                  return (
+                    <button
+                      key={node.id}
+                      onClick={() => setSelectedNode(isSelected ? null : node.id)}
+                      className={`px-3 py-2 text-sm rounded-lg border transition-all ${bgColor} ${borderColor} ${textColor}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {status === 'completed' && <span>✓</span>}
+                        {isBlocked && <span className="text-red-400">⚠</span>}
+                        {isOnCriticalPath && status !== 'completed' && <span className="text-amber-400">🔥</span>}
+                        <span className="max-w-32 truncate">{node.label}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Side Panel - Node Details */}
+      <div className="space-y-4">
+        {/* Stats Card */}
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+          <h3 className="text-sm font-medium text-zinc-400 mb-3">Graph Stats</h3>
+          <div className="grid grid-cols-2 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold text-zinc-100">{graphData.nodes.length}</div>
+              <div className="text-xs text-zinc-500">Features</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-zinc-100">{graphData.edges.length}</div>
+              <div className="text-xs text-zinc-500">Dependencies</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-emerald-400">{graphData.graph.roots.length}</div>
+              <div className="text-xs text-zinc-500">Root Features</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-amber-400">{maxDepth + 1}</div>
+              <div className="text-xs text-zinc-500">Depth Levels</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Selected Node Details */}
+        {selectedNodeData ? (
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-zinc-400">Feature Details</h3>
+              <button
+                onClick={() => setSelectedNode(null)}
+                className="text-zinc-500 hover:text-zinc-300"
+              >
+                <Icons.X />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium text-zinc-100">{selectedNodeData.node.feature.title}</h4>
+                <div className="flex items-center gap-2 mt-1">
+                  <StatusBadge status={selectedNodeData.node.feature.status} size="sm" />
+                  <PriorityBadge priority={selectedNodeData.node.feature.priority} size="sm" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div className="p-2 bg-zinc-800/50 rounded-lg">
+                  <div className="text-lg font-bold text-blue-400">{selectedNodeData.node.dependsOn.length}</div>
+                  <div className="text-xs text-zinc-500">Depends On</div>
+                </div>
+                <div className="p-2 bg-zinc-800/50 rounded-lg">
+                  <div className="text-lg font-bold text-emerald-400">{selectedNodeData.node.blocks.length}</div>
+                  <div className="text-xs text-zinc-500">Blocks</div>
+                </div>
+              </div>
+
+              {selectedNodeData.node.blockedBy.length > 0 && (
+                <div className="p-3 bg-red-950/30 border border-red-500/30 rounded-lg">
+                  <p className="text-xs text-red-400 font-medium mb-2">
+                    ⚠ Blocked by ({selectedNodeData.node.blockedBy.length})
+                  </p>
+                  <div className="space-y-1">
+                    {selectedNodeData.node.blockedBy.map(id => {
+                      const blocker = graphData.graph.nodes.get(id);
+                      return blocker ? (
+                        <button
+                          key={id}
+                          onClick={() => setSelectedNode(id)}
+                          className="block w-full text-left text-sm text-red-300 hover:text-red-200 truncate"
+                        >
+                          → {blocker.feature.title}
+                        </button>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {selectedNodeData.wouldUnblock.length > 0 && (
+                <div className="p-3 bg-emerald-950/30 border border-emerald-500/30 rounded-lg">
+                  <p className="text-xs text-emerald-400 font-medium mb-2">
+                    ✓ Completing would unblock ({selectedNodeData.wouldUnblock.length})
+                  </p>
+                  <div className="space-y-1">
+                    {selectedNodeData.wouldUnblock.map(feature => (
+                      <button
+                        key={feature.id}
+                        onClick={() => setSelectedNode(feature.id)}
+                        className="block w-full text-left text-sm text-emerald-300 hover:text-emerald-200 truncate"
+                      >
+                        → {feature.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedNodeData.impact > 0 && (
+                <div className="text-center p-3 bg-amber-950/30 border border-amber-500/30 rounded-lg">
+                  <div className="text-2xl font-bold text-amber-400">{selectedNodeData.impact}</div>
+                  <div className="text-xs text-amber-400/70">Total Impact (features affected)</div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 text-center text-zinc-500">
+            <Icons.GitBranch />
+            <p className="mt-2 text-sm">Select a feature to see details</p>
+          </div>
+        )}
+
+        {/* Cycles Warning */}
+        {graphData.graph.cycles.length > 0 && (
+          <div className="bg-red-950/30 border border-red-500/30 rounded-xl p-4">
+            <h3 className="text-sm font-medium text-red-400 mb-2">⚠ Circular Dependencies</h3>
+            <p className="text-xs text-red-400/70">
+              {graphData.graph.cycles.length} cycle(s) detected. This may cause issues.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ============================================================================
 // MAIN COMPONENT
@@ -748,24 +1289,20 @@ export const FeatureTrackerPage: React.FC = () => {
 
         {/* TIMELINE VIEW */}
         {viewMode === 'timeline' && (
-          <div className="text-center py-12 text-zinc-500">
-            <Icons.Calendar />
-            <p className="mt-2">Timeline view coming soon</p>
-            <p className="text-xs text-zinc-600 mt-1">
-              Will show chronological history of completed features
-            </p>
-          </div>
+          <TimelineView
+            features={filteredFeatures}
+            expandedFeatures={expandedFeatures}
+            onToggleExpand={toggleFeatureExpand}
+          />
         )}
 
         {/* DEPENDENCY VIEW */}
         {viewMode === 'dependency' && (
-          <div className="text-center py-12 text-zinc-500">
-            <Icons.GitBranch />
-            <p className="mt-2">Dependency graph coming soon</p>
-            <p className="text-xs text-zinc-600 mt-1">
-              Will visualize feature dependencies and critical paths
-            </p>
-          </div>
+          <DependencyView
+            features={filteredFeatures}
+            expandedFeatures={expandedFeatures}
+            onToggleExpand={toggleFeatureExpand}
+          />
         )}
       </div>
 
