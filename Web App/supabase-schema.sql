@@ -1239,7 +1239,7 @@ BEGIN
   ON CONFLICT (user_id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 -- Trigger to create profile on user signup
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -1267,7 +1267,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 -- Trigger to update profile when user is updated (e.g., anonymous to permanent)
 DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
@@ -3550,11 +3550,11 @@ CREATE OR REPLACE FUNCTION is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
-    SELECT 1 FROM user_profiles
+    SELECT 1 FROM public.user_profiles
     WHERE user_id = auth.uid() AND is_admin = true
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 -- ============================================================================
 -- DROP ALL EXISTING POLICIES (both old and new naming conventions)
@@ -4085,7 +4085,7 @@ BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = '';
 
 -- Drop triggers if they exist, then recreate
 DROP TRIGGER IF EXISTS update_species_updated_at ON species;
@@ -5083,14 +5083,14 @@ BEGIN
   SELECT COALESCE(MAX(
     CAST(SUBSTRING(passport_code FROM 12 FOR 4) AS INTEGER)
   ), 0) + 1 INTO v_seq
-  FROM batch_passports
+  FROM public.batch_passports
   WHERE passport_code LIKE 'ML-' || v_year || '-' || v_month || '-%';
 
   v_code := 'ML-' || v_year || '-' || v_month || '-' || LPAD(v_seq::TEXT, 4, '0');
 
   RETURN v_code;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = '';
 
 -- Function to record passport view (for anonymous tracking)
 CREATE OR REPLACE FUNCTION record_passport_view(
@@ -5109,7 +5109,7 @@ DECLARE
 BEGIN
   -- Find the passport
   SELECT id INTO v_passport_id
-  FROM batch_passports
+  FROM public.batch_passports
   WHERE passport_code = p_passport_code
     AND is_published = true;
 
@@ -5118,7 +5118,7 @@ BEGIN
   END IF;
 
   -- Record the view
-  INSERT INTO passport_views (
+  INSERT INTO public.passport_views (
     passport_id, viewer_token, ip_hash, user_agent, referrer, geo_country, geo_region
   ) VALUES (
     v_passport_id, p_viewer_token, p_ip_hash, p_user_agent, p_referrer, p_geo_country, p_geo_region
@@ -5126,7 +5126,7 @@ BEGIN
 
   RETURN jsonb_build_object('success', true, 'view_id', v_view_id);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION generate_passport_code TO authenticated;
@@ -5143,6 +5143,16 @@ CREATE TABLE IF NOT EXISTS schema_version (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT single_row CHECK (id = 1)
 );
+
+-- Enable RLS on schema_version (read-only for authenticated users)
+ALTER TABLE schema_version ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "schema_version_select" ON schema_version;
+CREATE POLICY "schema_version_select" ON schema_version
+  FOR SELECT TO authenticated
+  USING (true);
+
+-- No INSERT/UPDATE/DELETE policies - only service role can modify schema_version
 
 INSERT INTO schema_version (id, version) VALUES (1, 22)
 ON CONFLICT (id) DO UPDATE SET version = 22, updated_at = NOW();
