@@ -16,12 +16,29 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const payload: ConfigCheckPayload = JSON.parse(event.body || "{}");
 
     if (payload.service === "email") {
-      const configured = !!process.env.SENDGRID_API_KEY;
+      const hasResend = !!process.env.RESEND_API_KEY;
+      const hasSendGrid = !!process.env.SENDGRID_API_KEY;
+      const configured = hasResend || hasSendGrid;
+
+      // Build provider string (primary + fallback)
+      let provider: string | null = null;
+      if (hasResend && hasSendGrid) {
+        provider = "Resend (primary), SendGrid (fallback)";
+      } else if (hasResend) {
+        provider = "Resend";
+      } else if (hasSendGrid) {
+        provider = "SendGrid";
+      }
+
       return {
         statusCode: 200,
         body: JSON.stringify({
           configured,
-          provider: configured ? "SendGrid" : null,
+          provider,
+          providers: {
+            resend: hasResend,
+            sendgrid: hasSendGrid,
+          },
         }),
       };
     }

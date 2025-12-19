@@ -1,6 +1,6 @@
 // ============================================================================
 // ADMIN NOTIFICATION CONFIG - Configure email/SMS notification services
-// Uses Netlify Functions for email (SendGrid) and SMS (Twilio) delivery
+// Uses Netlify Functions for email (Resend or SendGrid) and SMS (Twilio) delivery
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
@@ -211,7 +211,7 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
               <div>
                 <h3 className="text-white font-medium">Email Service</h3>
                 <p className="text-xs text-zinc-500">
-                  {emailStatus.provider || 'SendGrid'}
+                  {emailStatus.provider || 'Resend / SendGrid'}
                 </p>
               </div>
             </div>
@@ -262,18 +262,28 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
               <p>To enable email notifications:</p>
               <ol className="list-decimal list-inside space-y-1 text-xs">
                 <li>Go to <strong>Netlify Dashboard</strong> → Site Settings → Environment Variables</li>
-                <li>Add: <code className="bg-zinc-800 px-1 rounded">SENDGRID_API_KEY</code></li>
+                <li>Add: <code className="bg-zinc-800 px-1 rounded">RESEND_API_KEY</code> or <code className="bg-zinc-800 px-1 rounded">SENDGRID_API_KEY</code></li>
                 <li>Optional: <code className="bg-zinc-800 px-1 rounded">FROM_EMAIL</code>, <code className="bg-zinc-800 px-1 rounded">FROM_NAME</code></li>
                 <li>Redeploy your site</li>
               </ol>
-              <a
-                href="https://sendgrid.com/en-us/solutions/email-api"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs mt-2"
-              >
-                Get SendGrid API Key <Icons.ExternalLink />
-              </a>
+              <div className="flex flex-wrap gap-3 mt-2">
+                <a
+                  href="https://resend.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs"
+                >
+                  Get Resend API Key <Icons.ExternalLink />
+                </a>
+                <a
+                  href="https://sendgrid.com/en-us/solutions/email-api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs"
+                >
+                  Get SendGrid API Key <Icons.ExternalLink />
+                </a>
+              </div>
             </div>
           )}
         </div>
@@ -382,10 +392,13 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
 
         <div className="space-y-4">
           <div>
-            <h4 className="text-sm font-medium text-emerald-400 mb-2">Email (SendGrid)</h4>
+            <h4 className="text-sm font-medium text-emerald-400 mb-2">Email (Resend or SendGrid)</h4>
+            <p className="text-xs text-zinc-500 mb-2">Choose one provider. If both are configured, Resend is used as primary with SendGrid as fallback.</p>
             <div className="bg-zinc-950 rounded-lg p-3 text-xs font-mono space-y-1">
+              <div><span className="text-purple-400">RESEND_API_KEY</span>=<span className="text-zinc-500">your_resend_api_key</span> <span className="text-zinc-600"># recommended</span></div>
+              <div><span className="text-zinc-600"># OR</span></div>
               <div><span className="text-purple-400">SENDGRID_API_KEY</span>=<span className="text-zinc-500">your_sendgrid_api_key</span></div>
-              <div><span className="text-purple-400">FROM_EMAIL</span>=<span className="text-zinc-500">noreply@yourdomain.com</span> <span className="text-zinc-600"># optional</span></div>
+              <div className="mt-2"><span className="text-purple-400">FROM_EMAIL</span>=<span className="text-zinc-500">noreply@yourdomain.com</span> <span className="text-zinc-600"># optional</span></div>
               <div><span className="text-purple-400">FROM_NAME</span>=<span className="text-zinc-500">MycoLab</span> <span className="text-zinc-600"># optional</span></div>
             </div>
           </div>

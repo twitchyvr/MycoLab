@@ -1,8 +1,5 @@
 import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 
-// SendGrid API endpoint
-const SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send";
-
 interface EmailPayload {
   to: string;
   subject: string;
@@ -14,21 +11,130 @@ interface EmailPayload {
   entityName?: string;
 }
 
+// Email sending with Resend
+async function sendWithResend(
+  to: string,
+  subject: string,
+  textBody: string,
+  htmlBody: string
+): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return { success: false, error: "Resend not configured" };
+
+  const fromEmail = process.env.FROM_EMAIL || "onboarding@resend.dev";
+  const fromName = process.env.FROM_NAME || "MycoLab";
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: `${fromName} <${fromEmail}>`,
+        to: [to],
+        subject,
+        text: textBody,
+        html: htmlBody,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Resend error:", errorData);
+      return { success: false, error: errorData.message || "Resend failed" };
+    }
+
+    const data = await response.json();
+    return { success: true, messageId: data.id };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+// Email sending with SendGrid
+async function sendWithSendGrid(
+  to: string,
+  subject: string,
+  textBody: string,
+  htmlBody: string
+): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) return { success: false, error: "SendGrid not configured" };
+
+  const fromEmail = process.env.FROM_EMAIL || "noreply@mycolab.app";
+  const fromName = process.env.FROM_NAME || "MycoLab";
+
+  try {
+    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: to }] }],
+        from: { email: fromEmail, name: fromName },
+        subject,
+        content: [
+          { type: "text/plain", value: textBody },
+          { type: "text/html", value: htmlBody },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("SendGrid error:", errorText);
+      return { success: false, error: "SendGrid failed" };
+    }
+
+    return { success: true, messageId: response.headers.get("x-message-id") || undefined };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+// Send email with automatic provider selection and fallback
+async function sendEmail(
+  to: string,
+  subject: string,
+  textBody: string,
+  htmlBody: string
+): Promise<{ success: boolean; error?: string; provider?: string; messageId?: string }> {
+  // Try Resend first if configured
+  if (process.env.RESEND_API_KEY) {
+    const result = await sendWithResend(to, subject, textBody, htmlBody);
+    if (result.success) return { ...result, provider: "Resend" };
+    console.log("Resend failed, trying fallback...", result.error);
+  }
+
+  // Try SendGrid as fallback
+  if (process.env.SENDGRID_API_KEY) {
+    const result = await sendWithSendGrid(to, subject, textBody, htmlBody);
+    if (result.success) return { ...result, provider: "SendGrid" };
+    console.log("SendGrid failed:", result.error);
+  }
+
+  // No providers configured or all failed
+  const providers = [];
+  if (!process.env.RESEND_API_KEY) providers.push("RESEND_API_KEY");
+  if (!process.env.SENDGRID_API_KEY) providers.push("SENDGRID_API_KEY");
+
+  if (providers.length === 2) {
+    return { success: false, error: `Email service not configured. Add ${providers.join(" or ")} to Netlify environment variables.` };
+  }
+
+  return { success: false, error: "Email delivery failed with all configured providers" };
+}
+
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   // Only allow POST
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
       body: JSON.stringify({ error: "Method not allowed" }),
-    };
-  }
-
-  // Check for API key
-  const apiKey = process.env.SENDGRID_API_KEY;
-  if (!apiKey) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Email service not configured" }),
     };
   }
 
@@ -41,9 +147,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         body: JSON.stringify({ error: "Missing required fields: to, subject, body" }),
       };
     }
-
-    const fromEmail = process.env.FROM_EMAIL || "noreply@mycolab.app";
-    const fromName = process.env.FROM_NAME || "MycoLab";
 
     // Build email content with nice formatting
     const htmlBody = `
@@ -62,29 +165,17 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       </div>
     `;
 
-    const response = await fetch(SENDGRID_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email: payload.to }] }],
-        from: { email: fromEmail, name: fromName },
-        subject: `[MycoLab] ${payload.subject}`,
-        content: [
-          { type: "text/plain", value: payload.body },
-          { type: "text/html", value: htmlBody },
-        ],
-      }),
-    });
+    const result = await sendEmail(
+      payload.to,
+      `[MycoLab] ${payload.subject}`,
+      payload.body,
+      htmlBody
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("SendGrid error:", errorText);
+    if (!result.success) {
       return {
         statusCode: 500,
-        body: JSON.stringify({ error: "Failed to send email", details: errorText }),
+        body: JSON.stringify({ error: result.error }),
       };
     }
 
@@ -92,7 +183,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       statusCode: 200,
       body: JSON.stringify({
         success: true,
-        messageId: response.headers.get("x-message-id"),
+        messageId: result.messageId,
+        provider: result.provider,
       }),
     };
   } catch (error) {
