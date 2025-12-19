@@ -6019,6 +6019,811 @@ DROP TRIGGER IF EXISTS update_suggestion_messages_updated_at ON suggestion_messa
 -- Note: suggestion_messages doesn't have updated_at column, so no trigger needed
 
 -- ============================================================================
+-- IMMUTABLE DATABASE ARCHITECTURE (v24)
+-- Append-only database design for complete audit trail and data integrity
+-- Core principle: Original records are never modified or deleted
+-- Instead, amendments create new versioned records that supersede originals
+-- ============================================================================
+--
+-- BENEFITS:
+-- 1. Complete audit trail - every change preserved forever
+-- 2. Data integrity - no accidental data loss or corruption
+-- 3. Temporal queries - "what did this grow look like on day 14?"
+-- 4. Compliance ready - perfect for regulatory requirements
+-- 5. Analytics accuracy - historical data reflects reality at that moment
+-- ============================================================================
+
+-- ============================================================================
+-- PHASE 1: Add immutability fields to CULTURES table
+-- ============================================================================
+DO $$
+BEGIN
+  RAISE NOTICE 'Starting immutable database migration for cultures table...';
+
+  -- Version tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'version') THEN
+    ALTER TABLE cultures ADD COLUMN version INTEGER DEFAULT 1;
+    RAISE NOTICE 'Added version column to cultures';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'record_group_id') THEN
+    ALTER TABLE cultures ADD COLUMN record_group_id UUID;
+    -- Backfill: existing records get their id as record_group_id
+    UPDATE cultures SET record_group_id = id WHERE record_group_id IS NULL;
+    RAISE NOTICE 'Added and backfilled record_group_id column to cultures';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'is_current') THEN
+    ALTER TABLE cultures ADD COLUMN is_current BOOLEAN DEFAULT true;
+    RAISE NOTICE 'Added is_current column to cultures';
+  END IF;
+
+  -- Temporal validity
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'valid_from') THEN
+    ALTER TABLE cultures ADD COLUMN valid_from TIMESTAMPTZ DEFAULT NOW();
+    UPDATE cultures SET valid_from = created_at WHERE valid_from IS NULL;
+    RAISE NOTICE 'Added valid_from column to cultures';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'valid_to') THEN
+    ALTER TABLE cultures ADD COLUMN valid_to TIMESTAMPTZ;
+    RAISE NOTICE 'Added valid_to column to cultures';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'superseded_by_id') THEN
+    ALTER TABLE cultures ADD COLUMN superseded_by_id UUID REFERENCES cultures(id);
+    RAISE NOTICE 'Added superseded_by_id column to cultures';
+  END IF;
+
+  -- Archival (soft delete)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'is_archived') THEN
+    ALTER TABLE cultures ADD COLUMN is_archived BOOLEAN DEFAULT false;
+    RAISE NOTICE 'Added is_archived column to cultures';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'archived_at') THEN
+    ALTER TABLE cultures ADD COLUMN archived_at TIMESTAMPTZ;
+    RAISE NOTICE 'Added archived_at column to cultures';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'archived_by') THEN
+    ALTER TABLE cultures ADD COLUMN archived_by UUID REFERENCES auth.users(id);
+    RAISE NOTICE 'Added archived_by column to cultures';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'archive_reason') THEN
+    ALTER TABLE cultures ADD COLUMN archive_reason TEXT;
+    RAISE NOTICE 'Added archive_reason column to cultures';
+  END IF;
+
+  -- Amendment tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'amendment_type') THEN
+    ALTER TABLE cultures ADD COLUMN amendment_type TEXT DEFAULT 'original';
+    RAISE NOTICE 'Added amendment_type column to cultures';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'amendment_reason') THEN
+    ALTER TABLE cultures ADD COLUMN amendment_reason TEXT;
+    RAISE NOTICE 'Added amendment_reason column to cultures';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'amends_record_id') THEN
+    ALTER TABLE cultures ADD COLUMN amends_record_id UUID REFERENCES cultures(id);
+    RAISE NOTICE 'Added amends_record_id column to cultures';
+  END IF;
+
+  RAISE NOTICE 'Cultures immutability columns migration complete';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error in cultures immutability migration: %', SQLERRM;
+END $$;
+
+-- Add amendment_type check constraint
+DO $$ BEGIN
+  ALTER TABLE cultures ADD CONSTRAINT cultures_amendment_type_check
+    CHECK (amendment_type IN ('original', 'correction', 'update', 'void', 'merge'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Create indexes for efficient lookups on cultures
+CREATE INDEX IF NOT EXISTS idx_cultures_current
+  ON cultures(record_group_id, is_current)
+  WHERE is_current = true AND (is_archived = false OR is_archived IS NULL);
+
+CREATE INDEX IF NOT EXISTS idx_cultures_temporal
+  ON cultures(record_group_id, valid_from, valid_to);
+
+CREATE INDEX IF NOT EXISTS idx_cultures_versions
+  ON cultures(record_group_id, version);
+
+-- ============================================================================
+-- PHASE 1: Add immutability fields to GROWS table
+-- ============================================================================
+DO $$
+BEGIN
+  RAISE NOTICE 'Starting immutable database migration for grows table...';
+
+  -- Version tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'version') THEN
+    ALTER TABLE grows ADD COLUMN version INTEGER DEFAULT 1;
+    RAISE NOTICE 'Added version column to grows';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'record_group_id') THEN
+    ALTER TABLE grows ADD COLUMN record_group_id UUID;
+    UPDATE grows SET record_group_id = id WHERE record_group_id IS NULL;
+    RAISE NOTICE 'Added and backfilled record_group_id column to grows';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'is_current') THEN
+    ALTER TABLE grows ADD COLUMN is_current BOOLEAN DEFAULT true;
+    RAISE NOTICE 'Added is_current column to grows';
+  END IF;
+
+  -- Temporal validity
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'valid_from') THEN
+    ALTER TABLE grows ADD COLUMN valid_from TIMESTAMPTZ DEFAULT NOW();
+    UPDATE grows SET valid_from = created_at WHERE valid_from IS NULL;
+    RAISE NOTICE 'Added valid_from column to grows';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'valid_to') THEN
+    ALTER TABLE grows ADD COLUMN valid_to TIMESTAMPTZ;
+    RAISE NOTICE 'Added valid_to column to grows';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'superseded_by_id') THEN
+    ALTER TABLE grows ADD COLUMN superseded_by_id UUID REFERENCES grows(id);
+    RAISE NOTICE 'Added superseded_by_id column to grows';
+  END IF;
+
+  -- Archival
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'is_archived') THEN
+    ALTER TABLE grows ADD COLUMN is_archived BOOLEAN DEFAULT false;
+    RAISE NOTICE 'Added is_archived column to grows';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'archived_at') THEN
+    ALTER TABLE grows ADD COLUMN archived_at TIMESTAMPTZ;
+    RAISE NOTICE 'Added archived_at column to grows';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'archived_by') THEN
+    ALTER TABLE grows ADD COLUMN archived_by UUID REFERENCES auth.users(id);
+    RAISE NOTICE 'Added archived_by column to grows';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'archive_reason') THEN
+    ALTER TABLE grows ADD COLUMN archive_reason TEXT;
+    RAISE NOTICE 'Added archive_reason column to grows';
+  END IF;
+
+  -- Amendment tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'amendment_type') THEN
+    ALTER TABLE grows ADD COLUMN amendment_type TEXT DEFAULT 'original';
+    RAISE NOTICE 'Added amendment_type column to grows';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'amendment_reason') THEN
+    ALTER TABLE grows ADD COLUMN amendment_reason TEXT;
+    RAISE NOTICE 'Added amendment_reason column to grows';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'amends_record_id') THEN
+    ALTER TABLE grows ADD COLUMN amends_record_id UUID REFERENCES grows(id);
+    RAISE NOTICE 'Added amends_record_id column to grows';
+  END IF;
+
+  -- Source culture snapshot (denormalized for historical accuracy)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'source_culture_snapshot') THEN
+    ALTER TABLE grows ADD COLUMN source_culture_snapshot JSONB;
+    RAISE NOTICE 'Added source_culture_snapshot column to grows';
+  END IF;
+
+  RAISE NOTICE 'Grows immutability columns migration complete';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error in grows immutability migration: %', SQLERRM;
+END $$;
+
+-- Add amendment_type check constraint for grows
+DO $$ BEGIN
+  ALTER TABLE grows ADD CONSTRAINT grows_amendment_type_check
+    CHECK (amendment_type IN ('original', 'correction', 'update', 'void', 'merge'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Create indexes for efficient lookups on grows
+CREATE INDEX IF NOT EXISTS idx_grows_current
+  ON grows(record_group_id, is_current)
+  WHERE is_current = true AND (is_archived = false OR is_archived IS NULL);
+
+CREATE INDEX IF NOT EXISTS idx_grows_temporal
+  ON grows(record_group_id, valid_from, valid_to);
+
+CREATE INDEX IF NOT EXISTS idx_grows_versions
+  ON grows(record_group_id, version);
+
+-- ============================================================================
+-- PHASE 1: Add immutability fields to PREPARED_SPAWN table
+-- ============================================================================
+DO $$
+BEGIN
+  RAISE NOTICE 'Starting immutable database migration for prepared_spawn table...';
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'version') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN version INTEGER DEFAULT 1;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'record_group_id') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN record_group_id UUID;
+    UPDATE prepared_spawn SET record_group_id = id WHERE record_group_id IS NULL;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'is_current') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN is_current BOOLEAN DEFAULT true;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'valid_from') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN valid_from TIMESTAMPTZ DEFAULT NOW();
+    UPDATE prepared_spawn SET valid_from = created_at WHERE valid_from IS NULL;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'valid_to') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN valid_to TIMESTAMPTZ;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'superseded_by_id') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN superseded_by_id UUID REFERENCES prepared_spawn(id);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'is_archived') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN is_archived BOOLEAN DEFAULT false;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'archived_at') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN archived_at TIMESTAMPTZ;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'archived_by') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN archived_by UUID REFERENCES auth.users(id);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'archive_reason') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN archive_reason TEXT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'amendment_type') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN amendment_type TEXT DEFAULT 'original';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'amendment_reason') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN amendment_reason TEXT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'amends_record_id') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN amends_record_id UUID REFERENCES prepared_spawn(id);
+  END IF;
+
+  RAISE NOTICE 'Prepared spawn immutability columns migration complete';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error in prepared_spawn immutability migration: %', SQLERRM;
+END $$;
+
+-- Create indexes for prepared_spawn
+CREATE INDEX IF NOT EXISTS idx_prepared_spawn_current
+  ON prepared_spawn(record_group_id, is_current)
+  WHERE is_current = true AND (is_archived = false OR is_archived IS NULL);
+
+-- ============================================================================
+-- NEW HISTORY TABLES (Append-Only)
+-- ============================================================================
+
+-- ============================================================================
+-- OBSERVATION HISTORY (immutable log of all observations)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS observation_history (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- What this observation is about
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('culture', 'grow', 'prepared_spawn', 'location')),
+  entity_id UUID NOT NULL,
+  entity_record_group_id UUID,  -- Links to logical entity across versions
+
+  -- Observation data (immutable once created)
+  observed_at TIMESTAMPTZ NOT NULL,
+  observation_type TEXT NOT NULL,
+  title TEXT,
+  notes TEXT,
+
+  -- Measurements at time of observation
+  temperature DECIMAL(5,2),
+  humidity DECIMAL(5,2),
+  co2_ppm INTEGER,
+  colonization_percent INTEGER CHECK (colonization_percent BETWEEN 0 AND 100),
+  health_rating INTEGER CHECK (health_rating BETWEEN 1 AND 5),
+
+  -- Stage context (for grows)
+  stage TEXT,
+
+  -- Media attachments
+  images TEXT[],
+
+  -- Immutability tracking
+  recorded_at TIMESTAMPTZ DEFAULT NOW(),
+  recorded_by UUID REFERENCES auth.users(id),
+
+  -- Amendment support (observations can be corrected)
+  is_current BOOLEAN DEFAULT true,
+  superseded_by_id UUID REFERENCES observation_history(id),
+  amendment_reason TEXT,
+
+  -- Standard fields
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for observation_history
+CREATE INDEX IF NOT EXISTS idx_observation_history_entity ON observation_history(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_observation_history_entity_group ON observation_history(entity_type, entity_record_group_id);
+CREATE INDEX IF NOT EXISTS idx_observation_history_observed_at ON observation_history(observed_at);
+CREATE INDEX IF NOT EXISTS idx_observation_history_current ON observation_history(entity_id, is_current) WHERE is_current = true;
+CREATE INDEX IF NOT EXISTS idx_observation_history_user ON observation_history(user_id);
+
+-- RLS for observation_history
+ALTER TABLE observation_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "observation_history_select_own" ON observation_history;
+CREATE POLICY "observation_history_select_own"
+  ON observation_history FOR SELECT
+  USING (user_id = auth.uid() OR user_id IS NULL);
+
+DROP POLICY IF EXISTS "observation_history_insert_own" ON observation_history;
+CREATE POLICY "observation_history_insert_own"
+  ON observation_history FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+-- ============================================================================
+-- HARVEST HISTORY (immutable log of all harvests)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS harvest_history (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- Link to grow
+  grow_id UUID NOT NULL,
+  grow_record_group_id UUID NOT NULL,  -- Links to logical grow across versions
+
+  -- Harvest data (immutable)
+  flush_number INTEGER NOT NULL,
+  harvest_date DATE NOT NULL,
+  wet_weight_g DECIMAL(10,2),
+  dry_weight_g DECIMAL(10,2),
+  mushroom_count INTEGER,
+  quality TEXT CHECK (quality IN ('excellent', 'good', 'fair', 'poor')),
+
+  -- Context
+  notes TEXT,
+  images TEXT[],
+
+  -- Recording metadata
+  recorded_at TIMESTAMPTZ DEFAULT NOW(),
+  recorded_by UUID REFERENCES auth.users(id),
+
+  -- Amendment support
+  is_current BOOLEAN DEFAULT true,
+  superseded_by_id UUID REFERENCES harvest_history(id),
+  amendment_reason TEXT,
+
+  -- Standard fields
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for harvest_history
+CREATE INDEX IF NOT EXISTS idx_harvest_history_grow ON harvest_history(grow_id);
+CREATE INDEX IF NOT EXISTS idx_harvest_history_grow_group ON harvest_history(grow_record_group_id);
+CREATE INDEX IF NOT EXISTS idx_harvest_history_date ON harvest_history(harvest_date);
+CREATE INDEX IF NOT EXISTS idx_harvest_history_current ON harvest_history(grow_id, is_current) WHERE is_current = true;
+CREATE INDEX IF NOT EXISTS idx_harvest_history_user ON harvest_history(user_id);
+
+-- RLS for harvest_history
+ALTER TABLE harvest_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "harvest_history_select_own" ON harvest_history;
+CREATE POLICY "harvest_history_select_own"
+  ON harvest_history FOR SELECT
+  USING (user_id = auth.uid() OR user_id IS NULL);
+
+DROP POLICY IF EXISTS "harvest_history_insert_own" ON harvest_history;
+CREATE POLICY "harvest_history_insert_own"
+  ON harvest_history FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+-- ============================================================================
+-- TRANSFER HISTORY (immutable log of all culture transfers)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS transfer_history (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- Source culture
+  from_culture_id UUID NOT NULL,
+  from_culture_record_group_id UUID NOT NULL,
+
+  -- Destination (culture or grow)
+  to_entity_type TEXT NOT NULL CHECK (to_entity_type IN ('culture', 'grow', 'grain_spawn', 'bulk')),
+  to_entity_id UUID,
+  to_entity_record_group_id UUID,
+
+  -- Transfer details (immutable)
+  transfer_date TIMESTAMPTZ NOT NULL,
+  quantity DECIMAL(10,2) NOT NULL,
+  unit TEXT NOT NULL,
+
+  -- Context
+  notes TEXT,
+
+  -- Recording metadata
+  recorded_at TIMESTAMPTZ DEFAULT NOW(),
+  recorded_by UUID REFERENCES auth.users(id),
+
+  -- Amendment support
+  is_current BOOLEAN DEFAULT true,
+  superseded_by_id UUID REFERENCES transfer_history(id),
+  amendment_reason TEXT,
+
+  -- Standard fields
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for transfer_history
+CREATE INDEX IF NOT EXISTS idx_transfer_history_from ON transfer_history(from_culture_id);
+CREATE INDEX IF NOT EXISTS idx_transfer_history_from_group ON transfer_history(from_culture_record_group_id);
+CREATE INDEX IF NOT EXISTS idx_transfer_history_to ON transfer_history(to_entity_type, to_entity_id);
+CREATE INDEX IF NOT EXISTS idx_transfer_history_date ON transfer_history(transfer_date);
+CREATE INDEX IF NOT EXISTS idx_transfer_history_user ON transfer_history(user_id);
+
+-- RLS for transfer_history
+ALTER TABLE transfer_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "transfer_history_select_own" ON transfer_history;
+CREATE POLICY "transfer_history_select_own"
+  ON transfer_history FOR SELECT
+  USING (user_id = auth.uid() OR user_id IS NULL);
+
+DROP POLICY IF EXISTS "transfer_history_insert_own" ON transfer_history;
+CREATE POLICY "transfer_history_insert_own"
+  ON transfer_history FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+-- ============================================================================
+-- STAGE TRANSITION HISTORY (immutable log of stage changes)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS stage_transition_history (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- What transitioned
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('grow', 'culture', 'prepared_spawn')),
+  entity_id UUID NOT NULL,
+  entity_record_group_id UUID NOT NULL,
+
+  -- Transition details (immutable)
+  from_stage TEXT,
+  to_stage TEXT NOT NULL,
+  transitioned_at TIMESTAMPTZ NOT NULL,
+
+  -- Context
+  notes TEXT,
+  trigger TEXT CHECK (trigger IN ('manual', 'automatic', 'scheduled', 'condition')),
+
+  -- Recording metadata
+  recorded_at TIMESTAMPTZ DEFAULT NOW(),
+  recorded_by UUID REFERENCES auth.users(id),
+
+  -- Standard fields
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for stage_transition_history
+CREATE INDEX IF NOT EXISTS idx_stage_transition_entity ON stage_transition_history(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_stage_transition_entity_group ON stage_transition_history(entity_type, entity_record_group_id);
+CREATE INDEX IF NOT EXISTS idx_stage_transition_date ON stage_transition_history(transitioned_at);
+CREATE INDEX IF NOT EXISTS idx_stage_transition_user ON stage_transition_history(user_id);
+
+-- RLS for stage_transition_history
+ALTER TABLE stage_transition_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "stage_transition_history_select_own" ON stage_transition_history;
+CREATE POLICY "stage_transition_history_select_own"
+  ON stage_transition_history FOR SELECT
+  USING (user_id = auth.uid() OR user_id IS NULL);
+
+DROP POLICY IF EXISTS "stage_transition_history_insert_own" ON stage_transition_history;
+CREATE POLICY "stage_transition_history_insert_own"
+  ON stage_transition_history FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+-- ============================================================================
+-- DATA AMENDMENT LOG (tracks all corrections/updates)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS data_amendment_log (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- What was amended
+  entity_type TEXT NOT NULL,
+  original_record_id UUID NOT NULL,
+  new_record_id UUID NOT NULL,
+  record_group_id UUID NOT NULL,
+
+  -- Amendment details
+  amendment_type TEXT NOT NULL CHECK (amendment_type IN ('correction', 'update', 'void', 'merge', 'archive', 'bulk_import')),
+  reason TEXT NOT NULL,
+
+  -- What changed (JSON diff)
+  changes_summary JSONB,  -- { "field": { "old": value, "new": value } }
+
+  -- Bulk operation reference (if part of bulk import)
+  bulk_operation_id UUID,
+
+  -- Who and when
+  amended_at TIMESTAMPTZ DEFAULT NOW(),
+  amended_by UUID REFERENCES auth.users(id),
+
+  -- For auditing (optional - set by application)
+  ip_address INET,
+  user_agent TEXT,
+
+  -- Standard fields
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for data_amendment_log
+CREATE INDEX IF NOT EXISTS idx_amendment_log_entity ON data_amendment_log(entity_type, original_record_id);
+CREATE INDEX IF NOT EXISTS idx_amendment_log_record_group ON data_amendment_log(record_group_id);
+CREATE INDEX IF NOT EXISTS idx_amendment_log_date ON data_amendment_log(amended_at);
+CREATE INDEX IF NOT EXISTS idx_amendment_log_user ON data_amendment_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_amendment_log_type ON data_amendment_log(amendment_type);
+
+-- RLS for data_amendment_log
+ALTER TABLE data_amendment_log ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "data_amendment_log_select_own" ON data_amendment_log;
+CREATE POLICY "data_amendment_log_select_own"
+  ON data_amendment_log FOR SELECT
+  USING (user_id = auth.uid() OR user_id IS NULL);
+
+DROP POLICY IF EXISTS "data_amendment_log_insert_own" ON data_amendment_log;
+CREATE POLICY "data_amendment_log_insert_own"
+  ON data_amendment_log FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+-- ============================================================================
+-- BULK OPERATIONS TRACKING (for import/migration tracking)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS bulk_operations (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  operation_type TEXT NOT NULL CHECK (operation_type IN ('import', 'migration', 'correction', 'archive')),
+  entity_type TEXT NOT NULL,
+  record_count INTEGER NOT NULL,
+  source_description TEXT,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ,
+  status TEXT CHECK (status IN ('running', 'completed', 'failed', 'rolled_back')) DEFAULT 'running',
+  error_message TEXT,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS for bulk_operations
+ALTER TABLE bulk_operations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "bulk_operations_select_own" ON bulk_operations;
+CREATE POLICY "bulk_operations_select_own"
+  ON bulk_operations FOR SELECT
+  USING (user_id = auth.uid() OR user_id IS NULL);
+
+DROP POLICY IF EXISTS "bulk_operations_insert_own" ON bulk_operations;
+CREATE POLICY "bulk_operations_insert_own"
+  ON bulk_operations FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+-- ============================================================================
+-- STORED PROCEDURE: amend_record
+-- Atomically creates a new version of a record and marks the old one as superseded
+-- ============================================================================
+CREATE OR REPLACE FUNCTION amend_record(
+  p_table_name TEXT,
+  p_original_id UUID,
+  p_new_record JSONB,
+  p_reason TEXT,
+  p_amendment_type TEXT
+) RETURNS UUID AS $$
+DECLARE
+  v_new_id UUID;
+  v_record_group_id UUID;
+  v_current_version INTEGER;
+  v_user_id UUID;
+BEGIN
+  -- Get current user
+  v_user_id := auth.uid();
+
+  -- Get record_group_id and current version from original
+  EXECUTE format(
+    'SELECT record_group_id, version FROM %I WHERE id = $1',
+    p_table_name
+  ) INTO v_record_group_id, v_current_version USING p_original_id;
+
+  IF v_record_group_id IS NULL THEN
+    RAISE EXCEPTION 'Original record not found: %', p_original_id;
+  END IF;
+
+  -- Mark original as superseded
+  EXECUTE format(
+    'UPDATE %I SET
+      is_current = false,
+      valid_to = NOW(),
+      updated_at = NOW()
+    WHERE id = $1',
+    p_table_name
+  ) USING p_original_id;
+
+  -- Get new ID from the record or generate one
+  v_new_id := COALESCE((p_new_record->>'id')::UUID, uuid_generate_v4());
+
+  -- Insert new version (table-specific - handled by application layer)
+  -- The application should call this function after inserting the new record
+
+  -- Update superseded_by on original
+  EXECUTE format(
+    'UPDATE %I SET superseded_by_id = $1 WHERE id = $2',
+    p_table_name
+  ) USING v_new_id, p_original_id;
+
+  -- Log to amendment log
+  INSERT INTO data_amendment_log (
+    entity_type,
+    original_record_id,
+    new_record_id,
+    record_group_id,
+    amendment_type,
+    reason,
+    amended_by,
+    user_id
+  ) VALUES (
+    p_table_name,
+    p_original_id,
+    v_new_id,
+    v_record_group_id,
+    p_amendment_type,
+    p_reason,
+    v_user_id,
+    v_user_id
+  );
+
+  RETURN v_new_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================================
+-- STORED PROCEDURE: archive_record
+-- Soft-delete a record with reason tracking
+-- ============================================================================
+CREATE OR REPLACE FUNCTION archive_record(
+  p_table_name TEXT,
+  p_record_id UUID,
+  p_reason TEXT
+) RETURNS void AS $$
+DECLARE
+  v_user_id UUID;
+  v_record_group_id UUID;
+BEGIN
+  v_user_id := auth.uid();
+
+  -- Get record_group_id
+  EXECUTE format(
+    'SELECT record_group_id FROM %I WHERE id = $1',
+    p_table_name
+  ) INTO v_record_group_id USING p_record_id;
+
+  -- Mark as archived
+  EXECUTE format(
+    'UPDATE %I SET
+      is_archived = true,
+      archived_at = NOW(),
+      archived_by = $1,
+      archive_reason = $2,
+      valid_to = NOW(),
+      is_current = false,
+      updated_at = NOW()
+    WHERE id = $3',
+    p_table_name
+  ) USING v_user_id, p_reason, p_record_id;
+
+  -- Log the archive
+  INSERT INTO data_amendment_log (
+    entity_type,
+    original_record_id,
+    new_record_id,
+    record_group_id,
+    amendment_type,
+    reason,
+    amended_by,
+    user_id
+  ) VALUES (
+    p_table_name,
+    p_record_id,
+    p_record_id,  -- Same record, just archived
+    v_record_group_id,
+    'archive',
+    p_reason,
+    v_user_id,
+    v_user_id
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================================
+-- HELPER FUNCTION: get_record_history
+-- Returns all versions of a record by record_group_id
+-- ============================================================================
+CREATE OR REPLACE FUNCTION get_record_history(
+  p_table_name TEXT,
+  p_record_group_id UUID
+) RETURNS TABLE (
+  id UUID,
+  version INTEGER,
+  is_current BOOLEAN,
+  valid_from TIMESTAMPTZ,
+  valid_to TIMESTAMPTZ,
+  amendment_type TEXT,
+  amendment_reason TEXT
+) AS $$
+BEGIN
+  RETURN QUERY EXECUTE format(
+    'SELECT id, version, is_current, valid_from, valid_to, amendment_type, amendment_reason
+     FROM %I
+     WHERE record_group_id = $1
+     ORDER BY version ASC',
+    p_table_name
+  ) USING p_record_group_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================================
+-- HELPER FUNCTION: get_record_at_time
+-- Returns the version of a record that was valid at a specific point in time
+-- ============================================================================
+CREATE OR REPLACE FUNCTION get_record_at_time(
+  p_table_name TEXT,
+  p_record_group_id UUID,
+  p_as_of TIMESTAMPTZ
+) RETURNS UUID AS $$
+DECLARE
+  v_record_id UUID;
+BEGIN
+  EXECUTE format(
+    'SELECT id FROM %I
+     WHERE record_group_id = $1
+       AND valid_from <= $2
+       AND (valid_to IS NULL OR valid_to > $2)
+     ORDER BY version DESC
+     LIMIT 1',
+    p_table_name
+  ) INTO v_record_id USING p_record_group_id, p_as_of;
+
+  RETURN v_record_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION amend_record(TEXT, UUID, JSONB, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION archive_record(TEXT, UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_record_history(TEXT, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_record_at_time(TEXT, UUID, TIMESTAMPTZ) TO authenticated;
+
+RAISE NOTICE 'Immutable database architecture migration complete!';
+
+-- ============================================================================
 -- SUCCESS MESSAGE
 -- ============================================================================
 -- If you see this, the schema was applied successfully!

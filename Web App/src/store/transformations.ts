@@ -427,6 +427,20 @@ export const transformCultureFromDb = (row: any): Culture => ({
   updatedAt: new Date(row.updated_at),
   observations: [],
   transfers: [],
+  // Immutability fields
+  version: row.version ?? 1,
+  recordGroupId: row.record_group_id ?? row.id,
+  isCurrent: row.is_current ?? true,
+  validFrom: row.valid_from ? new Date(row.valid_from) : undefined,
+  validTo: row.valid_to ? new Date(row.valid_to) : undefined,
+  supersededById: row.superseded_by_id,
+  isArchived: row.is_archived ?? false,
+  archivedAt: row.archived_at ? new Date(row.archived_at) : undefined,
+  archivedBy: row.archived_by,
+  archiveReason: row.archive_reason,
+  amendmentType: row.amendment_type ?? 'original',
+  amendmentReason: row.amendment_reason,
+  amendsRecordId: row.amends_record_id,
 });
 
 export const transformCultureToDb = (culture: Partial<Culture>) => {
@@ -450,6 +464,20 @@ export const transformCultureToDb = (culture: Partial<Culture>) => {
   if (culture.supplierId !== undefined) result.supplier_id = culture.supplierId;
   if (culture.lotNumber !== undefined) result.lot_number = culture.lotNumber;
   if (culture.expiresAt !== undefined) result.expires_at = culture.expiresAt instanceof Date ? culture.expiresAt.toISOString() : culture.expiresAt;
+  // Immutability fields
+  if (culture.version !== undefined) result.version = culture.version;
+  if (culture.recordGroupId !== undefined) result.record_group_id = culture.recordGroupId;
+  if (culture.isCurrent !== undefined) result.is_current = culture.isCurrent;
+  if (culture.validFrom !== undefined) result.valid_from = culture.validFrom instanceof Date ? culture.validFrom.toISOString() : culture.validFrom;
+  if (culture.validTo !== undefined) result.valid_to = culture.validTo instanceof Date ? culture.validTo.toISOString() : culture.validTo;
+  if (culture.supersededById !== undefined) result.superseded_by_id = culture.supersededById;
+  if (culture.isArchived !== undefined) result.is_archived = culture.isArchived;
+  if (culture.archivedAt !== undefined) result.archived_at = culture.archivedAt instanceof Date ? culture.archivedAt.toISOString() : culture.archivedAt;
+  if (culture.archivedBy !== undefined) result.archived_by = culture.archivedBy;
+  if (culture.archiveReason !== undefined) result.archive_reason = culture.archiveReason;
+  if (culture.amendmentType !== undefined) result.amendment_type = culture.amendmentType;
+  if (culture.amendmentReason !== undefined) result.amendment_reason = culture.amendmentReason;
+  if (culture.amendsRecordId !== undefined) result.amends_record_id = culture.amendsRecordId;
   return result;
 };
 
@@ -485,6 +513,21 @@ export const transformGrowFromDb = (row: any): Grow => ({
   createdAt: new Date(row.created_at),
   observations: [],
   flushes: [],
+  // Immutability fields
+  version: row.version ?? 1,
+  recordGroupId: row.record_group_id ?? row.id,
+  isCurrent: row.is_current ?? true,
+  validFrom: row.valid_from ? new Date(row.valid_from) : undefined,
+  validTo: row.valid_to ? new Date(row.valid_to) : undefined,
+  supersededById: row.superseded_by_id,
+  isArchived: row.is_archived ?? false,
+  archivedAt: row.archived_at ? new Date(row.archived_at) : undefined,
+  archivedBy: row.archived_by,
+  archiveReason: row.archive_reason,
+  amendmentType: row.amendment_type ?? 'original',
+  amendmentReason: row.amendment_reason,
+  amendsRecordId: row.amends_record_id,
+  sourceCultureSnapshot: row.source_culture_snapshot,
 });
 
 export const transformGrowToDb = (grow: Partial<Grow>) => {
@@ -512,6 +555,21 @@ export const transformGrowToDb = (grow: Partial<Grow>) => {
   if (grow.totalYield !== undefined) result.total_yield = grow.totalYield;
   if (grow.estimatedCost !== undefined) result.estimated_cost = grow.estimatedCost;
   if (grow.notes !== undefined) result.notes = grow.notes;
+  // Immutability fields
+  if (grow.version !== undefined) result.version = grow.version;
+  if (grow.recordGroupId !== undefined) result.record_group_id = grow.recordGroupId;
+  if (grow.isCurrent !== undefined) result.is_current = grow.isCurrent;
+  if (grow.validFrom !== undefined) result.valid_from = grow.validFrom instanceof Date ? grow.validFrom.toISOString() : grow.validFrom;
+  if (grow.validTo !== undefined) result.valid_to = grow.validTo instanceof Date ? grow.validTo.toISOString() : grow.validTo;
+  if (grow.supersededById !== undefined) result.superseded_by_id = grow.supersededById;
+  if (grow.isArchived !== undefined) result.is_archived = grow.isArchived;
+  if (grow.archivedAt !== undefined) result.archived_at = grow.archivedAt instanceof Date ? grow.archivedAt.toISOString() : grow.archivedAt;
+  if (grow.archivedBy !== undefined) result.archived_by = grow.archivedBy;
+  if (grow.archiveReason !== undefined) result.archive_reason = grow.archiveReason;
+  if (grow.amendmentType !== undefined) result.amendment_type = grow.amendmentType;
+  if (grow.amendmentReason !== undefined) result.amendment_reason = grow.amendmentReason;
+  if (grow.amendsRecordId !== undefined) result.amends_record_id = grow.amendsRecordId;
+  if (grow.sourceCultureSnapshot !== undefined) result.source_culture_snapshot = grow.sourceCultureSnapshot;
   return result;
 };
 
@@ -877,6 +935,21 @@ export const transformPreparedSpawnFromDb = (row: any): PreparedSpawn => ({
   createdAt: row.created_at ? new Date(row.created_at) : new Date(),
   updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
   isActive: row.is_active ?? true,
+
+  // Immutability fields
+  version: row.version ?? 1,
+  recordGroupId: row.record_group_id ?? row.id,
+  isCurrent: row.is_current ?? true,
+  validFrom: row.valid_from ? new Date(row.valid_from) : undefined,
+  validTo: row.valid_to ? new Date(row.valid_to) : undefined,
+  supersededById: row.superseded_by_id,
+  isArchived: row.is_archived ?? false,
+  archivedAt: row.archived_at ? new Date(row.archived_at) : undefined,
+  archivedBy: row.archived_by,
+  archiveReason: row.archive_reason,
+  amendmentType: row.amendment_type ?? 'original',
+  amendmentReason: row.amendment_reason,
+  amendsRecordId: row.amends_record_id,
 });
 
 export const transformPreparedSpawnToDb = (spawn: Partial<PreparedSpawn>, userId?: string | null) => ({
@@ -914,6 +987,21 @@ export const transformPreparedSpawnToDb = (spawn: Partial<PreparedSpawn>, userId
   images: spawn.images,
   is_active: spawn.isActive,
   ...(userId && { user_id: userId }),
+
+  // Immutability fields
+  ...(spawn.version !== undefined && { version: spawn.version }),
+  ...(spawn.recordGroupId !== undefined && { record_group_id: spawn.recordGroupId }),
+  ...(spawn.isCurrent !== undefined && { is_current: spawn.isCurrent }),
+  ...(spawn.validFrom !== undefined && { valid_from: spawn.validFrom instanceof Date ? spawn.validFrom.toISOString() : spawn.validFrom }),
+  ...(spawn.validTo !== undefined && { valid_to: spawn.validTo instanceof Date ? spawn.validTo.toISOString() : spawn.validTo }),
+  ...(spawn.supersededById !== undefined && { superseded_by_id: spawn.supersededById }),
+  ...(spawn.isArchived !== undefined && { is_archived: spawn.isArchived }),
+  ...(spawn.archivedAt !== undefined && { archived_at: spawn.archivedAt instanceof Date ? spawn.archivedAt.toISOString() : spawn.archivedAt }),
+  ...(spawn.archivedBy !== undefined && { archived_by: spawn.archivedBy }),
+  ...(spawn.archiveReason !== undefined && { archive_reason: spawn.archiveReason }),
+  ...(spawn.amendmentType !== undefined && { amendment_type: spawn.amendmentType }),
+  ...(spawn.amendmentReason !== undefined && { amendment_reason: spawn.amendmentReason }),
+  ...(spawn.amendsRecordId !== undefined && { amends_record_id: spawn.amendsRecordId }),
 });
 
 // ============================================================================
@@ -947,5 +1035,199 @@ export const transformEntityOutcomeFromDb = (row: any): EntityOutcome => ({
   locationName: row.location_name,
   surveyResponses: row.survey_responses,
   notes: row.notes,
+  createdAt: new Date(row.created_at),
+});
+
+// ============================================================================
+// IMMUTABLE HISTORY TRANSFORMATIONS
+// Append-only audit trail tables
+// ============================================================================
+
+import {
+  ObservationHistoryEntry,
+  HarvestHistoryEntry,
+  TransferHistoryEntry,
+  StageTransitionEntry,
+  DataAmendmentLogEntry,
+  BulkOperation,
+} from './types';
+
+export const transformObservationHistoryFromDb = (row: any): ObservationHistoryEntry => ({
+  id: row.id,
+  entityType: row.entity_type,
+  entityId: row.entity_id,
+  entityRecordGroupId: row.entity_record_group_id,
+  observedAt: new Date(row.observed_at),
+  observationType: row.observation_type,
+  title: row.title,
+  notes: row.notes,
+  temperature: row.temperature ? parseFloat(row.temperature) : undefined,
+  humidity: row.humidity ? parseFloat(row.humidity) : undefined,
+  co2Ppm: row.co2_ppm,
+  colonizationPercent: row.colonization_percent,
+  healthRating: row.health_rating,
+  stage: row.stage,
+  images: row.images || [],
+  recordedAt: new Date(row.recorded_at),
+  recordedBy: row.recorded_by,
+  isCurrent: row.is_current ?? true,
+  supersededById: row.superseded_by_id,
+  amendmentReason: row.amendment_reason,
+  userId: row.user_id,
+  createdAt: new Date(row.created_at),
+});
+
+export const transformObservationHistoryToDb = (obs: Partial<ObservationHistoryEntry>, userId?: string) => ({
+  entity_type: obs.entityType,
+  entity_id: obs.entityId,
+  entity_record_group_id: obs.entityRecordGroupId,
+  observed_at: obs.observedAt instanceof Date ? obs.observedAt.toISOString() : obs.observedAt,
+  observation_type: obs.observationType,
+  title: obs.title,
+  notes: obs.notes,
+  temperature: obs.temperature,
+  humidity: obs.humidity,
+  co2_ppm: obs.co2Ppm,
+  colonization_percent: obs.colonizationPercent,
+  health_rating: obs.healthRating,
+  stage: obs.stage,
+  images: obs.images,
+  is_current: obs.isCurrent,
+  superseded_by_id: obs.supersededById,
+  amendment_reason: obs.amendmentReason,
+  ...(userId && { user_id: userId }),
+});
+
+export const transformHarvestHistoryFromDb = (row: any): HarvestHistoryEntry => ({
+  id: row.id,
+  growId: row.grow_id,
+  growRecordGroupId: row.grow_record_group_id,
+  flushNumber: row.flush_number,
+  harvestDate: new Date(row.harvest_date),
+  wetWeightG: row.wet_weight_g ? parseFloat(row.wet_weight_g) : undefined,
+  dryWeightG: row.dry_weight_g ? parseFloat(row.dry_weight_g) : undefined,
+  mushroomCount: row.mushroom_count,
+  quality: row.quality,
+  notes: row.notes,
+  images: row.images || [],
+  recordedAt: new Date(row.recorded_at),
+  recordedBy: row.recorded_by,
+  isCurrent: row.is_current ?? true,
+  supersededById: row.superseded_by_id,
+  amendmentReason: row.amendment_reason,
+  userId: row.user_id,
+  createdAt: new Date(row.created_at),
+});
+
+export const transformHarvestHistoryToDb = (harvest: Partial<HarvestHistoryEntry>, userId?: string) => ({
+  grow_id: harvest.growId,
+  grow_record_group_id: harvest.growRecordGroupId,
+  flush_number: harvest.flushNumber,
+  harvest_date: harvest.harvestDate instanceof Date ? harvest.harvestDate.toISOString().split('T')[0] : harvest.harvestDate,
+  wet_weight_g: harvest.wetWeightG,
+  dry_weight_g: harvest.dryWeightG,
+  mushroom_count: harvest.mushroomCount,
+  quality: harvest.quality,
+  notes: harvest.notes,
+  images: harvest.images,
+  is_current: harvest.isCurrent,
+  superseded_by_id: harvest.supersededById,
+  amendment_reason: harvest.amendmentReason,
+  ...(userId && { user_id: userId }),
+});
+
+export const transformTransferHistoryFromDb = (row: any): TransferHistoryEntry => ({
+  id: row.id,
+  fromCultureId: row.from_culture_id,
+  fromCultureRecordGroupId: row.from_culture_record_group_id,
+  toEntityType: row.to_entity_type,
+  toEntityId: row.to_entity_id,
+  toEntityRecordGroupId: row.to_entity_record_group_id,
+  transferDate: new Date(row.transfer_date),
+  quantity: parseFloat(row.quantity),
+  unit: row.unit,
+  notes: row.notes,
+  recordedAt: new Date(row.recorded_at),
+  recordedBy: row.recorded_by,
+  isCurrent: row.is_current ?? true,
+  supersededById: row.superseded_by_id,
+  amendmentReason: row.amendment_reason,
+  userId: row.user_id,
+  createdAt: new Date(row.created_at),
+});
+
+export const transformTransferHistoryToDb = (transfer: Partial<TransferHistoryEntry>, userId?: string) => ({
+  from_culture_id: transfer.fromCultureId,
+  from_culture_record_group_id: transfer.fromCultureRecordGroupId,
+  to_entity_type: transfer.toEntityType,
+  to_entity_id: transfer.toEntityId,
+  to_entity_record_group_id: transfer.toEntityRecordGroupId,
+  transfer_date: transfer.transferDate instanceof Date ? transfer.transferDate.toISOString() : transfer.transferDate,
+  quantity: transfer.quantity,
+  unit: transfer.unit,
+  notes: transfer.notes,
+  is_current: transfer.isCurrent,
+  superseded_by_id: transfer.supersededById,
+  amendment_reason: transfer.amendmentReason,
+  ...(userId && { user_id: userId }),
+});
+
+export const transformStageTransitionFromDb = (row: any): StageTransitionEntry => ({
+  id: row.id,
+  entityType: row.entity_type,
+  entityId: row.entity_id,
+  entityRecordGroupId: row.entity_record_group_id,
+  fromStage: row.from_stage,
+  toStage: row.to_stage,
+  transitionedAt: new Date(row.transitioned_at),
+  notes: row.notes,
+  trigger: row.trigger,
+  recordedAt: new Date(row.recorded_at),
+  recordedBy: row.recorded_by,
+  userId: row.user_id,
+  createdAt: new Date(row.created_at),
+});
+
+export const transformStageTransitionToDb = (transition: Partial<StageTransitionEntry>, userId?: string) => ({
+  entity_type: transition.entityType,
+  entity_id: transition.entityId,
+  entity_record_group_id: transition.entityRecordGroupId,
+  from_stage: transition.fromStage,
+  to_stage: transition.toStage,
+  transitioned_at: transition.transitionedAt instanceof Date ? transition.transitionedAt.toISOString() : transition.transitionedAt,
+  notes: transition.notes,
+  trigger: transition.trigger,
+  ...(userId && { user_id: userId }),
+});
+
+export const transformDataAmendmentLogFromDb = (row: any): DataAmendmentLogEntry => ({
+  id: row.id,
+  entityType: row.entity_type,
+  originalRecordId: row.original_record_id,
+  newRecordId: row.new_record_id,
+  recordGroupId: row.record_group_id,
+  amendmentType: row.amendment_type,
+  reason: row.reason,
+  changesSummary: row.changes_summary,
+  bulkOperationId: row.bulk_operation_id,
+  amendedAt: new Date(row.amended_at),
+  amendedBy: row.amended_by,
+  ipAddress: row.ip_address,
+  userAgent: row.user_agent,
+  userId: row.user_id,
+  createdAt: new Date(row.created_at),
+});
+
+export const transformBulkOperationFromDb = (row: any): BulkOperation => ({
+  id: row.id,
+  operationType: row.operation_type,
+  entityType: row.entity_type,
+  recordCount: row.record_count,
+  sourceDescription: row.source_description,
+  startedAt: new Date(row.started_at),
+  completedAt: row.completed_at ? new Date(row.completed_at) : undefined,
+  status: row.status,
+  errorMessage: row.error_message,
+  userId: row.user_id,
   createdAt: new Date(row.created_at),
 });

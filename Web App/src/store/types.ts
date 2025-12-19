@@ -583,6 +583,21 @@ export interface Culture {
   expiresAt?: Date;
   observations: CultureObservation[];
   transfers: CultureTransfer[];
+
+  // Immutability fields (optional for backwards compatibility)
+  version?: number;
+  recordGroupId?: string;
+  isCurrent?: boolean;
+  validFrom?: Date;
+  validTo?: Date;
+  supersededById?: string;
+  isArchived?: boolean;
+  archivedAt?: Date;
+  archivedBy?: string;
+  archiveReason?: string;
+  amendmentType?: AmendmentType;
+  amendmentReason?: string;
+  amendsRecordId?: string;
 }
 
 // ============================================================================
@@ -633,6 +648,21 @@ export interface PreparedSpawn {
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
+
+  // Immutability fields (optional for backwards compatibility)
+  version?: number;
+  recordGroupId?: string;
+  isCurrent?: boolean;
+  validFrom?: Date;
+  validTo?: Date;
+  supersededById?: string;
+  isArchived?: boolean;
+  archivedAt?: Date;
+  archivedBy?: string;
+  archiveReason?: string;
+  amendmentType?: AmendmentType;
+  amendmentReason?: string;
+  amendsRecordId?: string;
 }
 
 // ============================================================================
@@ -727,6 +757,22 @@ export interface Grow {
 
   // Notes
   notes: string;
+
+  // Immutability fields (optional for backwards compatibility)
+  version?: number;
+  recordGroupId?: string;
+  isCurrent?: boolean;
+  validFrom?: Date;
+  validTo?: Date;
+  supersededById?: string;
+  isArchived?: boolean;
+  archivedAt?: Date;
+  archivedBy?: string;
+  archiveReason?: string;
+  amendmentType?: AmendmentType;
+  amendmentReason?: string;
+  amendsRecordId?: string;
+  sourceCultureSnapshot?: Record<string, unknown>;  // Denormalized for historical accuracy
 }
 
 // ============================================================================
@@ -1298,6 +1344,14 @@ export interface DataStoreState {
   // Historical tracking (append-only)
   entityOutcomes: EntityOutcome[];
 
+  // Immutable history tables (append-only audit trail)
+  observationHistory: ObservationHistoryEntry[];
+  harvestHistory: HarvestHistoryEntry[];
+  transferHistory: TransferHistoryEntry[];
+  stageTransitions: StageTransitionEntry[];
+  dataAmendmentLog: DataAmendmentLogEntry[];
+  bulkOperations: BulkOperation[];
+
   // Public sharing system
   shareTokens: ShareToken[];
   batchPassports: BatchPassport[];
@@ -1316,6 +1370,286 @@ export interface DataStoreState {
 // ============================================================================
 
 export type EntityType = 'species' | 'strain' | 'location' | 'container' | 'substrateType' | 'supplier' | 'inventoryCategory' | 'inventoryItem' | 'culture' | 'grow' | 'recipe';
+
+// ============================================================================
+// IMMUTABLE DATABASE TYPES
+// Append-only architecture for complete audit trail and data integrity
+// ============================================================================
+
+/**
+ * Amendment types for record versioning
+ * - original: First version of the record
+ * - correction: Fixing an error (e.g., typo in weight)
+ * - update: Normal business update (e.g., status change)
+ * - void: Nullifying a record (e.g., duplicate entry)
+ * - merge: Combining multiple records
+ */
+export type AmendmentType = 'original' | 'correction' | 'update' | 'void' | 'merge';
+
+/**
+ * Base fields for all immutable records
+ * These fields are added to any entity that supports versioning
+ */
+export interface ImmutableRecordFields {
+  // Version tracking
+  version: number;                  // 1, 2, 3, etc.
+  recordGroupId: string;            // Links all versions of the same logical record
+  isCurrent: boolean;               // Only one version is current
+
+  // Temporal validity (when was this version the "truth"?)
+  validFrom: Date;                  // When this version became valid
+  validTo?: Date;                   // When this version was superseded (null = current)
+  supersededById?: string;          // ID of the version that replaced this one
+
+  // Archival (soft delete with reason)
+  isArchived: boolean;
+  archivedAt?: Date;
+  archivedBy?: string;              // User ID who archived
+  archiveReason?: string;
+
+  // Amendment metadata (what changed?)
+  amendmentType: AmendmentType;
+  amendmentReason?: string;         // Why was this record amended?
+  amendsRecordId?: string;          // ID of the record this amends
+}
+
+/**
+ * Request object for creating an amendment
+ * Used when updating a record in the immutable pattern
+ */
+export interface AmendmentRequest<T> {
+  originalId: string;               // ID of the record being amended
+  changes: Partial<T>;              // Fields being changed
+  amendmentType: AmendmentType;     // Type of amendment
+  reason: string;                   // Human-readable reason for the change
+}
+
+/**
+ * Archive request for soft-deleting a record
+ */
+export interface ArchiveRequest {
+  recordId: string;
+  reason: string;
+}
+
+/**
+ * Historical observation entry (immutable)
+ * Used for tracking observations, environmental readings, etc.
+ */
+export interface ObservationHistoryEntry {
+  id: string;
+  entityType: 'culture' | 'grow' | 'prepared_spawn' | 'location';
+  entityId: string;
+  entityRecordGroupId: string;
+
+  // Observation data
+  observedAt: Date;
+  observationType: string;
+  title?: string;
+  notes?: string;
+
+  // Measurements
+  temperature?: number;
+  humidity?: number;
+  co2Ppm?: number;
+  colonizationPercent?: number;
+  healthRating?: number;
+
+  // Context
+  stage?: string;
+  images?: string[];
+
+  // Recording metadata
+  recordedAt: Date;
+  recordedBy?: string;
+
+  // Amendment support
+  isCurrent: boolean;
+  supersededById?: string;
+  amendmentReason?: string;
+
+  userId?: string;
+  createdAt: Date;
+}
+
+/**
+ * Historical harvest entry (immutable)
+ * Replaces embedded flushes for full audit trail
+ */
+export interface HarvestHistoryEntry {
+  id: string;
+  growId: string;
+  growRecordGroupId: string;
+
+  // Harvest data
+  flushNumber: number;
+  harvestDate: Date;
+  wetWeightG?: number;
+  dryWeightG?: number;
+  mushroomCount?: number;
+  quality?: 'excellent' | 'good' | 'fair' | 'poor';
+
+  // Context
+  notes?: string;
+  images?: string[];
+
+  // Recording metadata
+  recordedAt: Date;
+  recordedBy?: string;
+
+  // Amendment support
+  isCurrent: boolean;
+  supersededById?: string;
+  amendmentReason?: string;
+
+  userId?: string;
+  createdAt: Date;
+}
+
+/**
+ * Historical transfer entry (immutable)
+ * Tracks all culture transfers with full audit trail
+ */
+export interface TransferHistoryEntry {
+  id: string;
+  fromCultureId: string;
+  fromCultureRecordGroupId: string;
+
+  // Destination
+  toEntityType: 'culture' | 'grow' | 'grain_spawn' | 'bulk';
+  toEntityId?: string;
+  toEntityRecordGroupId?: string;
+
+  // Transfer details
+  transferDate: Date;
+  quantity: number;
+  unit: string;
+
+  // Context
+  notes?: string;
+
+  // Recording metadata
+  recordedAt: Date;
+  recordedBy?: string;
+
+  // Amendment support
+  isCurrent: boolean;
+  supersededById?: string;
+  amendmentReason?: string;
+
+  userId?: string;
+  createdAt: Date;
+}
+
+/**
+ * Stage transition entry (immutable)
+ * Tracks all stage changes for grows, cultures, etc.
+ */
+export interface StageTransitionEntry {
+  id: string;
+  entityType: 'grow' | 'culture' | 'prepared_spawn';
+  entityId: string;
+  entityRecordGroupId: string;
+
+  // Transition details
+  fromStage?: string;
+  toStage: string;
+  transitionedAt: Date;
+
+  // Context
+  notes?: string;
+  trigger: 'manual' | 'automatic' | 'scheduled' | 'condition';
+
+  // Recording metadata
+  recordedAt: Date;
+  recordedBy?: string;
+
+  userId?: string;
+  createdAt: Date;
+}
+
+/**
+ * Data amendment log entry
+ * Tracks all corrections and updates for audit purposes
+ */
+export interface DataAmendmentLogEntry {
+  id: string;
+  entityType: string;
+  originalRecordId: string;
+  newRecordId: string;
+  recordGroupId: string;
+
+  // Amendment details
+  amendmentType: AmendmentType | 'archive' | 'bulk_import';
+  reason: string;
+  changesSummary?: Record<string, { old: unknown; new: unknown }>;
+
+  // Bulk operation reference
+  bulkOperationId?: string;
+
+  // Who and when
+  amendedAt: Date;
+  amendedBy?: string;
+
+  // Audit info (optional)
+  ipAddress?: string;
+  userAgent?: string;
+
+  userId?: string;
+  createdAt: Date;
+}
+
+/**
+ * Bulk operation tracking
+ * For imports, migrations, and batch corrections
+ */
+export interface BulkOperation {
+  id: string;
+  operationType: 'import' | 'migration' | 'correction' | 'archive';
+  entityType: string;
+  recordCount: number;
+  sourceDescription?: string;
+  startedAt: Date;
+  completedAt?: Date;
+  status: 'running' | 'completed' | 'failed' | 'rolled_back';
+  errorMessage?: string;
+  userId?: string;
+  createdAt: Date;
+}
+
+/**
+ * Record version summary for history display
+ */
+export interface RecordVersionSummary {
+  id: string;
+  version: number;
+  isCurrent: boolean;
+  validFrom: Date;
+  validTo?: Date;
+  amendmentType: AmendmentType;
+  amendmentReason?: string;
+}
+
+/**
+ * Helper function to check if a record is the current version
+ */
+export const isCurrentVersion = (record: Partial<ImmutableRecordFields>): boolean => {
+  return record.isCurrent === true && record.isArchived !== true;
+};
+
+/**
+ * Helper function to check if a record is archived
+ */
+export const isArchivedRecord = (record: Partial<ImmutableRecordFields>): boolean => {
+  return record.isArchived === true;
+};
+
+/**
+ * Helper function to check if a record has been superseded
+ */
+export const isSupersededRecord = (record: Partial<ImmutableRecordFields>): boolean => {
+  return record.validTo !== undefined && record.validTo !== null;
+};
 
 // ============================================================================
 // OUTCOME LOGGING TYPES
