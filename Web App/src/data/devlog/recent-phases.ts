@@ -3266,7 +3266,10 @@ All grower settings PLUS Admin Console:
 **Note:** Users wanting to add to the global library should use the suggestion workflow (library_suggestions table) which requires admin approval.
 
 **Files Changed:**
-- src/components/settings/SettingsPage.tsx (expanded adminOnlyTabs array)`,
+- src/components/settings/SettingsPage.tsx (expanded adminOnlyTabs array)
+- src/store/types.ts (added userId to all library types + helper functions)
+- src/store/transformations.ts (include userId in all FromDb transforms)
+- src/components/common/DataOwnershipBadge.tsx (new visual component)`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },

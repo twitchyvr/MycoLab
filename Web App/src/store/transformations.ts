@@ -43,6 +43,7 @@ export const toDbId = (id: string | undefined): string | null => {
 
 export const transformStrainFromDb = (row: any): Strain => ({
   id: row.id,
+  userId: row.user_id ?? null, // null = system/global data
   name: row.name,
   speciesId: row.species_id,
   species: row.species || '',
@@ -109,6 +110,7 @@ export const transformStrainToDb = (strain: Partial<Strain>, userId?: string | n
 
 export const transformLocationTypeFromDb = (row: any): LocationType => ({
   id: row.id,
+  userId: row.user_id ?? null, // null = system/global data
   name: row.name,
   code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
   description: row.description,
@@ -131,6 +133,7 @@ export const transformLocationTypeToDb = (lt: Partial<LocationType>, userId?: st
 
 export const transformLocationClassificationFromDb = (row: any): LocationClassification => ({
   id: row.id,
+  userId: row.user_id ?? null, // null = system/global data
   name: row.name,
   code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
   description: row.description,
@@ -229,6 +232,7 @@ export const transformLocationToDb = (location: Partial<Location>, userId?: stri
 
 export const transformContainerFromDb = (row: any): Container => ({
   id: row.id,
+  userId: row.user_id ?? null, // null = system/global data
   name: row.name,
   category: row.category || 'jar',
   volumeMl: row.volume_ml,
@@ -277,6 +281,7 @@ export const transformContainerTypeToDb = transformContainerToDb;
 
 export const transformSubstrateTypeFromDb = (row: any): SubstrateType => ({
   id: row.id,
+  userId: row.user_id ?? null, // null = system/global data
   name: row.name,
   code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
   category: row.category || 'bulk',
@@ -309,6 +314,7 @@ export const transformSubstrateTypeToDb = (st: Partial<SubstrateType>, userId?: 
 
 export const transformInventoryCategoryFromDb = (row: any): InventoryCategory => ({
   id: row.id,
+  userId: row.user_id ?? null, // null = system/global data
   name: row.name,
   color: row.color || '#6b7280',
   icon: row.icon,
@@ -371,6 +377,7 @@ export const transformInventoryItemToDb = (item: Partial<InventoryItem>, userId?
 
 export const transformRecipeCategoryFromDb = (row: any): RecipeCategoryItem => ({
   id: row.id,
+  userId: row.user_id ?? null, // null = system/global data
   name: row.name,
   code: row.code,
   icon: row.icon || '📦',
@@ -558,6 +565,7 @@ export const transformRecipeToDb = (recipe: Partial<Recipe>) => {
 
 export const transformSupplierFromDb = (row: any): Supplier => ({
   id: row.id,
+  userId: row.user_id ?? null, // null = system/global data
   name: row.name,
   website: row.website,
   email: row.email,
@@ -618,6 +626,7 @@ export const transformFlushToDb = (flush: Omit<Flush, 'id'>, growId: string) => 
 
 export const transformGrainTypeFromDb = (row: any): GrainType => ({
   id: row.id,
+  userId: row.user_id ?? null, // null = system/global data
   name: row.name,
   code: row.code || row.name?.toLowerCase().replace(/\s+/g, '_'),
   notes: row.notes,
@@ -738,6 +747,7 @@ export const transformPurchaseOrderToDb = (order: Partial<PurchaseOrder>) => {
 
 export const transformSpeciesFromDb = (row: any): Species => ({
   id: row.id,
+  userId: row.user_id ?? null, // null = system/global data
   name: row.name,
   scientificName: row.scientific_name,
   commonNames: row.common_names,
