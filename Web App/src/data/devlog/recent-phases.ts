@@ -3612,6 +3612,59 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1226',
+    title: 'Immutable Database Architecture Design',
+    description: 'Comprehensive design for iRacing-style append-only database architecture. Core principle: original records are never modified or deleted - amendments create new versioned records that reference and supersede originals. Full audit trail for compliance and debugging.',
+    category: 'architecture',
+    status: 'planned',
+    priority: 'high',
+    estimatedHours: 40,
+    notes: `Complete immutable database design document created (IMMUTABLE_DATABASE_DESIGN.md):
+
+**Core Principles:**
+- Append-only records: INSERT only, no UPDATE/DELETE on core tables
+- Amendment records: Corrections create new records linked to originals
+- Soft deletes (archival): Records marked archived, never physically deleted
+- Versioning: Each record has version number, record_group_id links versions
+- Temporal validity: valid_from/valid_to for point-in-time queries
+
+**New Database Schema:**
+- Base fields for all core tables: version, record_group_id, is_current, valid_from, valid_to, superseded_by_id, is_archived, archived_at, archived_by, archive_reason, amendment_type, amendment_reason, amends_record_id
+- observation_history: Immutable log of all observations (cultures, grows, spawn)
+- harvest_history: Immutable log of all harvests (replaces embedded flushes)
+- transfer_history: Immutable log of culture transfers
+- stage_transition_history: Immutable log of stage changes
+- data_amendment_log: Tracks all corrections with JSON diff
+
+**Application Layer Changes:**
+- ImmutableRecord base interface
+- UPDATE becomes amendRecord() with reason
+- DELETE becomes archiveRecord() with reason
+- New query patterns: getCurrentVersion(), getHistory(), getAtPointInTime()
+- Atomic amendment via database stored procedure
+
+**UI/UX Patterns:**
+- Amend modal (not inline edit) with reason required
+- History tab on all record detail pages
+- Version diff view
+- Amendment badges showing version and type
+
+**Implementation Phases:**
+1. Phase 1: cultures, grows, flushes (critical)
+2. Phase 2: recipes, inventory_items, inventory_lots
+3. Phase 3: observations → observation_history migration
+4. Phase 4: lookup tables (strains, locations, containers)
+
+**Benefits:**
+- Complete audit trail for compliance
+- No accidental data loss
+- Temporal queries ("what did this look like on day 14?")
+- Analytics accuracy (historical data reflects reality at that moment)
+- Trust and debuggability`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
