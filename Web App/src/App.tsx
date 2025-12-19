@@ -586,8 +586,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     return initial;
   });
 
-  // Hover state for collapsed sidebar tooltips
-  const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
+  // Flyout state for collapsed sidebar - supports both hover and click
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const [isPinned, setIsPinned] = useState(false);
 
   // When page changes, ensure its group is expanded
   useEffect(() => {
@@ -600,7 +601,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const handleNavigate = (page: Page) => {
     onNavigate(page);
     onClose(); // Close sidebar on mobile after navigation
-    setHoveredGroup(null); // Close any open flyout
+    setActiveGroup(null); // Close flyout
+    setIsPinned(false);
   };
 
   const toggleGroup = (groupId: string) => {
@@ -615,20 +617,39 @@ const Sidebar: React.FC<SidebarProps> = ({
     });
   };
 
-  // Icons for collapse/expand
-  const CollapseIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-      <polyline points="11 17 6 12 11 7" />
-      <polyline points="18 17 13 12 18 7" />
-    </svg>
-  );
+  // Handle flyout interactions in collapsed mode
+  const handleGroupClick = (groupId: string) => {
+    if (activeGroup === groupId && isPinned) {
+      // Click again to close
+      setActiveGroup(null);
+      setIsPinned(false);
+    } else {
+      // Open and pin
+      setActiveGroup(groupId);
+      setIsPinned(true);
+    }
+  };
 
-  const ExpandIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-      <polyline points="13 17 18 12 13 7" />
-      <polyline points="6 17 11 12 6 7" />
-    </svg>
-  );
+  const handleGroupHover = (groupId: string | null) => {
+    if (!isPinned) {
+      setActiveGroup(groupId);
+    }
+  };
+
+  // Close flyout when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (isPinned && activeGroup) {
+        const target = e.target as HTMLElement;
+        if (!target.closest('[data-flyout]') && !target.closest('[data-group-button]')) {
+          setActiveGroup(null);
+          setIsPinned(false);
+        }
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isPinned, activeGroup]);
 
   return (
     <>
@@ -653,14 +674,19 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className={`border-b border-zinc-800 flex-shrink-0 ${isCollapsed ? 'p-2' : 'p-4'}`}>
           <div className="flex items-center justify-between">
             <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'gap-3'}`}>
-              <div className={`
-                ${isCollapsed ? 'w-10 h-10' : 'w-10 h-10'}
-                rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600
-                flex items-center justify-center shadow-lg shadow-emerald-500/20
-                transition-all duration-300
-              `}>
-                <span className={`${isCollapsed ? 'text-lg' : 'text-xl'}`}>🍄</span>
-              </div>
+              <button
+                onClick={isCollapsed ? onToggleCollapse : undefined}
+                className={`
+                  ${isCollapsed ? 'w-10 h-10 cursor-pointer hover:scale-110' : 'w-10 h-10'}
+                  rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600
+                  flex items-center justify-center shadow-lg shadow-emerald-500/20
+                  transition-all duration-300
+                  ${isCollapsed ? 'hover:shadow-emerald-500/40 hover:shadow-xl' : ''}
+                `}
+                title={isCollapsed ? 'Expand menu' : undefined}
+              >
+                <span className={`${isCollapsed ? 'text-lg' : 'text-xl'} transition-transform duration-300`}>🍄</span>
+              </button>
               {!isCollapsed && (
                 <div className="transition-opacity duration-300">
                   <h1 className="text-lg font-semibold text-white tracking-tight">MycoLab</h1>
@@ -691,7 +717,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             const GroupIcon = group.icon;
             const isExpanded = expandedGroups.has(group.id);
             const hasActivePage = group.items.some(item => item.id === currentPage);
-            const isHovered = hoveredGroup === group.id;
+            const isActive = activeGroup === group.id;
 
             // Collapsed mode: show icons with flyout menu
             if (isCollapsed) {
@@ -699,65 +725,81 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <div
                   key={group.id}
                   className="relative"
-                  onMouseEnter={() => setHoveredGroup(group.id)}
-                  onMouseLeave={() => setHoveredGroup(null)}
+                  onMouseEnter={() => handleGroupHover(group.id)}
+                  onMouseLeave={() => handleGroupHover(null)}
                 >
                   {/* Group Icon Button */}
                   <button
+                    data-group-button
+                    onClick={() => handleGroupClick(group.id)}
                     className={`
                       w-full flex items-center justify-center p-2.5 rounded-lg
-                      transition-all duration-200 relative
+                      transition-all duration-200 relative group
                       ${hasActivePage
-                        ? 'bg-emerald-500/10 text-emerald-400'
-                        : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                        ? 'bg-emerald-500/15 text-emerald-400 shadow-inner shadow-emerald-500/10'
+                        : 'text-zinc-400 hover:text-white hover:bg-zinc-800/70'
                       }
+                      ${isActive ? 'bg-zinc-800 text-white ring-1 ring-emerald-500/30' : ''}
                     `}
-                    title={group.label}
                   >
-                    <GroupIcon />
-                    {/* Active indicator dot */}
+                    <div className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
+                      <GroupIcon />
+                    </div>
+                    {/* Active indicator dot with glow */}
                     {hasActivePage && (
-                      <span className="absolute right-1 top-1 w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span className="absolute right-1 top-1 w-2 h-2 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50 animate-pulse"></span>
                     )}
                   </button>
 
-                  {/* Flyout menu on hover */}
-                  {isHovered && (
+                  {/* Flyout menu */}
+                  {isActive && (
                     <div
-                      className="absolute left-full top-0 ml-2 z-50 min-w-48"
-                      onMouseEnter={() => setHoveredGroup(group.id)}
-                      onMouseLeave={() => setHoveredGroup(null)}
+                      data-flyout
+                      className="absolute left-full top-0 ml-2 z-50 min-w-52 animate-in slide-in-from-left-2 fade-in duration-200"
+                      onMouseEnter={() => handleGroupHover(group.id)}
+                      onMouseLeave={() => !isPinned && handleGroupHover(null)}
                     >
-                      <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl shadow-black/50 py-2">
-                        {/* Group label */}
-                        <div className="px-3 py-1.5 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-zinc-800 mb-1">
-                          {group.label}
+                      <div className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700/80 rounded-xl shadow-2xl shadow-black/60 py-2 overflow-hidden">
+                        {/* Group label with gradient */}
+                        <div className="px-4 py-2 text-xs font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800/80 mb-1 bg-gradient-to-r from-zinc-800/50 to-transparent flex items-center gap-2">
+                          <GroupIcon />
+                          <span>{group.label}</span>
+                          {isPinned && (
+                            <span className="ml-auto text-emerald-400">
+                              <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
+                                <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/>
+                              </svg>
+                            </span>
+                          )}
                         </div>
                         {/* Items */}
-                        {group.items.map((item) => {
-                          const isActive = currentPage === item.id;
-                          const Icon = item.icon;
-                          return (
-                            <button
-                              key={item.id}
-                              onClick={() => handleNavigate(item.id)}
-                              className={`
-                                w-full flex items-center gap-3 px-3 py-2 text-sm
-                                transition-all duration-150
-                                ${isActive
-                                  ? 'bg-emerald-500/10 text-emerald-400 font-medium'
-                                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                                }
-                              `}
-                            >
-                              <Icon />
-                              <span>{item.label}</span>
-                              {isActive && (
-                                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                              )}
-                            </button>
-                          );
-                        })}
+                        <div className="py-1">
+                          {group.items.map((item, index) => {
+                            const isItemActive = currentPage === item.id;
+                            const Icon = item.icon;
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => handleNavigate(item.id)}
+                                className={`
+                                  w-full flex items-center gap-3 px-4 py-2.5 text-sm
+                                  transition-all duration-150
+                                  ${isItemActive
+                                    ? 'bg-gradient-to-r from-emerald-500/20 to-transparent text-emerald-400 font-medium border-l-2 border-emerald-400'
+                                    : 'text-zinc-400 hover:bg-zinc-800/80 hover:text-white border-l-2 border-transparent hover:border-zinc-600'
+                                  }
+                                `}
+                                style={{ animationDelay: `${index * 30}ms` }}
+                              >
+                                <Icon />
+                                <span className="flex-1 text-left">{item.label}</span>
+                                {isItemActive && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50"></span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -801,7 +843,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 `}>
                   <div className="ml-3 pl-3 border-l border-zinc-800 mt-1 space-y-0.5">
                     {group.items.map((item) => {
-                      const isActive = currentPage === item.id;
+                      const isItemActive = currentPage === item.id;
                       const Icon = item.icon;
                       return (
                         <button
@@ -810,7 +852,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                           className={`
                             w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
                             transition-all duration-200
-                            ${isActive
+                            ${isItemActive
                               ? 'bg-emerald-500/10 text-emerald-400 font-medium'
                               : 'text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300'
                             }
@@ -818,7 +860,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         >
                           <Icon />
                           <span className="truncate">{item.label}</span>
-                          {isActive && (
+                          {isItemActive && (
                             <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
                           )}
                         </button>
@@ -850,7 +892,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {/* Collapse/Expand Toggle - desktop only */}
+        {/* Magical Collapse/Expand Toggle - desktop only */}
         <div className={`
           ${isCollapsed ? 'p-2' : 'p-3'}
           border-t border-zinc-800 flex-shrink-0 hidden lg:block
@@ -859,17 +901,45 @@ const Sidebar: React.FC<SidebarProps> = ({
             onClick={onToggleCollapse}
             className={`
               w-full flex items-center justify-center gap-2
-              ${isCollapsed ? 'p-2.5' : 'px-3 py-2'}
-              rounded-lg text-sm text-zinc-400
-              hover:text-white hover:bg-zinc-800
-              transition-all duration-200
+              ${isCollapsed ? 'p-3' : 'px-3 py-2.5'}
+              rounded-xl text-sm
+              transition-all duration-300 ease-out
+              group relative overflow-hidden
+              ${isCollapsed
+                ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 hover:from-emerald-900/30 hover:to-teal-900/20 text-zinc-400 hover:text-emerald-400'
+                : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-white'
+              }
+              hover:shadow-lg hover:shadow-emerald-500/10
             `}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {isCollapsed ? <ExpandIcon /> : (
+            {/* Animated background glow for collapsed state */}
+            {isCollapsed && (
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-pulse"></div>
+            )}
+
+            {/* Icon with rotation animation */}
+            <div className={`relative z-10 transition-transform duration-300 ${isCollapsed ? 'group-hover:scale-125 group-hover:rotate-180' : ''}`}>
+              {isCollapsed ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                  <polyline points="13 17 18 12 13 7" />
+                  <polyline points="6 17 11 12 6 7" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                  <polyline points="11 17 6 12 11 7" />
+                  <polyline points="18 17 13 12 18 7" />
+                </svg>
+              )}
+            </div>
+
+            {!isCollapsed && <span className="relative z-10">Collapse</span>}
+
+            {/* Sparkle effect on hover when collapsed */}
+            {isCollapsed && (
               <>
-                <CollapseIcon />
-                <span>Collapse</span>
+                <div className="absolute top-1 right-1 w-1 h-1 rounded-full bg-emerald-400 opacity-0 group-hover:opacity-100 group-hover:animate-ping"></div>
+                <div className="absolute bottom-1 left-1 w-1 h-1 rounded-full bg-teal-400 opacity-0 group-hover:opacity-100 group-hover:animate-ping" style={{ animationDelay: '150ms' }}></div>
               </>
             )}
           </button>
