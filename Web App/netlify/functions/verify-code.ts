@@ -38,22 +38,52 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       };
     }
 
-    // Check code in verification_codes table
-    const { data, error } = await supabase
+    // First, check if any code exists for this user/type (for debugging)
+    const { data: existingCodes, error: lookupError } = await supabase
       .from("verification_codes")
       .select("*")
       .eq("user_id", payload.userId)
-      .eq("type", payload.type)
-      .eq("code", payload.code)
-      .gt("expires_at", new Date().toISOString())
-      .single();
+      .eq("type", payload.type);
 
-    if (error || !data) {
+    if (lookupError) {
+      console.error("Error looking up codes:", lookupError);
       return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Invalid or expired code" }),
+        statusCode: 500,
+        body: JSON.stringify({ error: `Database error: ${lookupError.message}` }),
       };
     }
+
+    console.log(`Found ${existingCodes?.length || 0} codes for user ${payload.userId}, type ${payload.type}`);
+
+    if (!existingCodes || existingCodes.length === 0) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "No verification code found. Please request a new code." }),
+      };
+    }
+
+    // Check if the code matches and hasn't expired
+    const now = new Date().toISOString();
+    const validCode = existingCodes.find(
+      (c) => c.code === payload.code && c.expires_at > now
+    );
+
+    if (!validCode) {
+      // Check if code exists but is expired
+      const expiredCode = existingCodes.find((c) => c.code === payload.code);
+      if (expiredCode) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ error: "Code has expired. Please request a new code." }),
+        };
+      }
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid code. Please check and try again." }),
+      };
+    }
+
+    const data = validCode;
 
     // Code is valid - delete it and mark user as verified
     await supabase
