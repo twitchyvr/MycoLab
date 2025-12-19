@@ -11,8 +11,11 @@ import { createClient } from '@supabase/supabase-js';
 import { StandardDropdown } from '../common/StandardDropdown';
 import { AdminMasterData } from './AdminMasterData';
 import { AdminNotifications } from './AdminNotifications';
+import { AdminNotificationConfig } from './AdminNotificationConfig';
 import { SpeciesInfoPanel } from '../common/SpeciesInfoPanel';
 import { SpeciesName, SpeciesBadge } from '../common/SpeciesName';
+import { notificationService } from '../../store/NotificationService';
+import type { NotificationCategory } from '../../store/types';
 
 // ============================================================================
 // TYPES
@@ -145,9 +148,31 @@ export const SettingsPage: React.FC = () => {
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingAuditLog, setLoadingAuditLog] = useState(false);
-  const [adminSubTab, setAdminSubTab] = useState<'users' | 'audit' | 'masterData' | 'notifications'>('users');
+  const [adminSubTab, setAdminSubTab] = useState<'users' | 'audit' | 'masterData' | 'notifications' | 'emailSmsConfig'>('users');
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+
+  // Verification state
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [verifyType, setVerifyType] = useState<'email' | 'sms'>('email');
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifySending, setVerifySending] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifySuccess, setVerifySuccess] = useState<string | null>(null);
+  const [codeSent, setCodeSent] = useState(false);
+
+  // Notification event preferences state
+  const [eventPreferences, setEventPreferences] = useState<Record<NotificationCategory, { email: boolean; sms: boolean }>>({
+    contamination: { email: true, sms: true },
+    harvest_ready: { email: true, sms: false },
+    stage_transition: { email: true, sms: false },
+    low_inventory: { email: true, sms: false },
+    culture_expiring: { email: true, sms: false },
+    lc_age: { email: true, sms: false },
+    slow_growth: { email: true, sms: false },
+    system: { email: true, sms: false },
+    user: { email: false, sms: false },
+  });
 
   // Form state
   const [formData, setFormData] = useState<any>({});
@@ -173,6 +198,98 @@ export const SettingsPage: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [error]);
+
+  // ============================================================================
+  // NOTIFICATION VERIFICATION HANDLERS
+  // ============================================================================
+
+  const handleStartVerification = async (type: 'email' | 'sms') => {
+    setVerifyType(type);
+    setVerifyCode('');
+    setVerifyError(null);
+    setVerifySuccess(null);
+    setCodeSent(false);
+    setShowVerifyModal(true);
+  };
+
+  const handleSendVerificationCode = async () => {
+    setVerifySending(true);
+    setVerifyError(null);
+    setVerifySuccess(null);
+
+    try {
+      let result;
+      if (verifyType === 'email') {
+        const email = localSettings.notificationEmail;
+        if (!email) {
+          setVerifyError('Please enter an email address first');
+          return;
+        }
+        result = await notificationService.sendEmailVerification(email);
+      } else {
+        const phone = localSettings.phoneNumber;
+        if (!phone) {
+          setVerifyError('Please enter a phone number first');
+          return;
+        }
+        result = await notificationService.sendSmsVerification(phone);
+      }
+
+      if (result.success) {
+        setCodeSent(true);
+        setVerifySuccess(`Verification code sent to your ${verifyType === 'email' ? 'email' : 'phone'}!`);
+      } else {
+        setVerifyError(result.error || 'Failed to send verification code');
+      }
+    } catch (err: any) {
+      setVerifyError(err.message || 'Failed to send verification code');
+    } finally {
+      setVerifySending(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!verifyCode || verifyCode.length < 4) {
+      setVerifyError('Please enter the verification code');
+      return;
+    }
+
+    setVerifySending(true);
+    setVerifyError(null);
+
+    try {
+      const result = await notificationService.verifyCode(verifyType, verifyCode);
+
+      if (result.success) {
+        // Update the local settings to mark as verified
+        if (verifyType === 'email') {
+          setLocalSettings(prev => ({ ...prev, notificationEmailVerified: true }));
+          updateSettings({ ...localSettings, notificationEmailVerified: true });
+        } else {
+          setLocalSettings(prev => ({ ...prev, phoneVerified: true }));
+          updateSettings({ ...localSettings, phoneVerified: true });
+        }
+        setShowVerifyModal(false);
+        setSuccess(`${verifyType === 'email' ? 'Email' : 'Phone'} verified successfully!`);
+      } else {
+        setVerifyError(result.error || 'Invalid verification code');
+      }
+    } catch (err: any) {
+      setVerifyError(err.message || 'Failed to verify code');
+    } finally {
+      setVerifySending(false);
+    }
+  };
+
+  const toggleEventPreference = (category: NotificationCategory, channel: 'email' | 'sms') => {
+    setEventPreferences(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [channel]: !prev[category][channel],
+      },
+    }));
+  };
 
   // ============================================================================
   // DATABASE FUNCTIONS
@@ -803,6 +920,16 @@ export const SettingsPage: React.FC = () => {
         >
           Audit Log ({auditLog.length})
         </button>
+        <button
+          onClick={() => setAdminSubTab('emailSmsConfig')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            adminSubTab === 'emailSmsConfig'
+              ? 'bg-purple-500 text-white'
+              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+          }`}
+        >
+          Email/SMS Config
+        </button>
       </div>
 
       {adminSubTab === 'users' ? (
@@ -947,6 +1074,8 @@ export const SettingsPage: React.FC = () => {
         <AdminMasterData isConnected={isConnected} />
       ) : adminSubTab === 'notifications' ? (
         <AdminNotifications isConnected={isConnected} />
+      ) : adminSubTab === 'emailSmsConfig' ? (
+        <AdminNotificationConfig isConnected={isConnected} />
       ) : (
         <div className="space-y-4">
           {/* Audit Log Header */}
@@ -1694,7 +1823,11 @@ export const SettingsPage: React.FC = () => {
                             <Icons.CheckCircle /> Verified
                           </span>
                         ) : (
-                          <button className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm">
+                          <button
+                            onClick={() => handleStartVerification('email')}
+                            disabled={!localSettings.notificationEmail}
+                            className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm"
+                          >
                             Verify
                           </button>
                         )}
@@ -1741,7 +1874,11 @@ export const SettingsPage: React.FC = () => {
                             <Icons.CheckCircle /> Verified
                           </span>
                         ) : (
-                          <button className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm">
+                          <button
+                            onClick={() => handleStartVerification('sms')}
+                            disabled={!localSettings.phoneNumber}
+                            className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm"
+                          >
                             Verify
                           </button>
                         )}
@@ -1787,12 +1924,12 @@ export const SettingsPage: React.FC = () => {
                   <p className="text-xs text-zinc-500 mb-3">Choose which events trigger email/SMS notifications</p>
                   <div className="space-y-3">
                     {[
-                      { key: 'contamination', label: 'Contamination Detected', desc: 'Immediate alert when contamination is logged', urgent: true },
-                      { key: 'harvest_ready', label: 'Harvest Ready', desc: 'When grows are ready for harvest' },
-                      { key: 'stage_transition', label: 'Stage Transitions', desc: 'When grows should advance to next stage' },
-                      { key: 'low_inventory', label: 'Low Inventory', desc: 'When supplies fall below reorder point' },
-                      { key: 'culture_expiring', label: 'Culture Expiring', desc: 'When cultures are approaching expiration' },
-                      { key: 'lc_age', label: 'LC Age Warning', desc: 'When liquid cultures are getting old' },
+                      { key: 'contamination' as NotificationCategory, label: 'Contamination Detected', desc: 'Immediate alert when contamination is logged', urgent: true },
+                      { key: 'harvest_ready' as NotificationCategory, label: 'Harvest Ready', desc: 'When grows are ready for harvest' },
+                      { key: 'stage_transition' as NotificationCategory, label: 'Stage Transitions', desc: 'When grows should advance to next stage' },
+                      { key: 'low_inventory' as NotificationCategory, label: 'Low Inventory', desc: 'When supplies fall below reorder point' },
+                      { key: 'culture_expiring' as NotificationCategory, label: 'Culture Expiring', desc: 'When cultures are approaching expiration' },
+                      { key: 'lc_age' as NotificationCategory, label: 'LC Age Warning', desc: 'When liquid cultures are getting old' },
                     ].map(event => (
                       <div key={event.key} className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
                         <div>
@@ -1804,14 +1941,30 @@ export const SettingsPage: React.FC = () => {
                           </div>
                           <p className="text-xs text-zinc-500">{event.desc}</p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           {localSettings.emailNotificationsEnabled && (
-                            <button className="px-2 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded">
+                            <button
+                              onClick={() => toggleEventPreference(event.key, 'email')}
+                              className={`px-2 py-1 text-xs rounded transition-colors ${
+                                eventPreferences[event.key]?.email
+                                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                  : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-400'
+                              }`}
+                              title={eventPreferences[event.key]?.email ? 'Email enabled' : 'Email disabled'}
+                            >
                               📧
                             </button>
                           )}
                           {localSettings.smsNotificationsEnabled && (
-                            <button className="px-2 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded">
+                            <button
+                              onClick={() => toggleEventPreference(event.key, 'sms')}
+                              className={`px-2 py-1 text-xs rounded transition-colors ${
+                                eventPreferences[event.key]?.sms
+                                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                  : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-400'
+                              }`}
+                              title={eventPreferences[event.key]?.sms ? 'SMS enabled' : 'SMS disabled'}
+                            >
                               📱
                             </button>
                           )}
@@ -2285,6 +2438,97 @@ export const SettingsPage: React.FC = () => {
 
       {/* Modal */}
       {renderModal()}
+
+      {/* Verification Modal */}
+      {showVerifyModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowVerifyModal(false)}>
+          <div className="bg-zinc-900 rounded-xl border border-zinc-800 w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                Verify {verifyType === 'email' ? 'Email' : 'Phone Number'}
+              </h3>
+              <button onClick={() => setShowVerifyModal(false)} className="text-zinc-500 hover:text-white">
+                <Icons.X />
+              </button>
+            </div>
+
+            {verifyError && (
+              <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">
+                {verifyError}
+              </div>
+            )}
+
+            {verifySuccess && (
+              <div className="mb-4 p-3 bg-emerald-950/50 border border-emerald-800 rounded-lg text-emerald-300 text-sm">
+                {verifySuccess}
+              </div>
+            )}
+
+            {!codeSent ? (
+              <div className="space-y-4">
+                <p className="text-zinc-400 text-sm">
+                  We'll send a verification code to{' '}
+                  <span className="text-white font-medium">
+                    {verifyType === 'email' ? localSettings.notificationEmail : localSettings.phoneNumber}
+                  </span>
+                </p>
+                <button
+                  onClick={handleSendVerificationCode}
+                  disabled={verifySending}
+                  className="w-full px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center gap-2"
+                >
+                  {verifySending ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    'Send Verification Code'
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-zinc-400 text-sm">
+                  Enter the verification code sent to your {verifyType === 'email' ? 'email' : 'phone'}:
+                </p>
+                <input
+                  type="text"
+                  value={verifyCode}
+                  onChange={e => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="Enter 6-digit code"
+                  maxLength={6}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-center text-2xl tracking-widest font-mono"
+                  autoFocus
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSendVerificationCode}
+                    disabled={verifySending}
+                    className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white rounded-lg text-sm"
+                  >
+                    Resend Code
+                  </button>
+                  <button
+                    onClick={handleVerifyCode}
+                    disabled={verifySending || verifyCode.length < 4}
+                    className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center gap-2"
+                  >
+                    {verifySending ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        Verifying...
+                      </>
+                    ) : (
+                      'Verify'
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
