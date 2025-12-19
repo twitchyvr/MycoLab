@@ -3736,6 +3736,84 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1228',
+    title: 'Feature Tracker - Data Architecture',
+    description: 'Redesigned the devlog/roadmap system into a comprehensive Feature Tracker with milestone tracking, version awareness, and archive system.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 6,
+    actualHours: 4,
+    completedAt: timestamp(),
+    notes: `**Phase 1 - Data Architecture Complete:**
+
+**New Directory: src/data/feature-tracker/**
+- types.ts: Comprehensive type system (Feature, Milestone, AppVersionInfo, Changelog)
+- index.ts: Main exports with MILESTONES array and utility functions
+- changelog.ts: Version history tracking
+
+**Utility Functions:**
+- search.ts: Full-text search with weighted fields (title > description > notes)
+- stats.ts: Compute feature statistics by status, priority, category, milestone
+- dependencies.ts: Dependency graph analysis with critical path detection
+- migration.ts: Bridge from legacy DevLogFeature to new Feature format
+
+**Bridge Pattern:**
+- active/current.ts: Migrates non-completed devlog features to new format
+- archive/index.ts: Migrates completed features with quarter grouping
+
+**Milestone System:**
+- Mushroom-themed codenames (Spore, Mycelium, Primordia, Golden Teacher, etc.)
+- Mandatory vs optional features per milestone
+- Status tracking: planned -> active -> released
+
+**Key Features:**
+- 263 features auto-migrated from legacy devlog
+- Automatic tag extraction from content
+- Quarter-based archive organization
+- Semantic versioning support`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1229',
+    title: 'Feature Tracker - UI Components',
+    description: 'Built comprehensive UI for Feature Tracker with multiple views, search, filtering, and proper markdown rendering.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 8,
+    actualHours: 5,
+    completedAt: timestamp(),
+    notes: `**Phase 2 - UI Components Complete:**
+
+**New Components:**
+- FeatureTrackerPage.tsx: Main container with view switching
+- shared/StatusBadge.tsx: Status, Priority, Category, Tag, Milestone badges
+- shared/FeatureCard.tsx: Compact and expanded views with all metadata
+- shared/MarkdownContent.tsx: Renders markdown (headers, bold, lists, code blocks, links)
+
+**Views Implemented:**
+- Kanban: Status columns with drag-ready layout
+- List: Mobile-first compact list
+- Milestone: Grouped by version with progress indicators
+
+**Features:**
+- Cmd+K quick search modal with fuzzy matching
+- Filter panel (status, priority, category, milestone)
+- Stats bar showing progress and counts
+- Proper markdown rendering in notes/technical notes
+- Responsive design throughout
+
+**Navigation Integration:**
+- Added 'featuretracker' to Page type
+- Added /feature-tracker route
+- Nav item in Settings section
+- Page config with title and subtitle`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

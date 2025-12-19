@@ -12,6 +12,7 @@ import { AuthModal, AccountMenu } from './components/auth';
 import { ToastContainer, NotificationBell } from './components/notifications';
 import { ErrorBoundary, GlobalErrorHandler } from './components/errors';
 import DevLogPage from './components/devlog/DevLogPage';
+import { FeatureTrackerPage } from './components/feature-tracker/FeatureTrackerPage';
 import { PrivacyPolicy, TermsOfService } from './components/legal';
 import type { 
   AppState, 
@@ -313,7 +314,7 @@ const Icons = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes' | 'settings' | 'profile' | 'devlog' | 'featuretracker';
 
 // Route configuration: maps Page to URL paths
 // Routes with :id support deep-linking to specific items
@@ -351,6 +352,7 @@ const routeConfig: Record<Page, string> = {
   settings: '/settings',
   profile: '/profile',
   devlog: '/devlog',
+  featuretracker: '/feature-tracker',
 };
 
 // Reverse lookup: URL path to Page
@@ -506,7 +508,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'settings', label: 'Preferences', icon: Icons.Settings },
       { id: 'profile', label: 'Profile', icon: Icons.Dashboard },
-      { id: 'devlog', label: 'Roadmap', icon: Icons.DevLog },
+      { id: 'featuretracker', label: 'Feature Tracker', icon: Icons.DevLog },
     ],
   },
 ];
@@ -1176,6 +1178,7 @@ const AppWithRouter: React.FC = () => {
     settings: { title: 'Settings', subtitle: 'Configure lookups and preferences' },
     profile: { title: 'My Profile', subtitle: 'Manage your account and security settings' },
     devlog: { title: 'Dev Roadmap', subtitle: 'Feature tracker with intelligent prioritization' },
+    featuretracker: { title: 'Feature Tracker', subtitle: 'Development roadmap with milestones and changelog' },
   };
 
   const renderPage = () => {
@@ -1221,11 +1224,17 @@ const AppWithRouter: React.FC = () => {
         );
       case 'devlog':
         return (
-          <DevLogPage 
+          <DevLogPage
             features={state.devLog}
             onUpdateStatus={updateFeatureStatus}
             onAddFeature={addDevLogFeature}
           />
+        );
+      case 'featuretracker':
+        return (
+          <div className="p-6">
+            <FeatureTrackerPage />
+          </div>
         );
       case 'inventory':
         return <UnifiedItemView onNavigate={setCurrentPage} />;
