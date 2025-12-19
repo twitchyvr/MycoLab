@@ -23,6 +23,7 @@ import {
   Flush,
   RecipeCategoryItem,
   GrainType,
+  PreparedSpawn,
 } from './types';
 
 // ============================================================================
@@ -245,6 +246,7 @@ export const transformContainerFromDb = (row: any): Container => ({
       }
     : undefined,
   isReusable: row.is_reusable ?? true,
+  isSterilizable: row.is_sterilizable ?? true,
   usageContext: row.usage_context || ['culture', 'grow'],
   notes: row.notes,
   isActive: row.is_active ?? true,
@@ -259,6 +261,7 @@ export const transformContainerToDb = (container: Partial<Container>, userId?: s
   dimension_height: container.dimensions?.height,
   dimension_unit: container.dimensions?.unit || 'cm',
   is_reusable: container.isReusable,
+  is_sterilizable: container.isSterilizable,
   usage_context: container.usageContext,
   notes: container.notes,
   is_active: container.isActive,
@@ -826,5 +829,88 @@ export const transformSpeciesToDb = (species: Partial<Species>, userId?: string 
   maturation_notes: species.maturationNotes,
   notes: species.notes,
   is_active: species.isActive,
+  ...(userId && { user_id: userId }),
+});
+
+// ============================================================================
+// PREPARED SPAWN TRANSFORMATIONS
+// ============================================================================
+
+export const transformPreparedSpawnFromDb = (row: any): PreparedSpawn => ({
+  id: row.id,
+  userId: row.user_id ?? null,
+
+  // Container info
+  type: row.type,
+  label: row.label,
+  containerId: row.container_id || '',
+  containerCount: row.container_count || 1,
+
+  // Contents
+  grainTypeId: row.grain_type_id,
+  recipeId: row.recipe_id,
+  volumeMl: row.volume_ml,
+  weightGrams: row.weight_grams,
+
+  // Preparation
+  prepDate: row.prep_date ? new Date(row.prep_date) : new Date(),
+  sterilizationDate: row.sterilization_date ? new Date(row.sterilization_date) : undefined,
+  sterilizationMethod: row.sterilization_method,
+  expiresAt: row.expires_at ? new Date(row.expires_at) : undefined,
+
+  // Location & tracking
+  locationId: row.location_id || '',
+  status: row.status || 'available',
+
+  // Cost tracking
+  productionCost: row.production_cost,
+
+  // Linkage
+  inoculatedAt: row.inoculated_at ? new Date(row.inoculated_at) : undefined,
+  resultCultureId: row.result_culture_id,
+  resultGrowId: row.result_grow_id,
+
+  // Metadata
+  notes: row.notes,
+  images: row.images || [],
+  createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+  updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+  isActive: row.is_active ?? true,
+});
+
+export const transformPreparedSpawnToDb = (spawn: Partial<PreparedSpawn>, userId?: string | null) => ({
+  type: spawn.type,
+  label: spawn.label,
+  container_id: toDbId(spawn.containerId),
+  container_count: spawn.containerCount,
+
+  // Contents
+  grain_type_id: toDbId(spawn.grainTypeId),
+  recipe_id: toDbId(spawn.recipeId),
+  volume_ml: spawn.volumeMl,
+  weight_grams: spawn.weightGrams,
+
+  // Preparation
+  prep_date: spawn.prepDate instanceof Date ? spawn.prepDate.toISOString().split('T')[0] : spawn.prepDate,
+  sterilization_date: spawn.sterilizationDate instanceof Date ? spawn.sterilizationDate.toISOString().split('T')[0] : spawn.sterilizationDate,
+  sterilization_method: spawn.sterilizationMethod,
+  expires_at: spawn.expiresAt instanceof Date ? spawn.expiresAt.toISOString().split('T')[0] : spawn.expiresAt,
+
+  // Location & tracking
+  location_id: toDbId(spawn.locationId),
+  status: spawn.status,
+
+  // Cost tracking
+  production_cost: spawn.productionCost,
+
+  // Linkage
+  inoculated_at: spawn.inoculatedAt instanceof Date ? spawn.inoculatedAt.toISOString() : spawn.inoculatedAt,
+  result_culture_id: spawn.resultCultureId,
+  result_grow_id: spawn.resultGrowId,
+
+  // Metadata
+  notes: spawn.notes,
+  images: spawn.images,
+  is_active: spawn.isActive,
   ...(userId && { user_id: userId }),
 });

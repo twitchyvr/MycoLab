@@ -310,6 +310,7 @@ export interface Container {
     unit?: 'cm' | 'in';
   };
   isReusable: boolean;
+  isSterilizable: boolean; // Can be sterilized (glass jars=true, plastic syringes=false)
   usageContext: ContainerUsageContext[];  // What this container can be used for
   notes?: string;
   isActive: boolean;
@@ -582,6 +583,56 @@ export interface Culture {
   expiresAt?: Date;
   observations: CultureObservation[];
   transfers: CultureTransfer[];
+}
+
+// ============================================================================
+// PREPARED SPAWN TYPES
+// Tracks sterilized containers (grain jars, LC jars, agar plates) waiting to be inoculated
+// ============================================================================
+
+export type PreparedSpawnType = 'grain_jar' | 'lc_jar' | 'agar_plate' | 'slant_tube' | 'spawn_bag' | 'other';
+export type PreparedSpawnStatus = 'available' | 'reserved' | 'inoculated' | 'contaminated' | 'expired';
+
+export interface PreparedSpawn {
+  id: string;
+  userId?: string | null; // null = system data (unlikely), string = user-created
+
+  // Container info
+  type: PreparedSpawnType;
+  label?: string;                // User-defined label (e.g., "Rye Quart #1")
+  containerId: string;           // Reference to container type (e.g., "Quart Mason Jar")
+  containerCount: number;        // Number of containers in this batch (default: 1)
+
+  // Contents
+  grainTypeId?: string;          // For grain_jar/spawn_bag - references grain_types
+  recipeId?: string;             // Recipe used for LC/agar media
+  volumeMl?: number;             // Volume of media (for LC jars)
+  weightGrams?: number;          // Weight of grain (for grain jars)
+
+  // Preparation
+  prepDate: Date;                // When it was prepared
+  sterilizationDate?: Date;      // When it was sterilized (may be same as prepDate)
+  sterilizationMethod?: string;  // e.g., "PC 15psi 90min", "Pre-sterilized"
+  expiresAt?: Date;              // Expiration/viability date
+
+  // Location & tracking
+  locationId: string;            // Where it's stored
+  status: PreparedSpawnStatus;
+
+  // Cost tracking
+  productionCost?: number;       // Cost to produce (ingredients, labor)
+
+  // Linkage (when inoculated)
+  inoculatedAt?: Date;           // When it was inoculated
+  resultCultureId?: string;      // The culture record created from inoculation
+  resultGrowId?: string;         // The grow record if directly spawned to bulk
+
+  // Metadata
+  notes?: string;
+  images?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+  isActive: boolean;
 }
 
 // ============================================================================
@@ -1240,6 +1291,7 @@ export interface DataStoreState {
   inventoryUsages: InventoryUsage[];
   purchaseOrders: PurchaseOrder[];
   cultures: Culture[];
+  preparedSpawn: PreparedSpawn[];  // Sterilized containers ready for inoculation
   grows: Grow[];
   recipes: Recipe[];
 
@@ -1545,6 +1597,7 @@ export interface LookupHelpers {
   getInventoryLot: (id: string) => InventoryLot | undefined;
   getPurchaseOrder: (id: string) => PurchaseOrder | undefined;
   getCulture: (id: string) => Culture | undefined;
+  getPreparedSpawn: (id: string) => PreparedSpawn | undefined;
   getGrow: (id: string) => Grow | undefined;
   getRecipe: (id: string) => Recipe | undefined;
 
@@ -1564,6 +1617,7 @@ export interface LookupHelpers {
   activeInventoryLots: InventoryLot[];
   activePurchaseOrders: PurchaseOrder[];
   activeRecipes: Recipe[];
+  availablePreparedSpawn: PreparedSpawn[];  // PreparedSpawn with status='available'
 }
 
 // ============================================================================

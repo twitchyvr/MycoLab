@@ -30,75 +30,78 @@
 -- ----------------------------------------------------------------------------
 -- CONTAINERS - Unified container types (culture and grow)
 -- Replaces former 'vessels' and 'container_types' tables
+-- is_sterilizable: true = can withstand autoclave/pressure cooker (glass, metal)
+--                  false = plastic/disposable or outdoor environment
 -- ----------------------------------------------------------------------------
-INSERT INTO containers (id, name, category, volume_ml, is_reusable, usage_context, notes, user_id)
+INSERT INTO containers (id, name, category, volume_ml, is_reusable, is_sterilizable, usage_context, notes, user_id)
 VALUES
   -- Culture Containers (formerly vessels)
-  -- Jars
-  ('00000000-0000-0000-0002-000000000001', 'Half Pint Mason Jar (8 oz)', 'jar', 237, true, ARRAY['culture'], 'Small jar for BRF cakes or small LC batches', NULL),
-  ('00000000-0000-0000-0002-000000000002', 'Pint Mason Jar (16 oz)', 'jar', 473, true, ARRAY['culture'], 'Standard grain spawn jar, good for smaller batches', NULL),
-  ('00000000-0000-0000-0002-000000000003', 'Quart Mason Jar (32 oz)', 'jar', 946, true, ARRAY['culture', 'grow'], 'Most common grain spawn jar size', NULL),
-  ('00000000-0000-0000-0002-000000000004', 'Half Gallon Mason Jar (64 oz)', 'jar', 1893, true, ARRAY['culture'], 'Large LC or grain jar, reduces number of containers', NULL),
-  ('00000000-0000-0000-0002-000000000005', '500ml Media Bottle', 'bottle', 500, true, ARRAY['culture'], 'Lab media bottle for LC or agar, autoclavable', NULL),
-  ('00000000-0000-0000-0002-000000000006', '1000ml Media Bottle', 'bottle', 1000, true, ARRAY['culture'], 'Large lab media bottle for bulk LC', NULL),
+  -- Jars (glass - sterilizable)
+  ('00000000-0000-0000-0002-000000000001', 'Half Pint Mason Jar (8 oz)', 'jar', 237, true, true, ARRAY['culture'], 'Small jar for BRF cakes or small LC batches', NULL),
+  ('00000000-0000-0000-0002-000000000002', 'Pint Mason Jar (16 oz)', 'jar', 473, true, true, ARRAY['culture'], 'Standard grain spawn jar, good for smaller batches', NULL),
+  ('00000000-0000-0000-0002-000000000003', 'Quart Mason Jar (32 oz)', 'jar', 946, true, true, ARRAY['culture', 'grow'], 'Most common grain spawn jar size', NULL),
+  ('00000000-0000-0000-0002-000000000004', 'Half Gallon Mason Jar (64 oz)', 'jar', 1893, true, true, ARRAY['culture'], 'Large LC or grain jar, reduces number of containers', NULL),
+  ('00000000-0000-0000-0002-000000000005', '500ml Media Bottle', 'bottle', 500, true, true, ARRAY['culture'], 'Lab media bottle for LC or agar, autoclavable', NULL),
+  ('00000000-0000-0000-0002-000000000006', '1000ml Media Bottle', 'bottle', 1000, true, true, ARRAY['culture'], 'Large lab media bottle for bulk LC', NULL),
 
-  -- Petri Dishes
-  ('00000000-0000-0000-0002-000000000010', '60mm Petri Dish', 'plate', 10, false, ARRAY['culture'], 'Small agar plate, good for slants or samples', NULL),
-  ('00000000-0000-0000-0002-000000000011', '90mm Petri Dish', 'plate', 20, false, ARRAY['culture'], 'Standard agar plate size (European)', NULL),
-  ('00000000-0000-0000-0002-000000000012', '100mm Petri Dish', 'plate', 25, false, ARRAY['culture'], 'Standard agar plate size (American)', NULL),
-  ('00000000-0000-0000-0002-000000000013', '150mm Petri Dish', 'plate', 60, false, ARRAY['culture'], 'Large agar plate for sectoring or multiple transfers', NULL),
+  -- Petri Dishes (plastic - not sterilizable, disposable)
+  ('00000000-0000-0000-0002-000000000010', '60mm Petri Dish', 'plate', 10, false, false, ARRAY['culture'], 'Small agar plate, good for slants or samples', NULL),
+  ('00000000-0000-0000-0002-000000000011', '90mm Petri Dish', 'plate', 20, false, false, ARRAY['culture'], 'Standard agar plate size (European)', NULL),
+  ('00000000-0000-0000-0002-000000000012', '100mm Petri Dish', 'plate', 25, false, false, ARRAY['culture'], 'Standard agar plate size (American)', NULL),
+  ('00000000-0000-0000-0002-000000000013', '150mm Petri Dish', 'plate', 60, false, false, ARRAY['culture'], 'Large agar plate for sectoring or multiple transfers', NULL),
 
-  -- Tubes
-  ('00000000-0000-0000-0002-000000000020', 'Test Tube Slant (16x150mm)', 'tube', 15, true, ARRAY['culture'], 'Standard slant tube for long-term storage', NULL),
-  ('00000000-0000-0000-0002-000000000021', 'Screw Cap Culture Tube', 'tube', 20, true, ARRAY['culture'], 'Reusable culture tube with screw cap', NULL),
-  ('00000000-0000-0000-0002-000000000022', 'Cryo Vial (2ml)', 'tube', 2, false, ARRAY['culture'], 'For cryogenic storage with glycerol', NULL),
+  -- Tubes (glass - sterilizable)
+  ('00000000-0000-0000-0002-000000000020', 'Test Tube Slant (16x150mm)', 'tube', 15, true, true, ARRAY['culture'], 'Standard slant tube for long-term storage', NULL),
+  ('00000000-0000-0000-0002-000000000021', 'Screw Cap Culture Tube', 'tube', 20, true, true, ARRAY['culture'], 'Reusable culture tube with screw cap', NULL),
+  ('00000000-0000-0000-0002-000000000022', 'Cryo Vial (2ml)', 'tube', 2, false, false, ARRAY['culture'], 'For cryogenic storage with glycerol', NULL),
 
-  -- Syringes
-  ('00000000-0000-0000-0002-000000000030', '10cc Syringe', 'syringe', 10, false, ARRAY['culture'], 'Standard spore or LC syringe', NULL),
-  ('00000000-0000-0000-0002-000000000031', '20cc Syringe', 'syringe', 20, false, ARRAY['culture'], 'Larger syringe for LC distribution', NULL),
-  ('00000000-0000-0000-0002-000000000032', '60cc Syringe', 'syringe', 60, false, ARRAY['culture'], 'Large syringe for bulk LC inoculation', NULL),
+  -- Syringes (plastic - not sterilizable)
+  ('00000000-0000-0000-0002-000000000030', '10cc Syringe', 'syringe', 10, false, false, ARRAY['culture'], 'Standard spore or LC syringe', NULL),
+  ('00000000-0000-0000-0002-000000000031', '20cc Syringe', 'syringe', 20, false, false, ARRAY['culture'], 'Larger syringe for LC distribution', NULL),
+  ('00000000-0000-0000-0002-000000000032', '60cc Syringe', 'syringe', 60, false, false, ARRAY['culture'], 'Large syringe for bulk LC inoculation', NULL),
 
-  -- Bags (culture context - spawn bags)
-  ('00000000-0000-0000-0002-000000000040', '3lb Spawn Bag (0.2 micron)', 'bag', 2000, false, ARRAY['culture'], 'Small unicorn bag with filter patch', NULL),
-  ('00000000-0000-0000-0002-000000000041', '5lb Spawn Bag (0.2 micron)', 'bag', 3500, false, ARRAY['culture', 'grow'], 'Standard unicorn bag with filter patch', NULL),
-  ('00000000-0000-0000-0002-000000000042', '10lb Spawn Bag (0.5 micron)', 'bag', 7000, false, ARRAY['culture', 'grow'], 'Large spawn bag, 0.5 micron filter', NULL),
-  ('00000000-0000-0000-0002-000000000043', 'All-in-One Grow Bag', 'bag', 4000, false, ARRAY['grow'], 'Pre-made grain + substrate bag, inject and grow', NULL),
+  -- Bags (plastic - not sterilizable, disposable)
+  ('00000000-0000-0000-0002-000000000040', '3lb Spawn Bag (0.2 micron)', 'bag', 2000, false, false, ARRAY['culture'], 'Small unicorn bag with filter patch', NULL),
+  ('00000000-0000-0000-0002-000000000041', '5lb Spawn Bag (0.2 micron)', 'bag', 3500, false, false, ARRAY['culture', 'grow'], 'Standard unicorn bag with filter patch', NULL),
+  ('00000000-0000-0000-0002-000000000042', '10lb Spawn Bag (0.5 micron)', 'bag', 7000, false, false, ARRAY['culture', 'grow'], 'Large spawn bag, 0.5 micron filter', NULL),
+  ('00000000-0000-0000-0002-000000000043', 'All-in-One Grow Bag', 'bag', 4000, false, false, ARRAY['grow'], 'Pre-made grain + substrate bag, inject and grow', NULL),
 
   -- Grow Containers (formerly container_types)
-  -- Tubs
-  ('00000000-0000-0000-0003-000000000001', '6qt Shoebox', 'tub', 5700, true, ARRAY['grow'], 'Small personal grow, great for testing genetics', NULL),
-  ('00000000-0000-0000-0003-000000000002', '15qt Tub', 'tub', 14200, true, ARRAY['grow'], 'Medium grow container, good yield per footprint', NULL),
-  ('00000000-0000-0000-0003-000000000003', '32qt Tub', 'tub', 30300, true, ARRAY['grow'], 'Large tub, requires more spawn', NULL),
-  ('00000000-0000-0000-0003-000000000004', '56qt Tub', 'tub', 53000, true, ARRAY['grow'], 'Standard monotub size, popular choice', NULL),
-  ('00000000-0000-0000-0003-000000000005', '66qt Monotub', 'tub', 62500, true, ARRAY['grow'], 'Large monotub for bulk grows', NULL),
-  ('00000000-0000-0000-0003-000000000006', '105qt Tub', 'tub', 99400, true, ARRAY['grow'], 'Extra large monotub for maximum yield', NULL),
-  ('00000000-0000-0000-0003-000000000007', 'Dub Tub (2x 6qt)', 'tub', 11400, true, ARRAY['grow'], 'Two shoeboxes stacked for extra height', NULL),
+  -- Tubs (plastic - sanitizable but not autoclavable)
+  ('00000000-0000-0000-0003-000000000001', '6qt Shoebox', 'tub', 5700, true, false, ARRAY['grow'], 'Small personal grow, great for testing genetics', NULL),
+  ('00000000-0000-0000-0003-000000000002', '15qt Tub', 'tub', 14200, true, false, ARRAY['grow'], 'Medium grow container, good yield per footprint', NULL),
+  ('00000000-0000-0000-0003-000000000003', '32qt Tub', 'tub', 30300, true, false, ARRAY['grow'], 'Large tub, requires more spawn', NULL),
+  ('00000000-0000-0000-0003-000000000004', '56qt Tub', 'tub', 53000, true, false, ARRAY['grow'], 'Standard monotub size, popular choice', NULL),
+  ('00000000-0000-0000-0003-000000000005', '66qt Monotub', 'tub', 62500, true, false, ARRAY['grow'], 'Large monotub for bulk grows', NULL),
+  ('00000000-0000-0000-0003-000000000006', '105qt Tub', 'tub', 99400, true, false, ARRAY['grow'], 'Extra large monotub for maximum yield', NULL),
+  ('00000000-0000-0000-0003-000000000007', 'Dub Tub (2x 6qt)', 'tub', 11400, true, false, ARRAY['grow'], 'Two shoeboxes stacked for extra height', NULL),
 
-  -- Bags (grow context - fruiting bags)
-  ('00000000-0000-0000-0003-000000000010', '5lb Grow Bag', 'bag', 4000, false, ARRAY['grow'], 'All-in-one style grow bag', NULL),
-  ('00000000-0000-0000-0003-000000000011', '10lb Grow Bag', 'bag', 8000, false, ARRAY['grow'], 'Large grow bag for sawdust fruiting blocks', NULL),
-  ('00000000-0000-0000-0003-000000000012', 'Fruiting Block Bag (2.5kg)', 'bag', 5000, false, ARRAY['grow'], 'Commercial style fruiting block', NULL),
+  -- Bags (grow context - fruiting bags, plastic - not sterilizable)
+  ('00000000-0000-0000-0003-000000000010', '5lb Grow Bag', 'bag', 4000, false, false, ARRAY['grow'], 'All-in-one style grow bag', NULL),
+  ('00000000-0000-0000-0003-000000000011', '10lb Grow Bag', 'bag', 8000, false, false, ARRAY['grow'], 'Large grow bag for sawdust fruiting blocks', NULL),
+  ('00000000-0000-0000-0003-000000000012', 'Fruiting Block Bag (2.5kg)', 'bag', 5000, false, false, ARRAY['grow'], 'Commercial style fruiting block', NULL),
 
-  -- Buckets
-  ('00000000-0000-0000-0003-000000000020', '5 Gallon Bucket', 'bucket', 19000, true, ARRAY['grow'], 'Bucket tek for oysters, low-tech method', NULL),
-  ('00000000-0000-0000-0003-000000000021', '3 Gallon Bucket', 'bucket', 11400, true, ARRAY['grow'], 'Smaller bucket for limited space', NULL),
+  -- Buckets (plastic - sanitizable but not autoclavable)
+  ('00000000-0000-0000-0003-000000000020', '5 Gallon Bucket', 'bucket', 19000, true, false, ARRAY['grow'], 'Bucket tek for oysters, low-tech method', NULL),
+  ('00000000-0000-0000-0003-000000000021', '3 Gallon Bucket', 'bucket', 11400, true, false, ARRAY['grow'], 'Smaller bucket for limited space', NULL),
 
-  -- Jars (grow context - PF tek)
-  ('00000000-0000-0000-0003-000000000030', 'Half Pint PF Tek Jar', 'jar', 240, true, ARRAY['grow'], 'Classic PF tek BRF cake container', NULL),
-  ('00000000-0000-0000-0003-000000000031', 'Wide Mouth Pint Jar', 'jar', 470, true, ARRAY['grow'], 'Alternative BRF or mini-grain grow', NULL),
+  -- Jars (grow context - PF tek, glass - sterilizable)
+  ('00000000-0000-0000-0003-000000000030', 'Half Pint PF Tek Jar', 'jar', 240, true, true, ARRAY['grow'], 'Classic PF tek BRF cake container', NULL),
+  ('00000000-0000-0000-0003-000000000031', 'Wide Mouth Pint Jar', 'jar', 470, true, true, ARRAY['grow'], 'Alternative BRF or mini-grain grow', NULL),
 
-  -- Beds
-  ('00000000-0000-0000-0003-000000000040', 'Outdoor Garden Bed (4x8)', 'bed', 500000, false, ARRAY['grow'], 'Raised bed for wine caps, king stropharia', NULL),
-  ('00000000-0000-0000-0003-000000000041', 'Small Outdoor Patch (2x4)', 'bed', 125000, false, ARRAY['grow'], 'Smaller outdoor cultivation area', NULL),
+  -- Beds (outdoor - not applicable)
+  ('00000000-0000-0000-0003-000000000040', 'Outdoor Garden Bed (4x8)', 'bed', 500000, false, false, ARRAY['grow'], 'Raised bed for wine caps, king stropharia', NULL),
+  ('00000000-0000-0000-0003-000000000041', 'Small Outdoor Patch (2x4)', 'bed', 125000, false, false, ARRAY['grow'], 'Smaller outdoor cultivation area', NULL),
 
-  -- Other
-  ('00000000-0000-0000-0003-000000000050', 'Martha Tent', 'other', 500000, true, ARRAY['grow'], 'Greenhouse-style fruiting chamber', NULL),
-  ('00000000-0000-0000-0003-000000000051', 'Shotgun Fruiting Chamber', 'other', 50000, true, ARRAY['grow'], 'Simple SGFC for PF tek cakes', NULL)
+  -- Other (plastic/fabric - sanitizable but not autoclavable)
+  ('00000000-0000-0000-0003-000000000050', 'Martha Tent', 'other', 500000, true, false, ARRAY['grow'], 'Greenhouse-style fruiting chamber', NULL),
+  ('00000000-0000-0000-0003-000000000051', 'Shotgun Fruiting Chamber', 'other', 50000, true, false, ARRAY['grow'], 'Simple SGFC for PF tek cakes', NULL)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   category = EXCLUDED.category,
   volume_ml = EXCLUDED.volume_ml,
   is_reusable = EXCLUDED.is_reusable,
+  is_sterilizable = EXCLUDED.is_sterilizable,
   usage_context = EXCLUDED.usage_context,
   notes = EXCLUDED.notes;
 

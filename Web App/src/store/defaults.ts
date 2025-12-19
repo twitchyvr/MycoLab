@@ -91,6 +91,7 @@ export const emptyState: DataStoreState = {
   inventoryUsages: [],
   purchaseOrders: [],
   cultures: [],
+  preparedSpawn: [],
   grows: [],
   recipes: [],
   // Public sharing system

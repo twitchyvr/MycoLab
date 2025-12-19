@@ -12,7 +12,8 @@ import {
   Culture, Grow, Recipe, AppSettings,
   CultureObservation, CultureTransfer, GrowObservation, Flush, GrowStage,
   RecipeCategoryItem, GrainType, LotStatus, UsageType,
-  EntityOutcome, ContaminationDetails, OutcomeCategory, OutcomeCode, ContaminationType, ContaminationStage, SuspectedCause
+  EntityOutcome, ContaminationDetails, OutcomeCategory, OutcomeCode, ContaminationType, ContaminationStage, SuspectedCause,
+  PreparedSpawn, PreparedSpawnStatus
 } from './types';
 import {
   supabase,
@@ -98,6 +99,8 @@ import {
   transformInventoryLotToDb,
   transformPurchaseOrderFromDb,
   transformPurchaseOrderToDb,
+  transformPreparedSpawnFromDb,
+  transformPreparedSpawnToDb,
 } from './transformations';
 
 // ============================================================================
@@ -203,7 +206,14 @@ interface DataContextValue extends LookupHelpers {
   addCultureTransfer: (cultureId: string, transfer: Omit<CultureTransfer, 'id'>) => Culture | null;
   getCultureLineage: (cultureId: string) => { ancestors: Culture[]; descendants: Culture[] };
   generateCultureLabel: (type: Culture['type']) => string;
-  
+
+  // Prepared Spawn CRUD
+  addPreparedSpawn: (spawn: Omit<PreparedSpawn, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PreparedSpawn>;
+  updatePreparedSpawn: (id: string, updates: Partial<PreparedSpawn>) => Promise<void>;
+  deletePreparedSpawn: (id: string) => Promise<void>;
+  inoculatePreparedSpawn: (preparedSpawnId: string, resultCultureId: string) => Promise<void>;
+  getAvailablePreparedSpawn: (type?: PreparedSpawn['type']) => PreparedSpawn[];
+
   // Grow CRUD
   addGrow: (grow: Omit<Grow, 'id' | 'createdAt' | 'observations' | 'flushes' | 'totalYield'>) => Promise<Grow>;
   updateGrow: (id: string, updates: Partial<Grow>) => Promise<void>;
@@ -359,7 +369,14 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .select('*')
         .order('created_at', { ascending: false });
       if (culturesError) throw culturesError;
-      
+
+      // Load prepared spawn
+      const { data: preparedSpawnData, error: preparedSpawnError } = await client
+        .from('prepared_spawn')
+        .select('*')
+        .order('prep_date', { ascending: false });
+      if (preparedSpawnError) console.warn('Prepared spawn error:', preparedSpawnError);
+
       // Load grows
       const { data: growsData, error: growsError } = await client
         .from('grows')
@@ -479,6 +496,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         recipeCategories: (recipeCategoriesData || []).map(transformRecipeCategoryFromDb),
         grainTypes: (grainTypesData || []).map(transformGrainTypeFromDb),
         cultures: (culturesData || []).map(transformCultureFromDb),
+        preparedSpawn: (preparedSpawnData || []).map(transformPreparedSpawnFromDb),
         grows: growsWithFlushes,
         recipes: (recipesData || []).map(transformRecipeFromDb),
         settings: loadedSettings,
@@ -594,6 +612,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const getInventoryLot = useCallback((id: string) => state.inventoryLots.find(l => l.id === id), [state.inventoryLots]);
   const getPurchaseOrder = useCallback((id: string) => state.purchaseOrders.find(o => o.id === id), [state.purchaseOrders]);
   const getCulture = useCallback((id: string) => state.cultures.find(c => c.id === id), [state.cultures]);
+  const getPreparedSpawn = useCallback((id: string) => state.preparedSpawn.find(s => s.id === id), [state.preparedSpawn]);
   const getGrow = useCallback((id: string) => state.grows.find(g => g.id === id), [state.grows]);
   const getRecipe = useCallback((id: string) => state.recipes.find(r => r.id === id), [state.recipes]);
 
@@ -613,6 +632,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const activeInventoryLots = useMemo(() => state.inventoryLots.filter(l => l.isActive), [state.inventoryLots]);
   const activePurchaseOrders = useMemo(() => state.purchaseOrders.filter(o => o.isActive), [state.purchaseOrders]);
   const activeRecipes = useMemo(() => state.recipes.filter(r => r.isActive), [state.recipes]);
+  const availablePreparedSpawn = useMemo(() => state.preparedSpawn.filter(s => s.isActive && s.status === 'available'), [state.preparedSpawn]);
 
   // ============================================================================
   // SPECIES CRUD
@@ -1352,6 +1372,94 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
     return newCulture;
   }, [state.cultures, state.containers, generateId, generateCultureLabel, supabase]);
+
+  // ============================================================================
+  // PREPARED SPAWN CRUD
+  // ============================================================================
+
+  const addPreparedSpawn = useCallback(async (spawn: Omit<PreparedSpawn, 'id' | 'createdAt' | 'updatedAt'>): Promise<PreparedSpawn> => {
+    if (supabase) {
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('Authentication required. Please sign in to create prepared spawn.');
+      }
+      const insertData = {
+        ...transformPreparedSpawnToDb(spawn),
+        user_id: userId,
+      };
+
+      const { data, error } = await supabase
+        .from('prepared_spawn')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newSpawn = transformPreparedSpawnFromDb(data);
+      setState(prev => ({ ...prev, preparedSpawn: [newSpawn, ...prev.preparedSpawn] }));
+      return newSpawn;
+    }
+
+    const newSpawn: PreparedSpawn = {
+      ...spawn,
+      id: generateId('prepared-spawn'),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    setState(prev => ({ ...prev, preparedSpawn: [newSpawn, ...prev.preparedSpawn] }));
+    return newSpawn;
+  }, [supabase, generateId]);
+
+  const updatePreparedSpawn = useCallback(async (id: string, updates: Partial<PreparedSpawn>) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('prepared_spawn')
+        .update(transformPreparedSpawnToDb(updates))
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+
+    setState(prev => ({
+      ...prev,
+      preparedSpawn: prev.preparedSpawn.map(s => s.id === id ? { ...s, ...updates, updatedAt: new Date() } : s)
+    }));
+  }, [supabase]);
+
+  const deletePreparedSpawn = useCallback(async (id: string) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('prepared_spawn')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+
+    setState(prev => ({
+      ...prev,
+      preparedSpawn: prev.preparedSpawn.filter(s => s.id !== id)
+    }));
+  }, [supabase]);
+
+  const inoculatePreparedSpawn = useCallback(async (preparedSpawnId: string, resultCultureId: string) => {
+    const updates: Partial<PreparedSpawn> = {
+      status: 'inoculated' as PreparedSpawnStatus,
+      inoculatedAt: new Date(),
+      resultCultureId,
+    };
+
+    await updatePreparedSpawn(preparedSpawnId, updates);
+  }, [updatePreparedSpawn]);
+
+  const getAvailablePreparedSpawn = useCallback((type?: PreparedSpawn['type']): PreparedSpawn[] => {
+    return state.preparedSpawn.filter(s =>
+      s.status === 'available' &&
+      s.isActive &&
+      (!type || s.type === type)
+    );
+  }, [state.preparedSpawn]);
 
   // ============================================================================
   // GROW CRUD
@@ -2682,10 +2790,10 @@ const loadSettings = async (): Promise<AppSettings> => {
     // Lookup helpers
     getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
-    getInventoryLot, getPurchaseOrder, getCulture, getGrow, getRecipe,
+    getInventoryLot, getPurchaseOrder, getCulture, getPreparedSpawn, getGrow, getRecipe,
     activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeContainers,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
-    activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes,
+    activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes, availablePreparedSpawn,
 
     // CRUD operations
     addSpecies, updateSpecies, deleteSpecies,
@@ -2704,6 +2812,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, receiveOrder, generateOrderNumber,
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
     getCultureLineage, generateCultureLabel,
+    addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
     addGrowObservation, addFlush,
     calculateCultureCostPerMl, calculateSourceCultureCost, calculateGrowInventoryCost,
@@ -2717,10 +2826,10 @@ const loadSettings = async (): Promise<AppSettings> => {
     state, isLoading, isConnected, error,
     getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
-    getInventoryLot, getPurchaseOrder, getCulture, getGrow, getRecipe,
+    getInventoryLot, getPurchaseOrder, getCulture, getPreparedSpawn, getGrow, getRecipe,
     activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeContainers,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
-    activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes,
+    activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes, availablePreparedSpawn,
     addSpecies, updateSpecies, deleteSpecies,
     addStrain, updateStrain, deleteStrain,
     addLocation, updateLocation, deleteLocation,
@@ -2737,6 +2846,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, receiveOrder, generateOrderNumber,
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
     getCultureLineage, generateCultureLabel,
+    addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
     addGrowObservation, addFlush,
     calculateCultureCostPerMl, calculateSourceCultureCost, calculateGrowInventoryCost,

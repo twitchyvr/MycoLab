@@ -3124,7 +3124,6 @@ Added auth state listener in DataContext that:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
-<<<<<<< HEAD
 
   // =============================================================================
   // SETTINGS & ADMIN OVERHAUL (v0.3.0)
@@ -3270,6 +3269,120 @@ All grower settings PLUS Admin Console:
 - src/store/types.ts (added userId to all library types + helper functions)
 - src/store/transformations.ts (include userId in all FromDb transforms)
 - src/components/common/DataOwnershipBadge.tsx (new visual component)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  // =============================================================================
+  // PREPARED SPAWN & CONTAINER ENHANCEMENTS (v0.3.x)
+  // Track sterilized containers awaiting inoculation, streamline transfer workflow
+  // =============================================================================
+  {
+    id: 'dev-1220',
+    title: 'Prepared Spawn/Container Tracking System',
+    description: 'New entity type for tracking sterilized containers (grain jars, LC jars, agar plates, etc.) that are prepped and waiting for inoculation. Links to containers, recipes, grain types. Tracks prep date, sterilization date/method, expiration, and connects to resulting culture/grow after inoculation.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 12,
+    actualHours: 8,
+    completedAt: timestamp(),
+    notes: `Complete prepared spawn tracking system:
+
+**Problem:**
+- Users prep batches of sterilized containers but couldn't track them
+- No way to select an existing prepared container when transferring cultures
+- Container status (sterilized, filled, inoculated) wasn't tracked
+
+**Solution - PreparedSpawn Entity:**
+- New PreparedSpawn type with full lifecycle tracking
+- Types: grain_jar, lc_jar, agar_plate, slant_tube, spawn_bag, other
+- Status: available, reserved, inoculated, contaminated, expired
+- Links to: containerId, recipeId, grainTypeId, locationId
+- Tracks: prepDate, sterilizationDate/Method, expiresAt, productionCost
+- After inoculation: resultCultureId or resultGrowId
+
+**CRUD Operations:**
+- addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn
+- inoculatePreparedSpawn (marks as used, links to result)
+- getAvailablePreparedSpawn (filter by type)
+
+**Database Schema:**
+- prepared_spawn table with all fields
+- Foreign keys to containers, recipes, grain_types, locations, cultures
+- Deferred FK to grows (circular reference handling)
+- RLS policies for user data ownership
+
+**Files Changed:**
+- src/store/types.ts (PreparedSpawn interface, PreparedSpawnType, PreparedSpawnStatus)
+- src/store/DataContext.tsx (CRUD operations, data fetching, lookups)
+- src/store/transformations.ts (transformPreparedSpawnFromDb/ToDb)
+- src/store/defaults.ts (preparedSpawn: [] in emptyState)
+- src/store/initialData.ts (preparedSpawn: [] in initialDataState)
+- supabase-schema.sql (prepared_spawn table)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1221',
+    title: 'Container Sterilizable Flag',
+    description: 'Added isSterilizable boolean flag to Container type. Distinguishes between reusable+sterilizable containers (glass jars, metal tools) and reusable but not sterilizable (certain plastics) or disposable (plastic syringes). Defaults based on isReusable when not specified.',
+    category: 'core',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 2,
+    actualHours: 1,
+    completedAt: timestamp(),
+    notes: `Container sterilizable flag:
+
+**Problem:**
+- isReusable doesn't indicate if container can be sterilized
+- Glass syringes are sterilizable, plastic ones aren't
+- Users need to know which containers can go in the pressure cooker
+
+**Solution:**
+- Added isSterilizable: boolean to Container interface
+- Database column with migration for existing containers
+- Defaults: isReusable ?? true when not explicitly set
+- All seed containers updated with appropriate values
+
+**Files Changed:**
+- src/store/types.ts (Container.isSterilizable)
+- src/store/transformations.ts (transform functions)
+- src/store/initialData.ts (all containers have isSterilizable)
+- src/components/forms/EntityFormModal.tsx (container creation)
+- src/components/settings/SettingsPage.tsx (container form)
+- supabase-schema.sql (is_sterilizable column + migration)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1222',
+    title: 'Transfer Modal Prepared Container Selection',
+    description: 'Enhanced Transfer Culture modal to allow selecting from available prepared containers instead of always creating new records. Shows available prepared spawn matching the transfer type, displays container details, and marks as inoculated when transfer completes.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 6,
+    actualHours: 4,
+    completedAt: timestamp(),
+    notes: `Transfer modal enhancement:
+
+**Problem:**
+- Transfer always created new culture/grow records
+- No way to link transfer to pre-existing prepared container
+- Users prep containers ahead of time, want to select them
+
+**Solution:**
+- Toggle between "Create New" and "Use Prepared" in transfer modal
+- Dropdown shows available prepared spawn matching transfer type
+- Type mapping: grain_spawn→grain_jar/spawn_bag, liquid_culture→lc_jar, etc.
+- Shows container details (name, volume, prep date) when selected
+- Calls inoculatePreparedSpawn on transfer completion
+- Message when no prepared containers available, links to Lab & Storage
+
+**Files Changed:**
+- src/components/cultures/CultureManagement.tsx (Transfer modal UI)`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },

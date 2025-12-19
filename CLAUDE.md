@@ -454,12 +454,54 @@ Can also use `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY` as an alias.
 
 ### Adding a New Entity Type
 
-1. Define types in `src/store/types.ts`
-2. Add to `DataStoreState` interface
-3. Create transformation functions in `DataContext.tsx`
-4. Add CRUD operations to context
-5. Update `emptyState` with default array
-6. Add database table to `supabase-schema.sql`
+**COMPLETE CHECKLIST - All steps required:**
+
+1. **Define types in `src/store/types.ts`**
+   - Add the interface (e.g., `PreparedSpawn`)
+   - Add any associated types (e.g., `PreparedSpawnType`, `PreparedSpawnStatus`)
+   - Add to `DataStoreState` interface array
+   - Add lookup helper to `LookupHelpers` interface (e.g., `getPreparedSpawn`, `availablePreparedSpawn`)
+
+2. **Add transformation functions in `src/store/transformations.ts`**
+   - Import the new type at top of file
+   - Add `transformXxxFromDb()` function (snake_case → camelCase)
+   - Add `transformXxxToDb()` function (camelCase → snake_case)
+
+3. **Update `src/store/defaults.ts`**
+   - Add empty array for new entity in `emptyState` (e.g., `preparedSpawn: []`)
+
+4. **Update `src/store/initialData.ts`**
+   - Add empty array or initial data for new entity in `initialDataState`
+
+5. **Add CRUD operations in `src/store/DataContext.tsx`**
+   - Import new type and transform functions
+   - Add CRUD function signatures to `DataContextValue` interface
+   - Add lookup helper (e.g., `const getPreparedSpawn = useCallback(...)`)
+   - Add active/available list (e.g., `const availablePreparedSpawn = useMemo(...)`)
+   - Add CRUD implementations (add, update, delete, plus any special operations)
+   - Add data fetch in `loadDataFromSupabase()` function
+   - Add to `setState()` in the data load section
+   - **IMPORTANT: Add to contextValue AND dependency array (BOTH have same list - use replace_all)**
+
+6. **Add database schema in `supabase-schema.sql`**
+   - Add CREATE TABLE statement
+   - Add indexes as needed
+   - Handle any forward references with deferred ALTER TABLE
+
+**⚠️ DataContext.tsx has DUPLICATE lists:**
+The contextValue useMemo has two identical-looking lists:
+1. The value object (what gets exported)
+2. The dependency array (for React memoization)
+
+When adding new functions/helpers, you must add to BOTH lists. Use `replace_all: true` when editing these sections to update both at once.
+
+**Example pattern:**
+```
+addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
+getCultureLineage, generateCultureLabel,
+addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn,
+addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
+```
 
 ### Adding a New Page/Feature
 

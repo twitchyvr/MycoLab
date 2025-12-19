@@ -7,7 +7,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
 import { CultureWizard } from './CultureWizard';
 import { NumericInput } from '../common/NumericInput';
-import type { Culture, CultureType, CultureStatus, CultureObservation } from '../../store/types';
+import type { Culture, CultureType, CultureStatus, CultureObservation, PreparedSpawn } from '../../store/types';
 
 // Type configurations
 const cultureTypeConfig: Record<CultureType, { label: string; icon: string; prefix: string }> = {
@@ -70,11 +70,15 @@ export const CultureManagement: React.FC = () => {
     activeContainers,
     activeSuppliers,
     activeRecipes,
+    availablePreparedSpawn,
+    activeGrainTypes,
     getStrain,
     getLocation,
     getContainer,
     getSupplier,
     getRecipe,
+    getGrainType,
+    getPreparedSpawn,
     getCultureLineage,
     generateCultureLabel,
     addCulture,
@@ -82,6 +86,8 @@ export const CultureManagement: React.FC = () => {
     deleteCulture,
     addCultureObservation,
     addCultureTransfer,
+    addPreparedSpawn,
+    inoculatePreparedSpawn,
   } = useData();
 
   const cultures = state.cultures;
@@ -111,7 +117,10 @@ export const CultureManagement: React.FC = () => {
     notes: '',
     createNewRecord: false,
     destinationVolumeMl: undefined as number | undefined, // Volume of existing media in destination container
+    selectedPreparedSpawnId: undefined as string | undefined, // Selected prepared spawn container
+    useNewContainer: true, // true = create new, false = use prepared spawn
   });
+
 
   // Listen for header "New" button click
   useEffect(() => {
@@ -236,12 +245,13 @@ export const CultureManagement: React.FC = () => {
   };
 
   // Transfer handler
-  const handleTransfer = () => {
+  const handleTransfer = async () => {
     if (!selectedCulture) return;
 
     const toId = newTransfer.createNewRecord ? `culture-${Date.now()}` : undefined;
 
-    addCultureTransfer(selectedCulture.id, {
+    // Perform the transfer
+    const newCulture = addCultureTransfer(selectedCulture.id, {
       date: new Date(),
       fromId: selectedCulture.id,
       toId,
@@ -250,10 +260,25 @@ export const CultureManagement: React.FC = () => {
       unit: newTransfer.unit,
       notes: newTransfer.notes,
     });
+
+    // If using a prepared spawn container, mark it as inoculated and link to the new culture
+    if (!newTransfer.useNewContainer && newTransfer.selectedPreparedSpawnId && newCulture) {
+      await inoculatePreparedSpawn(newTransfer.selectedPreparedSpawnId, newCulture.id);
+    }
+
     // selectedCulture will be auto-updated by the sync useEffect when state.cultures changes
 
     setShowTransferModal(false);
-    setNewTransfer({ toType: 'agar', quantity: 1, unit: 'wedge', notes: '', createNewRecord: false, destinationVolumeMl: undefined });
+    setNewTransfer({
+      toType: 'agar',
+      quantity: 1,
+      unit: 'wedge',
+      notes: '',
+      createNewRecord: false,
+      destinationVolumeMl: undefined,
+      selectedPreparedSpawnId: undefined,
+      useNewContainer: true,
+    });
   };
 
   // Delete handler
@@ -894,7 +919,15 @@ export const CultureManagement: React.FC = () => {
                 <label className="block text-sm text-zinc-400 mb-2">Transfer To</label>
                 <select
                   value={newTransfer.toType}
-                  onChange={e => setNewTransfer(prev => ({ ...prev, toType: e.target.value as typeof newTransfer.toType }))}
+                  onChange={e => {
+                    const newType = e.target.value as typeof newTransfer.toType;
+                    setNewTransfer(prev => ({
+                      ...prev,
+                      toType: newType,
+                      selectedPreparedSpawnId: undefined,
+                      useNewContainer: true,
+                    }));
+                  }}
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
                 >
                   <option value="agar">Agar Plate</option>
@@ -904,6 +937,147 @@ export const CultureManagement: React.FC = () => {
                   <option value="bulk">Bulk Substrate</option>
                 </select>
               </div>
+
+              {/* Prepared Container Selection - show available prepared jars/plates */}
+              {(() => {
+                // Map transfer type to prepared spawn types
+                const preparedSpawnTypeMap: Record<string, string[]> = {
+                  grain_spawn: ['grain_jar', 'spawn_bag'],
+                  liquid_culture: ['lc_jar'],
+                  agar: ['agar_plate'],
+                  slant: ['slant_tube'],
+                };
+                const matchingTypes = preparedSpawnTypeMap[newTransfer.toType] || [];
+                const matchingPreparedSpawn = availablePreparedSpawn.filter(
+                  ps => matchingTypes.includes(ps.type)
+                );
+
+                if (matchingTypes.length === 0) {
+                  return null; // No prepared spawn types for this transfer type (e.g., bulk)
+                }
+
+                return (
+                  <div className="space-y-2">
+                    <label className="block text-sm text-zinc-400">Container Source</label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setNewTransfer(prev => ({
+                          ...prev,
+                          useNewContainer: true,
+                          selectedPreparedSpawnId: undefined,
+                        }))}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                          newTransfer.useNewContainer
+                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400 border'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 border hover:border-zinc-600'
+                        }`}
+                      >
+                        Create New
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewTransfer(prev => ({ ...prev, useNewContainer: false }))}
+                        disabled={matchingPreparedSpawn.length === 0}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                          !newTransfer.useNewContainer
+                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400 border'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 border hover:border-zinc-600'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        Use Prepared ({matchingPreparedSpawn.length})
+                      </button>
+                    </div>
+
+                    {/* Message when no prepared containers available */}
+                    {!newTransfer.useNewContainer && matchingPreparedSpawn.length === 0 && (
+                      <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-3 text-sm">
+                        <p className="text-zinc-400 mb-2">
+                          No prepared {newTransfer.toType === 'grain_spawn' ? 'grain jars' : newTransfer.toType === 'liquid_culture' ? 'LC jars' : 'containers'} available.
+                        </p>
+                        <p className="text-zinc-500 text-xs">
+                          You can log prepared containers from Lab &amp; Storage → Prepared Containers, then return here to select one.
+                        </p>
+                      </div>
+                    )}
+
+                    {!newTransfer.useNewContainer && matchingPreparedSpawn.length > 0 && (
+                      <div className="space-y-2">
+                        <select
+                          value={newTransfer.selectedPreparedSpawnId || ''}
+                          onChange={e => setNewTransfer(prev => ({
+                            ...prev,
+                            selectedPreparedSpawnId: e.target.value || undefined,
+                            createNewRecord: e.target.value ? true : prev.createNewRecord,
+                          }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                        >
+                          <option value="">Select a prepared container...</option>
+                          {matchingPreparedSpawn.map(ps => {
+                            const container = getContainer(ps.containerId);
+                            const grainType = ps.grainTypeId ? getGrainType(ps.grainTypeId) : null;
+                            const location = getLocation(ps.locationId);
+                            const prepDate = new Date(ps.prepDate).toLocaleDateString();
+                            return (
+                              <option key={ps.id} value={ps.id}>
+                                {ps.label || container?.name || 'Container'} - {grainType?.name || ps.type} ({prepDate}) @ {location?.name || 'Unknown'}
+                              </option>
+                            );
+                          })}
+                        </select>
+
+                        {newTransfer.selectedPreparedSpawnId && (() => {
+                          const selected = getPreparedSpawn(newTransfer.selectedPreparedSpawnId);
+                          if (!selected) return null;
+                          const container = getContainer(selected.containerId);
+                          const grainType = selected.grainTypeId ? getGrainType(selected.grainTypeId) : null;
+                          const location = getLocation(selected.locationId);
+                          return (
+                            <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-3 text-sm">
+                              <div className="font-medium text-white mb-2">
+                                {selected.label || container?.name || 'Prepared Container'}
+                              </div>
+                              <div className="grid grid-cols-2 gap-1 text-xs">
+                                {selected.type === 'grain_jar' || selected.type === 'spawn_bag' ? (
+                                  <>
+                                    <span className="text-zinc-500">Grain:</span>
+                                    <span className="text-zinc-300">{grainType?.name || 'Unknown'}</span>
+                                    {selected.weightGrams && (
+                                      <>
+                                        <span className="text-zinc-500">Weight:</span>
+                                        <span className="text-zinc-300">{selected.weightGrams}g</span>
+                                      </>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    {selected.volumeMl && (
+                                      <>
+                                        <span className="text-zinc-500">Volume:</span>
+                                        <span className="text-zinc-300">{selected.volumeMl}ml</span>
+                                      </>
+                                    )}
+                                  </>
+                                )}
+                                <span className="text-zinc-500">Location:</span>
+                                <span className="text-zinc-300">{location?.name || 'Unknown'}</span>
+                                <span className="text-zinc-500">Prepared:</span>
+                                <span className="text-zinc-300">{new Date(selected.prepDate).toLocaleDateString()}</span>
+                                {selected.sterilizationMethod && (
+                                  <>
+                                    <span className="text-zinc-500">Sterilized:</span>
+                                    <span className="text-zinc-300">{selected.sterilizationMethod}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
