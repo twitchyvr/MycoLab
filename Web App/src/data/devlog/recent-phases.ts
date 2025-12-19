@@ -3056,6 +3056,74 @@ Added auth state listener in DataContext that:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1214',
+    title: 'Multi-Provider Account Linking',
+    description: 'Implemented account linking flow for users who sign up with multiple providers (Google OAuth and email/password) using the same email address. Detects duplicate accounts and offers to merge data.',
+    category: 'feature',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 6,
+    actualHours: 4,
+    completedAt: timestamp(),
+    notes: `Account linking feature for multi-provider authentication:
+
+**Problem:**
+- Users signing in with Google OAuth and email/password got separate accounts
+- Same email resulted in different user_ids and separate data
+- No way to merge accounts or consolidate data
+
+**Solution - Database Layer (supabase-schema.sql v23):**
+1. check_email_account(p_email) function:
+   - Checks if email exists in system
+   - Returns provider info (has_password, has_google)
+   - Uses SECURITY DEFINER to access auth.users and auth.identities
+
+2. migrate_user_data(from_user_id, to_user_id) function:
+   - Transfers all user data between accounts
+   - Updates cultures, grows, recipes, inventory, settings, etc.
+   - Security: Can only migrate TO your own account
+
+**Solution - Client Layer:**
+1. AccountLinkingModal component:
+   - Shows when duplicate account detected
+   - Options: Sign in with existing, Link accounts, Keep separate
+   - Handles migration and provides feedback
+
+2. AuthContext integration:
+   - Detects duplicate accounts after OAuth sign-in
+   - Stores linking state and provides handlers
+   - Auto-triggers check on Google OAuth callback
+
+3. AuthModal updates:
+   - Checks for existing Google account during email signup
+   - Prompts user to sign in with Google instead
+   - Prevents accidental duplicate account creation
+
+**Detection Flow:**
+1. User signs in with Google OAuth (new account)
+2. After SIGNED_IN event, check if email exists elsewhere
+3. If different user_id with same email found, show linking modal
+4. User can merge data or keep accounts separate
+
+**Linking Flow:**
+1. User chooses to link accounts
+2. migrate_user_data() transfers all data to current account
+3. Old account's data now accessible under current user_id
+
+**Files Changed:**
+- supabase-schema.sql (v23 - added check_email_account, migrate_user_data functions)
+- src/lib/supabase.ts (added checkEmailAccount, migrateUserData, linkGoogleIdentity utilities)
+- src/lib/AuthContext.tsx (added account linking state and handlers)
+- src/components/auth/AccountLinkingModal.tsx (new component)
+- src/components/auth/AuthModal.tsx (integrated linking detection)
+
+**Requires:**
+- Manual linking API must be enabled in Supabase dashboard
+- Run updated supabase-schema.sql to add new functions`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

@@ -5,8 +5,9 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured, ensureSession, isAnonymousUser, clearLocalData, isAnonymousAuthAvailable } from './supabase';
+import { supabase, isSupabaseConfigured, ensureSession, isAnonymousUser, clearLocalData, isAnonymousAuthAvailable, checkEmailAccount, migrateUserData, linkGoogleIdentity, EmailAccountInfo } from './supabase';
 import { notificationService } from '../store/NotificationService';
+import { AccountLinkingState } from '../components/auth/AccountLinkingModal';
 
 // ============================================================================
 // TYPES
@@ -58,6 +59,13 @@ export interface AuthContextValue extends AuthState {
   setShowAuthModal: (show: boolean) => void;
   authModalMode: 'login' | 'signup' | 'reset';
   setAuthModalMode: (mode: 'login' | 'signup' | 'reset') => void;
+
+  // Account linking
+  accountLinkingState: AccountLinkingState;
+  checkForExistingAccount: (email: string) => Promise<EmailAccountInfo | null>;
+  handleLinkAccounts: () => Promise<void>;
+  handleKeepSeparate: () => void;
+  closeAccountLinking: () => void;
 }
 
 // ============================================================================
@@ -81,6 +89,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // UI state
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup' | 'reset'>('login');
+
+  // Account linking state
+  const [accountLinkingState, setAccountLinkingState] = useState<AccountLinkingState>({
+    show: false,
+    email: '',
+    existingAccount: null,
+    currentProvider: 'email',
+    currentUserId: null,
+  });
 
   // Derived state
   const isAuthenticated = !!user && !isAnonymous;
@@ -165,6 +182,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Close modal on successful auth
         if (event === 'SIGNED_IN' && newSession?.user && !newSession.user.is_anonymous) {
           setShowAuthModal(false);
+
+          // Check if this is an OAuth sign-in (Google) and there might be a duplicate account
+          // We detect this by checking if the user just signed in with an OAuth provider
+          const identities = newSession.user.identities || [];
+          const hasGoogleIdentity = identities.some(i => i.provider === 'google');
+          const hasEmailIdentity = identities.some(i => i.provider === 'email');
+          const userEmail = newSession.user.email;
+
+          // Only check for duplicates if user has exactly one identity (just signed up)
+          // and it's a Google OAuth sign-in
+          if (userEmail && hasGoogleIdentity && !hasEmailIdentity && identities.length === 1) {
+            // Check if there's an existing account with this email
+            checkEmailAccount(userEmail).then(existingAccount => {
+              if (existingAccount?.exists_in_system &&
+                  existingAccount.user_id &&
+                  existingAccount.user_id !== newSession.user.id) {
+                // Found a different account with the same email!
+                console.log('[Auth] Detected duplicate account for email:', userEmail);
+                setAccountLinkingState({
+                  show: true,
+                  email: userEmail,
+                  existingAccount,
+                  currentProvider: 'google',
+                  currentUserId: newSession.user.id,
+                });
+              }
+            }).catch(err => {
+              console.warn('[Auth] Error checking for duplicate account:', err);
+            });
+          }
         }
       }
     );
@@ -745,6 +792,102 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   // ============================================================================
+  // ACCOUNT LINKING FUNCTIONS
+  // ============================================================================
+
+  /**
+   * Check if an email already exists in the system
+   * Returns account info if found, null otherwise
+   */
+  const checkForExistingAccount = useCallback(async (email: string): Promise<EmailAccountInfo | null> => {
+    return await checkEmailAccount(email);
+  }, []);
+
+  /**
+   * Trigger the account linking flow
+   * Called when we detect an existing account with a different provider
+   */
+  const triggerAccountLinking = useCallback((
+    email: string,
+    existingAccount: EmailAccountInfo,
+    currentProvider: 'email' | 'google',
+    currentUserId: string | null
+  ) => {
+    setAccountLinkingState({
+      show: true,
+      email,
+      existingAccount,
+      currentProvider,
+      currentUserId,
+    });
+  }, []);
+
+  /**
+   * Handle linking accounts
+   * This will migrate data from the old account to the current account
+   */
+  const handleLinkAccounts = useCallback(async () => {
+    const { existingAccount, currentUserId } = accountLinkingState;
+
+    if (!existingAccount?.user_id || !currentUserId) {
+      throw new Error('Missing account information for linking');
+    }
+
+    // Determine which account has the data we want to preserve
+    // The older account is likely the one with more data
+    const fromUserId = existingAccount.user_id;
+    const toUserId = currentUserId;
+
+    console.log('[Auth] Linking accounts:', { from: fromUserId, to: toUserId });
+
+    // Migrate data from the old account to the new one
+    const result = await migrateUserData(fromUserId, toUserId);
+
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+
+    console.log('[Auth] Account linking successful:', result);
+
+    // If current user is logged in with email and existing account has Google,
+    // offer to link Google identity
+    if (accountLinkingState.currentProvider === 'email' && existingAccount.has_google) {
+      // User can now use linkGoogleIdentity() to add Google to their account
+      console.log('[Auth] User can now link Google identity if desired');
+    }
+
+    // Close the linking modal
+    setAccountLinkingState(prev => ({ ...prev, show: false }));
+  }, [accountLinkingState]);
+
+  /**
+   * User chose to keep accounts separate
+   */
+  const handleKeepSeparate = useCallback(() => {
+    console.log('[Auth] User chose to keep accounts separate');
+    setAccountLinkingState({
+      show: false,
+      email: '',
+      existingAccount: null,
+      currentProvider: 'email',
+      currentUserId: null,
+    });
+  }, []);
+
+  /**
+   * Close the account linking modal
+   */
+  const closeAccountLinking = useCallback(() => {
+    setAccountLinkingState({
+      show: false,
+      email: '',
+      existingAccount: null,
+      currentProvider: 'email',
+      currentUserId: null,
+    });
+  }, []);
+
+  // ============================================================================
   // CONTEXT VALUE
   // ============================================================================
 
@@ -774,6 +917,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setShowAuthModal,
     authModalMode,
     setAuthModalMode,
+
+    // Account linking
+    accountLinkingState,
+    checkForExistingAccount,
+    handleLinkAccounts,
+    handleKeepSeparate,
+    closeAccountLinking,
   };
 
   return (

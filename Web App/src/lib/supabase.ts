@@ -300,6 +300,139 @@ export const clearLocalData = (options: { preserveSettings?: boolean } = {}): vo
 };
 
 // ============================================================================
+// ACCOUNT LINKING UTILITIES
+// Functions to detect and link accounts with the same email
+// ============================================================================
+
+export interface EmailAccountInfo {
+  exists_in_system: boolean;
+  has_password: boolean;
+  has_google: boolean;
+  user_id: string | null;
+  created_at: string | null;
+}
+
+/**
+ * Check if an email already exists in the system and get provider info
+ * Uses the check_email_account database function
+ */
+export const checkEmailAccount = async (email: string): Promise<EmailAccountInfo | null> => {
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase.rpc('check_email_account', {
+      p_email: email,
+    });
+
+    if (error) {
+      console.error('[Auth] Error checking email account:', error);
+      return null;
+    }
+
+    // The function returns a table, so data is an array
+    if (data && data.length > 0) {
+      return data[0] as EmailAccountInfo;
+    }
+
+    return null;
+  } catch (err) {
+    console.error('[Auth] Exception checking email account:', err);
+    return null;
+  }
+};
+
+/**
+ * Get the identities linked to the current user
+ * Returns an array of provider names (e.g., ['email', 'google'])
+ */
+export const getCurrentUserIdentities = async (): Promise<string[]> => {
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase.auth.getUserIdentities();
+
+    if (error) {
+      console.error('[Auth] Error getting user identities:', error);
+      return [];
+    }
+
+    return data?.identities?.map((i) => i.provider) || [];
+  } catch (err) {
+    console.error('[Auth] Exception getting user identities:', err);
+    return [];
+  }
+};
+
+/**
+ * Link a Google OAuth identity to the current user
+ * User must be logged in with email/password first
+ */
+export const linkGoogleIdentity = async (): Promise<{ error: Error | null; url?: string }> => {
+  if (!supabase) return { error: new Error('Supabase not configured') };
+
+  try {
+    const { data, error } = await supabase.auth.linkIdentity({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      return { error };
+    }
+
+    // In browser, user is automatically redirected
+    return { error: null, url: data?.url };
+  } catch (err) {
+    return { error: err instanceof Error ? err : new Error('Failed to link Google identity') };
+  }
+};
+
+/**
+ * Migrate data from one user account to the current user
+ * Used after linking accounts to consolidate data
+ */
+export const migrateUserData = async (
+  fromUserId: string,
+  toUserId: string
+): Promise<{ success: boolean; tablesUpdated: number; message: string }> => {
+  if (!supabase) {
+    return { success: false, tablesUpdated: 0, message: 'Supabase not configured' };
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('migrate_user_data', {
+      p_from_user_id: fromUserId,
+      p_to_user_id: toUserId,
+    });
+
+    if (error) {
+      console.error('[Auth] Error migrating user data:', error);
+      return { success: false, tablesUpdated: 0, message: error.message };
+    }
+
+    // The function returns a table, so data is an array
+    if (data && data.length > 0) {
+      return {
+        success: data[0].success,
+        tablesUpdated: data[0].tables_updated,
+        message: data[0].message,
+      };
+    }
+
+    return { success: false, tablesUpdated: 0, message: 'No response from migration function' };
+  } catch (err) {
+    console.error('[Auth] Exception migrating user data:', err);
+    return {
+      success: false,
+      tablesUpdated: 0,
+      message: err instanceof Error ? err.message : 'Unknown error',
+    };
+  }
+};
+
+// ============================================================================
 // DATABASE TYPES
 // Generated from Supabase schema
 // ============================================================================
