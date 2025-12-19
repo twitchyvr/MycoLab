@@ -29,7 +29,7 @@ export { recentPhases } from './recent-phases';
  * - Later Phases (19-27): Future/Nice to Have, Completed v8, Quick Actions,
  *   Organization, Dashboard, Validation, Onboarding, Reporting, Environmental
  * - Recent Phases (28-30): Container Workflow, Inline Creation, Recent Dev,
- *   v1.0 Priorities, December 2024 Updates, UX Improvements
+ *   v1.0 Priorities, December 2025 Updates, UX Improvements
  */
 export const allDevLogFeatures: DevLogFeature[] = [
   ...earlyPhases,

@@ -1,7 +1,7 @@
 // ============================================================================
 // DEV LOG: RECENT PHASES (28-30)
 // Container Workflow, Inline Creation, Recent Development, v1.0 Priorities
-// December 2024 Updates, UX Improvements
+// December 2025 Updates, UX Improvements
 // ============================================================================
 
 import type { DevLogFeature } from '../../types';
@@ -13,7 +13,7 @@ const timestamp = () => new Date().toISOString();
  * Phase 29: Inline Creation & Draft Workflow (Critical UX Gap)
  * Phase 30: Recent Development (v0.9.0)
  * v1.0 Priorities
- * December 2024 Updates
+ * December 2025 Updates
  * UX Improvements
  */
 export const recentPhases: DevLogFeature[] = [
@@ -1867,7 +1867,7 @@ custom IDs like 'outcome-mjbw2cne-h7jx2' which caused Postgres error 22P02.
   {
     id: 'dev-1030',
     title: 'Batch Grouping System',
-    description: 'Group multiple items into a batch (e.g., "LC Transfer Batch 2024-12-15"). Track outcomes at batch level. Identify if one jar from batch contaminates.',
+    description: 'Group multiple items into a batch (e.g., "LC Transfer Batch 2025-12-15"). Track outcomes at batch level. Identify if one jar from batch contaminates.',
     category: 'core',
     status: 'planned',
     priority: 'high',
@@ -2776,7 +2776,6 @@ Added auth state listener in DataContext that:
     status: 'completed',
     priority: 'high',
     estimatedHours: 4,
-    actualHours: 2,
     completedAt: timestamp(),
     notes: `Financial Dashboard implementation:
 
@@ -2806,7 +2805,6 @@ Added auth state listener in DataContext that:
     status: 'completed',
     priority: 'medium',
     estimatedHours: 0.5,
-    actualHours: 0.25,
     completedAt: timestamp(),
     notes: `Added misting and FAE event types:
 
@@ -2830,7 +2828,6 @@ Added auth state listener in DataContext that:
     status: 'completed',
     priority: 'medium',
     estimatedHours: 1,
-    actualHours: 0.5,
     completedAt: timestamp(),
     notes: `Proactive version checking:
 
@@ -2860,7 +2857,6 @@ Added auth state listener in DataContext that:
     status: 'completed',
     priority: 'low',
     estimatedHours: 3,
-    actualHours: 1.5,
     completedAt: timestamp(),
     notes: `Annual Wrapped feature:
 

@@ -1025,7 +1025,7 @@ export interface BatchPassport {
   id: string;
 
   // Unique passport identifier (shareable, human-readable)
-  // Format: ML-YYYY-MM-NNNN (e.g., "ML-2024-12-0001")
+  // Format: ML-YYYY-MM-NNNN (e.g., "ML-2025-12-0001")
   passportCode: string;
 
   // What this passport represents
