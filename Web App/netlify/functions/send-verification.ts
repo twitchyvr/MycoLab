@@ -140,27 +140,45 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const code = generateCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
 
-    // Store code in Supabase if available
-    if (supabaseUrl && supabaseServiceKey) {
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Store code in Supabase - REQUIRED for verification to work
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: "Database not configured. Add SUPABASE_URL and SUPABASE_SERVICE_KEY to Netlify environment variables." }),
+      };
+    }
 
-      // Delete any existing codes for this user/type
-      await supabase
-        .from("verification_codes")
-        .delete()
-        .eq("user_id", payload.userId)
-        .eq("type", payload.type);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-      // Insert new code
-      await supabase
-        .from("verification_codes")
-        .insert({
-          user_id: payload.userId,
-          type: payload.type,
-          code: code,
-          recipient: payload.recipient,
-          expires_at: expiresAt,
-        });
+    // Delete any existing codes for this user/type
+    const { error: deleteError } = await supabase
+      .from("verification_codes")
+      .delete()
+      .eq("user_id", payload.userId)
+      .eq("type", payload.type);
+
+    if (deleteError) {
+      console.error("Error deleting old codes:", deleteError);
+      // Continue anyway - old codes might not exist
+    }
+
+    // Insert new code
+    const { error: insertError } = await supabase
+      .from("verification_codes")
+      .insert({
+        user_id: payload.userId,
+        type: payload.type,
+        code: code,
+        recipient: payload.recipient,
+        expires_at: expiresAt,
+      });
+
+    if (insertError) {
+      console.error("Error storing verification code:", insertError);
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: `Failed to store verification code: ${insertError.message}` }),
+      };
     }
 
     if (payload.type === "email") {
