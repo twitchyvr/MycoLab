@@ -3124,6 +3124,7 @@ Added auth state listener in DataContext that:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+<<<<<<< HEAD
 
   // =============================================================================
   // SETTINGS & ADMIN OVERHAUL (v0.3.0)
@@ -3216,6 +3217,56 @@ All grower settings PLUS Admin Console:
 - src/components/settings/SettingsPageNew.tsx (new router)
 - src/App.tsx (import SettingsPageNew)
 - SETTINGS_OVERHAUL_PLAN.md (design document)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1215',
+    title: 'Restrict User Preferences to User-Editable Data Only',
+    description: 'Security fix: Non-admin users can now only access Preferences and Locations tabs in Settings. All library/reference data tabs (species, strains, containers, substrates, suppliers, categories, location types, classifications) are now admin-only.',
+    category: 'security',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 2,
+    actualHours: 1,
+    completedAt: timestamp(),
+    notes: `User preferences access control fix:
+
+**Problem:**
+- Non-admin users could see all Settings tabs including library data
+- Species, strains, containers, substrates, etc. are global/system data
+- Users should NOT be able to add/edit/delete globally-accessible library entries
+- Only admins should manage system-level reference data
+
+**Previous State:**
+- adminOnlyTabs only included: ['admin', 'database']
+- Non-admins could access all other tabs including library management
+
+**Solution:**
+- Expanded adminOnlyTabs to include ALL library/reference data tabs
+- Non-admins now only see: preferences, locations
+- Locations are user-scoped at database level (RLS: user_id = auth.uid())
+
+**Access Matrix After Fix:**
+| Tab | Non-Admin | Admin |
+|-----|-----------|-------|
+| preferences | ✅ | ✅ |
+| locations | ✅ (own only) | ✅ |
+| species | ❌ | ✅ |
+| strains | ❌ | ✅ |
+| containers | ❌ | ✅ |
+| substrates | ❌ | ✅ |
+| suppliers | ❌ | ✅ |
+| categories | ❌ | ✅ |
+| locationTypes | ❌ | ✅ |
+| locationClassifications | ❌ | ✅ |
+| admin | ❌ | ✅ |
+| database | ❌ | ✅ |
+
+**Note:** Users wanting to add to the global library should use the suggestion workflow (library_suggestions table) which requires admin approval.
+
+**Files Changed:**
+- src/components/settings/SettingsPage.tsx (expanded adminOnlyTabs array)`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
