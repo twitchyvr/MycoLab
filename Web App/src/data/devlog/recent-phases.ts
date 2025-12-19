@@ -2659,8 +2659,19 @@ Created comprehensive weight utilities (utils/weight.ts):
 - Admins can view all delivery logs
 - Templates are system-managed (only admins can modify)
 
+**UI Implementation (Completed):**
+- Verification modal with code entry flow
+- Functional Verify buttons for email and SMS
+- Event preference toggles that visually indicate enabled/disabled state
+- Admin "Email/SMS Config" tab with:
+  - Service status cards (configured/not configured)
+  - Test notification sending
+  - Edge Function code templates for SendGrid, Twilio, and config-check
+  - Setup instructions with external documentation links
+
 **Next Steps:**
-- Deploy Supabase Edge Functions for email/SMS delivery
+- Deploy Supabase Edge Functions for email/SMS delivery (use templates provided in Admin panel)
+- Configure environment variables in Supabase dashboard (SENDGRID_API_KEY, TWILIO_*)
 - Integrate notification triggers in DataContext operations
 - Add notification history view in Settings`,
     createdAt: timestamp(),
