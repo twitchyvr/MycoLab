@@ -24,6 +24,7 @@ import {
   RecipeCategoryItem,
   GrainType,
   PreparedSpawn,
+  EntityOutcome,
 } from './types';
 
 // ============================================================================
@@ -913,4 +914,38 @@ export const transformPreparedSpawnToDb = (spawn: Partial<PreparedSpawn>, userId
   images: spawn.images,
   is_active: spawn.isActive,
   ...(userId && { user_id: userId }),
+});
+
+// ============================================================================
+// ENTITY OUTCOME TRANSFORMATIONS
+// Historical tracking for disposed/completed entities
+// ============================================================================
+
+export const transformEntityOutcomeFromDb = (row: any): EntityOutcome => ({
+  id: row.id,
+  entityType: row.entity_type,
+  entityId: row.entity_id,
+  entityName: row.entity_name,
+  outcomeCategory: row.outcome_category,
+  outcomeCode: row.outcome_code,
+  outcomeLabel: row.outcome_label,
+  startedAt: row.started_at ? new Date(row.started_at) : undefined,
+  endedAt: new Date(row.ended_at),
+  durationDays: row.duration_days,
+  totalCost: row.total_cost ? parseFloat(row.total_cost) : undefined,
+  totalRevenue: row.total_revenue ? parseFloat(row.total_revenue) : undefined,
+  costPerUnit: row.cost_per_unit ? parseFloat(row.cost_per_unit) : undefined,
+  totalYieldWet: row.total_yield_wet ? parseFloat(row.total_yield_wet) : undefined,
+  totalYieldDry: row.total_yield_dry ? parseFloat(row.total_yield_dry) : undefined,
+  biologicalEfficiency: row.biological_efficiency ? parseFloat(row.biological_efficiency) : undefined,
+  flushCount: row.flush_count,
+  strainId: row.strain_id,
+  strainName: row.strain_name,
+  speciesId: row.species_id,
+  speciesName: row.species_name,
+  locationId: row.location_id,
+  locationName: row.location_name,
+  surveyResponses: row.survey_responses,
+  notes: row.notes,
+  createdAt: new Date(row.created_at),
 });

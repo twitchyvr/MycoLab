@@ -94,6 +94,8 @@ export const emptyState: DataStoreState = {
   preparedSpawn: [],
   grows: [],
   recipes: [],
+  // Historical tracking
+  entityOutcomes: [],
   // Public sharing system
   shareTokens: [],
   batchPassports: [],

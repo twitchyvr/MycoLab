@@ -1295,6 +1295,9 @@ export interface DataStoreState {
   grows: Grow[];
   recipes: Recipe[];
 
+  // Historical tracking (append-only)
+  entityOutcomes: EntityOutcome[];
+
   // Public sharing system
   shareTokens: ShareToken[];
   batchPassports: BatchPassport[];

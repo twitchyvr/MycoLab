@@ -1226,6 +1226,8 @@ export const initialDataState: DataStoreState = {
   preparedSpawn: [],
   grows: initialGrows,
   recipes: initialRecipes,
+  // Historical tracking
+  entityOutcomes: [],
   // Public sharing system
   shareTokens: [],
   batchPassports: [],
