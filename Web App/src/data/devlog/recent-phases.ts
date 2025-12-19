@@ -2885,6 +2885,45 @@ Added auth state listener in DataContext that:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1211',
+    title: 'Lineage Visualization UI Enhancement',
+    description: 'Improved text visibility and visual design of the Lineage Tree page. Fixed SVG text rendering and enhanced card styling.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 1,
+    completedAt: timestamp(),
+    notes: `Lineage Visualization improvements:
+
+**Problems Fixed:**
+- SVG text elements were using Tailwind classes that don't work in SVG context
+- Low contrast backgrounds (50% opacity) made text unreadable
+- Poor visual hierarchy between labels, strains, and generations
+
+**Solutions Implemented:**
+- Used proper SVG fill attributes instead of CSS classes
+- Increased background opacity (80%) for better contrast
+- Added explicit hex color values for all text elements
+- Enhanced card styling with drop shadows and accent highlights
+
+**Visual Enhancements:**
+- Culture cards: Solid colored backgrounds with type-specific accent borders
+- Status indicators: Ring + filled circle design with proper colors
+- Connection lines: Gradient lines with shadow for depth, dot endpoints
+- Generation badges: Contained in subtle pill-shaped backgrounds
+- Health bars: Added subtle glow effect to filled segments
+- Detail panel: Improved spacing, typography, and color contrast
+- Footer cards: Interactive hover effects, click to filter
+
+**Technical Changes:**
+- cultureConfig: Added svgBg, svgBorder, svgAccent hex values
+- statusColors: Changed from class strings to {ring, fill} objects
+- renderNode: Complete rewrite with proper SVG attributes
+- renderConnections: Added gradients, shadows, and endpoint dots`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

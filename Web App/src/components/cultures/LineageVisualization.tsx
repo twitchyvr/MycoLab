@@ -25,22 +25,66 @@ const Icons = {
   X: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
 };
 
-// Culture type icons and colors
-const cultureConfig: Record<string, { icon: string; color: string; bgColor: string }> = {
-  spore_syringe: { icon: '💉', color: 'text-purple-400', bgColor: 'bg-purple-950/50 border-purple-700' },
-  liquid_culture: { icon: '💧', color: 'text-blue-400', bgColor: 'bg-blue-950/50 border-blue-700' },
-  agar: { icon: '🧫', color: 'text-emerald-400', bgColor: 'bg-emerald-950/50 border-emerald-700' },
-  slant: { icon: '🧪', color: 'text-amber-400', bgColor: 'bg-amber-950/50 border-amber-700' },
-  grain_spawn: { icon: '🌾', color: 'text-orange-400', bgColor: 'bg-orange-950/50 border-orange-700' },
+// Culture type icons and colors - enhanced for better visibility
+const cultureConfig: Record<string, {
+  icon: string;
+  color: string;
+  bgColor: string;
+  svgBg: string;
+  svgBorder: string;
+  svgAccent: string;
+}> = {
+  spore_syringe: {
+    icon: '💉',
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-900/80 border-purple-600',
+    svgBg: '#581c87',     // purple-900
+    svgBorder: '#9333ea', // purple-600
+    svgAccent: '#c084fc', // purple-400
+  },
+  liquid_culture: {
+    icon: '💧',
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-900/80 border-blue-600',
+    svgBg: '#1e3a8a',     // blue-900
+    svgBorder: '#2563eb', // blue-600
+    svgAccent: '#60a5fa', // blue-400
+  },
+  agar: {
+    icon: '🧫',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-900/80 border-emerald-600',
+    svgBg: '#064e3b',     // emerald-900
+    svgBorder: '#059669', // emerald-600
+    svgAccent: '#34d399', // emerald-400
+  },
+  slant: {
+    icon: '🧪',
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-900/80 border-amber-600',
+    svgBg: '#78350f',     // amber-900
+    svgBorder: '#d97706', // amber-600
+    svgAccent: '#fbbf24', // amber-400
+  },
+  grain_spawn: {
+    icon: '🌾',
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-900/80 border-orange-600',
+    svgBg: '#7c2d12',     // orange-900
+    svgBorder: '#ea580c', // orange-600
+    svgAccent: '#fb923c', // orange-400
+  },
 };
 
-const statusColors: Record<string, string> = {
-  active: 'ring-emerald-500',
-  colonizing: 'ring-blue-500',
-  ready: 'ring-green-500',
-  contaminated: 'ring-red-500',
-  expired: 'ring-zinc-500',
-  used: 'ring-zinc-600',
+const statusColors: Record<string, { ring: string; fill: string }> = {
+  active: { ring: '#10b981', fill: '#10b981' },     // emerald-500
+  colonizing: { ring: '#3b82f6', fill: '#3b82f6' }, // blue-500
+  ready: { ring: '#22c55e', fill: '#22c55e' },      // green-500
+  contaminated: { ring: '#ef4444', fill: '#ef4444' }, // red-500
+  expired: { ring: '#71717a', fill: '#71717a' },    // zinc-500
+  used: { ring: '#52525b', fill: '#52525b' },       // zinc-600
+  archived: { ring: '#a1a1aa', fill: '#a1a1aa' },   // zinc-400
+  depleted: { ring: '#71717a', fill: '#71717a' },   // zinc-500
 };
 
 export const LineageVisualization: React.FC = () => {
@@ -153,25 +197,68 @@ export const LineageVisualization: React.FC = () => {
     setHighlightedLineage(new Set());
   };
 
-  // Render connection lines
+  // Render connection lines - enhanced visibility
   const renderConnections = () => {
     const lines: JSX.Element[] = [];
-    
+
     const drawLines = (nodes: TreeNode[]) => {
       nodes.forEach(node => {
         node.children.forEach(child => {
           const isHighlighted = highlightedLineage.has(node.culture.id) && highlightedLineage.has(child.culture.id);
+          const parentConfig = cultureConfig[node.culture.type] || cultureConfig.agar;
+          const childConfig = cultureConfig[child.culture.type] || cultureConfig.agar;
+
+          // Create gradient ID for this connection
+          const gradientId = `gradient-${node.culture.id}-${child.culture.id}`;
+
+          lines.push(
+            <defs key={`defs-${node.culture.id}-${child.culture.id}`}>
+              <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={isHighlighted ? '#10b981' : parentConfig.svgBorder} />
+                <stop offset="100%" stopColor={isHighlighted ? '#10b981' : childConfig.svgBorder} />
+              </linearGradient>
+            </defs>
+          );
+
+          // Shadow line for depth
+          lines.push(
+            <path
+              key={`shadow-${node.culture.id}-${child.culture.id}`}
+              d={`M ${node.x + 70} ${node.y + 82}
+                  C ${node.x + 70} ${node.y + 102},
+                    ${child.x + 70} ${child.y - 18},
+                    ${child.x + 70} ${child.y + 2}`}
+              fill="none"
+              stroke="rgba(0,0,0,0.3)"
+              strokeWidth={isHighlighted ? 5 : 4}
+              strokeLinecap="round"
+            />
+          );
+
+          // Main connection line
           lines.push(
             <path
               key={`${node.culture.id}-${child.culture.id}`}
-              d={`M ${node.x + 70} ${node.y + 80} 
-                  C ${node.x + 70} ${node.y + 100}, 
-                    ${child.x + 70} ${child.y - 20}, 
+              d={`M ${node.x + 70} ${node.y + 80}
+                  C ${node.x + 70} ${node.y + 100},
+                    ${child.x + 70} ${child.y - 20},
                     ${child.x + 70} ${child.y}`}
               fill="none"
-              stroke={isHighlighted ? '#10b981' : '#3f3f46'}
-              strokeWidth={isHighlighted ? 3 : 2}
+              stroke={`url(#${gradientId})`}
+              strokeWidth={isHighlighted ? 3 : 2.5}
+              strokeLinecap="round"
               className="transition-all duration-300"
+            />
+          );
+
+          // Arrow/dot at child end
+          lines.push(
+            <circle
+              key={`dot-${node.culture.id}-${child.culture.id}`}
+              cx={child.x + 70}
+              cy={child.y - 2}
+              r={isHighlighted ? 4 : 3}
+              fill={isHighlighted ? '#10b981' : childConfig.svgBorder}
             />
           );
         });
@@ -183,7 +270,7 @@ export const LineageVisualization: React.FC = () => {
     return lines;
   };
 
-  // Render culture node
+  // Render culture node - enhanced with proper SVG styling
   const renderNode = (node: TreeNode) => {
     const { culture } = node;
     const config = cultureConfig[culture.type] || cultureConfig.agar;
@@ -191,6 +278,7 @@ export const LineageVisualization: React.FC = () => {
     const isSelected = selectedCulture?.id === culture.id;
     const isInLineage = highlightedLineage.has(culture.id);
     const opacity = highlightedLineage.size === 0 || isInLineage ? 1 : 0.3;
+    const statusConfig = statusColors[culture.status] || statusColors.active;
 
     return (
       <g
@@ -200,59 +288,115 @@ export const LineageVisualization: React.FC = () => {
         onClick={() => handleCultureClick(culture)}
         style={{ opacity }}
       >
-        {/* Node background */}
+        {/* Drop shadow for depth */}
+        <defs>
+          <filter id={`shadow-${culture.id}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3"/>
+          </filter>
+        </defs>
+
+        {/* Node background - solid fill with gradient */}
         <rect
           x="0"
           y="0"
           width="140"
           height="80"
-          rx="8"
-          className={`${config.bgColor} transition-all duration-300 ${
-            isSelected ? 'stroke-emerald-500 stroke-2' : 'stroke-zinc-700'
-          }`}
-          fill="currentColor"
-          stroke="currentColor"
+          rx="10"
+          fill={config.svgBg}
+          stroke={isSelected ? '#10b981' : config.svgBorder}
+          strokeWidth={isSelected ? 3 : 2}
+          filter={`url(#shadow-${culture.id})`}
         />
-        
-        {/* Status ring */}
+
+        {/* Inner highlight line at top */}
+        <rect
+          x="1"
+          y="1"
+          width="138"
+          height="3"
+          rx="10"
+          fill={config.svgAccent}
+          opacity="0.4"
+        />
+
+        {/* Status indicator with glow */}
         <circle
-          cx="120"
-          cy="20"
-          r="8"
-          className={`${statusColors[culture.status]} ring-2`}
-          fill={culture.status === 'contaminated' ? '#ef4444' : 
-                culture.status === 'ready' ? '#22c55e' : 
-                culture.status === 'active' ? '#10b981' : '#52525b'}
+          cx="122"
+          cy="18"
+          r="10"
+          fill={config.svgBg}
+          stroke={statusConfig.ring}
+          strokeWidth="2"
+        />
+        <circle
+          cx="122"
+          cy="18"
+          r="6"
+          fill={statusConfig.fill}
         />
 
         {/* Type icon */}
-        <text x="15" y="30" fontSize="20">{config.icon}</text>
+        <text x="12" y="32" fontSize="22">{config.icon}</text>
 
-        {/* Label */}
-        <text x="40" y="28" className="fill-white text-sm font-bold">{culture.label}</text>
+        {/* Culture label - bold white text */}
+        <text
+          x="40"
+          y="30"
+          fill="#ffffff"
+          fontSize="14"
+          fontWeight="700"
+          fontFamily="system-ui, -apple-system, sans-serif"
+        >
+          {culture.label}
+        </text>
 
-        {/* Strain name */}
-        <text x="15" y="50" className="fill-zinc-400 text-xs">
+        {/* Strain name - light gray for contrast */}
+        <text
+          x="12"
+          y="52"
+          fill="#d4d4d8"
+          fontSize="12"
+          fontWeight="500"
+          fontFamily="system-ui, -apple-system, sans-serif"
+        >
           {strain?.name || 'Unknown'}
         </text>
 
-        {/* Generation */}
-        <text x="15" y="68" className="fill-zinc-500 text-xs">
+        {/* Generation badge */}
+        <rect
+          x="12"
+          y="58"
+          width="28"
+          height="16"
+          rx="4"
+          fill="rgba(0,0,0,0.3)"
+        />
+        <text
+          x="26"
+          y="70"
+          fill="#a1a1aa"
+          fontSize="11"
+          fontWeight="600"
+          textAnchor="middle"
+          fontFamily="system-ui, -apple-system, sans-serif"
+        >
           G{culture.generation}
         </text>
 
-        {/* Health indicator */}
+        {/* Health indicator bars */}
         {culture.healthRating && (
-          <g transform="translate(90, 55)">
+          <g transform="translate(85, 58)">
             {[1, 2, 3, 4, 5].map(i => (
               <rect
                 key={i}
-                x={(i - 1) * 8}
+                x={(i - 1) * 9}
                 y={0}
-                width="6"
-                height="12"
-                rx="1"
-                fill={i <= culture.healthRating! ? '#10b981' : '#3f3f46'}
+                width="7"
+                height="14"
+                rx="2"
+                fill={i <= culture.healthRating! ? '#10b981' : 'rgba(63,63,70,0.8)'}
+                stroke={i <= culture.healthRating! ? '#059669' : 'transparent'}
+                strokeWidth="1"
               />
             ))}
           </g>
@@ -390,83 +534,86 @@ export const LineageVisualization: React.FC = () => {
           </div>
         </div>
 
-        {/* Detail Panel */}
+        {/* Detail Panel - Enhanced styling */}
         {selectedCulture && (
-          <div className="w-80 bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 h-fit">
+          <div className="w-80 bg-zinc-900/90 border border-zinc-700 rounded-xl p-5 h-fit shadow-xl">
             <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">{cultureConfig[selectedCulture.type]?.icon || '🧫'}</span>
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${cultureConfig[selectedCulture.type]?.bgColor || 'bg-zinc-800'}`}>
+                  <span className="text-2xl">{cultureConfig[selectedCulture.type]?.icon || '🧫'}</span>
+                </div>
                 <div>
                   <h3 className="text-lg font-bold text-white">{selectedCulture.label}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded ${cultureConfig[selectedCulture.type]?.bgColor || 'bg-zinc-800'}`}>
-                    {selectedCulture.type.replace('_', ' ')}
+                  <span className={`text-xs px-2 py-0.5 rounded capitalize ${cultureConfig[selectedCulture.type]?.color || 'text-zinc-400'}`}>
+                    {selectedCulture.type.replace(/_/g, ' ')}
                   </span>
                 </div>
               </div>
-              <button onClick={clearSelection} className="text-zinc-400 hover:text-white">
+              <button onClick={clearSelection} className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors">
                 <Icons.X />
               </button>
             </div>
 
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-500">Strain</span>
-                <span className="text-white">{getStrain(selectedCulture.strainId)?.name || 'Unknown'}</span>
+            <div className="space-y-0 text-sm">
+              <div className="flex justify-between py-3 border-b border-zinc-800">
+                <span className="text-zinc-400 font-medium">Strain</span>
+                <span className="text-white font-semibold">{getStrain(selectedCulture.strainId)?.name || 'Unknown'}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-500">Generation</span>
-                <span className="text-white">G{selectedCulture.generation}</span>
+              <div className="flex justify-between py-3 border-b border-zinc-800">
+                <span className="text-zinc-400 font-medium">Generation</span>
+                <span className="text-white font-semibold">G{selectedCulture.generation}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-500">Status</span>
-                <span className={`px-2 py-0.5 rounded text-xs ${
-                  selectedCulture.status === 'active' ? 'bg-emerald-950/50 text-emerald-400' :
-                  selectedCulture.status === 'contaminated' ? 'bg-red-950/50 text-red-400' :
-                  selectedCulture.status === 'ready' ? 'bg-green-950/50 text-green-400' :
-                  'bg-zinc-800 text-zinc-400'
+              <div className="flex justify-between items-center py-3 border-b border-zinc-800">
+                <span className="text-zinc-400 font-medium">Status</span>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${
+                  selectedCulture.status === 'active' ? 'bg-emerald-900/80 text-emerald-300 border border-emerald-600' :
+                  selectedCulture.status === 'contaminated' ? 'bg-red-900/80 text-red-300 border border-red-600' :
+                  selectedCulture.status === 'ready' ? 'bg-green-900/80 text-green-300 border border-green-600' :
+                  selectedCulture.status === 'colonizing' ? 'bg-blue-900/80 text-blue-300 border border-blue-600' :
+                  'bg-zinc-800 text-zinc-300 border border-zinc-600'
                 }`}>
                   {selectedCulture.status}
                 </span>
               </div>
               {selectedCulture.healthRating && (
-                <div className="flex justify-between py-2 border-b border-zinc-800">
-                  <span className="text-zinc-500">Health</span>
-                  <div className="flex gap-0.5">
+                <div className="flex justify-between items-center py-3 border-b border-zinc-800">
+                  <span className="text-zinc-400 font-medium">Health</span>
+                  <div className="flex gap-1">
                     {[1, 2, 3, 4, 5].map(i => (
                       <div
                         key={i}
-                        className={`w-2 h-4 rounded-sm ${i <= selectedCulture.healthRating! ? 'bg-emerald-500' : 'bg-zinc-700'}`}
+                        className={`w-2.5 h-5 rounded ${i <= selectedCulture.healthRating! ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-zinc-700'}`}
                       />
                     ))}
                   </div>
                 </div>
               )}
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-500">Created</span>
-                <span className="text-white">{new Date(selectedCulture.createdAt).toLocaleDateString()}</span>
+              <div className="flex justify-between py-3 border-b border-zinc-800">
+                <span className="text-zinc-400 font-medium">Created</span>
+                <span className="text-white font-semibold">{new Date(selectedCulture.createdAt).toLocaleDateString()}</span>
               </div>
               {selectedCulture.notes && (
-                <div className="pt-2">
-                  <p className="text-zinc-500 text-xs mb-1">Notes</p>
-                  <p className="text-zinc-300 text-xs bg-zinc-800/50 rounded p-2">{selectedCulture.notes}</p>
+                <div className="pt-3">
+                  <p className="text-zinc-400 text-xs font-medium mb-2">Notes</p>
+                  <p className="text-zinc-200 text-sm bg-zinc-800/80 border border-zinc-700 rounded-lg p-3 leading-relaxed">{selectedCulture.notes}</p>
                 </div>
               )}
             </div>
 
             {/* Lineage stats */}
             {highlightedLineage.size > 1 && (
-              <div className="mt-4 pt-4 border-t border-zinc-800">
-                <p className="text-xs text-zinc-500 mb-2">Lineage</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-zinc-800/50 rounded-lg p-2 text-center">
-                    <p className="text-xs text-zinc-500">Ancestors</p>
-                    <p className="text-lg font-bold text-white">
+              <div className="mt-5 pt-4 border-t border-zinc-700">
+                <p className="text-xs text-zinc-400 font-medium mb-3">Lineage Overview</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-zinc-800/80 border border-zinc-700 rounded-lg p-3 text-center">
+                    <p className="text-xs text-zinc-400 mb-1">Ancestors</p>
+                    <p className="text-2xl font-bold text-emerald-400">
                       {getCultureLineage(selectedCulture.id).ancestors.length}
                     </p>
                   </div>
-                  <div className="bg-zinc-800/50 rounded-lg p-2 text-center">
-                    <p className="text-xs text-zinc-500">Descendants</p>
-                    <p className="text-lg font-bold text-white">
+                  <div className="bg-zinc-800/80 border border-zinc-700 rounded-lg p-3 text-center">
+                    <p className="text-xs text-zinc-400 mb-1">Descendants</p>
+                    <p className="text-2xl font-bold text-blue-400">
                       {getCultureLineage(selectedCulture.id).descendants.length}
                     </p>
                   </div>
@@ -477,15 +624,21 @@ export const LineageVisualization: React.FC = () => {
         )}
       </div>
 
-      {/* Stats footer */}
+      {/* Stats footer - Enhanced cards */}
       <div className="grid grid-cols-5 gap-4">
         {Object.entries(cultureConfig).map(([type, config]) => {
           const count = cultures.filter(c => c.type === type).length;
           return (
-            <div key={type} className={`${config.bgColor} border rounded-xl p-4 text-center`}>
-              <span className="text-2xl">{config.icon}</span>
-              <p className="text-2xl font-bold text-white mt-1">{count}</p>
-              <p className="text-xs text-zinc-400 capitalize">{type.replace('_', ' ')}</p>
+            <div
+              key={type}
+              className={`${config.bgColor} rounded-xl p-4 text-center transition-all hover:scale-105 hover:shadow-lg cursor-default`}
+              onClick={() => setFilterType(type === filterType ? 'all' : type)}
+            >
+              <div className="flex items-center justify-center mb-2">
+                <span className="text-3xl">{config.icon}</span>
+              </div>
+              <p className="text-3xl font-bold text-white">{count}</p>
+              <p className={`text-xs font-medium capitalize ${config.color}`}>{type.replace(/_/g, ' ')}</p>
             </div>
           );
         })}
