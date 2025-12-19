@@ -6101,6 +6101,8 @@ BEGIN
     ALTER TABLE cultures ADD COLUMN amendment_type TEXT DEFAULT 'original';
     RAISE NOTICE 'Added amendment_type column to cultures';
   END IF;
+  -- Backfill existing rows with default value (needed for CHECK constraint)
+  UPDATE cultures SET amendment_type = 'original' WHERE amendment_type IS NULL;
 
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'amendment_reason') THEN
     ALTER TABLE cultures ADD COLUMN amendment_reason TEXT;
@@ -6202,6 +6204,8 @@ BEGIN
     ALTER TABLE grows ADD COLUMN amendment_type TEXT DEFAULT 'original';
     RAISE NOTICE 'Added amendment_type column to grows';
   END IF;
+  -- Backfill existing rows with default value (needed for CHECK constraint)
+  UPDATE grows SET amendment_type = 'original' WHERE amendment_type IS NULL;
 
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'amendment_reason') THEN
     ALTER TABLE grows ADD COLUMN amendment_reason TEXT;
@@ -6294,6 +6298,8 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'amendment_type') THEN
     ALTER TABLE prepared_spawn ADD COLUMN amendment_type TEXT DEFAULT 'original';
   END IF;
+  -- Backfill existing rows with default value (needed for CHECK constraint)
+  UPDATE prepared_spawn SET amendment_type = 'original' WHERE amendment_type IS NULL;
 
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'amendment_reason') THEN
     ALTER TABLE prepared_spawn ADD COLUMN amendment_reason TEXT;
