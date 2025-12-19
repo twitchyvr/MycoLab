@@ -3124,7 +3124,6 @@ Added auth state listener in DataContext that:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
-<<<<<<< HEAD
 
   // =============================================================================
   // SETTINGS & ADMIN OVERHAUL (v0.3.0)
