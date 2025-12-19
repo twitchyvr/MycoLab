@@ -3060,7 +3060,7 @@ Added auth state listener in DataContext that:
     id: 'dev-1214',
     title: 'Multi-Provider Account Linking',
     description: 'Implemented account linking flow for users who sign up with multiple providers (Google OAuth and email/password) using the same email address. Detects duplicate accounts and offers to merge data.',
-    category: 'feature',
+    category: 'enhancement',
     status: 'completed',
     priority: 'high',
     estimatedHours: 6,
@@ -3121,6 +3121,101 @@ Added auth state listener in DataContext that:
 **Requires:**
 - Manual linking API must be enabled in Supabase dashboard
 - Run updated supabase-schema.sql to add new functions`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  // =============================================================================
+  // SETTINGS & ADMIN OVERHAUL (v0.3.0)
+  // Complete restructure of settings for different user roles
+  // =============================================================================
+  {
+    id: 'dev-700',
+    title: 'Settings & Admin Permissions Overhaul',
+    description: 'Complete restructure of Settings page for role-based access. Anonymous users see minimal settings (units, theme). Growers get preferences, notifications, library browser. Admins get full console with Database, User Management, Library CRUD, Suggestion Queue, Audit Log, and Services Config all consolidated in one place.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 16,
+    completedAt: timestamp(),
+    notes: `Major Settings & Admin restructure for role-based permissions:
+
+**Problem:**
+- Database section was separate from Admin section (confusing)
+- All users saw all 12 tabs regardless of permissions
+- No experience level system for UI complexity
+- No way for users to suggest library entries
+- Admin features scattered across multiple tabs
+
+**Solution - Three-Tier Settings Architecture:**
+
+**1. Anonymous Users (Local-Only):**
+- Minimal settings: Units (F/C), Theme, Currency
+- Sign-up prompt to access full features
+- Library browser (read-only)
+
+**2. Growers (Authenticated Non-Admin):**
+- Profile: Account info, password change
+- Preferences: Experience level, units, timezone, UI options
+- Notifications: In-app, email, SMS settings
+- Library: Read-only browse, submit suggestions
+- My Data: Export/import, sync status
+
+**3. Admins (Global Administrators):**
+All grower settings PLUS Admin Console:
+- Dashboard: Quick stats, pending suggestions
+- Database: Connection status, table health, schema
+- User Management: Full CRUD, role assignment
+- Library Management: Species, strains, containers, etc.
+- Suggestion Queue: Review user submissions
+- Admin Notifications: System alerts
+- Audit Log: Admin action history
+- Services Config: Email/SMS provider setup
+
+**New Database Schema (v19):**
+- user_settings: Added experience_level, advanced_mode,
+  has_completed_setup_wizard, show_tooltips, show_guided_workflows
+- library_suggestions: Expanded suggestion_type to include all library types
+  (container, substrate_type, grain_type, supplier, etc.)
+- suggestion_messages: New table for admin-user communication
+- Full RLS policies for new tables
+
+**New TypeScript Types:**
+- ExperienceLevel: 'beginner' | 'intermediate' | 'advanced' | 'expert'
+- SuggestionType: 12 library entity types
+- SuggestionStatus: 7 workflow states
+- LibrarySuggestion, SuggestionMessage interfaces
+
+**New Components:**
+- AnonymousSettings.tsx: Minimal settings for unauthenticated users
+- GrowerSettings.tsx: Full settings for authenticated non-admins
+- admin/AdminConsole.tsx: Consolidated admin panel
+- common/SettingsSection.tsx: Reusable section wrapper
+- SettingsPageNew.tsx: Role-based router
+
+**Experience Level System:**
+- Beginner: Simplified UI, tooltips, guided workflows
+- Intermediate: Standard feature set
+- Advanced: All options visible
+- Expert: Power user features, bulk operations
+- Advanced Mode toggle overrides experience level
+
+**Future: First-Time Wizard:**
+- Schema ready for setup wizard tracking
+- has_completed_setup_wizard flag
+- Will ask user experience level on first login
+- Pre-configure settings based on responses
+
+**Files Changed:**
+- supabase-schema.sql (v19 - user_settings columns, suggestion_messages table)
+- src/store/types.ts (ExperienceLevel, suggestion types)
+- src/components/settings/AnonymousSettings.tsx (new)
+- src/components/settings/GrowerSettings.tsx (new)
+- src/components/settings/admin/AdminConsole.tsx (new)
+- src/components/settings/common/SettingsSection.tsx (new)
+- src/components/settings/SettingsPageNew.tsx (new router)
+- src/App.tsx (import SettingsPageNew)
+- SETTINGS_OVERHAUL_PLAN.md (design document)`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },

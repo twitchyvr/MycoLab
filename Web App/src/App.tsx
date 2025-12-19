@@ -38,7 +38,7 @@ import { BiologicalEfficiencyCalculator } from './components/analysis/Biological
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
 import { FinancialDashboard } from './components/analytics/FinancialDashboard';
 import { StrainPerformanceAnalytics } from './components/analytics/StrainPerformanceAnalytics';
-import { SettingsPage } from './components/settings/SettingsPage';
+import { SettingsPageNew as SettingsPage } from './components/settings/SettingsPageNew';
 import { SpawnRateCalculator } from './components/tools/SpawnRateCalculator';
 import { PressureCookingCalculator } from './components/tools/PressureCookingCalculator';
 import { CultureManagement } from './components/cultures/CultureManagement';
