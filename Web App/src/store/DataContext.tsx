@@ -1199,7 +1199,28 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     const transferId = generateId('trans');
     const newTransfer: CultureTransfer = { ...transfer, id: transferId };
 
-    // 2. Prepare new culture object if needed
+    // 2. Calculate cost of the transferred amount
+    // Convert quantity to ml for cost calculation
+    let transferredVolumeMl = transfer.quantity;
+    if (transfer.unit === 'drop') {
+      transferredVolumeMl = transfer.quantity * 0.05; // ~0.05ml per drop
+    } else if (transfer.unit === 'cc') {
+      transferredVolumeMl = transfer.quantity; // 1cc = 1ml
+    } else if (transfer.unit === 'wedge') {
+      // For agar wedges, estimate based on plate size (typically 1 wedge = 10% of plate)
+      transferredVolumeMl = (sourceCulture.fillVolumeMl || sourceCulture.volumeMl || 20) * 0.1 * transfer.quantity;
+    }
+
+    // Calculate cost per ml of source culture
+    const sourceTotalCost = (sourceCulture.purchaseCost ?? 0) + (sourceCulture.productionCost ?? 0)
+                          + (sourceCulture.parentCultureCost ?? 0) + (sourceCulture.cost ?? 0);
+    const sourceFillVolume = sourceCulture.fillVolumeMl ?? sourceCulture.volumeMl ?? 1;
+    const costPerMl = sourceFillVolume > 0 ? sourceTotalCost / sourceFillVolume : 0;
+
+    // Cost transferred to the new culture
+    const transferredCost = costPerMl * transferredVolumeMl;
+
+    // 3. Prepare new culture object if needed
     let newCulture: Culture | null = null;
     const isCultureCreation = ['liquid_culture', 'agar', 'slant', 'spore_syringe'].includes(transfer.toType);
 
@@ -1223,12 +1244,17 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         locationId: sourceCulture.locationId, // Default to parent location
         containerId: state.containers.find(c => c.isActive && c.usageContext.includes('culture'))?.id || 'default-container', // Needs selection
         volumeMl: undefined,
-        fillVolumeMl: undefined,
+        fillVolumeMl: transferredVolumeMl, // Start with the transferred volume
         prepDate: new Date().toISOString().split('T')[0],
         sterilizationDate: undefined,
         healthRating: 5,
         notes: `Transferred from ${sourceCulture.label}\n${transfer.notes || ''}`,
-        cost: 0,
+        cost: 0, // Legacy field - use breakdown fields instead
+        purchaseCost: 0,
+        productionCost: 0,
+        parentCultureCost: transferredCost, // Set the inherited cost
+        volumeUsed: 0,
+        costPerMl: transferredVolumeMl > 0 ? transferredCost / transferredVolumeMl : 0,
         createdAt: now,
         updatedAt: now,
         observations: [],
@@ -1236,12 +1262,23 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       };
     }
 
-    // 3. Update local state
+    // 4. Calculate updated source culture values
+    const newVolumeUsed = (sourceCulture.volumeUsed ?? 0) + transferredVolumeMl;
+    const newFillVolume = Math.max(0, (sourceCulture.fillVolumeMl ?? sourceCulture.volumeMl ?? 0) - transferredVolumeMl);
+
+    // 5. Update local state
     setState(prev => {
-      // Update source culture transfers
+      // Update source culture transfers and volume tracking
       const updatedCultures = prev.cultures.map(c =>
         c.id === cultureId
-          ? { ...c, transfers: [...c.transfers, newTransfer], updatedAt: new Date() }
+          ? {
+              ...c,
+              transfers: [...c.transfers, newTransfer],
+              volumeUsed: newVolumeUsed,
+              fillVolumeMl: newFillVolume,
+              costPerMl: costPerMl, // Update the cost per ml
+              updatedAt: new Date()
+            }
           : c
       );
 
@@ -1253,7 +1290,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       return { ...prev, cultures: updatedCultures };
     });
 
-    // 4. Persist to Supabase (fire and forget)
+    // 6. Persist to Supabase (fire and forget)
     if (supabase) {
       (async () => {
         try {
@@ -1273,6 +1310,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
               console.error('Failed to persist new culture:', cultureError);
               return; // Stop if culture creation failed
             }
+          }
+
+          // Update source culture volume tracking
+          const { error: updateError } = await supabase
+            .from('cultures')
+            .update({
+              volume_used: newVolumeUsed,
+              fill_volume_ml: newFillVolume,
+              cost_per_ml: costPerMl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', cultureId);
+
+          if (updateError) {
+            console.error('Failed to update source culture volume:', updateError);
           }
 
           // Insert transfer record

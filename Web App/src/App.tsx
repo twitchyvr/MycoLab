@@ -36,6 +36,7 @@ import { UnifiedItemView } from './components/inventory/UnifiedItemView';
 import { ContaminationAnalysis } from './components/analysis/ContaminationAnalysis';
 import { BiologicalEfficiencyCalculator } from './components/analysis/BiologicalEfficiencyCalculator';
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
+import { FinancialDashboard } from './components/analytics/FinancialDashboard';
 import { StrainPerformanceAnalytics } from './components/analytics/StrainPerformanceAnalytics';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { SpawnRateCalculator } from './components/tools/SpawnRateCalculator';
@@ -137,6 +138,11 @@ const Icons = {
   Package: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
       <path d="M16.5 9.4l-9-5.19"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+    </svg>
+  ),
+  DollarSign: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
     </svg>
   ),
   Settings: () => (
@@ -306,7 +312,7 @@ const Icons = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
 
 // Route configuration: maps Page to URL paths
 // Routes with :id support deep-linking to specific items
@@ -338,6 +344,7 @@ const routeConfig: Record<Page, string> = {
   contamination: '/contamination',
   efficiency: '/efficiency',
   analytics: '/analytics',
+  financial: '/financial',
   strainanalytics: '/strain-analytics',
   settings: '/settings',
   profile: '/profile',
@@ -471,6 +478,7 @@ const navGroups: NavGroup[] = [
     defaultOpen: false,
     items: [
       { id: 'analytics', label: 'Overview', icon: Icons.Chart },
+      { id: 'financial', label: 'Financial', icon: Icons.DollarSign },
       { id: 'strainanalytics', label: 'Strain Stats', icon: Icons.Target },
       { id: 'contamination', label: 'Contam Analysis', icon: Icons.AlertTriangle },
       { id: 'efficiency', label: 'BE Calculator', icon: Icons.TrendingUp },
@@ -1159,6 +1167,7 @@ const AppWithRouter: React.FC = () => {
     contamination: { title: 'Contamination Analysis', subtitle: 'Track and analyze contamination patterns' },
     efficiency: { title: 'Biological Efficiency', subtitle: 'Calculate and compare BE% across grows' },
     analytics: { title: 'Analytics', subtitle: 'Data visualization and insights' },
+    financial: { title: 'Financial Dashboard', subtitle: 'Lab valuation, costs, and profitability analysis' },
     strainanalytics: { title: 'Strain Performance', subtitle: 'Track success rates, yields, and optimal conditions per strain' },
     settings: { title: 'Settings', subtitle: 'Configure lookups and preferences' },
     profile: { title: 'My Profile', subtitle: 'Manage your account and security settings' },
@@ -1299,6 +1308,12 @@ const AppWithRouter: React.FC = () => {
         return (
           <div className="p-6">
             <AnalyticsDashboard />
+          </div>
+        );
+      case 'financial':
+        return (
+          <div className="p-6">
+            <FinancialDashboard />
           </div>
         );
       case 'strainanalytics':

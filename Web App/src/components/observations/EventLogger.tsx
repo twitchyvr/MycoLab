@@ -30,6 +30,8 @@ interface LabEvent {
 type EventCategory =
   | 'observation'
   | 'maintenance'
+  | 'misting'
+  | 'fae'
   | 'harvest'
   | 'inoculation'
   | 'transfer'
@@ -102,6 +104,8 @@ const Icons = {
 const categoryConfig: Record<EventCategory, { label: string; icon: string; color: string; bgColor: string }> = {
   observation: { label: 'Observation', icon: '👁️', color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
   maintenance: { label: 'Maintenance', icon: '🔧', color: 'text-zinc-400', bgColor: 'bg-zinc-500/20' },
+  misting: { label: 'Misting', icon: '💧', color: 'text-cyan-400', bgColor: 'bg-cyan-500/20' },
+  fae: { label: 'Fresh Air Exchange', icon: '💨', color: 'text-sky-400', bgColor: 'bg-sky-500/20' },
   harvest: { label: 'Harvest', icon: '🌾', color: 'text-amber-400', bgColor: 'bg-amber-500/20' },
   inoculation: { label: 'Inoculation', icon: '💉', color: 'text-purple-400', bgColor: 'bg-purple-500/20' },
   transfer: { label: 'Transfer', icon: '🔄', color: 'text-cyan-400', bgColor: 'bg-cyan-500/20' },

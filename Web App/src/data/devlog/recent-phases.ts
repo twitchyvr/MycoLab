@@ -2768,6 +2768,127 @@ Added auth state listener in DataContext that:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1207',
+    title: 'Financial Dashboard',
+    description: 'Comprehensive financial dashboard with lab valuation, cost analysis, profitability metrics, and CSV/JSON export functionality.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    actualHours: 2,
+    completedAt: timestamp(),
+    notes: `Financial Dashboard implementation:
+
+**Features:**
+- Lab Valuation Summary: Equipment, consumables, durables, culture values
+- Cost Analysis: Breakdown by category, cost per grow by strain
+- Profitability: Margin analysis, revenue vs costs by strain
+- Data Export: JSON and CSV download functionality
+
+**Components Added:**
+- FinancialDashboard.tsx with tabbed interface (Overview, Cost Analysis, Profitability, Export)
+- Added to analytics navigation group
+- Route: /financial
+
+**Integration:**
+- Uses existing cost fields in Grow, Culture, InventoryItem
+- Calculates derived metrics (margins, cost per gram)
+- Export includes all financial data with proper formatting`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1208',
+    title: 'Misting and FAE Event Types',
+    description: 'Added misting and fresh air exchange (FAE) as dedicated event types for grow observations and lab events.',
+    category: 'data',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 0.5,
+    actualHours: 0.25,
+    completedAt: timestamp(),
+    notes: `Added misting and FAE event types:
+
+**Changes:**
+- GrowObservation.type: Added 'misting' and 'fae' options
+- EventLogger EventCategory: Added 'misting' and 'fae' categories
+- GrowManagement dropdown: Added misting, FAE, and photo options
+
+**Purpose:**
+- Track misting frequency for fruiting conditions
+- Log FAE (fresh air exchange) events
+- Better data for environmental correlation analysis`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1209',
+    title: 'Proactive Version Notifications',
+    description: 'App now checks for updates while running, notifying users of new versions without waiting for them to take action.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 1,
+    actualHours: 0.5,
+    completedAt: timestamp(),
+    notes: `Proactive version checking:
+
+**Previous Behavior:**
+- Version check only happened on page load
+- Users with long-running sessions wouldn't know about updates
+
+**New Behavior:**
+- Polls server every 5 minutes (in production only)
+- Also checks when tab regains focus (visibility change)
+- Uses HEAD requests with cache-busting to detect server changes
+- Compares ETag/Last-Modified headers to detect new deployments
+- Shows update modal when new version detected
+
+**Implementation:**
+- Added polling useEffect in VersionContext
+- Uses sessionStorage to track server timestamp
+- Skipped in development mode to avoid noise`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1210',
+    title: 'Annual Wrapped Feature',
+    description: 'Spotify Wrapped-style year-end summary showing cultivation statistics, top strains, success rates, and fun facts.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'low',
+    estimatedHours: 3,
+    actualHours: 1.5,
+    completedAt: timestamp(),
+    notes: `Annual Wrapped feature:
+
+**Features:**
+- Multi-slide presentation with swipe/keyboard navigation
+- Year overview: total grows, cultures, harvests, yield
+- Top strain with count and yield
+- Success rate visualization (circular progress)
+- Best/worst month analysis
+- Contamination stats
+- Activity summary (observations, mistings, FAE events)
+- Records: best yield, fastest grow
+- Financial summary
+- Fun facts generated from data
+- Share prompt with #MycoLabWrapped
+
+**Components:**
+- AnnualWrapped: Full-screen slideshow modal
+- WrappedTrigger: Button to open (shows in Dec/Jan)
+- WrappedWidget: Dashboard card with preview stats
+
+**Integration:**
+- Added to Lab Command Center dashboard
+- Shows automatically in December and January
+- Year automatically selected based on current month`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

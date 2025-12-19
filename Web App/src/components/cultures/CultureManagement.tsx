@@ -110,6 +110,7 @@ export const CultureManagement: React.FC = () => {
     unit: 'wedge',
     notes: '',
     createNewRecord: false,
+    destinationVolumeMl: undefined as number | undefined, // Volume of existing media in destination container
   });
 
   // Listen for header "New" button click
@@ -252,7 +253,7 @@ export const CultureManagement: React.FC = () => {
     // selectedCulture will be auto-updated by the sync useEffect when state.cultures changes
 
     setShowTransferModal(false);
-    setNewTransfer({ toType: 'agar', quantity: 1, unit: 'wedge', notes: '', createNewRecord: false });
+    setNewTransfer({ toType: 'agar', quantity: 1, unit: 'wedge', notes: '', createNewRecord: false, destinationVolumeMl: undefined });
   };
 
   // Delete handler
@@ -606,10 +607,61 @@ export const CultureManagement: React.FC = () => {
                   <span className="text-white">{getSupplier(selectedCulture.supplierId)?.name}</span>
                 </div>
               )}
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-500">Cost</span>
-                <span className="text-white">${selectedCulture.cost.toFixed(2)}</span>
-              </div>
+
+              {/* Cost/Value Section - Enhanced */}
+              {(() => {
+                const totalCost = (selectedCulture.purchaseCost ?? 0) + (selectedCulture.productionCost ?? 0)
+                                + (selectedCulture.parentCultureCost ?? 0) + (selectedCulture.cost ?? 0);
+                const fillVolume = selectedCulture.fillVolumeMl ?? selectedCulture.volumeMl ?? 0;
+                const costPerMl = fillVolume > 0 ? totalCost / fillVolume : 0;
+                const hasDetailedCost = (selectedCulture.purchaseCost ?? 0) > 0
+                                     || (selectedCulture.productionCost ?? 0) > 0
+                                     || (selectedCulture.parentCultureCost ?? 0) > 0;
+
+                return (
+                  <div className="py-2 border-b border-zinc-800">
+                    <div className="flex justify-between items-center">
+                      <span className="text-zinc-500">Total Value</span>
+                      <span className="text-emerald-400 font-medium">${totalCost.toFixed(2)}</span>
+                    </div>
+                    {hasDetailedCost && (
+                      <div className="mt-2 pl-2 space-y-1 text-xs">
+                        {(selectedCulture.purchaseCost ?? 0) > 0 && (
+                          <div className="flex justify-between text-zinc-500">
+                            <span>Purchase cost:</span>
+                            <span>${selectedCulture.purchaseCost!.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {(selectedCulture.productionCost ?? 0) > 0 && (
+                          <div className="flex justify-between text-zinc-500">
+                            <span>Production cost:</span>
+                            <span>${selectedCulture.productionCost!.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {(selectedCulture.parentCultureCost ?? 0) > 0 && (
+                          <div className="flex justify-between text-zinc-500">
+                            <span>From parent culture:</span>
+                            <span>${selectedCulture.parentCultureCost!.toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {fillVolume > 0 && totalCost > 0 && (
+                      <div className="flex justify-between mt-1 text-xs text-zinc-500">
+                        <span>Cost per ml:</span>
+                        <span>${costPerMl.toFixed(3)}/ml</span>
+                      </div>
+                    )}
+                    {(selectedCulture.volumeUsed ?? 0) > 0 && (
+                      <div className="flex justify-between mt-1 text-xs text-zinc-500">
+                        <span>Volume used:</span>
+                        <span>{selectedCulture.volumeUsed?.toFixed(1)}ml</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div className="flex justify-between py-2 border-b border-zinc-800">
                 <span className="text-zinc-500">Created</span>
                 <span className="text-white">{new Date(selectedCulture.createdAt).toLocaleDateString()}</span>
@@ -787,14 +839,54 @@ export const CultureManagement: React.FC = () => {
       )}
 
       {/* Transfer Modal */}
-      {showTransferModal && selectedCulture && (
+      {showTransferModal && selectedCulture && (() => {
+        // Calculate transfer cost for display
+        const sourceTotalCost = (selectedCulture.purchaseCost ?? 0) + (selectedCulture.productionCost ?? 0)
+                              + (selectedCulture.parentCultureCost ?? 0) + (selectedCulture.cost ?? 0);
+        const sourceFillVolume = selectedCulture.fillVolumeMl ?? selectedCulture.volumeMl ?? 1;
+        const costPerMl = sourceFillVolume > 0 ? sourceTotalCost / sourceFillVolume : 0;
+
+        // Convert quantity to ml for cost calculation
+        let transferredVolumeMl = newTransfer.quantity;
+        if (newTransfer.unit === 'drop') {
+          transferredVolumeMl = newTransfer.quantity * 0.05;
+        } else if (newTransfer.unit === 'cc') {
+          transferredVolumeMl = newTransfer.quantity;
+        } else if (newTransfer.unit === 'wedge') {
+          transferredVolumeMl = sourceFillVolume * 0.1 * newTransfer.quantity;
+        }
+
+        const transferCost = costPerMl * transferredVolumeMl;
+        const remainingVolume = Math.max(0, sourceFillVolume - transferredVolumeMl);
+        const destinationTotalVolume = (newTransfer.destinationVolumeMl ?? 0) + transferredVolumeMl;
+
+        return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md w-full">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-white">Transfer Culture</h3>
               <button onClick={() => setShowTransferModal(false)} className="text-zinc-400 hover:text-white">
                 <Icons.X />
               </button>
+            </div>
+
+            {/* Source Culture Info */}
+            <div className="bg-zinc-800/50 rounded-lg p-3 mb-4 border border-zinc-700">
+              <div className="text-sm text-zinc-400 mb-1">Source: {selectedCulture.label}</div>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div>
+                  <span className="text-zinc-500">Volume:</span>
+                  <span className="text-white ml-1">{sourceFillVolume.toFixed(1)}ml</span>
+                </div>
+                <div>
+                  <span className="text-zinc-500">Value:</span>
+                  <span className="text-emerald-400 ml-1">${sourceTotalCost.toFixed(2)}</span>
+                </div>
+                <div>
+                  <span className="text-zinc-500">$/ml:</span>
+                  <span className="text-emerald-400 ml-1">${costPerMl.toFixed(3)}</span>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -815,11 +907,12 @@ export const CultureManagement: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Quantity</label>
+                  <label className="block text-sm text-zinc-400 mb-2">Transfer Amount</label>
                   <NumericInput
                     value={newTransfer.quantity}
                     onChange={value => setNewTransfer(prev => ({ ...prev, quantity: value ?? 1 }))}
-                    min={1}
+                    min={0.1}
+                    step={0.5}
                     allowEmpty={false}
                     defaultValue={1}
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
@@ -832,11 +925,53 @@ export const CultureManagement: React.FC = () => {
                     onChange={e => setNewTransfer(prev => ({ ...prev, unit: e.target.value }))}
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
                   >
-                    <option value="wedge">Wedge</option>
                     <option value="ml">ml</option>
                     <option value="cc">cc</option>
-                    <option value="drop">Drop</option>
+                    <option value="drop">Drop (~0.05ml)</option>
+                    <option value="wedge">Wedge (~10%)</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Destination Volume - for liquid cultures being added to existing media */}
+              {newTransfer.toType === 'liquid_culture' && (
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">
+                    Destination Media Volume (ml)
+                    <span className="text-zinc-500 ml-1 font-normal">(existing sterile LC in jar)</span>
+                  </label>
+                  <NumericInput
+                    value={newTransfer.destinationVolumeMl}
+                    onChange={value => setNewTransfer(prev => ({ ...prev, destinationVolumeMl: value }))}
+                    min={0}
+                    step={50}
+                    placeholder="e.g., 300 for a jar with 300ml LC"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                  />
+                  {newTransfer.destinationVolumeMl !== undefined && newTransfer.destinationVolumeMl > 0 && (
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Final volume: {newTransfer.destinationVolumeMl}ml + {transferredVolumeMl.toFixed(1)}ml = {destinationTotalVolume.toFixed(1)}ml
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Cost Summary */}
+              <div className="bg-emerald-900/20 border border-emerald-800/30 rounded-lg p-3">
+                <div className="text-sm font-medium text-emerald-400 mb-2">Transfer Summary</div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="text-zinc-400">Transfer volume:</div>
+                  <div className="text-white text-right">{transferredVolumeMl.toFixed(2)} ml</div>
+                  <div className="text-zinc-400">Transfer value:</div>
+                  <div className="text-emerald-400 text-right font-medium">${transferCost.toFixed(2)}</div>
+                  <div className="text-zinc-400">Source remaining:</div>
+                  <div className="text-white text-right">{remainingVolume.toFixed(1)} ml</div>
+                  {newTransfer.toType === 'liquid_culture' && newTransfer.destinationVolumeMl !== undefined && (
+                    <>
+                      <div className="text-zinc-400">Destination total:</div>
+                      <div className="text-white text-right">{destinationTotalVolume.toFixed(1)} ml</div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -846,7 +981,8 @@ export const CultureManagement: React.FC = () => {
                   value={newTransfer.notes}
                   onChange={e => setNewTransfer(prev => ({ ...prev, notes: e.target.value }))}
                   rows={2}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                  placeholder="e.g., Added to sterilized LC jar, contamination experiment, etc."
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder:text-zinc-600"
                 />
               </div>
 
@@ -858,7 +994,7 @@ export const CultureManagement: React.FC = () => {
                     onChange={e => setNewTransfer(prev => ({ ...prev, createNewRecord: e.target.checked }))}
                     className="rounded border-zinc-600"
                   />
-                  <span className="text-zinc-300">Create new culture record</span>
+                  <span className="text-zinc-300">Create new culture record (tracks lineage)</span>
                 </label>
               )}
             </div>
@@ -872,14 +1008,21 @@ export const CultureManagement: React.FC = () => {
               </button>
               <button
                 onClick={handleTransfer}
-                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium"
+                disabled={transferredVolumeMl > sourceFillVolume}
+                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
               >
                 Transfer
               </button>
             </div>
+            {transferredVolumeMl > sourceFillVolume && (
+              <p className="text-red-400 text-sm text-center mt-2">
+                Transfer amount exceeds available volume
+              </p>
+            )}
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

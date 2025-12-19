@@ -6,6 +6,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../store';
 import type { Culture, Grow, GrowStage } from '../../store/types';
+import { WrappedWidget } from '../analytics/AnnualWrapped';
 
 // ============================================================================
 // TYPES
@@ -718,6 +719,9 @@ export const LabCommandCenter: React.FC<LabCommandCenterProps> = ({ onNavigate }
           />
         </div>
       </div>
+
+      {/* Annual Wrapped - Shows in December/January */}
+      <WrappedWidget />
 
       {/* Upcoming Milestones */}
       {timelineItems.length > 0 && (

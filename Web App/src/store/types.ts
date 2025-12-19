@@ -586,7 +586,7 @@ export interface GrowObservation {
   id: string;
   date: Date;
   stage: GrowStage;
-  type: 'general' | 'environmental' | 'contamination' | 'milestone' | 'photo';
+  type: 'general' | 'environmental' | 'contamination' | 'milestone' | 'photo' | 'misting' | 'fae';
   title: string;
   notes: string;
   temperature?: number;

@@ -1562,9 +1562,12 @@ export const GrowManagement: React.FC = () => {
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
                 >
                   <option value="general">General</option>
+                  <option value="misting">Misting</option>
+                  <option value="fae">Fresh Air Exchange</option>
                   <option value="environmental">Environmental</option>
                   <option value="contamination">Contamination</option>
                   <option value="milestone">Milestone</option>
+                  <option value="photo">Photo</option>
                 </select>
               </div>
 
