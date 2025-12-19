@@ -3885,6 +3885,44 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1232',
+    title: 'Feature Tracker - Changelog & Detail Modal',
+    description: 'Added Changelog view tab and Feature detail modal for viewing comprehensive feature information.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 3,
+    actualHours: 1.5,
+    completedAt: timestamp(),
+    notes: `**Phase 4 - Changelog & Modal Complete:**
+
+**Changelog View:**
+- Version selector sidebar (sorted by semver)
+- Shows milestone codenames for each version
+- Version header with release date and highlights
+- Entry cards with type-specific icons and colors
+- Support for all entry types (feature, bug fix, security, etc.)
+- Integrates with existing changelog data and auto-generation
+
+**Feature Detail Modal:**
+- Full feature information display
+- Status, Priority, and Milestone badges
+- Description and Notes sections
+- Meta grid (category, complexity, estimated/actual hours)
+- Tags display
+- Technical notes with monospace formatting
+- Acceptance criteria checklist
+- Dependencies list with status indicators
+- Audit dates (created, updated, completed)
+
+**Entry Type Config:**
+- 12 changelog entry types with icons
+- Color-coded backgrounds and text
+- Release, Feature, Bug Fix, Security, Performance, etc.`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

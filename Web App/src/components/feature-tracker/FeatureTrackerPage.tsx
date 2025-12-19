@@ -34,6 +34,12 @@ import {
   getFeatureImpact,
   getWouldUnblock,
 } from '../../data/feature-tracker/utils/dependencies';
+import {
+  getFullChangelog,
+  getChangelogByVersion,
+  getReleaseNotes,
+} from '../../data/feature-tracker/changelog';
+import type { ChangelogEntry } from '../../data/feature-tracker/types';
 import { FeatureCard } from './shared/FeatureCard';
 import { StatusBadge, PriorityBadge, MilestoneBadge } from './shared/StatusBadge';
 
@@ -122,18 +128,39 @@ const Icons = {
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
     </svg>
   ),
+  History: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  ),
+  Eye: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  Edit: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  ),
 };
 
 // ============================================================================
 // VIEW MODE CONFIG
 // ============================================================================
 
-const VIEW_MODES: { id: ViewMode; label: string; icon: React.FC; mobileHidden?: boolean }[] = [
+type ExtendedViewMode = ViewMode | 'changelog';
+
+const VIEW_MODES: { id: ExtendedViewMode; label: string; icon: React.FC; mobileHidden?: boolean }[] = [
   { id: 'list', label: 'List', icon: Icons.List },
   { id: 'kanban', label: 'Kanban', icon: Icons.Kanban },
   { id: 'milestone', label: 'Milestones', icon: Icons.Target },
   { id: 'timeline', label: 'Timeline', icon: Icons.Calendar, mobileHidden: true },
   { id: 'dependency', label: 'Dependencies', icon: Icons.GitBranch, mobileHidden: true },
+  { id: 'changelog', label: 'Changelog', icon: Icons.History },
 ];
 
 // ============================================================================
@@ -672,18 +699,388 @@ const DependencyView: React.FC<DependencyViewProps> = ({ features, expandedFeatu
 };
 
 // ============================================================================
+// CHANGELOG VIEW COMPONENT
+// ============================================================================
+
+const CHANGELOG_TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string; label: string }> = {
+  release: { icon: '🚀', color: 'text-purple-400', bg: 'bg-purple-950/50', label: 'Release' },
+  feature_added: { icon: '✨', color: 'text-emerald-400', bg: 'bg-emerald-950/50', label: 'Feature' },
+  feature_updated: { icon: '🔄', color: 'text-blue-400', bg: 'bg-blue-950/50', label: 'Update' },
+  feature_removed: { icon: '🗑️', color: 'text-red-400', bg: 'bg-red-950/50', label: 'Removed' },
+  bug_fixed: { icon: '🐛', color: 'text-orange-400', bg: 'bg-orange-950/50', label: 'Bug Fix' },
+  performance: { icon: '⚡', color: 'text-yellow-400', bg: 'bg-yellow-950/50', label: 'Performance' },
+  security: { icon: '🔒', color: 'text-red-400', bg: 'bg-red-950/50', label: 'Security' },
+  breaking_change: { icon: '💥', color: 'text-red-400', bg: 'bg-red-950/50', label: 'Breaking' },
+  deprecation: { icon: '⚠️', color: 'text-amber-400', bg: 'bg-amber-950/50', label: 'Deprecated' },
+  documentation: { icon: '📚', color: 'text-cyan-400', bg: 'bg-cyan-950/50', label: 'Docs' },
+  refactor: { icon: '🔧', color: 'text-zinc-400', bg: 'bg-zinc-800/50', label: 'Refactor' },
+  dependency: { icon: '📦', color: 'text-indigo-400', bg: 'bg-indigo-950/50', label: 'Dependency' },
+};
+
+const ChangelogView: React.FC = () => {
+  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
+
+  const changelogByVersion = useMemo(() => getChangelogByVersion(), []);
+  const fullChangelog = useMemo(() => getFullChangelog(), []);
+
+  // Get versions sorted by semantic version (newest first)
+  const versions = useMemo(() => {
+    const versionKeys = Array.from(changelogByVersion.keys()).filter(v => v !== 'unversioned');
+    return versionKeys.sort((a, b) => {
+      const aParts = a.replace('v', '').split('.').map(Number);
+      const bParts = b.replace('v', '').split('.').map(Number);
+      for (let i = 0; i < 3; i++) {
+        if ((bParts[i] || 0) !== (aParts[i] || 0)) {
+          return (bParts[i] || 0) - (aParts[i] || 0);
+        }
+      }
+      return 0;
+    });
+  }, [changelogByVersion]);
+
+  const formatDate = (dateStr: string): string => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  if (fullChangelog.length === 0) {
+    return (
+      <div className="text-center py-12 text-zinc-500">
+        <Icons.History />
+        <p className="mt-2">No changelog entries yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      {/* Version Selector */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-zinc-400 mb-3">Versions</h3>
+        <button
+          onClick={() => setSelectedVersion(null)}
+          className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+            selectedVersion === null
+              ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-500/30'
+              : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+          }`}
+        >
+          All Changes ({fullChangelog.length})
+        </button>
+        {versions.map(version => {
+          const entries = changelogByVersion.get(version) || [];
+          const releaseEntry = entries.find(e => e.type === 'release');
+          const milestone = MILESTONES.find(m => m.id === version);
+
+          return (
+            <button
+              key={version}
+              onClick={() => setSelectedVersion(version)}
+              className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                selectedVersion === version
+                  ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-500/30'
+                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-medium">{version}</span>
+                <span className="text-xs text-zinc-500">{entries.length}</span>
+              </div>
+              {milestone?.codename && (
+                <p className="text-xs text-zinc-500 mt-0.5">"{milestone.codename}"</p>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Changelog Entries */}
+      <div className="lg:col-span-3 space-y-4">
+        {selectedVersion ? (
+          <>
+            {/* Version Header */}
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+              {(() => {
+                const notes = getReleaseNotes(selectedVersion);
+                const milestone = MILESTONES.find(m => m.id === selectedVersion);
+                return (
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-2xl">🚀</span>
+                      <h2 className="text-2xl font-bold text-zinc-100">{selectedVersion}</h2>
+                      {milestone?.codename && (
+                        <span className="text-zinc-500">"{milestone.codename}"</span>
+                      )}
+                    </div>
+                    {milestone?.name && (
+                      <p className="text-zinc-400 mb-2">{milestone.name}</p>
+                    )}
+                    {notes.date && (
+                      <p className="text-sm text-zinc-500">Released {formatDate(notes.date)}</p>
+                    )}
+                    {notes.highlights.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-zinc-800">
+                        <h4 className="text-sm font-medium text-zinc-400 mb-2">Highlights</h4>
+                        <ul className="space-y-1">
+                          {notes.highlights.map((h, i) => (
+                            <li key={i} className="flex items-center gap-2 text-sm text-zinc-300">
+                              <span className="text-emerald-400">✓</span>
+                              {h}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Entries for this version */}
+            <div className="space-y-2">
+              {(changelogByVersion.get(selectedVersion) || [])
+                .filter(e => e.type !== 'release')
+                .map(entry => (
+                  <ChangelogEntryCard key={entry.id} entry={entry} />
+                ))}
+            </div>
+          </>
+        ) : (
+          /* All entries timeline */
+          <div className="space-y-2">
+            {fullChangelog.map(entry => (
+              <ChangelogEntryCard key={entry.id} entry={entry} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ChangelogEntryCard: React.FC<{ entry: ChangelogEntry }> = ({ entry }) => {
+  const config = CHANGELOG_TYPE_CONFIG[entry.type] || CHANGELOG_TYPE_CONFIG.feature_added;
+
+  const formatDate = (dateStr: string): string => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  return (
+    <div className={`p-4 rounded-lg border ${config.bg} border-zinc-800 hover:border-zinc-700 transition-colors`}>
+      <div className="flex items-start gap-3">
+        <span className="text-xl">{config.icon}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`px-2 py-0.5 text-xs rounded-full ${config.bg} ${config.color} border border-current/20`}>
+              {config.label}
+            </span>
+            <h4 className="font-medium text-zinc-100">{entry.title}</h4>
+          </div>
+          {entry.description && (
+            <p className="text-sm text-zinc-400 mt-1">{entry.description}</p>
+          )}
+          <div className="flex items-center gap-3 mt-2 text-xs text-zinc-500">
+            <span>{formatDate(entry.timestamp)}</span>
+            {entry.milestoneId && (
+              <span className="px-1.5 py-0.5 bg-zinc-800 rounded">{entry.milestoneId}</span>
+            )}
+            {entry.prLink && (
+              <a href={entry.prLink} className="text-blue-400 hover:underline">PR Link</a>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// FEATURE MODAL COMPONENT
+// ============================================================================
+
+interface FeatureModalProps {
+  feature: Feature | null;
+  onClose: () => void;
+}
+
+const FeatureModal: React.FC<FeatureModalProps> = ({ feature, onClose }) => {
+  if (!feature) return null;
+
+  const formatDate = (dateStr: string): string => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative w-full max-w-2xl max-h-[90vh] bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-zinc-800 flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <StatusBadge status={feature.status} size="sm" />
+              <PriorityBadge priority={feature.priority} size="sm" />
+              {feature.targetMilestone && (
+                <MilestoneBadge milestone={feature.targetMilestone} isMandatory={feature.isMandatory} />
+              )}
+            </div>
+            <h2 className="text-xl font-bold text-zinc-100">{feature.title}</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-lg transition-colors"
+          >
+            <Icons.X />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Description */}
+          {feature.description && (
+            <div>
+              <h3 className="text-sm font-medium text-zinc-400 mb-2">Description</h3>
+              <p className="text-zinc-300">{feature.description}</p>
+            </div>
+          )}
+
+          {/* Meta Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 bg-zinc-800/50 rounded-lg">
+              <p className="text-xs text-zinc-500 mb-1">Category</p>
+              <p className="text-zinc-300">{CATEGORY_CONFIG[feature.category]?.label || feature.category}</p>
+            </div>
+            <div className="p-3 bg-zinc-800/50 rounded-lg">
+              <p className="text-xs text-zinc-500 mb-1">Complexity</p>
+              <p className="text-zinc-300">{feature.complexity || 'Not set'}</p>
+            </div>
+            {feature.estimatedHours && (
+              <div className="p-3 bg-zinc-800/50 rounded-lg">
+                <p className="text-xs text-zinc-500 mb-1">Estimated</p>
+                <p className="text-zinc-300">{feature.estimatedHours} hours</p>
+              </div>
+            )}
+            {feature.actualHours && (
+              <div className="p-3 bg-zinc-800/50 rounded-lg">
+                <p className="text-xs text-zinc-500 mb-1">Actual</p>
+                <p className="text-emerald-400">{feature.actualHours} hours</p>
+              </div>
+            )}
+          </div>
+
+          {/* Tags */}
+          {feature.tags && feature.tags.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-zinc-400 mb-2">Tags</h3>
+              <div className="flex flex-wrap gap-2">
+                {feature.tags.map(tag => (
+                  <span key={tag} className="px-2 py-1 text-xs bg-zinc-800 text-zinc-400 rounded-lg">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {feature.notes && (
+            <div>
+              <h3 className="text-sm font-medium text-zinc-400 mb-2">Notes</h3>
+              <div className="p-4 bg-zinc-800/50 rounded-lg text-sm text-zinc-300 whitespace-pre-wrap">
+                {feature.notes}
+              </div>
+            </div>
+          )}
+
+          {/* Technical Notes */}
+          {feature.technicalNotes && (
+            <div>
+              <h3 className="text-sm font-medium text-zinc-400 mb-2">Technical Notes</h3>
+              <div className="p-4 bg-zinc-800/50 rounded-lg text-sm text-zinc-300 whitespace-pre-wrap font-mono text-xs">
+                {feature.technicalNotes}
+              </div>
+            </div>
+          )}
+
+          {/* Acceptance Criteria */}
+          {feature.acceptanceCriteria && feature.acceptanceCriteria.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-zinc-400 mb-2">Acceptance Criteria</h3>
+              <ul className="space-y-1">
+                {feature.acceptanceCriteria.map((criteria, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-zinc-300">
+                    <span className="text-emerald-400 mt-0.5">☐</span>
+                    {criteria}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Dependencies */}
+          {feature.dependencies && feature.dependencies.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-zinc-400 mb-2">Dependencies ({feature.dependencies.length})</h3>
+              <div className="space-y-1">
+                {feature.dependencies.map(depId => {
+                  const dep = [...activeFeatures, ...archivedFeatures].find(f => f.id === depId);
+                  return (
+                    <div key={depId} className="flex items-center gap-2 text-sm">
+                      {dep ? (
+                        <>
+                          <StatusBadge status={dep.status} size="sm" showIcon={false} />
+                          <span className="text-zinc-300">{dep.title}</span>
+                        </>
+                      ) : (
+                        <span className="text-zinc-500">{depId}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Dates */}
+          <div className="pt-4 border-t border-zinc-800 text-xs text-zinc-500 space-y-1">
+            <p>Created: {formatDate(feature.createdAt)}</p>
+            <p>Updated: {formatDate(feature.updatedAt)}</p>
+            {feature.completedAt && <p>Completed: {formatDate(feature.completedAt)}</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
 export const FeatureTrackerPage: React.FC = () => {
   // State
-  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+  const [viewMode, setViewMode] = useState<ExtendedViewMode>('kanban');
   const [showArchived, setShowArchived] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<FeatureFilters>({});
+  const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
 
   // All features (active + optionally archived)
   const allFeatures = useMemo(() => {
@@ -1304,7 +1701,18 @@ export const FeatureTrackerPage: React.FC = () => {
             onToggleExpand={toggleFeatureExpand}
           />
         )}
+
+        {/* CHANGELOG VIEW */}
+        {viewMode === 'changelog' && <ChangelogView />}
       </div>
+
+      {/* Feature Detail Modal */}
+      {selectedFeature && (
+        <FeatureModal
+          feature={selectedFeature}
+          onClose={() => setSelectedFeature(null)}
+        />
+      )}
 
       {/* Search Modal */}
       {showSearch && (
