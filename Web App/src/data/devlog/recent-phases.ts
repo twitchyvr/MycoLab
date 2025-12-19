@@ -2008,15 +2008,76 @@ custom IDs like 'outcome-mjbw2cne-h7jx2' which caused Postgres error 22P02.
   // For commercial growers
   // =============================================================================
   {
+    id: 'dev-1058',
+    title: 'Consumable Cost Tracking Foundation',
+    description: 'Track proportional costs when using consumables. When you use 1ml of a 10ml syringe that cost $20, it calculates $2 consumed cost. Equipment vs consumable distinction prevents lab equipment from counting toward grow costs.',
+    category: 'core',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 6,
+    actualHours: 4,
+    completedAt: timestamp(),
+    notes: `Foundational cost tracking system:
+
+**New Type Fields:**
+- InventoryUsage: unitCostAtUsage, consumedCost (calculated at time of use)
+- InventoryItem: assetType (consumable/equipment/durable/culture_source), purchasePrice, depreciationYears, currentValue, includeInGrowCost
+- Culture: purchaseCost, productionCost, parentCultureCost, volumeUsed, costPerMl
+- Grow: sourceCultureCost, inventoryCost, laborCost, overheadCost, totalCost, revenue, profit, costPerGramWet, costPerGramDry
+
+**Cost Calculation Helpers:**
+- calculateCultureCostPerMl(): Calculate cost per ml for proportional usage
+- calculateSourceCultureCost(): Calculate cost when using portion of a culture
+- calculateGrowInventoryCost(): Sum all inventory costs for a grow
+- recalculateGrowCosts(): Update all cost fields for a grow
+- getLabValuation(): Get total lab value broken down by asset type
+
+**Asset Types:**
+- consumable: Flows to grow costs (substrate, grain, etc.)
+- equipment: Lab valuation only, NOT grow costs (tables, rugs, scales)
+- durable: Reusable items with partial depreciation (monotubs, jars)
+- culture_source: Purchased cultures, cost tracked per-use (LC syringes)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1059',
+    title: 'Data Correction Outcome Codes',
+    description: 'New abort reasons: "Bad Data Entry" and "Starting Over" for cases where data is invalid and needs to be discarded. These are marked as neutral outcomes and can be filtered from analytics.',
+    category: 'core',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 1,
+    actualHours: 1,
+    completedAt: timestamp(),
+    notes: `New outcome codes for data correction:
+
+**GrowOutcomeCode additions:**
+- aborted_bad_data: Data entry error, record invalid
+- aborted_restart: Starting over, discarding old data
+
+**CultureOutcomeCode additions:**
+- aborted_bad_data: Data entry error, record invalid
+- aborted_restart: Starting over, discarding old data
+
+**InventoryOutcomeCode additions:**
+- aborted_bad_data: Data entry error, record invalid
+- aborted_restart: Starting over, discarding old data
+
+All are categorized as 'neutral' to not affect failure/success analytics.`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
     id: 'dev-1060',
     title: 'Cost Per Gram Calculator',
     description: 'True cost analysis including: substrate, spawn, utilities, labor estimate, overhead. Calculate $/gram for each grow.',
     category: 'core',
-    status: 'planned',
+    status: 'in_progress',
     priority: 'medium',
     estimatedHours: 10,
-    dependencies: ['dev-071', 'dev-072'],
-    notes: 'Helps sellers price products and hobbyists understand true costs.',
+    dependencies: ['dev-1058'],
+    notes: 'Foundation complete (dev-1058). Needs UI components for manual labor/overhead entry and cost display.',
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
@@ -2030,6 +2091,32 @@ custom IDs like 'outcome-mjbw2cne-h7jx2' which caused Postgres error 22P02.
     estimatedHours: 12,
     dependencies: ['dev-1060', 'dev-1040'],
     notes: 'Essential for commercial operations.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1062',
+    title: 'Lab Valuation Summary',
+    description: 'Show total value of lab assets: equipment, consumables, durables. Track projected sales value of active grows. Full business accounting view.',
+    category: 'ui',
+    status: 'planned',
+    priority: 'medium',
+    estimatedHours: 8,
+    dependencies: ['dev-1058'],
+    notes: 'getLabValuation() helper already implemented. Needs UI dashboard.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1063',
+    title: 'Financial Data Export',
+    description: 'Export cost/revenue data to CSV, JSON, and PDF. Include grows, cultures, inventory, purchases. Support for accounting software import.',
+    category: 'core',
+    status: 'planned',
+    priority: 'medium',
+    estimatedHours: 10,
+    dependencies: ['dev-1058', 'dev-453'],
+    notes: 'Part of broader export feature (dev-453). Add financial-specific reports.',
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },

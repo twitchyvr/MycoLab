@@ -213,6 +213,13 @@ interface DataContextValue extends LookupHelpers {
   addGrowObservation: (growId: string, observation: Omit<GrowObservation, 'id'>) => void;
   addFlush: (growId: string, flush: Omit<Flush, 'id' | 'flushNumber'>) => Promise<void>;
 
+  // Cost Calculation Helpers
+  calculateCultureCostPerMl: (culture: Culture) => number;
+  calculateSourceCultureCost: (cultureId: string, volumeUsedMl: number) => number;
+  calculateGrowInventoryCost: (growId: string) => number;
+  recalculateGrowCosts: (growId: string) => Promise<void>;
+  getLabValuation: () => { equipment: number; consumables: number; durables: number; total: number };
+
   // Outcome Logging
   saveEntityOutcome: (outcome: EntityOutcomeData) => Promise<EntityOutcome>;
   saveContaminationDetails: (outcomeId: string, details: ContaminationDetailsData) => Promise<void>;
@@ -1658,6 +1665,143 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, [supabase, state.grows, generateId]);
 
   // ============================================================================
+  // COST CALCULATION HELPERS
+  // ============================================================================
+
+  /**
+   * Calculate cost per ml for a culture based on its total cost and fill volume
+   */
+  const calculateCultureCostPerMl = useCallback((culture: Culture): number => {
+    const totalCost = (culture.purchaseCost ?? 0) + (culture.productionCost ?? 0) + (culture.parentCultureCost ?? 0) + (culture.cost ?? 0);
+    const fillVolume = culture.fillVolumeMl ?? culture.volumeMl ?? 0;
+    if (fillVolume <= 0 || totalCost <= 0) return 0;
+    return totalCost / fillVolume;
+  }, []);
+
+  /**
+   * Calculate the cost of using a portion of a source culture
+   * E.g., using 1ml from a 10ml syringe that cost $20 = $2
+   */
+  const calculateSourceCultureCost = useCallback((cultureId: string, volumeUsedMl: number): number => {
+    const culture = state.cultures.find(c => c.id === cultureId);
+    if (!culture || volumeUsedMl <= 0) return 0;
+
+    const costPerMl = calculateCultureCostPerMl(culture);
+    return costPerMl * volumeUsedMl;
+  }, [state.cultures, calculateCultureCostPerMl]);
+
+  /**
+   * Calculate total inventory cost consumed for a specific grow
+   * Sums all inventory usages that reference this grow
+   */
+  const calculateGrowInventoryCost = useCallback((growId: string): number => {
+    const usages = state.inventoryUsages.filter(u =>
+      u.referenceType === 'grow' && u.referenceId === growId
+    );
+
+    return usages.reduce((total, usage) => {
+      // Only include consumable items in grow cost
+      const item = state.inventoryItems.find(i => i.id === usage.inventoryItemId);
+      const assetType = item?.assetType ?? 'consumable';
+
+      // Skip equipment costs (they don't flow to grows)
+      if (assetType === 'equipment') return total;
+
+      // Check override flag
+      if (item?.includeInGrowCost === false) return total;
+
+      return total + (usage.consumedCost ?? 0);
+    }, 0);
+  }, [state.inventoryUsages, state.inventoryItems]);
+
+  /**
+   * Recalculate all costs for a grow and update it
+   */
+  const recalculateGrowCosts = useCallback(async (growId: string): Promise<void> => {
+    const grow = state.grows.find(g => g.id === growId);
+    if (!grow) return;
+
+    // Calculate source culture cost
+    let sourceCultureCost = 0;
+    if (grow.sourceCultureId) {
+      // Estimate volume used based on spawn weight (rough estimate: 1ml per 100g spawn)
+      const estimatedVolumeUsed = grow.spawnWeight / 100;
+      sourceCultureCost = calculateSourceCultureCost(grow.sourceCultureId, estimatedVolumeUsed);
+    }
+
+    // Calculate inventory cost from tracked usages
+    const inventoryCost = calculateGrowInventoryCost(growId);
+
+    // Keep existing labor and overhead costs
+    const laborCost = grow.laborCost ?? 0;
+    const overheadCost = grow.overheadCost ?? 0;
+
+    // Calculate total cost
+    const totalCost = sourceCultureCost + inventoryCost + laborCost + overheadCost;
+
+    // Calculate cost per gram if we have yields
+    const totalYield = grow.totalYield ?? 0;
+    const totalYieldDry = grow.flushes.reduce((sum, f) => sum + (f.dryWeight ?? 0), 0);
+
+    const costPerGramWet = totalYield > 0 ? totalCost / totalYield : undefined;
+    const costPerGramDry = totalYieldDry > 0 ? totalCost / totalYieldDry : undefined;
+
+    // Calculate profit if revenue is set
+    const profit = grow.revenue !== undefined ? grow.revenue - totalCost : undefined;
+
+    await updateGrow(growId, {
+      sourceCultureCost,
+      inventoryCost,
+      totalCost,
+      costPerGramWet,
+      costPerGramDry,
+      profit,
+    });
+  }, [state.grows, calculateSourceCultureCost, calculateGrowInventoryCost, updateGrow]);
+
+  /**
+   * Get total lab valuation broken down by asset type
+   */
+  const getLabValuation = useCallback((): { equipment: number; consumables: number; durables: number; total: number } => {
+    let equipment = 0;
+    let consumables = 0;
+    let durables = 0;
+
+    state.inventoryItems.forEach(item => {
+      const value = item.currentValue ?? (item.unitCost * item.quantity);
+      const assetType = item.assetType ?? 'consumable';
+
+      switch (assetType) {
+        case 'equipment':
+          equipment += value;
+          break;
+        case 'durable':
+          durables += value;
+          break;
+        case 'consumable':
+        case 'culture_source':
+        default:
+          consumables += value;
+          break;
+      }
+    });
+
+    // Also include location costs (equipment like fruiting chambers, incubators)
+    state.locations.forEach(loc => {
+      if (loc.cost) {
+        equipment += loc.cost;
+      }
+    });
+
+    return {
+      equipment,
+      consumables,
+      durables,
+      total: equipment + consumables + durables,
+    };
+  }, [state.inventoryItems, state.locations]);
+
+  // ============================================================================
   // RECIPE CRUD
   // ============================================================================
 
@@ -2178,20 +2322,28 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
     // Log the usage if it's a deduction
     if (delta < 0 && usageType) {
+      // Calculate cost at time of usage
+      const inventoryItem = state.inventoryItems.find(i => i.id === lot.inventoryItemId);
+      const unitCostAtUsage = inventoryItem?.unitCost ?? (lot.purchaseCost && lot.originalQuantity ? lot.purchaseCost / lot.originalQuantity : 0);
+      const quantityUsed = Math.abs(delta);
+      const consumedCost = unitCostAtUsage * quantityUsed;
+
       const usage: InventoryUsage = {
         id: generateId('usage'),
         lotId,
         inventoryItemId: lot.inventoryItemId,
-        quantity: Math.abs(delta),
+        quantity: quantityUsed,
         unit: lot.unit,
         usageType,
         referenceId,
         referenceName,
+        unitCostAtUsage,
+        consumedCost,
         usedAt: new Date(),
       };
       setState(prev => ({ ...prev, inventoryUsages: [...prev.inventoryUsages, usage] }));
     }
-  }, [state.inventoryLots, updateInventoryLot, generateId]);
+  }, [state.inventoryLots, state.inventoryItems, updateInventoryLot, generateId]);
 
   const getLotsForItem = useCallback((inventoryItemId: string): InventoryLot[] => {
     return state.inventoryLots.filter(l => l.inventoryItemId === inventoryItemId && l.isActive);
@@ -2502,6 +2654,8 @@ const loadSettings = async (): Promise<AppSettings> => {
     getCultureLineage, generateCultureLabel,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
     addGrowObservation, addFlush,
+    calculateCultureCostPerMl, calculateSourceCultureCost, calculateGrowInventoryCost,
+    recalculateGrowCosts, getLabValuation,
     saveEntityOutcome, saveContaminationDetails,
     addRecipe, updateRecipe, deleteRecipe, calculateRecipeCost, scaleRecipe,
     updateSettings,
@@ -2533,6 +2687,8 @@ const loadSettings = async (): Promise<AppSettings> => {
     getCultureLineage, generateCultureLabel,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated,
     addGrowObservation, addFlush,
+    calculateCultureCostPerMl, calculateSourceCultureCost, calculateGrowInventoryCost,
+    recalculateGrowCosts, getLabValuation,
     saveEntityOutcome, saveContaminationDetails,
     addRecipe, updateRecipe, deleteRecipe, calculateRecipeCost, scaleRecipe,
     updateSettings, generateId, refreshData,
