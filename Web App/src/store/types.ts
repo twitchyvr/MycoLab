@@ -358,6 +358,13 @@ export interface InventoryCategory {
 // INVENTORY TYPES
 // ============================================================================
 
+// Asset type classification for cost tracking and lab valuation
+export type AssetType =
+  | 'consumable'      // Used up in grows/cultures - cost flows to grows (e.g., substrate, grain)
+  | 'equipment'       // Lab equipment - tracked for valuation, NOT in grow costs (e.g., rug, table)
+  | 'durable'         // Reusable items - partial depreciation to grows (e.g., monotubs, jars)
+  | 'culture_source'; // Purchased cultures - cost tracked per-use (e.g., LC syringe, spore print)
+
 export interface InventoryItem {
   id: string;
   name: string;
@@ -376,6 +383,14 @@ export interface InventoryItem {
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
+
+  // Asset classification for cost tracking
+  assetType?: AssetType;          // Default: 'consumable' for backwards compatibility
+  purchaseDate?: Date;            // When the item was purchased
+  purchasePrice?: number;         // Total purchase price
+  depreciationYears?: number;     // For equipment - years to depreciate over
+  currentValue?: number;          // Current book value (for equipment)
+  includeInGrowCost?: boolean;    // Override to force include/exclude from grow cost calculations
 }
 
 // ============================================================================
@@ -487,6 +502,10 @@ export interface InventoryUsage {
   referenceId?: string;       // ID of the recipe/grow/culture
   referenceName?: string;     // Name for display
 
+  // Cost tracking - captured at time of usage for historical accuracy
+  unitCostAtUsage?: number;   // Unit cost at time of usage (for price change tracking)
+  consumedCost?: number;      // Total cost consumed (quantity * unitCostAtUsage)
+
   usedAt: Date;
   usedBy?: string;            // User who logged the usage
   notes?: string;
@@ -538,7 +557,17 @@ export interface Culture {
   sterilizationDate?: string;
   healthRating: number;
   notes: string;
-  cost: number;
+
+  // Cost tracking
+  cost: number;                 // Legacy field - total cost (sum of purchase + production)
+  purchaseCost?: number;        // Cost if purchased (e.g., LC syringe from vendor)
+  productionCost?: number;      // Cost to produce (recipe ingredients, labor)
+  parentCultureCost?: number;   // Proportional cost from parent culture used
+
+  // Volume tracking for proportional cost calculation
+  volumeUsed?: number;          // Total volume used from this culture (in ml)
+  costPerMl?: number;           // Calculated: cost / fillVolumeMl
+
   supplierId?: string;
   lotNumber?: string;
   expiresAt?: Date;
@@ -619,10 +648,23 @@ export interface Grow {
   flushes: Flush[];
   totalYield: number;
   estimatedCost: number;
-  
+
+  // Cost tracking - detailed breakdown
+  sourceCultureCost?: number;   // Cost from source culture (proportional to amount used)
+  inventoryCost?: number;       // Total cost from inventory items consumed
+  laborCost?: number;           // Manual labor cost entry
+  overheadCost?: number;        // Overhead allocation
+  totalCost?: number;           // Computed total of all costs
+
+  // Revenue tracking
+  revenue?: number;             // Total revenue from sales
+  profit?: number;              // Revenue - totalCost
+  costPerGramWet?: number;      // totalCost / totalYield (wet)
+  costPerGramDry?: number;      // totalCost / totalYieldDry
+
   // Observations
   observations: GrowObservation[];
-  
+
   // Notes
   notes: string;
 }
@@ -1162,7 +1204,10 @@ export type GrowOutcomeCode =
   | 'genetics_failure'         // Poor genetics/senescence
   // Neutral outcomes
   | 'experiment_ended'         // Research project concluded
-  | 'transferred_out';         // Moved to another grow/user
+  | 'transferred_out'          // Moved to another grow/user
+  // Data correction outcomes (excluded from analytics)
+  | 'aborted_bad_data'         // Data entry error, record invalid
+  | 'aborted_restart';         // Starting over, discarding old data
 
 // Culture-specific outcome codes
 export type CultureOutcomeCode =
@@ -1179,7 +1224,10 @@ export type CultureOutcomeCode =
   // Neutral outcomes
   | 'expired_unused'           // Never used, past viability
   | 'discarded_cleanup'        // Lab cleanup
-  | 'transferred_out';         // Given away/sold
+  | 'transferred_out'          // Given away/sold
+  // Data correction outcomes (excluded from analytics)
+  | 'aborted_bad_data'         // Data entry error, record invalid
+  | 'aborted_restart';         // Starting over, discarding old data
 
 // Inventory-specific outcome codes
 export type InventoryOutcomeCode =
@@ -1188,7 +1236,10 @@ export type InventoryOutcomeCode =
   | 'damaged'                  // Physical damage
   | 'contaminated'             // Contamination issue
   | 'returned'                 // Returned to supplier
-  | 'discarded_quality';       // Quality concerns
+  | 'discarded_quality'        // Quality concerns
+  // Data correction outcomes (excluded from analytics)
+  | 'aborted_bad_data'         // Data entry error, record invalid
+  | 'aborted_restart';         // Starting over, discarding old data
 
 // Generic outcome code union
 export type OutcomeCode = GrowOutcomeCode | CultureOutcomeCode | InventoryOutcomeCode;
@@ -1342,6 +1393,9 @@ export const GROW_OUTCOME_OPTIONS: OutcomeOption[] = [
   // Neutral
   { code: 'experiment_ended', label: 'Experiment Ended', category: 'neutral', description: 'Research concluded', icon: 'science' },
   { code: 'transferred_out', label: 'Transferred', category: 'neutral', description: 'Moved elsewhere', icon: 'move_item' },
+  // Data Correction (excluded from analytics)
+  { code: 'aborted_bad_data', label: 'Bad Data Entry', category: 'neutral', description: 'Data entry error - record invalid', icon: 'error_outline' },
+  { code: 'aborted_restart', label: 'Starting Over', category: 'neutral', description: 'Discarding to restart fresh', icon: 'restart_alt' },
 ];
 
 // Culture outcome options for the UI
@@ -1361,6 +1415,9 @@ export const CULTURE_OUTCOME_OPTIONS: OutcomeOption[] = [
   { code: 'expired_unused', label: 'Expired Unused', category: 'neutral', description: 'Past viability date', icon: 'event_busy' },
   { code: 'discarded_cleanup', label: 'Lab Cleanup', category: 'neutral', description: 'General cleanup', icon: 'cleaning_services' },
   { code: 'transferred_out', label: 'Transferred', category: 'neutral', description: 'Given away or sold', icon: 'move_item' },
+  // Data Correction (excluded from analytics)
+  { code: 'aborted_bad_data', label: 'Bad Data Entry', category: 'neutral', description: 'Data entry error - record invalid', icon: 'error_outline' },
+  { code: 'aborted_restart', label: 'Starting Over', category: 'neutral', description: 'Discarding to restart fresh', icon: 'restart_alt' },
 ];
 
 // Contamination type options for the UI

@@ -5114,12 +5114,183 @@ CREATE TABLE IF NOT EXISTS schema_version (
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 21)
-ON CONFLICT (id) DO UPDATE SET version = 21, updated_at = NOW();
+INSERT INTO schema_version (id, version) VALUES (1, 22)
+ON CONFLICT (id) DO UPDATE SET version = 22, updated_at = NOW();
+
+-- ============================================================================
+-- v22 MIGRATIONS: Cost Tracking & Asset Classification
+-- ============================================================================
+
+-- Add cost tracking fields to inventory_usages
+DO $$
+BEGIN
+  -- Unit cost at time of usage (for historical price tracking)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_usages' AND column_name = 'unit_cost_at_usage') THEN
+    ALTER TABLE inventory_usages ADD COLUMN unit_cost_at_usage DECIMAL;
+    RAISE NOTICE 'Added unit_cost_at_usage column to inventory_usages';
+  END IF;
+
+  -- Consumed cost (quantity * unit_cost_at_usage)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_usages' AND column_name = 'consumed_cost') THEN
+    ALTER TABLE inventory_usages ADD COLUMN consumed_cost DECIMAL;
+    RAISE NOTICE 'Added consumed_cost column to inventory_usages';
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error adding cost columns to inventory_usages: %', SQLERRM;
+END $$;
+
+-- Add asset classification fields to inventory_items
+DO $$
+BEGIN
+  -- Asset type classification
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'asset_type') THEN
+    ALTER TABLE inventory_items ADD COLUMN asset_type TEXT CHECK (asset_type IN ('consumable', 'equipment', 'durable', 'culture_source')) DEFAULT 'consumable';
+    RAISE NOTICE 'Added asset_type column to inventory_items';
+  END IF;
+
+  -- Purchase date for the item
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'purchase_date') THEN
+    ALTER TABLE inventory_items ADD COLUMN purchase_date TIMESTAMPTZ;
+    RAISE NOTICE 'Added purchase_date column to inventory_items';
+  END IF;
+
+  -- Total purchase price
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'purchase_price') THEN
+    ALTER TABLE inventory_items ADD COLUMN purchase_price DECIMAL;
+    RAISE NOTICE 'Added purchase_price column to inventory_items';
+  END IF;
+
+  -- Depreciation years for equipment
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'depreciation_years') THEN
+    ALTER TABLE inventory_items ADD COLUMN depreciation_years INTEGER;
+    RAISE NOTICE 'Added depreciation_years column to inventory_items';
+  END IF;
+
+  -- Current book value
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'current_value') THEN
+    ALTER TABLE inventory_items ADD COLUMN current_value DECIMAL;
+    RAISE NOTICE 'Added current_value column to inventory_items';
+  END IF;
+
+  -- Override flag for grow cost inclusion
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'include_in_grow_cost') THEN
+    ALTER TABLE inventory_items ADD COLUMN include_in_grow_cost BOOLEAN;
+    RAISE NOTICE 'Added include_in_grow_cost column to inventory_items';
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error adding asset columns to inventory_items: %', SQLERRM;
+END $$;
+
+-- Add detailed cost tracking fields to cultures
+DO $$
+BEGIN
+  -- Purchase cost (for purchased cultures like LC syringes)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'purchase_cost') THEN
+    ALTER TABLE cultures ADD COLUMN purchase_cost DECIMAL;
+    RAISE NOTICE 'Added purchase_cost column to cultures';
+  END IF;
+
+  -- Production cost (cost to produce the culture)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'production_cost') THEN
+    ALTER TABLE cultures ADD COLUMN production_cost DECIMAL;
+    RAISE NOTICE 'Added production_cost column to cultures';
+  END IF;
+
+  -- Parent culture cost (proportional cost from parent)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'parent_culture_cost') THEN
+    ALTER TABLE cultures ADD COLUMN parent_culture_cost DECIMAL;
+    RAISE NOTICE 'Added parent_culture_cost column to cultures';
+  END IF;
+
+  -- Volume used (for tracking usage)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'volume_used') THEN
+    ALTER TABLE cultures ADD COLUMN volume_used DECIMAL DEFAULT 0;
+    RAISE NOTICE 'Added volume_used column to cultures';
+  END IF;
+
+  -- Cost per ml (calculated)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'cost_per_ml') THEN
+    ALTER TABLE cultures ADD COLUMN cost_per_ml DECIMAL;
+    RAISE NOTICE 'Added cost_per_ml column to cultures';
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error adding cost columns to cultures: %', SQLERRM;
+END $$;
+
+-- Add detailed cost and revenue tracking fields to grows
+DO $$
+BEGIN
+  -- Source culture cost (proportional to amount used)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'source_culture_cost') THEN
+    ALTER TABLE grows ADD COLUMN source_culture_cost DECIMAL;
+    RAISE NOTICE 'Added source_culture_cost column to grows';
+  END IF;
+
+  -- Inventory cost (from inventory items consumed)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'inventory_cost') THEN
+    ALTER TABLE grows ADD COLUMN inventory_cost DECIMAL;
+    RAISE NOTICE 'Added inventory_cost column to grows';
+  END IF;
+
+  -- Labor cost (manual entry)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'labor_cost') THEN
+    ALTER TABLE grows ADD COLUMN labor_cost DECIMAL;
+    RAISE NOTICE 'Added labor_cost column to grows';
+  END IF;
+
+  -- Overhead cost (allocation)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'overhead_cost') THEN
+    ALTER TABLE grows ADD COLUMN overhead_cost DECIMAL;
+    RAISE NOTICE 'Added overhead_cost column to grows';
+  END IF;
+
+  -- Total cost (computed)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'total_cost') THEN
+    ALTER TABLE grows ADD COLUMN total_cost DECIMAL;
+    RAISE NOTICE 'Added total_cost column to grows';
+  END IF;
+
+  -- Revenue from sales
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'revenue') THEN
+    ALTER TABLE grows ADD COLUMN revenue DECIMAL;
+    RAISE NOTICE 'Added revenue column to grows';
+  END IF;
+
+  -- Profit (revenue - total_cost)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'profit') THEN
+    ALTER TABLE grows ADD COLUMN profit DECIMAL;
+    RAISE NOTICE 'Added profit column to grows';
+  END IF;
+
+  -- Cost per gram wet
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'cost_per_gram_wet') THEN
+    ALTER TABLE grows ADD COLUMN cost_per_gram_wet DECIMAL;
+    RAISE NOTICE 'Added cost_per_gram_wet column to grows';
+  END IF;
+
+  -- Cost per gram dry
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'cost_per_gram_dry') THEN
+    ALTER TABLE grows ADD COLUMN cost_per_gram_dry DECIMAL;
+    RAISE NOTICE 'Added cost_per_gram_dry column to grows';
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error adding cost/revenue columns to grows: %', SQLERRM;
+END $$;
 
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
+-- v22 (2024-12): COST TRACKING & ASSET CLASSIFICATION - Consumable cost propagation:
+--               - inventory_usages: unit_cost_at_usage, consumed_cost for proportional tracking
+--               - inventory_items: asset_type (consumable/equipment/durable/culture_source),
+--                 purchase_date, purchase_price, depreciation_years, current_value,
+--                 include_in_grow_cost for lab valuation vs grow cost separation
+--               - cultures: purchase_cost, production_cost, parent_culture_cost,
+--                 volume_used, cost_per_ml for per-use cost calculation
+--               - grows: source_culture_cost, inventory_cost, labor_cost, overhead_cost,
+--                 total_cost, revenue, profit, cost_per_gram_wet, cost_per_gram_dry
+--               - New outcome codes: aborted_bad_data, aborted_restart for data correction
+--                 (excluded from analytics when filtering)
 -- v21 (2024-12): PUBLIC SHARING SYSTEM - Token-based sharing for public access:
 --               - share_tokens: Opaque tokens for public/anonymous access to grows,
 --                 cultures, batches. Follows API security best practices with expiration,
