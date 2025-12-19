@@ -246,31 +246,48 @@ const ProgressRing: React.FC<{
   );
 };
 
-// Heatmap calendar component
+// Harvest detail for drill-down
+interface HarvestDetail {
+  date: Date;
+  totalWeight: number;
+  harvests: {
+    growId: string;
+    growName: string;
+    strain: string;
+    flushNumber: number;
+    wetWeight: number;
+    dryWeight: number;
+    quality: string;
+  }[];
+}
+
+// Heatmap calendar component with drill-down
 const HeatmapCalendar: React.FC<{
-  data: { date: Date; value: number }[];
+  data: HarvestDetail[];
   months?: number;
-}> = ({ data, months = 3 }) => {
+  onDayClick?: (detail: HarvestDetail | null) => void;
+  selectedDate?: Date | null;
+}> = ({ data, months = 3, onDayClick, selectedDate }) => {
   const today = new Date();
   const startDate = new Date(today);
   startDate.setMonth(startDate.getMonth() - months);
-  
+
   // Generate weeks
-  const weeks: { date: Date; value: number }[][] = [];
-  let currentWeek: { date: Date; value: number }[] = [];
-  
+  const weeks: { date: Date; detail: HarvestDetail | null }[][] = [];
+  let currentWeek: { date: Date; detail: HarvestDetail | null }[] = [];
+
   const current = new Date(startDate);
   current.setDate(current.getDate() - current.getDay()); // Start from Sunday
-  
+
   while (current <= today) {
-    const dayData = data.find(d => 
+    const dayData = data.find(d =>
       d.date.toDateString() === current.toDateString()
     );
     currentWeek.push({
       date: new Date(current),
-      value: dayData?.value || 0
+      detail: dayData || null
     });
-    
+
     if (currentWeek.length === 7) {
       weeks.push(currentWeek);
       currentWeek = [];
@@ -278,9 +295,9 @@ const HeatmapCalendar: React.FC<{
     current.setDate(current.getDate() + 1);
   }
   if (currentWeek.length > 0) weeks.push(currentWeek);
-  
-  const maxValue = Math.max(...data.map(d => d.value), 1);
-  
+
+  const maxValue = Math.max(...data.map(d => d.totalWeight), 1);
+
   const getColor = (value: number) => {
     if (value === 0) return 'bg-zinc-800';
     const intensity = value / maxValue;
@@ -289,18 +306,26 @@ const HeatmapCalendar: React.FC<{
     if (intensity < 0.75) return 'bg-emerald-500/70';
     return 'bg-emerald-400';
   };
-  
+
   return (
     <div className="flex gap-1">
       {weeks.map((week, weekIdx) => (
         <div key={weekIdx} className="flex flex-col gap-1">
-          {week.map((day, dayIdx) => (
-            <div
-              key={dayIdx}
-              className={`w-3 h-3 rounded-sm ${getColor(day.value)} transition-colors hover:ring-1 hover:ring-white/30`}
-              title={`${day.date.toLocaleDateString()}: ${day.value}g`}
-            />
-          ))}
+          {week.map((day, dayIdx) => {
+            const value = day.detail?.totalWeight || 0;
+            const isSelected = selectedDate && day.date.toDateString() === selectedDate.toDateString();
+            const hasData = value > 0;
+            return (
+              <div
+                key={dayIdx}
+                onClick={() => hasData && onDayClick?.(day.detail)}
+                className={`w-3 h-3 rounded-sm ${getColor(value)} transition-colors
+                  ${hasData ? 'cursor-pointer hover:ring-1 hover:ring-white/50' : ''}
+                  ${isSelected ? 'ring-2 ring-emerald-400' : ''}`}
+                title={`${day.date.toLocaleDateString()}: ${value > 0 ? `${value}g (${day.detail?.harvests.length} harvest${day.detail?.harvests.length !== 1 ? 's' : ''})` : 'No harvests'}`}
+              />
+            );
+          })}
         </div>
       ))}
     </div>
@@ -348,9 +373,10 @@ const RankingChart: React.FC<{
 };
 
 export const AnalyticsDashboard: React.FC = () => {
-  const { state, getStrain, getSubstrateType, getLocation } = useData();
+  const { state, getStrain, getSubstrateType, getLocation, getGrow } = useData();
   const [timeRange, setTimeRange] = useState<'30d' | '90d' | '1y' | 'all'>('90d');
   const [selectedStrain, setSelectedStrain] = useState<string | 'all'>('all');
+  const [selectedHarvestDay, setSelectedHarvestDay] = useState<HarvestDetail | null>(null);
 
   // Convert real grows to GrowRecord format
   const grows = useMemo(() => {
@@ -414,11 +440,20 @@ export const AnalyticsDashboard: React.FC = () => {
     
     const totalYield = completedGrows.reduce((sum, g) => sum + g.totalYield, 0);
     const totalCost = filteredGrows.reduce((sum, g) => sum + g.cost, 0);
-    const avgBE = completedGrows.length > 0
-      ? completedGrows.reduce((sum, g) => sum + (g.totalYield / g.drySubstrateWeight) * 100, 0) / completedGrows.length
+
+    // Calculate average BE, safely handling zero substrate weights
+    const beValues = completedGrows
+      .filter(g => g.drySubstrateWeight > 0)
+      .map(g => (g.totalYield / g.drySubstrateWeight) * 100);
+    const avgBE = beValues.length > 0
+      ? beValues.reduce((sum, be) => sum + be, 0) / beValues.length
       : 0;
-    const successRate = filteredGrows.length > 0
-      ? (completedGrows.length / (completedGrows.length + contaminatedGrows.length)) * 100
+
+    // Success rate: only count grows that have a definitive outcome (completed + contaminated)
+    // Don't include active or aborted grows in the denominator
+    const finishedGrows = completedGrows.length + contaminatedGrows.length;
+    const successRate = finishedGrows > 0
+      ? (completedGrows.length / finishedGrows) * 100
       : 0;
     const costPerGram = totalYield > 0 ? totalCost / totalYield : 0;
 
@@ -432,16 +467,16 @@ export const AnalyticsDashboard: React.FC = () => {
     const strainPerformance: StrainPerformance[] = Array.from(strainMap.entries()).map(([strain, strainGrows]) => {
       const totalYield = strainGrows.reduce((sum, g) => sum + g.totalYield, 0);
       const totalSubstrate = strainGrows.reduce((sum, g) => sum + g.drySubstrateWeight, 0);
-      const avgDays = strainGrows.reduce((sum, g) => {
-        if (g.endDate) {
-          return sum + Math.floor((g.endDate.getTime() - g.startDate.getTime()) / (1000 * 60 * 60 * 24));
-        }
-        return sum;
-      }, 0) / strainGrows.length;
-      
+      const growsWithEndDate = strainGrows.filter(g => g.endDate);
+      const avgDays = growsWithEndDate.length > 0
+        ? growsWithEndDate.reduce((sum, g) => {
+            return sum + Math.floor((g.endDate!.getTime() - g.startDate.getTime()) / (1000 * 60 * 60 * 24));
+          }, 0) / growsWithEndDate.length
+        : 0;
+
       return {
         strain,
-        avgBE: Math.round((totalYield / totalSubstrate) * 100),
+        avgBE: totalSubstrate > 0 ? Math.round((totalYield / totalSubstrate) * 100) : 0,
         totalYield,
         growCount: strainGrows.length,
         successRate: 100, // All these are completed
@@ -488,7 +523,7 @@ export const AnalyticsDashboard: React.FC = () => {
     const substratePerformance = Array.from(substrateMap.entries())
       .map(([substrate, data]) => ({
         label: substrate,
-        value: Math.round((data.totalYield / data.totalSubstrate) * 100),
+        value: data.totalSubstrate > 0 ? Math.round((data.totalYield / data.totalSubstrate) * 100) : 0,
         subLabel: `${data.count} grow${data.count > 1 ? 's' : ''}`,
         color: substrate === 'CVG' ? '#10b981' : substrate === 'Masters Mix' ? '#3b82f6' : '#f59e0b',
       }))
@@ -501,10 +536,48 @@ export const AnalyticsDashboard: React.FC = () => {
       { label: 'Contaminated', value: contaminatedGrows.length, color: '#ef4444' },
     ].filter(s => s.value > 0);
 
-    // Harvest heatmap data
-    const harvestData = completedGrows
-      .filter(g => g.endDate)
-      .map(g => ({ date: g.endDate!, value: g.totalYield }));
+    // Harvest heatmap data - use ACTUAL flush dates, not grow completion dates
+    // Group harvests by date and include details for drill-down
+    const harvestMap = new Map<string, HarvestDetail>();
+
+    // Iterate through all grows (not just completed) to get flush data
+    state.grows.forEach(g => {
+      const strain = getStrain(g.strainId);
+      const strainName = strain?.name || 'Unknown';
+
+      // Skip if filtering by strain and this doesn't match
+      if (selectedStrain !== 'all' && strainName !== selectedStrain) return;
+
+      g.flushes?.forEach(flush => {
+        const harvestDate = new Date(flush.harvestDate);
+
+        // Skip if outside time range
+        if (harvestDate < filterDate) return;
+
+        const dateKey = harvestDate.toDateString();
+        const existing = harvestMap.get(dateKey) || {
+          date: harvestDate,
+          totalWeight: 0,
+          harvests: []
+        };
+
+        existing.totalWeight += flush.wetWeight || 0;
+        existing.harvests.push({
+          growId: g.id,
+          growName: g.name,
+          strain: strainName,
+          flushNumber: flush.flushNumber,
+          wetWeight: flush.wetWeight,
+          dryWeight: flush.dryWeight,
+          quality: flush.quality
+        });
+
+        harvestMap.set(dateKey, existing);
+      });
+    });
+
+    const harvestData: HarvestDetail[] = Array.from(harvestMap.values())
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
 
     // Yield sparkline data (last 6 months)
     const yieldTrend = monthlyData.slice(-6).map(m => m.yields);
@@ -526,7 +599,7 @@ export const AnalyticsDashboard: React.FC = () => {
       harvestData,
       yieldTrend,
     };
-  }, [grows, timeRange, selectedStrain]);
+  }, [grows, timeRange, selectedStrain, state.grows, getStrain]);
 
   const uniqueStrains = [...new Set(grows.map(g => g.strain))];
 
@@ -745,9 +818,24 @@ export const AnalyticsDashboard: React.FC = () => {
 
       {/* Harvest Activity Heatmap */}
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
-        <h3 className="text-sm font-medium text-zinc-400 mb-4">Harvest Activity (Last 3 Months)</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium text-zinc-400">Harvest Activity (Last 3 Months)</h3>
+          {selectedHarvestDay && (
+            <button
+              onClick={() => setSelectedHarvestDay(null)}
+              className="text-xs text-zinc-500 hover:text-zinc-300"
+            >
+              Clear selection
+            </button>
+          )}
+        </div>
         <div className="flex items-start gap-4">
-          <HeatmapCalendar data={analytics.harvestData} months={3} />
+          <HeatmapCalendar
+            data={analytics.harvestData}
+            months={3}
+            onDayClick={setSelectedHarvestDay}
+            selectedDate={selectedHarvestDay?.date}
+          />
           <div className="flex flex-col gap-1 text-xs text-zinc-500">
             <span>More harvests →</span>
             <div className="flex gap-1">
@@ -757,8 +845,69 @@ export const AnalyticsDashboard: React.FC = () => {
               <div className="w-3 h-3 rounded-sm bg-emerald-500/70" />
               <div className="w-3 h-3 rounded-sm bg-emerald-400" />
             </div>
+            <span className="mt-2 text-zinc-600">Click a day to see details</span>
           </div>
         </div>
+
+        {/* Drill-down details */}
+        {selectedHarvestDay && (
+          <div className="mt-4 pt-4 border-t border-zinc-800">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-white">
+                {selectedHarvestDay.date.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </h4>
+              <span className="text-sm text-emerald-400 font-medium">
+                {selectedHarvestDay.totalWeight.toLocaleString()}g total
+              </span>
+            </div>
+            <div className="space-y-2">
+              {selectedHarvestDay.harvests.map((harvest, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-sm font-medium">
+                      F{harvest.flushNumber}
+                    </div>
+                    <div>
+                      <p className="text-sm text-white font-medium">{harvest.growName}</p>
+                      <p className="text-xs text-zinc-500">{harvest.strain}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-white">{harvest.wetWeight}g wet</p>
+                    <p className="text-xs text-zinc-500">
+                      {harvest.dryWeight}g dry •{' '}
+                      <span className={
+                        harvest.quality === 'excellent' ? 'text-emerald-400' :
+                        harvest.quality === 'good' ? 'text-blue-400' :
+                        harvest.quality === 'fair' ? 'text-yellow-400' : 'text-red-400'
+                      }>
+                        {harvest.quality}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state message */}
+        {analytics.harvestData.length === 0 && (
+          <div className="mt-4 p-4 bg-zinc-800/30 rounded-lg text-center">
+            <p className="text-zinc-500 text-sm">No harvests recorded in the selected time period</p>
+            <p className="text-zinc-600 text-xs mt-1">
+              Record flushes in your grows to see harvest activity here
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Insights */}
