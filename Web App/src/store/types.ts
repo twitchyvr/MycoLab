@@ -128,6 +128,7 @@ export interface SpeciesAutomationConfig {
 
 export interface Species {
   id: string;
+  userId?: string | null; // null = system/global data, string = user-created
   name: string;                    // Common name (e.g., "Pearl Oyster")
   scientificName?: string;         // e.g., "Pleurotus ostreatus"
   commonNames?: string[];          // Alternative names
@@ -178,6 +179,7 @@ export interface Species {
 
 export interface Strain {
   id: string;
+  userId?: string | null; // null = system/global data, string = user-created
   name: string;
   speciesId?: string; // Reference to species table
   species: string; // Legacy field - now stores species name directly
@@ -203,6 +205,7 @@ export interface Strain {
 // Location type lookup (customizable dropdown)
 export interface LocationType {
   id: string;
+  userId?: string | null; // null = system/global data, string = user-created
   name: string;
   code: string;
   description?: string;
@@ -213,6 +216,7 @@ export interface LocationType {
 // Location classification lookup (customizable dropdown)
 export interface LocationClassification {
   id: string;
+  userId?: string | null; // null = system/global data, string = user-created
   name: string;
   code: string;
   description?: string;
@@ -295,6 +299,7 @@ export type ContainerUsageContext = 'culture' | 'grow';
 // Unified Container interface (replaces Vessel and ContainerType)
 export interface Container {
   id: string;
+  userId?: string | null; // null = system/global data, string = user-created
   name: string;
   category: ContainerCategory;
   volumeMl?: number;  // Volume in ml (liters stored as ml * 1000)
@@ -318,6 +323,7 @@ export type ContainerType = Container;
 
 export interface SubstrateType {
   id: string;
+  userId?: string | null; // null = system/global data, string = user-created
   name: string;
   code: string; // cvg, manure, straw, etc.
   category: 'bulk' | 'grain' | 'agar' | 'liquid';
@@ -329,6 +335,7 @@ export interface SubstrateType {
 
 export interface Supplier {
   id: string;
+  userId?: string | null; // null = system/global data, string = user-created
   name: string;
   website?: string;
   email?: string;
@@ -340,6 +347,7 @@ export interface Supplier {
 // Grain type for spawn (customizable dropdown)
 export interface GrainType {
   id: string;
+  userId?: string | null; // null = system/global data, string = user-created
   name: string;
   code: string;
   notes?: string;
@@ -348,6 +356,7 @@ export interface GrainType {
 
 export interface InventoryCategory {
   id: string;
+  userId?: string | null; // null = system/global data, string = user-created
   name: string;
   color: string;
   icon?: string;
@@ -682,6 +691,7 @@ export type RecipeCategory = DefaultRecipeCategory | string;
 // Recipe category lookup item for custom categories
 export interface RecipeCategoryItem {
   id: string;
+  userId?: string | null; // null = system/global data, string = user-created
   name: string;
   code: string;
   icon: string;
@@ -1555,3 +1565,64 @@ export interface LookupHelpers {
   activePurchaseOrders: PurchaseOrder[];
   activeRecipes: Recipe[];
 }
+
+// ============================================================================
+// DATA OWNERSHIP UTILITIES
+// Helper types and functions for determining data ownership/editability
+// ============================================================================
+
+/**
+ * Items that can have user ownership (userId field)
+ * - userId === null: System/global data (provided by MycoLab, not editable)
+ * - userId === string: User-created data (editable by that user)
+ */
+export interface OwnableItem {
+  userId?: string | null;
+}
+
+/**
+ * Check if an item is system/global data (not editable by regular users)
+ * System data has userId === null or userId === undefined
+ */
+export const isSystemData = (item: OwnableItem | null | undefined): boolean => {
+  if (!item) return false;
+  return item.userId === null || item.userId === undefined;
+};
+
+/**
+ * Check if an item is user-created data (editable by the owner)
+ * User data has a non-null userId
+ */
+export const isUserData = (item: OwnableItem | null | undefined): boolean => {
+  if (!item) return false;
+  return item.userId !== null && item.userId !== undefined;
+};
+
+/**
+ * Check if the current user can edit an item
+ * @param item The item to check
+ * @param currentUserId The current user's ID
+ * @param isAdmin Whether the current user is an admin
+ */
+export const canEditItem = (
+  item: OwnableItem | null | undefined,
+  currentUserId: string | null | undefined,
+  isAdmin: boolean
+): boolean => {
+  if (!item) return false;
+
+  // Admins can edit anything
+  if (isAdmin) return true;
+
+  // System data cannot be edited by non-admins
+  if (isSystemData(item)) return false;
+
+  // User can edit their own data
+  return item.userId === currentUserId;
+};
+
+/**
+ * Check if the current user can delete an item
+ * Same rules as editing
+ */
+export const canDeleteItem = canEditItem;

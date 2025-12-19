@@ -124,8 +124,21 @@ export const SettingsPage: React.FC = () => {
 
   const { isAdmin } = useAuth();
 
-  // Filter tabs based on admin status - non-admins can't see admin or database tabs
-  const adminOnlyTabs: SettingsTab[] = ['admin', 'database'];
+  // Filter tabs based on admin status
+  // Non-admins can ONLY access preferences and their own locations
+  // All library/reference data (species, strains, containers, etc.) is admin-only
+  const adminOnlyTabs: SettingsTab[] = [
+    'admin',
+    'database',
+    'species',
+    'strains',
+    'containers',
+    'substrates',
+    'suppliers',
+    'categories',
+    'locationTypes',
+    'locationClassifications'
+  ];
   const availableTabs = isAdmin
     ? (Object.keys(tabConfig) as SettingsTab[])
     : (Object.keys(tabConfig) as SettingsTab[]).filter(tab => !adminOnlyTabs.includes(tab));
