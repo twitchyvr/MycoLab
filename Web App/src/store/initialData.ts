@@ -179,6 +179,7 @@ export const initialContainers: Container[] = [
     category: 'jar',
     volumeMl: 946,
     isReusable: true,
+    isSterilizable: true,
     usageContext: ['culture', 'grow'],
     notes: 'Standard grain jar - versatile for LC, grain spawn, and small grows',
     isActive: true,
@@ -189,6 +190,7 @@ export const initialContainers: Container[] = [
     category: 'jar',
     volumeMl: 473,
     isReusable: true,
+    isSterilizable: true,
     usageContext: ['culture'],
     notes: 'Smaller grain/LC jar',
     isActive: true,
@@ -199,6 +201,7 @@ export const initialContainers: Container[] = [
     category: 'plate',
     volumeMl: 25,
     isReusable: false,
+    isSterilizable: false, // Disposable plastic
     usageContext: ['culture'],
     notes: 'Standard agar plate',
     isActive: true,
@@ -209,6 +212,7 @@ export const initialContainers: Container[] = [
     category: 'tube',
     volumeMl: 15,
     isReusable: true,
+    isSterilizable: true, // Glass tube
     usageContext: ['culture'],
     notes: 'Long-term storage',
     isActive: true,
@@ -219,6 +223,7 @@ export const initialContainers: Container[] = [
     category: 'bottle',
     volumeMl: 500,
     isReusable: true,
+    isSterilizable: true, // Glass bottle
     usageContext: ['culture'],
     notes: 'LC or agar media',
     isActive: true,
@@ -229,6 +234,7 @@ export const initialContainers: Container[] = [
     category: 'syringe',
     volumeMl: 10,
     isReusable: false,
+    isSterilizable: false, // Disposable plastic syringe
     usageContext: ['culture'],
     notes: 'Spore or LC syringe',
     isActive: true,
@@ -239,6 +245,7 @@ export const initialContainers: Container[] = [
     category: 'bag',
     volumeMl: 2000,
     isReusable: false,
+    isSterilizable: false, // Disposable plastic bag
     usageContext: ['culture', 'grow'],
     notes: 'Grain spawn bag with filter patch',
     isActive: true,
@@ -249,6 +256,7 @@ export const initialContainers: Container[] = [
     category: 'bag',
     volumeMl: 3500,
     isReusable: false,
+    isSterilizable: false, // Disposable plastic bag
     usageContext: ['culture', 'grow'],
     notes: 'Large grain spawn bag',
     isActive: true,
@@ -261,6 +269,7 @@ export const initialContainers: Container[] = [
     volumeMl: 62000,  // 62L converted to ml
     dimensions: { length: 60, width: 40, height: 35, unit: 'cm' },
     isReusable: true,
+    isSterilizable: false, // Plastic - sanitizable but not autoclavable
     usageContext: ['grow'],
     notes: 'Standard monotub',
     isActive: true,
@@ -272,6 +281,7 @@ export const initialContainers: Container[] = [
     volumeMl: 5700,  // 5.7L converted to ml
     dimensions: { length: 34, width: 21, height: 12, unit: 'cm' },
     isReusable: true,
+    isSterilizable: false, // Plastic - sanitizable but not autoclavable
     usageContext: ['grow'],
     notes: 'Small personal grow',
     isActive: true,
@@ -282,6 +292,7 @@ export const initialContainers: Container[] = [
     category: 'bag',
     volumeMl: 4000,  // 4L converted to ml
     isReusable: false,
+    isSterilizable: false, // Disposable plastic bag
     usageContext: ['grow'],
     notes: 'All-in-one grow bag',
     isActive: true,
@@ -292,6 +303,7 @@ export const initialContainers: Container[] = [
     category: 'bucket',
     volumeMl: 19000,  // 19L converted to ml
     isReusable: true,
+    isSterilizable: false, // Plastic - sanitizable but not autoclavable
     usageContext: ['grow'],
     notes: 'Bucket tek container',
     isActive: true,
@@ -302,6 +314,7 @@ export const initialContainers: Container[] = [
     category: 'jar',
     volumeMl: 500,  // 0.5L converted to ml
     isReusable: true,
+    isSterilizable: true, // Glass jar
     usageContext: ['grow'],
     notes: 'Half pint PF tek jar',
     isActive: true,
@@ -312,6 +325,7 @@ export const initialContainers: Container[] = [
     category: 'bed',
     volumeMl: 100000,  // 100L converted to ml
     isReusable: false,
+    isSterilizable: false, // Outdoor environment
     usageContext: ['grow'],
     notes: 'Garden bed for wood lovers',
     isActive: true,
@@ -1209,6 +1223,7 @@ export const initialDataState: DataStoreState = {
   inventoryUsages: [],
   purchaseOrders: [],
   cultures: initialCultures,
+  preparedSpawn: [],
   grows: initialGrows,
   recipes: initialRecipes,
   // Public sharing system

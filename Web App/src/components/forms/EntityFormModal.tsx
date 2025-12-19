@@ -123,6 +123,7 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
             volumeMl: formData.volumeMl,
             dimensions: formData.dimensions,
             isReusable: formData.isReusable ?? true,
+            isSterilizable: formData.isSterilizable ?? (formData.isReusable ?? true),
             usageContext: formData.usageContext || ['culture', 'grow'],
             notes: formData.notes,
             isActive: true,

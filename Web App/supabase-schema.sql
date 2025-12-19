@@ -223,6 +223,8 @@ CREATE TABLE IF NOT EXISTS containers (
   dimension_unit TEXT CHECK (dimension_unit IN ('cm', 'in')) DEFAULT 'cm',
   -- Reusability (glass jars = true, bags = false, etc.)
   is_reusable BOOLEAN DEFAULT true,
+  -- Sterilizability (glass jars = true, plastic syringes = false)
+  is_sterilizable BOOLEAN DEFAULT true,
   -- Usage context - what this container can be used for
   usage_context TEXT[] DEFAULT ARRAY['culture', 'grow'],
   notes TEXT,
@@ -256,6 +258,20 @@ BEGIN
     WHERE NOT EXISTS (SELECT 1 FROM containers WHERE containers.id = container_types.id)
     ON CONFLICT (id) DO NOTHING;
   END IF;
+END $$;
+
+-- Add is_sterilizable column to containers if not exists (migration for existing databases)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'containers' AND column_name = 'is_sterilizable'
+  ) THEN
+    ALTER TABLE containers ADD COLUMN is_sterilizable BOOLEAN DEFAULT true;
+    -- Set default based on category: syringes are not sterilizable (disposable plastic)
+    UPDATE containers SET is_sterilizable = false WHERE category = 'syringe';
+    RAISE NOTICE 'Added is_sterilizable column to containers';
+  END IF;
+EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
 
 -- ============================================================================
@@ -622,6 +638,58 @@ CREATE TABLE IF NOT EXISTS culture_transfers (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
+-- ============================================================================
+-- PREPARED SPAWN
+-- Tracks sterilized containers (grain jars, LC jars, agar plates) waiting to be inoculated
+-- This enables users to log prepared jars and select them when doing culture transfers
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS prepared_spawn (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- Container info
+  type TEXT CHECK (type IN ('grain_jar', 'lc_jar', 'agar_plate', 'slant_tube', 'spawn_bag', 'other')) NOT NULL,
+  label TEXT,                                    -- User-defined label (e.g., "Rye Quart #1")
+  container_id UUID REFERENCES containers(id),   -- Reference to container type
+  container_count INTEGER DEFAULT 1,             -- Number of containers in this batch
+
+  -- Contents
+  grain_type_id UUID REFERENCES grain_types(id), -- For grain_jar/spawn_bag
+  recipe_id UUID REFERENCES recipes(id),         -- Recipe used for LC/agar media
+  volume_ml INTEGER,                             -- Volume of media (for LC jars)
+  weight_grams DECIMAL,                          -- Weight of grain (for grain jars)
+
+  -- Preparation
+  prep_date DATE NOT NULL DEFAULT CURRENT_DATE,  -- When it was prepared
+  sterilization_date DATE,                       -- When it was sterilized
+  sterilization_method TEXT,                     -- e.g., "PC 15psi 90min"
+  expires_at DATE,                               -- Expiration/viability date
+
+  -- Location & tracking
+  location_id UUID REFERENCES locations(id),
+  status TEXT CHECK (status IN ('available', 'reserved', 'inoculated', 'contaminated', 'expired')) DEFAULT 'available',
+
+  -- Cost tracking
+  production_cost DECIMAL,                       -- Cost to produce
+
+  -- Linkage (when inoculated)
+  inoculated_at TIMESTAMPTZ,                     -- When it was inoculated
+  result_culture_id UUID REFERENCES cultures(id),-- The culture created from inoculation
+  result_grow_id UUID,                           -- The grow if directly spawned to bulk (FK added later)
+
+  -- Metadata
+  notes TEXT,
+  images TEXT[],
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Index for efficient lookup of available prepared spawn
+CREATE INDEX IF NOT EXISTS idx_prepared_spawn_status ON prepared_spawn(status) WHERE status = 'available';
+CREATE INDEX IF NOT EXISTS idx_prepared_spawn_type ON prepared_spawn(type);
+CREATE INDEX IF NOT EXISTS idx_prepared_spawn_user ON prepared_spawn(user_id);
+
 -- Grows
 CREATE TABLE IF NOT EXISTS grows (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -837,6 +905,23 @@ CREATE TABLE IF NOT EXISTS grow_observations (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
+
+-- Add FK constraint on prepared_spawn.result_grow_id (deferred because grows table defined after prepared_spawn)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'prepared_spawn_result_grow_id_fkey'
+    AND table_name = 'prepared_spawn'
+  ) THEN
+    ALTER TABLE prepared_spawn
+      ADD CONSTRAINT prepared_spawn_result_grow_id_fkey
+      FOREIGN KEY (result_grow_id) REFERENCES grows(id);
+    RAISE NOTICE 'Added FK constraint on prepared_spawn.result_grow_id';
+  END IF;
+EXCEPTION WHEN undefined_table THEN
+  -- prepared_spawn table doesn't exist yet on first run
+  NULL;
+END $$;
 
 -- Flushes (harvests)
 CREATE TABLE IF NOT EXISTS flushes (

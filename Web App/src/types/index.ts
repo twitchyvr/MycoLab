@@ -723,7 +723,7 @@ export interface DevLogFeature extends Timestamped {
   id: UUID;
   title: string;
   description?: string;
-  category: 'core' | 'ui' | 'ux' | 'data' | 'integration' | 'optimization' | 'bug_fix' | 'enhancement';
+  category: 'core' | 'ui' | 'ux' | 'data' | 'integration' | 'optimization' | 'bug_fix' | 'enhancement' | 'security';
   status: FeatureStatus;
   priority: FeaturePriority;
   estimatedHours?: number;

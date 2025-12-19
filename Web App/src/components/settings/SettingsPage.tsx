@@ -788,6 +788,7 @@ export const SettingsPage: React.FC = () => {
             category: formData.category as Container['category'],
             volumeMl: formData.volumeMl ? Number(formData.volumeMl) : undefined,
             isReusable: formData.isReusable ?? true,
+            isSterilizable: formData.isSterilizable ?? (formData.isReusable ?? true),
             usageContext: formData.usageContext || ['culture', 'grow'],
             notes: formData.notes?.trim() || undefined,
             isActive: true,
