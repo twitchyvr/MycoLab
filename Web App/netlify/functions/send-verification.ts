@@ -12,6 +12,108 @@ interface VerificationPayload {
   userId: string;
 }
 
+// Email sending with Resend
+async function sendWithResend(to: string, subject: string, textBody: string, htmlBody: string): Promise<{ success: boolean; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return { success: false, error: "Resend not configured" };
+
+  const fromEmail = process.env.FROM_EMAIL || "onboarding@resend.dev";
+  const fromName = process.env.FROM_NAME || "MycoLab";
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: `${fromName} <${fromEmail}>`,
+        to: [to],
+        subject,
+        text: textBody,
+        html: htmlBody,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Resend error:", errorData);
+      return { success: false, error: errorData.message || "Resend failed" };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+// Email sending with SendGrid
+async function sendWithSendGrid(to: string, subject: string, textBody: string, htmlBody: string): Promise<{ success: boolean; error?: string }> {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) return { success: false, error: "SendGrid not configured" };
+
+  const fromEmail = process.env.FROM_EMAIL || "noreply@mycolab.app";
+  const fromName = process.env.FROM_NAME || "MycoLab";
+
+  try {
+    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: to }] }],
+        from: { email: fromEmail, name: fromName },
+        subject,
+        content: [
+          { type: "text/plain", value: textBody },
+          { type: "text/html", value: htmlBody },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("SendGrid error:", errorText);
+      return { success: false, error: "SendGrid failed" };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+// Send email with automatic provider selection and fallback
+async function sendEmail(to: string, subject: string, textBody: string, htmlBody: string): Promise<{ success: boolean; error?: string; provider?: string }> {
+  // Try Resend first if configured
+  if (process.env.RESEND_API_KEY) {
+    const result = await sendWithResend(to, subject, textBody, htmlBody);
+    if (result.success) return { ...result, provider: "Resend" };
+    console.log("Resend failed, trying fallback...", result.error);
+  }
+
+  // Try SendGrid as fallback
+  if (process.env.SENDGRID_API_KEY) {
+    const result = await sendWithSendGrid(to, subject, textBody, htmlBody);
+    if (result.success) return { ...result, provider: "SendGrid" };
+    console.log("SendGrid failed:", result.error);
+  }
+
+  // No providers configured or all failed
+  const providers = [];
+  if (!process.env.RESEND_API_KEY) providers.push("RESEND_API_KEY");
+  if (!process.env.SENDGRID_API_KEY) providers.push("SENDGRID_API_KEY");
+
+  if (providers.length === 2) {
+    return { success: false, error: `Email service not configured. Add ${providers.join(" or ")} to Netlify environment variables.` };
+  }
+
+  return { success: false, error: "Email delivery failed with all configured providers" };
+}
+
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   if (event.httpMethod !== "POST") {
     return {
@@ -62,18 +164,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     }
 
     if (payload.type === "email") {
-      // Send email verification
-      const apiKey = process.env.SENDGRID_API_KEY;
-      if (!apiKey) {
-        return {
-          statusCode: 500,
-          body: JSON.stringify({ error: "Email service not configured. Add SENDGRID_API_KEY to Netlify environment variables." }),
-        };
-      }
-
-      const fromEmail = process.env.FROM_EMAIL || "noreply@mycolab.app";
-      const fromName = process.env.FROM_NAME || "MycoLab";
-
       const htmlBody = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 12px 12px 0 0;">
@@ -90,29 +180,17 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         </div>
       `;
 
-      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: payload.recipient }] }],
-          from: { email: fromEmail, name: fromName },
-          subject: "[MycoLab] Your Verification Code",
-          content: [
-            { type: "text/plain", value: `Your MycoLab verification code is: ${code}\n\nThis code expires in 10 minutes.` },
-            { type: "text/html", value: htmlBody },
-          ],
-        }),
-      });
+      const result = await sendEmail(
+        payload.recipient,
+        "[MycoLab] Your Verification Code",
+        `Your MycoLab verification code is: ${code}\n\nThis code expires in 10 minutes.`,
+        htmlBody
+      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("SendGrid error:", errorText);
+      if (!result.success) {
         return {
           statusCode: 500,
-          body: JSON.stringify({ error: "Failed to send verification email" }),
+          body: JSON.stringify({ error: result.error }),
         };
       }
     } else if (payload.type === "sms") {

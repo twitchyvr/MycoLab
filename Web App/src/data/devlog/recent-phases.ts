@@ -2670,17 +2670,25 @@ Created comprehensive weight utilities (utils/weight.ts):
   - Setup instructions with external documentation links
 
 **Netlify Functions (Completed):**
-- send-notification-email.ts - SendGrid email delivery
+- send-notification-email.ts - Resend/SendGrid email delivery with fallback
 - send-notification-sms.ts - Twilio SMS delivery
-- send-verification.ts - Email/SMS verification code sending
+- send-verification.ts - Email/SMS verification code sending (Resend/SendGrid)
 - verify-code.ts - Verification code validation
-- check-notification-config.ts - Service status checking
-- send-test-notification.ts - Test email/SMS sending
+- check-notification-config.ts - Service status checking (detects Resend/SendGrid)
+- send-test-notification.ts - Test email/SMS sending (Resend/SendGrid)
 
 **Environment Variables (Netlify Dashboard):**
-- SENDGRID_API_KEY - For email notifications
+- RESEND_API_KEY - For email notifications (primary, recommended)
+- SENDGRID_API_KEY - For email notifications (fallback if Resend not configured)
 - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER - For SMS
 - SUPABASE_URL, SUPABASE_SERVICE_KEY - For verification code storage
+- FROM_EMAIL, FROM_NAME - Optional email sender configuration
+
+**Email Provider Logic:**
+- Auto-detects which API keys are configured
+- Tries Resend first if RESEND_API_KEY is set
+- Falls back to SendGrid if Resend fails or isn't configured
+- Returns clear error messages if no provider is configured
 
 **Database Schema:**
 - Added verification_codes table with RLS policies
