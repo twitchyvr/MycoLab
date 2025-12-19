@@ -664,7 +664,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50
-        ${isCollapsed ? 'w-16' : 'w-64'}
+        ${isCollapsed ? 'w-16 overflow-visible' : 'w-64'}
         bg-zinc-900 border-r border-zinc-800
         flex flex-col h-full
         transform transition-all duration-300 ease-in-out
@@ -712,7 +712,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation */}
-        <nav className={`flex-1 ${isCollapsed ? 'p-2' : 'p-3'} space-y-1 overflow-y-auto overflow-x-hidden`}>
+        <nav className={`flex-1 ${isCollapsed ? 'p-2 overflow-visible' : 'p-3 overflow-y-auto overflow-x-hidden'} space-y-1`}>
           {navGroups.map((group) => {
             const GroupIcon = group.icon;
             const isExpanded = expandedGroups.has(group.id);

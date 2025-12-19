@@ -3814,6 +3814,77 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1230',
+    title: 'Feature Tracker - Timeline & Dependency Views',
+    description: 'Implemented Timeline and Dependency graph views for the Feature Tracker with visual representations of feature relationships.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    actualHours: 2,
+    completedAt: timestamp(),
+    notes: `**Phase 3 - Advanced Views Complete:**
+
+**Timeline View:**
+- Currently Active section with amber pulsing indicators
+- Up Next section showing planned features by priority
+- Completed section grouped by month/year
+- Visual timeline with connected dots and lines
+- Expandable feature cards with description
+
+**Dependency Graph View:**
+- Interactive node visualization by depth level
+- Critical path highlighting with amber glow
+- Stats panel (total features, dependencies, roots, depth)
+- Feature detail panel on selection
+- Shows blockers and impact of completing features
+- Cycle detection warning for circular dependencies
+
+**Visual Improvements:**
+- Color-coded nodes by status (completed=green, blocked=red, critical path=amber)
+- Glassmorphism effects on flyouts
+- Smooth animations and transitions
+- Responsive grid layout for large/small screens`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1231',
+    title: 'Collapsible Sidebar with Flyout Menus',
+    description: 'Enhanced sidebar to be collapsible into icon strip with interactive flyout menus on hover/click.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 3,
+    actualHours: 2,
+    completedAt: timestamp(),
+    notes: `**Collapsible Sidebar Features:**
+- Toggle button to collapse/expand sidebar
+- State persisted to localStorage
+- When collapsed: shows icon strip (w-16)
+- Mushroom logo clickable to expand
+
+**Flyout Menu System:**
+- Hover to preview menu items
+- Click to pin menu open
+- Pin indicator shows when locked
+- Click outside to close pinned flyout
+- Active page indicator with glow effect
+
+**Visual Enhancements:**
+- Magical expand button with glow, sparkle, rotation effects
+- Glassmorphism on flyout menus
+- Smooth scale transitions on icons
+- Animated slide-in for flyout appearance
+- Pulsing emerald indicator for active items
+
+**Bug Fixes:**
+- Fixed overflow-hidden clipping flyout menus
+- Added overflow-visible when collapsed`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
