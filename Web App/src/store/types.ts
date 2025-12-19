@@ -586,7 +586,7 @@ export interface GrowObservation {
   id: string;
   date: Date;
   stage: GrowStage;
-  type: 'general' | 'environmental' | 'contamination' | 'milestone' | 'photo';
+  type: 'general' | 'environmental' | 'contamination' | 'milestone' | 'photo' | 'misting' | 'fae';
   title: string;
   notes: string;
   temperature?: number;
@@ -1025,7 +1025,7 @@ export interface BatchPassport {
   id: string;
 
   // Unique passport identifier (shareable, human-readable)
-  // Format: ML-YYYY-MM-NNNN (e.g., "ML-2024-12-0001")
+  // Format: ML-YYYY-MM-NNNN (e.g., "ML-2025-12-0001")
   passportCode: string;
 
   // What this passport represents

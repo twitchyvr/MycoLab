@@ -1262,7 +1262,7 @@ CREATE TRIGGER on_auth_user_updated
 -- IMPORTANT: This function creates default data for new users.
 -- It uses EXCEPTION blocks to prevent signup failures if any insert fails.
 --
--- SAFEGUARDS APPLIED (2024-12):
+-- SAFEGUARDS APPLIED (2025-12):
 -- 1. NO foreign key references to lookup tables (type_id, classification_id, etc.)
 --    These may not have data for new users, causing FK violations
 -- 2. Each insert is wrapped in its own BEGIN/EXCEPTION block
@@ -4852,7 +4852,7 @@ CREATE TABLE IF NOT EXISTS batch_passports (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
 
   -- Unique passport identifier (shareable, human-readable)
-  -- Format: ML-YYYY-MM-NNNN (e.g., "ML-2024-12-0001")
+  -- Format: ML-YYYY-MM-NNNN (e.g., "ML-2025-12-0001")
   passport_code TEXT UNIQUE NOT NULL,
 
   -- What this passport represents
@@ -5280,7 +5280,7 @@ END $$;
 -- ============================================================================
 -- VERSION HISTORY
 -- ============================================================================
--- v22 (2024-12): COST TRACKING & ASSET CLASSIFICATION - Consumable cost propagation:
+-- v22 (2025-12): COST TRACKING & ASSET CLASSIFICATION - Consumable cost propagation:
 --               - inventory_usages: unit_cost_at_usage, consumed_cost for proportional tracking
 --               - inventory_items: asset_type (consumable/equipment/durable/culture_source),
 --                 purchase_date, purchase_price, depreciation_years, current_value,
@@ -5291,7 +5291,7 @@ END $$;
 --                 total_cost, revenue, profit, cost_per_gram_wet, cost_per_gram_dry
 --               - New outcome codes: aborted_bad_data, aborted_restart for data correction
 --                 (excluded from analytics when filtering)
--- v21 (2024-12): PUBLIC SHARING SYSTEM - Token-based sharing for public access:
+-- v21 (2025-12): PUBLIC SHARING SYSTEM - Token-based sharing for public access:
 --               - share_tokens: Opaque tokens for public/anonymous access to grows,
 --                 cultures, batches. Follows API security best practices with expiration,
 --                 revocation, and rate limiting support. Access levels: customer, auditor.
@@ -5304,19 +5304,19 @@ END $$;
 --                 System presets available to all, users can create custom presets.
 --               - Helper functions: generate_passport_code(), record_passport_view()
 --               - Full RLS policies and indexes for all tables
--- v20 (2024-12): CRITICAL FIX - Flushes table column name migration:
+-- v20 (2025-12): CRITICAL FIX - Flushes table column name migration:
 --               - Database had: wet_weight, dry_weight (integer)
 --               - App expected: wet_weight_g, dry_weight_g (DECIMAL)
 --               - Migration adds _g suffix columns, copies data, drops old columns
 --               - Transformation code now handles both column names defensively
 --               - Root cause: CREATE TABLE IF NOT EXISTS didn't update existing table
 --               - Lesson: Always check actual DB schema vs expected schema
--- v19 (2024-12): Added RPC function to bypass PostgREST schema cache issues:
+-- v19 (2025-12): Added RPC function to bypass PostgREST schema cache issues:
 --               - insert_flush: Direct SQL function for inserting flush records
 --                 Bypasses PostgREST schema cache (PGRST204 errors)
 --                 Returns inserted record as JSONB
 --                 Includes RLS validation for grow ownership
--- v18 (2024-12): Added outcome logging system for analytics and insights:
+-- v18 (2025-12): Added outcome logging system for analytics and insights:
 --               - entity_outcomes: Universal outcome tracking for grows, cultures, inventory
 --                 Captures outcome category (success/failure/neutral/partial), outcome codes,
 --                 timing, financials, yield data, and survey responses (JSONB)
@@ -5325,7 +5325,7 @@ END $$;
 --               - exit_surveys: User feedback and lessons learned on entity removal
 --                 Satisfaction ratings, difficulty, what worked/failed/would change
 --               - Full RLS policies and indexes for all new tables
--- v17 (2024-12): Added new features tables:
+-- v17 (2025-12): Added new features tables:
 --               - lab_events: General purpose event logging (dev-062)
 --                 Supports observations, maintenance, harvests, transfers, etc.
 --                 Links to cultures, grows, locations with full tagging system
@@ -5334,25 +5334,25 @@ END $$;
 --               - cold_storage_checks: Cold storage inventory checks (dev-042)
 --                 Track fridge/cold room inventory health during daily checks
 --               - Full RLS policies and indexes for all new tables
--- v16 (2024-12): Added daily check and harvest workflow tables (dev-040, dev-184):
+-- v16 (2025-12): Added daily check and harvest workflow tables (dev-040, dev-184):
 --               - daily_checks: Room-by-room daily inspection tracking
 --               - harvest_forecasts: 7-day harvest predictions
 --               - room_statuses: Room lifecycle tracking (empty, colonizing, fruiting, etc.)
 --               - Full RLS policies and indexes for all tables
--- v15 (2024-12): Fix species seed data re-run safety:
+-- v15 (2025-12): Fix species seed data re-run safety:
 --               - Added conditional check to skip seeding if 5+ species exist
 --               - Added partial unique index on species.name for global species
 --               - Added ON CONFLICT DO NOTHING to all species INSERTs
 --               - Fixed DELETE to exclude species referenced by strains
--- v14 (2024-12): Schema robustness improvements:
+-- v14 (2025-12): Schema robustness improvements:
 --               - Fixed FK ordering issue: locations.supplier_id now added via
 --                 ALTER TABLE after suppliers table exists
 --               - Added species stage notes columns (spawn_colonization_notes,
 --                 bulk_colonization_notes, pinning_notes, maturation_notes)
 --               - Fixed recipe transforms for sourceUrl and costPerBatch
--- v13 (2024-12): Fix inventory_items column name - add cost_per_unit migration
+-- v13 (2025-12): Fix inventory_items column name - add cost_per_unit migration
 --               for databases missing this column
--- v12 (2024-12): Automation-ready species data enhancements:
+-- v12 (2025-12): Automation-ready species data enhancements:
 --                - automation_config JSONB column for IoT/sensor integration
 --                - JSONB grow phase columns now support extended structure:
 --                  * co2Range, lightSchedule for detailed environmental control
@@ -5361,7 +5361,7 @@ END $$;
 --                  * faeFrequency, equipmentNotes for controller hints
 --                - EnvironmentalRange types now support warning/critical thresholds
 --                - Ready for future sensor polling, alerts, and data retention config
--- v11 (2024-12): Comprehensive species data with grow cycle parameters:
+-- v11 (2025-12): Comprehensive species data with grow cycle parameters:
 --                - spawn_colonization, bulk_colonization, pinning, maturation (JSONB)
 --                  Each contains tempRange, humidityRange, daysMin/Max, co2Tolerance, lightRequirement
 --                - preferred_substrates (TEXT[]), substrate_notes
@@ -5369,14 +5369,14 @@ END $$;
 --                - community_tips, important_facts, typical_yield, flush_count
 --                - shelf_life_days_min/max
 --                Updated seed data with accurate temperatures and parameters for 20+ species
--- v10 (2024-12): Enhanced strains table with taxonomy tracking:
+-- v10 (2025-12): Enhanced strains table with taxonomy tracking:
 --                - variety, phenotype, genetics_source, isolation_type
 --                - generation, origin, description fields
 --                Enables precise tracking of genetic lineage and phenotypes
--- v9 (2024-12): Added default species seed data with proper scientific names,
+-- v9 (2025-12): Added default species seed data with proper scientific names,
 --               common names, and categories. 35 species across gourmet (21),
 --               medicinal (8), and research (6) categories.
--- v8 (2024-12): Comprehensive schema sync with application types
+-- v8 (2025-12): Comprehensive schema sync with application types
 --               - grows: status, current_stage, spawn_type, spawn_weight, substrate_weight,
 --                 spawn_rate, spawned_at, colonization_started_at, fruiting_started_at,
 --                 completed_at, first_pins_at, first_harvest_at, target_temp_colonization,
@@ -5389,11 +5389,11 @@ END $$;
 --               - inventory_items: sku, reorder_point, reorder_qty, unit_cost
 --               - strains: species_id FK
 --               - substrate_types: code column
--- v7 (2024-12): Added migration for suppliers table columns (website, email,
+-- v7 (2025-12): Added migration for suppliers table columns (website, email,
 --               phone, notes) for existing databases
--- v6 (2024-12): Added admin_notifications table for admin alerting system
+-- v6 (2025-12): Added admin_notifications table for admin alerting system
 --               with automatic notifications for user signups
--- v5 (2024-12): Added populate_default_user_data function with error handling
+-- v5 (2025-12): Added populate_default_user_data function with error handling
 --               to prevent signup failures from FK violations
 -- v4: Added user_profiles table and admin functionality
 -- v3: Added purchase orders and inventory lots

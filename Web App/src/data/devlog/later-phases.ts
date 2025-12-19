@@ -157,7 +157,7 @@ export const laterPhases: DevLogFeature[] = [
     status: 'completed',
     priority: 'high',
     estimatedHours: 6,
-    completedAt: '2024-12-15',
+    completedAt: '2025-12-15',
     notes: 'Added QuickActionsWidget with grid/list/compact variants and FloatingActionButton (FAB) for mobile. 8 quick actions: New Culture, New Grow, Log Observation, Record Harvest, Transfer, Daily Check, New Recipe, Calculator.',
     createdAt: timestamp(),
     updatedAt: timestamp(),

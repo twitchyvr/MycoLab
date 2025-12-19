@@ -16,6 +16,9 @@ const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '
 const VERSION_STORAGE_KEY = 'mycolab-build-version';
 const DISMISSED_KEY = 'mycolab-version-dismissed';
 
+// How often to check for new versions (in milliseconds)
+const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
 interface VersionInfo {
   buildTime: string;
   appVersion: string;
@@ -73,6 +76,73 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
       // First time user - store current build time
       localStorage.setItem(VERSION_STORAGE_KEY, BUILD_TIME);
     }
+  }, []);
+
+  /**
+   * Proactive version checking - polls the server to detect new deployments
+   * while the user has the app open
+   */
+  useEffect(() => {
+    // Skip polling in development mode
+    if (import.meta.env.DEV) return;
+
+    let isActive = true;
+
+    const checkForUpdates = async () => {
+      try {
+        // Fetch the index.html with cache-busting to get fresh content
+        const response = await fetch(`/?_v=${Date.now()}`, {
+          method: 'HEAD',
+          cache: 'no-store',
+        });
+
+        // Check ETag or Last-Modified headers for changes
+        const serverEtag = response.headers.get('etag');
+        const lastModified = response.headers.get('last-modified');
+        const serverTimestamp = serverEtag || lastModified;
+
+        if (serverTimestamp && isActive) {
+          const storedServerTimestamp = sessionStorage.getItem('mycolab-server-timestamp');
+
+          if (!storedServerTimestamp) {
+            // First check - store the timestamp
+            sessionStorage.setItem('mycolab-server-timestamp', serverTimestamp);
+          } else if (storedServerTimestamp !== serverTimestamp) {
+            // Server has changed since we loaded - a new version is available
+            console.log('[MycoLab] New version detected via server headers');
+            setVersionInfo(prev => ({
+              ...prev,
+              isNewVersion: true,
+              isDismissed: false,
+            }));
+          }
+        }
+      } catch (error) {
+        // Silently fail - network errors shouldn't affect the user
+        console.debug('[MycoLab] Version check failed:', error);
+      }
+    };
+
+    // Initial check after a short delay (let the app settle)
+    const initialTimeout = setTimeout(checkForUpdates, 10000);
+
+    // Set up periodic polling
+    const intervalId = setInterval(checkForUpdates, VERSION_CHECK_INTERVAL);
+
+    // Also check when the window gains focus (user returns to tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkForUpdates();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      isActive = false;
+      clearTimeout(initialTimeout);
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   /**
