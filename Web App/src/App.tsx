@@ -38,6 +38,7 @@ import { BiologicalEfficiencyCalculator } from './components/analysis/Biological
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
 import { FinancialDashboard } from './components/analytics/FinancialDashboard';
 import { StrainPerformanceAnalytics } from './components/analytics/StrainPerformanceAnalytics';
+import { OutcomesAnalytics } from './components/analytics/OutcomesAnalytics';
 import { SettingsPageNew as SettingsPage } from './components/settings/SettingsPageNew';
 import { SpawnRateCalculator } from './components/tools/SpawnRateCalculator';
 import { PressureCookingCalculator } from './components/tools/PressureCookingCalculator';
@@ -312,7 +313,7 @@ const Icons = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
+type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes' | 'settings' | 'profile' | 'devlog';
 
 // Route configuration: maps Page to URL paths
 // Routes with :id support deep-linking to specific items
@@ -346,6 +347,7 @@ const routeConfig: Record<Page, string> = {
   analytics: '/analytics',
   financial: '/financial',
   strainanalytics: '/strain-analytics',
+  outcomes: '/outcomes',
   settings: '/settings',
   profile: '/profile',
   devlog: '/devlog',
@@ -480,6 +482,7 @@ const navGroups: NavGroup[] = [
       { id: 'analytics', label: 'Overview', icon: Icons.Chart },
       { id: 'financial', label: 'Financial', icon: Icons.DollarSign },
       { id: 'strainanalytics', label: 'Strain Stats', icon: Icons.Target },
+      { id: 'outcomes', label: 'Outcomes', icon: Icons.Clock },
       { id: 'contamination', label: 'Contam Analysis', icon: Icons.AlertTriangle },
       { id: 'efficiency', label: 'BE Calculator', icon: Icons.TrendingUp },
     ],
@@ -1169,6 +1172,7 @@ const AppWithRouter: React.FC = () => {
     analytics: { title: 'Analytics', subtitle: 'Data visualization and insights' },
     financial: { title: 'Financial Dashboard', subtitle: 'Lab valuation, costs, and profitability analysis' },
     strainanalytics: { title: 'Strain Performance', subtitle: 'Track success rates, yields, and optimal conditions per strain' },
+    outcomes: { title: 'Outcomes Analytics', subtitle: 'Historical tracking of disposed and completed entities' },
     settings: { title: 'Settings', subtitle: 'Configure lookups and preferences' },
     profile: { title: 'My Profile', subtitle: 'Manage your account and security settings' },
     devlog: { title: 'Dev Roadmap', subtitle: 'Feature tracker with intelligent prioritization' },
@@ -1318,6 +1322,8 @@ const AppWithRouter: React.FC = () => {
         );
       case 'strainanalytics':
         return <StrainPerformanceAnalytics />;
+      case 'outcomes':
+        return <OutcomesAnalytics />;
       case 'spawnrate':
         return (
           <div className="p-6">

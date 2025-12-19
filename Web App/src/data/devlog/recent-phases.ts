@@ -3616,7 +3616,7 @@ All grower settings PLUS Admin Console:
     id: 'dev-1226',
     title: 'Immutable Database Architecture Design',
     description: 'Comprehensive design for iRacing-style append-only database architecture. Core principle: original records are never modified or deleted - amendments create new versioned records that reference and supersede originals. Full audit trail for compliance and debugging.',
-    category: 'architecture',
+    category: 'data',
     status: 'planned',
     priority: 'high',
     estimatedHours: 40,
@@ -3662,6 +3662,57 @@ All grower settings PLUS Admin Console:
 - Temporal queries ("what did this look like on day 14?")
 - Analytics accuracy (historical data reflects reality at that moment)
 - Trust and debuggability`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1227',
+    title: 'Outcomes Analytics Dashboard',
+    description: 'Created comprehensive analytics dashboard for visualizing entity outcomes from the append-only tracking system. Displays disposal patterns, contamination analysis, success rates, failure reasons, and historical trends.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    actualHours: 3,
+    completedAt: timestamp(),
+    notes: `Full Outcomes Analytics implementation:
+
+**New Component: OutcomesAnalytics.tsx**
+- Summary metrics cards: total outcomes, success rate, failure rate, total yield, avg duration
+- Category distribution pie chart (success/failure/neutral/partial)
+- Entity type breakdown bar chart (grows, cultures, containers, inventory, equipment)
+- Monthly trend line chart showing success/failure/neutral over time
+- Top failure reasons analysis with percentage bars
+- Recent outcomes table with sortable columns
+
+**Data Layer Updates:**
+- Added entityOutcomes to DataStoreState type
+- Added to defaults.ts and initialData.ts
+- Created transformEntityOutcomeFromDb in transformations.ts
+- Added entity_outcomes to DataLoader TABLE_TO_STATE and TRANSFORMATIONS
+- Added to DataContext setState in loadDataFromSupabase
+
+**Navigation Integration:**
+- Added 'outcomes' to Page type
+- Added /outcomes route
+- Added nav item under Analytics section (with Clock icon)
+- Added page config and render case
+
+**Visualization Features:**
+- Time range filtering (30d, 90d, 1y, all)
+- Entity type filtering
+- Recharts for all visualizations
+- Empty state with helpful message when no data
+- Responsive grid layout
+
+**Files Changed:**
+- src/components/analytics/OutcomesAnalytics.tsx (new)
+- src/store/types.ts (entityOutcomes in state)
+- src/store/defaults.ts, initialData.ts (empty array defaults)
+- src/store/transformations.ts (transformEntityOutcomeFromDb)
+- src/lib/db/DataLoader.ts (loading config)
+- src/store/DataContext.tsx (setState integration)
+- src/App.tsx (navigation and routing)`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },

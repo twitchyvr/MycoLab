@@ -15,7 +15,7 @@ import type {
   Species, Strain, Location, LocationType, LocationClassification,
   Container, SubstrateType, Supplier, InventoryCategory, InventoryItem,
   InventoryLot, PurchaseOrder, Culture, Grow, Recipe, Flush,
-  RecipeCategoryItem, GrainType, PreparedSpawn, AppSettings,
+  RecipeCategoryItem, GrainType, PreparedSpawn, AppSettings, EntityOutcome,
 } from '../../store/types';
 
 // Import transformations
@@ -38,6 +38,7 @@ import {
   transformInventoryLotFromDb,
   transformPurchaseOrderFromDb,
   transformPreparedSpawnFromDb,
+  transformEntityOutcomeFromDb,
 } from '../../store/transformations';
 
 // ============================================================================
@@ -64,6 +65,7 @@ export interface DataLoaderState {
   grows: Grow[];
   flushes: Flush[];
   recipes: Recipe[];
+  entityOutcomes: EntityOutcome[];
   settings: AppSettings;
 }
 
@@ -101,6 +103,7 @@ const TRANSFORMATIONS: Record<string, (row: any) => any> = {
   flushes: transformFlushFromDb,
   recipes: transformRecipeFromDb,
   suppliers: transformSupplierFromDb,
+  entity_outcomes: transformEntityOutcomeFromDb,
 };
 
 // Map from DB table names to state property names
@@ -124,6 +127,7 @@ const TABLE_TO_STATE: Record<string, keyof DataLoaderState> = {
   grows: 'grows',
   flushes: 'flushes',
   recipes: 'recipes',
+  entity_outcomes: 'entityOutcomes',
 };
 
 // ============================================================================

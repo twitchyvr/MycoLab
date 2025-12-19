@@ -380,6 +380,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         preparedSpawn: result.state.preparedSpawn || prev.preparedSpawn,
         grows: result.state.grows || prev.grows,
         recipes: result.state.recipes || prev.recipes,
+        entityOutcomes: result.state.entityOutcomes || prev.entityOutcomes,
         settings: loadedSettings,
       }));
 
