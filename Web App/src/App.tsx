@@ -549,6 +549,8 @@ interface SidebarProps {
   onClose: () => void;
   cultureCount: number;
   activeGrowCount: number;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 // Helper to find which group contains the current page
@@ -561,7 +563,16 @@ const findGroupForPage = (page: Page): string | null => {
   return null;
 };
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onClose, cultureCount, activeGrowCount }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  currentPage,
+  onNavigate,
+  isOpen,
+  onClose,
+  cultureCount,
+  activeGrowCount,
+  isCollapsed,
+  onToggleCollapse,
+}) => {
   // Track which groups are expanded - initialize based on current page and defaults
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -575,6 +586,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onCl
     return initial;
   });
 
+  // Hover state for collapsed sidebar tooltips
+  const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
+
   // When page changes, ensure its group is expanded
   useEffect(() => {
     const currentGroup = findGroupForPage(currentPage);
@@ -586,6 +600,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onCl
   const handleNavigate = (page: Page) => {
     onNavigate(page);
     onClose(); // Close sidebar on mobile after navigation
+    setHoveredGroup(null); // Close any open flyout
   };
 
   const toggleGroup = (groupId: string) => {
@@ -600,6 +615,21 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onCl
     });
   };
 
+  // Icons for collapse/expand
+  const CollapseIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+      <polyline points="11 17 6 12 11 7" />
+      <polyline points="18 17 13 12 18 7" />
+    </svg>
+  );
+
+  const ExpandIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+      <polyline points="13 17 18 12 13 7" />
+      <polyline points="6 17 11 12 6 7" />
+    </svg>
+  );
+
   return (
     <>
       {/* Mobile overlay */}
@@ -613,45 +643,129 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onCl
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50
-        w-64 bg-zinc-900 border-r border-zinc-800
+        ${isCollapsed ? 'w-16' : 'w-64'}
+        bg-zinc-900 border-r border-zinc-800
         flex flex-col h-full
-        transform transition-transform duration-300 ease-in-out
+        transform transition-all duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Logo */}
-        <div className="p-4 border-b border-zinc-800 flex-shrink-0">
+        <div className={`border-b border-zinc-800 flex-shrink-0 ${isCollapsed ? 'p-2' : 'p-4'}`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                <span className="text-xl">🍄</span>
+            <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'gap-3'}`}>
+              <div className={`
+                ${isCollapsed ? 'w-10 h-10' : 'w-10 h-10'}
+                rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600
+                flex items-center justify-center shadow-lg shadow-emerald-500/20
+                transition-all duration-300
+              `}>
+                <span className={`${isCollapsed ? 'text-lg' : 'text-xl'}`}>🍄</span>
               </div>
-              <div>
-                <h1 className="text-lg font-semibold text-white tracking-tight">MycoLab</h1>
-                <p className="text-xs text-zinc-500">Laboratory Manager</p>
-                <p className="text-[10px] text-zinc-600 font-mono">v{__APP_VERSION__}</p>
-              </div>
+              {!isCollapsed && (
+                <div className="transition-opacity duration-300">
+                  <h1 className="text-lg font-semibold text-white tracking-tight">MycoLab</h1>
+                  <p className="text-xs text-zinc-500">Laboratory Manager</p>
+                  <p className="text-[10px] text-zinc-600 font-mono">v{__APP_VERSION__}</p>
+                </div>
+              )}
             </div>
             {/* Mobile close button */}
-            <button
-              onClick={onClose}
-              className="lg:hidden p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-              aria-label="Close menu"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
+            {!isCollapsed && (
+              <button
+                onClick={onClose}
+                className="lg:hidden p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                aria-label="Close menu"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Navigation - scrollable with grouped structure */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {/* Navigation */}
+        <nav className={`flex-1 ${isCollapsed ? 'p-2' : 'p-3'} space-y-1 overflow-y-auto overflow-x-hidden`}>
           {navGroups.map((group) => {
             const GroupIcon = group.icon;
             const isExpanded = expandedGroups.has(group.id);
             const hasActivePage = group.items.some(item => item.id === currentPage);
+            const isHovered = hoveredGroup === group.id;
 
+            // Collapsed mode: show icons with flyout menu
+            if (isCollapsed) {
+              return (
+                <div
+                  key={group.id}
+                  className="relative"
+                  onMouseEnter={() => setHoveredGroup(group.id)}
+                  onMouseLeave={() => setHoveredGroup(null)}
+                >
+                  {/* Group Icon Button */}
+                  <button
+                    className={`
+                      w-full flex items-center justify-center p-2.5 rounded-lg
+                      transition-all duration-200 relative
+                      ${hasActivePage
+                        ? 'bg-emerald-500/10 text-emerald-400'
+                        : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                      }
+                    `}
+                    title={group.label}
+                  >
+                    <GroupIcon />
+                    {/* Active indicator dot */}
+                    {hasActivePage && (
+                      <span className="absolute right-1 top-1 w-2 h-2 rounded-full bg-emerald-400"></span>
+                    )}
+                  </button>
+
+                  {/* Flyout menu on hover */}
+                  {isHovered && (
+                    <div
+                      className="absolute left-full top-0 ml-2 z-50 min-w-48"
+                      onMouseEnter={() => setHoveredGroup(group.id)}
+                      onMouseLeave={() => setHoveredGroup(null)}
+                    >
+                      <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl shadow-black/50 py-2">
+                        {/* Group label */}
+                        <div className="px-3 py-1.5 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-zinc-800 mb-1">
+                          {group.label}
+                        </div>
+                        {/* Items */}
+                        {group.items.map((item) => {
+                          const isActive = currentPage === item.id;
+                          const Icon = item.icon;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => handleNavigate(item.id)}
+                              className={`
+                                w-full flex items-center gap-3 px-3 py-2 text-sm
+                                transition-all duration-150
+                                ${isActive
+                                  ? 'bg-emerald-500/10 text-emerald-400 font-medium'
+                                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                                }
+                              `}
+                            >
+                              <Icon />
+                              <span>{item.label}</span>
+                              {isActive && (
+                                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Expanded mode: show full navigation
             return (
               <div key={group.id} className="mb-1">
                 {/* Group Header */}
@@ -717,21 +831,48 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, onCl
           })}
         </nav>
 
-        {/* Quick Stats - fixed at bottom */}
-        <div className="p-3 border-t border-zinc-800 flex-shrink-0 hidden sm:block">
-          <div className="bg-zinc-800/50 rounded-lg p-3 space-y-2">
-            <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Quick Stats</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <p className="text-lg font-semibold text-white">{cultureCount}</p>
-                <p className="text-xs text-zinc-500">Cultures</p>
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-emerald-400">{activeGrowCount}</p>
-                <p className="text-xs text-zinc-500">Active Grows</p>
+        {/* Quick Stats - only show when expanded */}
+        {!isCollapsed && (
+          <div className="p-3 border-t border-zinc-800 flex-shrink-0 hidden sm:block">
+            <div className="bg-zinc-800/50 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Quick Stats</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-lg font-semibold text-white">{cultureCount}</p>
+                  <p className="text-xs text-zinc-500">Cultures</p>
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-emerald-400">{activeGrowCount}</p>
+                  <p className="text-xs text-zinc-500">Active Grows</p>
+                </div>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Collapse/Expand Toggle - desktop only */}
+        <div className={`
+          ${isCollapsed ? 'p-2' : 'p-3'}
+          border-t border-zinc-800 flex-shrink-0 hidden lg:block
+        `}>
+          <button
+            onClick={onToggleCollapse}
+            className={`
+              w-full flex items-center justify-center gap-2
+              ${isCollapsed ? 'p-2.5' : 'px-3 py-2'}
+              rounded-lg text-sm text-zinc-400
+              hover:text-white hover:bg-zinc-800
+              transition-all duration-200
+            `}
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <ExpandIcon /> : (
+              <>
+                <CollapseIcon />
+                <span>Collapse</span>
+              </>
+            )}
+          </button>
         </div>
       </aside>
     </>
@@ -1081,6 +1222,16 @@ const AppWithRouter: React.FC = () => {
 
   const [state, setState] = useState<AppState>(initialState);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Sidebar collapse state - persisted in localStorage
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('mycolab-sidebar-collapsed');
+    return saved === 'true';
+  });
+
+  // Persist sidebar collapsed state
+  useEffect(() => {
+    localStorage.setItem('mycolab-sidebar-collapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
   // Never show setup wizard - users don't need to configure database credentials
   // The app works in offline mode by default, cloud sync can be enabled in Settings
   const [showSetup, setShowSetup] = useState(false);
@@ -1384,6 +1535,8 @@ const AppWithRouter: React.FC = () => {
                     selectedItemId={selectedItemId}
                     sidebarOpen={sidebarOpen}
                     setSidebarOpen={setSidebarOpen}
+                    sidebarCollapsed={sidebarCollapsed}
+                    setSidebarCollapsed={setSidebarCollapsed}
                     renderPage={renderPage}
                     pageConfig={pageConfig}
                   />
@@ -1429,6 +1582,8 @@ const AppContent: React.FC<{
   selectedItemId?: string;
   sidebarOpen: boolean;
   setSidebarOpen: (v: boolean) => void;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (v: boolean) => void;
   renderPage: () => React.ReactNode;
   pageConfig: Record<string, { title: string; subtitle?: string; newAction?: { label: string; page: Page } }>;
 }> = ({
@@ -1439,6 +1594,8 @@ const AppContent: React.FC<{
   selectedItemId,
   sidebarOpen,
   setSidebarOpen,
+  sidebarCollapsed,
+  setSidebarCollapsed,
   renderPage,
   pageConfig,
 }) => {
@@ -1533,6 +1690,8 @@ const AppContent: React.FC<{
           onClose={() => setSidebarOpen(false)}
           cultureCount={cultureCount}
           activeGrowCount={activeGrowCount}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden lg:ml-0">
           <Header
