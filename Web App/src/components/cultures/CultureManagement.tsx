@@ -4,10 +4,11 @@
 // ============================================================================
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useData } from '../../store';
+import { useData, EntityOutcomeData } from '../../store';
 import { CultureWizard } from './CultureWizard';
 import { NumericInput } from '../common/NumericInput';
-import type { Culture, CultureType, CultureStatus, CultureObservation, PreparedSpawn } from '../../store/types';
+import { EntityDisposalModal, DisposalOutcome } from '../common/EntityDisposalModal';
+import type { Culture, CultureType, CultureStatus, CultureObservation, PreparedSpawn, ContaminationType, SuspectedCause } from '../../store/types';
 
 // Type configurations
 const cultureTypeConfig: Record<CultureType, { label: string; icon: string; prefix: string }> = {
@@ -103,6 +104,8 @@ export const CultureManagement: React.FC = () => {
   const [showWizard, setShowWizard] = useState(false);
   const [showObservationModal, setShowObservationModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showDisposalModal, setShowDisposalModal] = useState(false);
+  const [cultureToDispose, setCultureToDispose] = useState<Culture | null>(null);
 
   const [newObservation, setNewObservation] = useState({
     type: 'general' as CultureObservation['type'],
@@ -250,6 +253,18 @@ export const CultureManagement: React.FC = () => {
 
     const toId = newTransfer.createNewRecord ? `culture-${Date.now()}` : undefined;
 
+    // Calculate transferred volume for depletion check
+    let transferredVolumeMl = newTransfer.quantity;
+    if (newTransfer.unit === 'drop') {
+      transferredVolumeMl = newTransfer.quantity * 0.05;
+    } else if (newTransfer.unit === 'wedge') {
+      transferredVolumeMl = (selectedCulture.fillVolumeMl || selectedCulture.volumeMl || 20) * 0.1 * newTransfer.quantity;
+    }
+
+    // Check if this transfer will deplete the culture
+    const currentFillVolume = selectedCulture.fillVolumeMl ?? selectedCulture.volumeMl ?? 0;
+    const willBeDepleted = currentFillVolume - transferredVolumeMl <= 0;
+
     // Perform the transfer
     const newCulture = addCultureTransfer(selectedCulture.id, {
       date: new Date(),
@@ -266,8 +281,6 @@ export const CultureManagement: React.FC = () => {
       await inoculatePreparedSpawn(newTransfer.selectedPreparedSpawnId, newCulture.id);
     }
 
-    // selectedCulture will be auto-updated by the sync useEffect when state.cultures changes
-
     setShowTransferModal(false);
     setNewTransfer({
       toType: 'agar',
@@ -279,14 +292,71 @@ export const CultureManagement: React.FC = () => {
       selectedPreparedSpawnId: undefined,
       useNewContainer: true,
     });
+
+    // If culture is now depleted, prompt for disposal
+    if (willBeDepleted) {
+      // Get the updated culture from state (has new fill volume)
+      const updatedCulture = state.cultures.find(c => c.id === selectedCulture.id);
+      if (updatedCulture) {
+        // Auto-update status to depleted
+        await updateCulture(selectedCulture.id, { status: 'depleted' });
+        // Prompt for disposal with pre-selected outcome
+        setCultureToDispose({ ...updatedCulture, status: 'depleted' });
+        setShowDisposalModal(true);
+      }
+    }
   };
 
-  // Delete handler
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this culture?')) {
-      deleteCulture(id);
-      if (selectedCulture?.id === id) setSelectedCulture(null);
+  // Delete handler - opens disposal modal for outcome tracking
+  const handleDelete = (culture: Culture) => {
+    setCultureToDispose(culture);
+    setShowDisposalModal(true);
+  };
+
+  // Disposal confirmation - records outcome and removes culture
+  const handleDisposalConfirm = async (outcome: DisposalOutcome) => {
+    if (!cultureToDispose) return;
+
+    const strain = getStrain(cultureToDispose.strainId);
+    const location = cultureToDispose.locationId ? getLocation(cultureToDispose.locationId) : undefined;
+
+    // Build outcome data for historical record
+    const outcomeData: EntityOutcomeData = {
+      entityType: 'culture',
+      entityId: cultureToDispose.id,
+      entityName: cultureToDispose.label,
+      outcomeCategory: outcome.outcomeCategory,
+      outcomeCode: outcome.outcomeCode,
+      outcomeLabel: outcome.outcomeLabel,
+      startedAt: cultureToDispose.createdAt,
+      endedAt: new Date(),
+      strainId: cultureToDispose.strainId,
+      strainName: strain?.name,
+      speciesId: strain?.speciesId,
+      locationId: cultureToDispose.locationId || undefined,
+      locationName: location?.name,
+      notes: outcome.notes,
+    };
+
+    // Add contamination details if relevant
+    if (outcome.contaminationType || outcome.suspectedCause) {
+      outcomeData.surveyResponses = {
+        contamination: {
+          contaminationType: outcome.contaminationType as ContaminationType | undefined,
+          suspectedCause: outcome.suspectedCause as SuspectedCause | undefined,
+        },
+      };
     }
+
+    // Delete with outcome recording
+    await deleteCulture(cultureToDispose.id, outcomeData);
+
+    // Clear UI state
+    if (selectedCulture?.id === cultureToDispose.id) {
+      setSelectedCulture(null);
+    }
+    setCultureToDispose(null);
+    setShowDisposalModal(false);
   };
 
   // Status update handler
@@ -766,8 +836,9 @@ export const CultureManagement: React.FC = () => {
                 Transfer
               </button>
               <button
-                onClick={() => handleDelete(selectedCulture.id)}
+                onClick={() => handleDelete(selectedCulture)}
                 className="p-2 bg-red-950/50 hover:bg-red-950 text-red-400 rounded-lg"
+                title="Dispose Culture"
               >
                 <Icons.Trash />
               </button>
@@ -1197,6 +1268,20 @@ export const CultureManagement: React.FC = () => {
         </div>
         );
       })()}
+
+      {/* Entity Disposal Modal */}
+      <EntityDisposalModal
+        isOpen={showDisposalModal}
+        onClose={() => {
+          setShowDisposalModal(false);
+          setCultureToDispose(null);
+        }}
+        onConfirm={handleDisposalConfirm}
+        entityType="culture"
+        entityName={cultureToDispose?.label || ''}
+        entityId={cultureToDispose?.id}
+        showContaminationDetails={true}
+      />
     </div>
   );
 };

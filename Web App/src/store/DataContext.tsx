@@ -41,7 +41,7 @@ import { emptyState } from './defaults';
 // ============================================================================
 
 export interface EntityOutcomeData {
-  entityType: 'grow' | 'culture' | 'inventory_item' | 'inventory_lot' | 'equipment';
+  entityType: 'grow' | 'culture' | 'container' | 'inventory_item' | 'inventory_lot' | 'equipment';
   entityId: string;
   entityName?: string;
   outcomeCategory: OutcomeCategory;
@@ -210,7 +210,7 @@ interface DataContextValue extends LookupHelpers {
   // Culture CRUD
   addCulture: (culture: Omit<Culture, 'id' | 'createdAt' | 'updatedAt' | 'observations' | 'transfers'>) => Promise<Culture>;
   updateCulture: (id: string, updates: Partial<Culture>) => Promise<void>;
-  deleteCulture: (id: string) => Promise<void>;
+  deleteCulture: (id: string, outcome?: EntityOutcomeData) => Promise<void>;
   addCultureObservation: (cultureId: string, observation: Omit<CultureObservation, 'id'>) => void;
   addCultureTransfer: (cultureId: string, transfer: Omit<CultureTransfer, 'id'>) => Culture | null;
   getCultureLineage: (cultureId: string) => { ancestors: Culture[]; descendants: Culture[] };
@@ -1280,22 +1280,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }));
   }, [supabase]);
 
-  const deleteCulture = useCallback(async (id: string) => {
-    if (supabase) {
-      const { error } = await supabase
-        .from('cultures')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-    }
-    
-    setState(prev => ({
-      ...prev,
-      cultures: prev.cultures.filter(c => c.id !== id)
-    }));
-  }, [supabase]);
-
   const generateCultureLabel = useCallback((type: Culture['type']): string => {
     const prefixes: Record<Culture['type'], string> = {
       spore_syringe: 'SS',
@@ -1789,6 +1773,36 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       }));
     }
   }, [supabase]);
+
+  // Delete culture with optional outcome recording for historical tracking
+  const deleteCulture = useCallback(async (id: string, outcome?: EntityOutcomeData) => {
+    // If outcome data provided, save it first (append-only historical record)
+    if (outcome) {
+      const savedOutcome = await saveEntityOutcome(outcome);
+
+      // If it's a contamination outcome, check for contamination details
+      if (outcome.surveyResponses?.contamination && savedOutcome.id) {
+        const contamDetails = outcome.surveyResponses.contamination as ContaminationDetailsData;
+        if (contamDetails.contaminationType || contamDetails.suspectedCause) {
+          await saveContaminationDetails(savedOutcome.id, contamDetails);
+        }
+      }
+    }
+
+    if (supabase) {
+      const { error } = await supabase
+        .from('cultures')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+
+    setState(prev => ({
+      ...prev,
+      cultures: prev.cultures.filter(c => c.id !== id)
+    }));
+  }, [supabase, saveEntityOutcome, saveContaminationDetails]);
 
   const deleteGrow = useCallback(async (id: string, outcome?: EntityOutcomeData) => {
     // If outcome data provided, save it first
