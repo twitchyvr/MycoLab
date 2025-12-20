@@ -4595,6 +4595,44 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1246',
+    title: 'Fix: Delete All My Data Not Actually Deleting Data',
+    description: 'Fixed the "Delete All My Data" feature in Settings which was showing success but not actually archiving any records. Implemented the archiveAllUserData function in DataContext.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    completedAt: timestamp(),
+    notes: `Bug Report: User tried to delete all data in Settings but data remained after "success" message.
+
+**Root Cause:**
+- The UI for "Delete All My Data" (dev-1236) was implemented with a placeholder
+- The actual archiveAllUserData function in DataContext was never created
+- The onClick handler just waited 2 seconds and showed "success" without doing anything
+
+**Fix Implemented:**
+1. Added archiveAllUserData function to DataContext interface
+2. Implemented bulk archive operation that:
+   - Archives all cultures (sets is_archived=true)
+   - Archives all grows (sets is_archived=true)
+   - Archives all prepared spawn (sets is_archived=true)
+   - Uses efficient batch UPDATE with IN clause
+   - Logs to data_amendment_log for audit trail
+3. Updated GrowerSettings to call actual function
+4. Added refreshData() call after archive to update UI
+
+**Technical Details:**
+- Follows immutable database pattern (soft-delete via is_archived flag)
+- Returns counts of archived records for user feedback
+- Single audit log entry for bulk operation
+- Updates local state to reflect archived records
+
+**Files Changed:**
+- src/store/DataContext.tsx (added archiveAllUserData function, interface, contextValue)
+- src/components/settings/GrowerSettings.tsx (call actual function instead of placeholder)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
