@@ -6957,12 +6957,13 @@ DROP POLICY IF EXISTS "notification_queue_insert" ON notification_queue;
 DROP POLICY IF EXISTS "notification_queue_update" ON notification_queue;
 DROP POLICY IF EXISTS "notification_queue_delete" ON notification_queue;
 
+-- Note: Service role and SECURITY DEFINER functions bypass RLS entirely
 CREATE POLICY "notification_queue_select" ON notification_queue
   FOR SELECT USING (user_id = auth.uid() OR is_admin());
 CREATE POLICY "notification_queue_insert" ON notification_queue
-  FOR INSERT WITH CHECK (user_id = auth.uid() OR is_admin() OR is_service_role());
+  FOR INSERT WITH CHECK (user_id = auth.uid() OR is_admin());
 CREATE POLICY "notification_queue_update" ON notification_queue
-  FOR UPDATE USING (user_id = auth.uid() OR is_admin() OR is_service_role());
+  FOR UPDATE USING (user_id = auth.uid() OR is_admin());
 CREATE POLICY "notification_queue_delete" ON notification_queue
   FOR DELETE USING (user_id = auth.uid() OR is_admin());
 
