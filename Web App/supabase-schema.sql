@@ -2042,6 +2042,16 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'maturation_notes') THEN
     ALTER TABLE species ADD COLUMN maturation_notes TEXT;
   END IF;
+
+  -- Cold storage requirements for tropical species
+  -- Some species (Pink Oyster, Almond, Paddy Straw) require warmer storage (10°C/50°F)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'cold_sensitive') THEN
+    ALTER TABLE species ADD COLUMN cold_sensitive BOOLEAN DEFAULT false;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'species' AND column_name = 'min_storage_temp_c') THEN
+    ALTER TABLE species ADD COLUMN min_storage_temp_c INTEGER DEFAULT 2;
+  END IF;
 END $$;
 
 -- ============================================================================

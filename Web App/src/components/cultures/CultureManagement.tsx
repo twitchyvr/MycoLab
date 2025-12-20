@@ -9,6 +9,7 @@ import { CultureWizard } from './CultureWizard';
 import { NumericInput } from '../common/NumericInput';
 import { EntityDisposalModal, DisposalOutcome } from '../common/EntityDisposalModal';
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
+import { calculateShelfLife, formatRemainingShelfLife } from '../../utils';
 import type { Culture, CultureType, CultureStatus, CultureObservation, PreparedSpawn, ContaminationType, SuspectedCause, AmendmentType } from '../../store/types';
 
 // Type configurations
@@ -56,6 +57,56 @@ const HealthBar: React.FC<{ rating: number }> = ({ rating }) => (
     ))}
   </div>
 );
+
+// Shelf life indicator component
+const ShelfLifeBadge: React.FC<{ culture: Culture; compact?: boolean }> = ({ culture, compact }) => {
+  // Only show for active cultures that can age
+  if (['contaminated', 'archived', 'depleted'].includes(culture.status)) {
+    return null;
+  }
+
+  const shelfLife = calculateShelfLife(culture.createdAt, culture.generation);
+
+  // Don't show anything for fresh cultures to reduce visual noise
+  if (shelfLife.status === 'fresh') {
+    return null;
+  }
+
+  const statusIcons = {
+    good: '●',
+    aging: '◐',
+    expiring: '◔',
+    expired: '○',
+  };
+
+  if (compact) {
+    // Compact version for card view - just show icon and days
+    if (shelfLife.status === 'good') return null; // Only warn on aging+
+
+    return (
+      <span
+        className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${shelfLife.statusColor}`}
+        title={shelfLife.warningMessage}
+      >
+        <span>{statusIcons[shelfLife.status as keyof typeof statusIcons]}</span>
+        <span>{formatRemainingShelfLife(shelfLife.remainingDays)}</span>
+      </span>
+    );
+  }
+
+  // Full version for detail panel
+  return (
+    <div className={`text-xs px-2 py-1 rounded ${shelfLife.statusColor}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium capitalize">{shelfLife.status}</span>
+        <span>{formatRemainingShelfLife(shelfLife.remainingDays)} remaining</span>
+      </div>
+      {shelfLife.warningMessage && (
+        <p className="mt-1 text-xs opacity-80">{shelfLife.warningMessage}</p>
+      )}
+    </div>
+  );
+};
 
 // Days ago helper
 const daysAgo = (date: Date): string => {
@@ -569,7 +620,7 @@ export const CultureManagement: React.FC = () => {
 
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
-                        <span className="text-zinc-500">G{culture.generation}</span>
+                        <span className="text-zinc-500">P{culture.generation}</span>
                         <HealthBar rating={culture.healthRating} />
                       </div>
                       {culture.volumeMl && (
@@ -577,8 +628,9 @@ export const CultureManagement: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-zinc-800 text-xs text-zinc-500">
-                      {daysAgo(culture.createdAt)}
+                    <div className="mt-3 pt-3 border-t border-zinc-800 flex items-center justify-between">
+                      <span className="text-xs text-zinc-500">{daysAgo(culture.createdAt)}</span>
+                      <ShelfLifeBadge culture={culture} compact />
                     </div>
                   </div>
                 );
@@ -592,9 +644,10 @@ export const CultureManagement: React.FC = () => {
                     <th className="text-left p-3 text-sm font-medium text-zinc-400">Culture</th>
                     <th className="text-left p-3 text-sm font-medium text-zinc-400">Strain</th>
                     <th className="text-left p-3 text-sm font-medium text-zinc-400">Status</th>
-                    <th className="text-left p-3 text-sm font-medium text-zinc-400">Gen</th>
+                    <th className="text-left p-3 text-sm font-medium text-zinc-400">P#</th>
                     <th className="text-left p-3 text-sm font-medium text-zinc-400">Health</th>
                     <th className="text-left p-3 text-sm font-medium text-zinc-400">Age</th>
+                    <th className="text-left p-3 text-sm font-medium text-zinc-400">Shelf Life</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -602,7 +655,7 @@ export const CultureManagement: React.FC = () => {
                     const strain = getStrain(culture.strainId);
                     const typeConfig = cultureTypeConfig[culture.type];
                     const statusConfig = cultureStatusConfig[culture.status];
-                    
+
                     return (
                       <tr
                         key={culture.id}
@@ -623,9 +676,10 @@ export const CultureManagement: React.FC = () => {
                             {statusConfig.label}
                           </span>
                         </td>
-                        <td className="p-3 text-sm text-zinc-400">G{culture.generation}</td>
+                        <td className="p-3 text-sm text-zinc-400">P{culture.generation}</td>
                         <td className="p-3"><HealthBar rating={culture.healthRating} /></td>
                         <td className="p-3 text-sm text-zinc-500">{daysAgo(culture.createdAt)}</td>
+                        <td className="p-3"><ShelfLifeBadge culture={culture} compact /></td>
                       </tr>
                     );
                   })}
@@ -669,11 +723,14 @@ export const CultureManagement: React.FC = () => {
               ))}
             </div>
 
+            {/* Shelf Life Warning (if applicable) */}
+            <ShelfLifeBadge culture={selectedCulture} />
+
             {/* Details */}
             <div className="space-y-2 text-sm mb-4">
               <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-500">Generation</span>
-                <span className="text-white">G{selectedCulture.generation}</span>
+                <span className="text-zinc-500">Passage (P#)</span>
+                <span className="text-white">P{selectedCulture.generation}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-zinc-800">
                 <span className="text-zinc-500">Health</span>
@@ -812,19 +869,19 @@ export const CultureManagement: React.FC = () => {
                       className="text-zinc-400 cursor-pointer hover:text-white"
                       onClick={() => setSelectedCulture(a)}
                     >
-                      ↑ {a.label} (G{a.generation})
+                      ↑ {a.label} (P{a.generation})
                     </div>
                   ))}
                   <div className="text-emerald-400 font-medium">
-                    • {selectedCulture.label} (G{selectedCulture.generation})
+                    • {selectedCulture.label} (P{selectedCulture.generation})
                   </div>
                   {lineage.descendants.map(d => (
-                    <div 
-                      key={d.id} 
+                    <div
+                      key={d.id}
                       className="text-zinc-400 cursor-pointer hover:text-white"
                       onClick={() => setSelectedCulture(d)}
                     >
-                      ↓ {d.label} (G{d.generation})
+                      ↓ {d.label} (P{d.generation})
                     </div>
                   ))}
                 </div>

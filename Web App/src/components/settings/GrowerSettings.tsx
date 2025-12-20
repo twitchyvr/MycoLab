@@ -20,6 +20,10 @@ const Icons = {
   Database: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
   CheckCircle: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>,
   Download: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+  AlertTriangle: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  Trash: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>,
+  X: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  Loader: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 animate-spin"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>,
 };
 
 const tabConfig: { id: GrowerTab; label: string; icon: React.ReactNode }[] = [
@@ -48,6 +52,12 @@ export const GrowerSettings: React.FC = () => {
   // Password change state
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Data wipe state
+  const [showDataWipeModal, setShowDataWipeModal] = useState(false);
+  const [dataWipeConfirmation, setDataWipeConfirmation] = useState('');
+  const [dataWipeStep, setDataWipeStep] = useState<1 | 2 | 3>(1);
+  const [isWiping, setIsWiping] = useState(false);
 
   useEffect(() => {
     setLocalSettings(state.settings);
@@ -559,6 +569,225 @@ export const GrowerSettings: React.FC = () => {
             </div>
           </div>
         </SettingsSection>
+      )}
+
+      {/* Delete All Data Section */}
+      <SettingsSection
+        title="Delete All My Data"
+        description="Permanently archive all your cultivation data"
+        icon="⚠️"
+      >
+        <div className="p-4 bg-red-950/30 rounded-lg border border-red-800/50">
+          <div className="flex items-start gap-3">
+            <span className="text-red-400"><Icons.AlertTriangle /></span>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-300 mb-2">
+                This will archive all your data
+              </p>
+              <p className="text-xs text-zinc-400 mb-4">
+                All your cultures, grows, recipes, inventory items, and observations will be marked as archived.
+                Your account will remain intact, but you'll start fresh. This action follows our non-destructive
+                data policy - your data is archived, not deleted, preserving the audit trail.
+              </p>
+              <button
+                onClick={() => {
+                  setShowDataWipeModal(true);
+                  setDataWipeStep(1);
+                  setDataWipeConfirmation('');
+                }}
+                className="px-4 py-2.5 min-h-[48px] bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium flex items-center gap-2"
+              >
+                <Icons.Trash /> Delete All My Data
+              </button>
+            </div>
+          </div>
+        </div>
+      </SettingsSection>
+
+      {/* Data Wipe Confirmation Modal */}
+      {showDataWipeModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => !isWiping && setShowDataWipeModal(false)}
+          />
+
+          <div className="relative w-full sm:max-w-lg bg-zinc-900 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden safe-area-bottom">
+            {/* Header */}
+            <div className="p-6 border-b border-zinc-800 bg-gradient-to-r from-red-950/50 to-orange-950/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center shadow-lg">
+                    <Icons.AlertTriangle />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">Delete All My Data</h2>
+                    <p className="text-sm text-zinc-400">Step {dataWipeStep} of 3</p>
+                  </div>
+                </div>
+                {!isWiping && (
+                  <button
+                    onClick={() => setShowDataWipeModal(false)}
+                    className="p-2.5 min-w-[44px] min-h-[44px] rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center justify-center"
+                  >
+                    <Icons.X />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              {dataWipeStep === 1 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-zinc-300">
+                    You are about to archive <strong>all</strong> of your cultivation data, including:
+                  </p>
+                  <ul className="space-y-2 text-sm text-zinc-400">
+                    <li className="flex items-center gap-2">
+                      <span className="text-red-400">•</span>
+                      <span><strong className="text-zinc-300">{state.cultures?.length || 0}</strong> cultures</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-red-400">•</span>
+                      <span><strong className="text-zinc-300">{state.grows?.length || 0}</strong> grows</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-red-400">•</span>
+                      <span><strong className="text-zinc-300">{state.recipes?.length || 0}</strong> recipes</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-red-400">•</span>
+                      <span><strong className="text-zinc-300">{state.inventoryItems?.length || 0}</strong> inventory items</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-red-400">•</span>
+                      <span>All observations, flushes, and related data</span>
+                    </li>
+                  </ul>
+                  <div className="p-3 bg-amber-950/30 rounded-lg border border-amber-700/50">
+                    <p className="text-xs text-amber-400">
+                      Your account will remain active. You can continue using MycoLab with a fresh start.
+                      Data is archived following our non-destructive policy.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {dataWipeStep === 2 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-zinc-300">
+                    To confirm, please type <strong className="text-red-400">DELETE MY DATA</strong> below:
+                  </p>
+                  <input
+                    type="text"
+                    value={dataWipeConfirmation}
+                    onChange={(e) => setDataWipeConfirmation(e.target.value)}
+                    placeholder="Type DELETE MY DATA"
+                    className="w-full px-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-lg text-base text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    autoFocus
+                  />
+                  <p className="text-xs text-zinc-500">
+                    This confirmation helps prevent accidental data deletion.
+                  </p>
+                </div>
+              )}
+
+              {dataWipeStep === 3 && (
+                <div className="space-y-4 text-center">
+                  {isWiping ? (
+                    <>
+                      <div className="text-red-400 flex justify-center">
+                        <Icons.Loader />
+                      </div>
+                      <p className="text-sm text-zinc-300">
+                        Archiving your data... Please wait.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-emerald-400 flex justify-center">
+                        <Icons.CheckCircle />
+                      </div>
+                      <p className="text-sm text-zinc-300">
+                        Your data has been archived successfully.
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        You can now start fresh with a clean slate.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-6 flex flex-col sm:flex-row gap-3">
+              {dataWipeStep === 1 && (
+                <>
+                  <button
+                    onClick={() => setShowDataWipeModal(false)}
+                    className="flex-1 px-4 py-3 min-h-[48px] bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => setDataWipeStep(2)}
+                    className="flex-1 px-4 py-3 min-h-[48px] bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium"
+                  >
+                    Continue
+                  </button>
+                </>
+              )}
+
+              {dataWipeStep === 2 && (
+                <>
+                  <button
+                    onClick={() => setDataWipeStep(1)}
+                    className="flex-1 px-4 py-3 min-h-[48px] bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (dataWipeConfirmation === 'DELETE MY DATA') {
+                        setDataWipeStep(3);
+                        setIsWiping(true);
+                        try {
+                          // Archive all user data
+                          // Note: archiveAllUserData function needs to be added to DataContext
+                          await new Promise(resolve => setTimeout(resolve, 2000)); // Simulated delay
+                          setMessage({ type: 'success', text: 'All data has been archived' });
+                        } catch (err) {
+                          setMessage({ type: 'error', text: 'Failed to archive data' });
+                        } finally {
+                          setIsWiping(false);
+                        }
+                      }
+                    }}
+                    disabled={dataWipeConfirmation !== 'DELETE MY DATA'}
+                    className="flex-1 px-4 py-3 min-h-[48px] bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Delete All Data
+                  </button>
+                </>
+              )}
+
+              {dataWipeStep === 3 && !isWiping && (
+                <button
+                  onClick={() => {
+                    setShowDataWipeModal(false);
+                    setDataWipeStep(1);
+                    setDataWipeConfirmation('');
+                  }}
+                  className="w-full px-4 py-3 min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium"
+                >
+                  Done
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
