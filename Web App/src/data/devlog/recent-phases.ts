@@ -4636,6 +4636,62 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1239',
+    phaseId: 32,
+    title: 'Complete Database Reset Script',
+    description: 'Added comprehensive SQL script to completely wipe and reset the Supabase database. Drops all tables, functions, triggers, policies, and custom types so schema can be rebuilt from scratch.',
+    category: 'feature',
+    status: 'completed',
+    priority: 'medium',
+    completedAt: timestamp(),
+    notes: `New "nuclear option" reset script for complete database rebuild:
+
+**Problem Solved:**
+- Over time, database can accumulate orphaned tables, columns, and functions
+- Schema drift between development versions leaves unused objects
+- Idempotent schema script can't remove old objects it doesn't know about
+- Need a clean slate option for major upgrades or fixing broken state
+
+**Solution - supabase-reset-database.sql:**
+Complete 8-phase database reset that drops everything in correct dependency order:
+
+1. **Phase 1**: Drop auth.users triggers (on_auth_user_created, etc.)
+2. **Phase 2**: Drop all RLS policies (using pg_policies catalog)
+3. **Phase 3**: Drop all triggers on public tables (using pg_trigger catalog)
+4. **Phase 4**: Drop all custom functions (auth, core, history, notification, bulk)
+5. **Phase 5**: Drop all tables in reverse dependency order (6 tiers)
+6. **Phase 6**: Drop custom types (enums like culture_type, grow_stage)
+7. **Phase 7**: Cleanup orphaned objects (catch-all for anything missed)
+8. **Phase 8**: Verify clean state (count remaining objects)
+
+**Table Drop Order (Tier System):**
+- Tier 1: Leaf tables (notifications, history, admin)
+- Tier 2: Child tables (flushes, observations, transfers)
+- Tier 3: Core entities (grows, cultures, recipes, inventory)
+- Tier 4: Reference tables (locations, suppliers, containers)
+- Tier 5: Base lookups (species, strains, substrate_types)
+- Tier 6: Schema management (schema_version)
+
+**Usage:**
+1. Backup database first
+2. Run supabase-reset-database.sql
+3. Run supabase-schema.sql (recreate schema)
+4. Run supabase-seed-data.sql (reference data)
+5. Run supabase-species-data.sql (species/strains)
+
+**Two Reset Options Now Available:**
+| Script | Use Case | Preserves Schema | Preserves Seed Data |
+|--------|----------|------------------|---------------------|
+| wipe-user-data.sql | Clear user data | Yes | Yes |
+| reset-database.sql | Complete rebuild | No | No |
+
+**Files Changed:**
+- Web App/supabase-reset-database.sql (NEW)
+- Web App/supabase-wipe-user-data.sql (updated docs, added comparison)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
