@@ -43,6 +43,7 @@ import { OutcomesAnalytics } from './components/analytics/OutcomesAnalytics';
 import { SettingsPageNew as SettingsPage } from './components/settings/SettingsPageNew';
 import { SpawnRateCalculator } from './components/tools/SpawnRateCalculator';
 import { PressureCookingCalculator } from './components/tools/PressureCookingCalculator';
+import { CultureMultiplicationCalculator } from './components/tools/CultureMultiplicationCalculator';
 import { CultureManagement } from './components/cultures/CultureManagement';
 import { LineageVisualization } from './components/cultures/LineageVisualization';
 import { GrowManagement } from './components/grows/GrowManagement';
@@ -118,7 +119,7 @@ const initialState: AppState = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'cultureguide' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes' | 'settings' | 'profile' | 'devlog' | 'featuretracker';
+type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'cultureguide' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'multiplication' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes' | 'settings' | 'profile' | 'devlog' | 'featuretracker';
 
 // Route configuration: maps Page to URL paths
 // Routes with :id support deep-linking to specific items
@@ -148,6 +149,7 @@ const routeConfig: Record<Page, string> = {
   calculator: '/calculator',
   spawnrate: '/spawn-rate',
   pressure: '/pressure-cooking',
+  multiplication: '/culture-multiplication',
   contamination: '/contamination',
   efficiency: '/efficiency',
   analytics: '/analytics',
@@ -265,6 +267,7 @@ const navGroups: NavGroup[] = [
       { id: 'calculator', label: 'Substrate Calc', icon: Icons.Calculator },
       { id: 'spawnrate', label: 'Spawn Rate', icon: Icons.Layers },
       { id: 'pressure', label: 'Pressure Cook', icon: Icons.Thermometer },
+      { id: 'multiplication', label: 'Culture Expansion', icon: Icons.Flask },
     ],
   },
   {
@@ -1158,6 +1161,7 @@ const AppWithRouter: React.FC = () => {
     calculator: { title: 'Substrate Calculator', subtitle: 'Hydration ratio calculations' },
     spawnrate: { title: 'Spawn Rate Calculator', subtitle: 'Calculate spawn-to-substrate ratios' },
     pressure: { title: 'Pressure Cooking Calculator', subtitle: 'Sterilization times with altitude adjustment' },
+    multiplication: { title: 'Culture Expansion Calculator', subtitle: 'P-value tracking, expansion costs, and senescence risk' },
     contamination: { title: 'Contamination Analysis', subtitle: 'Track and analyze contamination patterns' },
     efficiency: { title: 'Biological Efficiency', subtitle: 'Calculate and compare BE% across grows' },
     analytics: { title: 'Analytics', subtitle: 'Data visualization and insights' },
@@ -1214,7 +1218,7 @@ const AppWithRouter: React.FC = () => {
       case 'cultureguide':
         return (
           <div className="p-6">
-            <CultureGuide />
+            <CultureGuide onNavigate={(page) => setCurrentPage(page as Page)} />
           </div>
         );
       case 'devlog':
@@ -1338,6 +1342,12 @@ const AppWithRouter: React.FC = () => {
         return (
           <div className="p-6">
             <PressureCookingCalculator />
+          </div>
+        );
+      case 'multiplication':
+        return (
+          <div className="p-6">
+            <CultureMultiplicationCalculator />
           </div>
         );
       case 'settings':
