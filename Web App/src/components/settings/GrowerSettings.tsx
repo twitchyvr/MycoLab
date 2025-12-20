@@ -42,7 +42,7 @@ const experienceLevelConfig: { value: ExperienceLevel; label: string; descriptio
 ];
 
 export const GrowerSettings: React.FC = () => {
-  const { state, updateSettings, isConnected } = useData();
+  const { state, updateSettings, isConnected, archiveAllUserData, refreshData } = useData();
   const { profile, user, signOut, updatePassword } = useAuth();
   const [activeTab, setActiveTab] = useState<GrowerTab>('profile');
   const [localSettings, setLocalSettings] = useState<AppSettings>(state.settings);
@@ -754,12 +754,20 @@ export const GrowerSettings: React.FC = () => {
                         setDataWipeStep(3);
                         setIsWiping(true);
                         try {
-                          // Archive all user data
-                          // Note: archiveAllUserData function needs to be added to DataContext
-                          await new Promise(resolve => setTimeout(resolve, 2000)); // Simulated delay
-                          setMessage({ type: 'success', text: 'All data has been archived' });
-                        } catch (err) {
-                          setMessage({ type: 'error', text: 'Failed to archive data' });
+                          // Archive all user data using the DataContext function
+                          const results = await archiveAllUserData('User requested data deletion via Settings');
+                          const total = results.culturesArchived + results.growsArchived + results.preparedSpawnArchived;
+
+                          // Refresh data to ensure UI reflects the archived state
+                          await refreshData();
+
+                          setMessage({
+                            type: 'success',
+                            text: `All data has been archived (${total} records)`
+                          });
+                        } catch (err: any) {
+                          console.error('[DataWipe] Error:', err);
+                          setMessage({ type: 'error', text: err.message || 'Failed to archive data' });
                         } finally {
                           setIsWiping(false);
                         }

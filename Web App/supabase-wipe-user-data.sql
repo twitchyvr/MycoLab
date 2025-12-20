@@ -160,6 +160,9 @@ DELETE FROM inventory_lots WHERE user_id IS NOT NULL;
 -- Grows (depends on cultures, strains)
 DELETE FROM grows WHERE user_id IS NOT NULL;
 
+-- Prepared spawn (depends on cultures, strains)
+DELETE FROM prepared_spawn WHERE user_id IS NOT NULL;
+
 -- Cultures (depends on strains, recipes)
 DELETE FROM cultures WHERE user_id IS NOT NULL;
 

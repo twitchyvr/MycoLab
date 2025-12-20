@@ -298,6 +298,9 @@ interface DataContextValue extends LookupHelpers {
 
   // Get amendment log for a record
   getAmendmentLog: (recordGroupId: string) => DataAmendmentLogEntry[];
+
+  // Archive ALL user data (bulk soft-delete for data reset)
+  archiveAllUserData: (reason: string) => Promise<{ culturesArchived: number; growsArchived: number; preparedSpawnArchived: number }>;
 }
 
 // ============================================================================
@@ -2251,6 +2254,157 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, [state.grows, supabase]);
 
   /**
+   * Archive ALL user data (bulk soft-delete for data reset)
+   * Archives cultures, grows, and prepared_spawn in batch operations
+   * Returns counts of records archived
+   */
+  const archiveAllUserData = useCallback(async (reason: string): Promise<{ culturesArchived: number; growsArchived: number; preparedSpawnArchived: number }> => {
+    const now = new Date();
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error('Must be authenticated to archive user data');
+    }
+
+    const results = {
+      culturesArchived: 0,
+      growsArchived: 0,
+      preparedSpawnArchived: 0,
+    };
+
+    // Get non-archived records for each entity type
+    const culturesToArchive = state.cultures.filter(c => !c.isArchived);
+    const growsToArchive = state.grows.filter(g => !g.isArchived);
+    const preparedSpawnToArchive = state.preparedSpawn.filter(p => !p.isArchived);
+
+    console.log(`[ArchiveAll] Starting bulk archive: ${culturesToArchive.length} cultures, ${growsToArchive.length} grows, ${preparedSpawnToArchive.length} prepared spawn`);
+
+    if (supabase) {
+      // Archive cultures in batch
+      if (culturesToArchive.length > 0) {
+        const cultureIds = culturesToArchive.map(c => c.id);
+        const { data, error } = await supabase
+          .from('cultures')
+          .update({
+            is_archived: true,
+            archived_at: now.toISOString(),
+            archived_by: userId,
+            archive_reason: reason,
+            is_current: false,
+            valid_to: now.toISOString(),
+          })
+          .in('id', cultureIds)
+          .eq('is_archived', false)
+          .select('id');
+
+        if (error) {
+          console.error('[ArchiveAll] Error archiving cultures:', error);
+          throw error;
+        }
+        results.culturesArchived = data?.length || 0;
+        console.log(`[ArchiveAll] Archived ${results.culturesArchived} cultures`);
+      }
+
+      // Archive grows in batch
+      if (growsToArchive.length > 0) {
+        const growIds = growsToArchive.map(g => g.id);
+        const { data, error } = await supabase
+          .from('grows')
+          .update({
+            is_archived: true,
+            archived_at: now.toISOString(),
+            archived_by: userId,
+            archive_reason: reason,
+            is_current: false,
+            valid_to: now.toISOString(),
+          })
+          .in('id', growIds)
+          .eq('is_archived', false)
+          .select('id');
+
+        if (error) {
+          console.error('[ArchiveAll] Error archiving grows:', error);
+          throw error;
+        }
+        results.growsArchived = data?.length || 0;
+        console.log(`[ArchiveAll] Archived ${results.growsArchived} grows`);
+      }
+
+      // Archive prepared spawn in batch
+      if (preparedSpawnToArchive.length > 0) {
+        const spawnIds = preparedSpawnToArchive.map(p => p.id);
+        const { data, error } = await supabase
+          .from('prepared_spawn')
+          .update({
+            is_archived: true,
+            archived_at: now.toISOString(),
+            archived_by: userId,
+            archive_reason: reason,
+            is_current: false,
+            valid_to: now.toISOString(),
+          })
+          .in('id', spawnIds)
+          .eq('is_archived', false)
+          .select('id');
+
+        if (error) {
+          console.error('[ArchiveAll] Error archiving prepared spawn:', error);
+          throw error;
+        }
+        results.preparedSpawnArchived = data?.length || 0;
+        console.log(`[ArchiveAll] Archived ${results.preparedSpawnArchived} prepared spawn`);
+      }
+
+      // Log to amendment log (single entry for the bulk operation)
+      await supabase.from('data_amendment_log').insert({
+        entity_type: 'bulk_archive',
+        original_record_id: userId,
+        new_record_id: userId,
+        record_group_id: `bulk-archive-${now.toISOString()}`,
+        amendment_type: 'archive',
+        reason: reason,
+        amended_by: userId,
+        user_id: userId,
+        changes: JSON.stringify(results),
+      });
+    }
+
+    // Update local state - mark all records as archived
+    const archiveUpdates = {
+      isArchived: true,
+      archivedAt: now,
+      archivedBy: userId,
+      archiveReason: reason,
+      isCurrent: false,
+      validTo: now,
+    };
+
+    setState(prev => ({
+      ...prev,
+      cultures: prev.cultures.map(c =>
+        culturesToArchive.some(ca => ca.id === c.id)
+          ? { ...c, ...archiveUpdates }
+          : c
+      ),
+      grows: prev.grows.map(g =>
+        growsToArchive.some(ga => ga.id === g.id)
+          ? { ...g, ...archiveUpdates }
+          : g
+      ),
+      preparedSpawn: prev.preparedSpawn.map(p =>
+        preparedSpawnToArchive.some(pa => pa.id === p.id)
+          ? { ...p, ...archiveUpdates }
+          : p
+      ),
+    }));
+
+    const total = results.culturesArchived + results.growsArchived + results.preparedSpawnArchived;
+    console.log(`[ArchiveAll] Bulk archive complete: ${total} total records archived`);
+
+    return results;
+  }, [state.cultures, state.grows, state.preparedSpawn, supabase]);
+
+  /**
    * Get version history for a record (returns all versions sorted by version number)
    */
   const getRecordHistory = useCallback((
@@ -3437,7 +3591,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated, amendGrow, archiveGrow,
     addGrowObservation, addFlush,
-    getRecordHistory, getAmendmentLog,
+    getRecordHistory, getAmendmentLog, archiveAllUserData,
     calculateCultureCostPerMl, calculateSourceCultureCost, calculateGrowInventoryCost,
     recalculateGrowCosts, getLabValuation,
     saveEntityOutcome, saveContaminationDetails,
@@ -3473,7 +3627,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated, amendGrow, archiveGrow,
     addGrowObservation, addFlush,
-    getRecordHistory, getAmendmentLog,
+    getRecordHistory, getAmendmentLog, archiveAllUserData,
     calculateCultureCostPerMl, calculateSourceCultureCost, calculateGrowInventoryCost,
     recalculateGrowCosts, getLabValuation,
     saveEntityOutcome, saveContaminationDetails,
