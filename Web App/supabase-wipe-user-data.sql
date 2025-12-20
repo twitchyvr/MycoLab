@@ -124,6 +124,12 @@ DELETE FROM library_suggestions WHERE user_id IS NOT NULL;
 DELETE FROM admin_notifications WHERE user_id IS NOT NULL OR user_id IS NULL;  -- Clear all notifications
 DELETE FROM admin_audit_log WHERE user_id IS NOT NULL OR user_id IS NULL;  -- Clear all audit logs
 
+-- User notification system
+DELETE FROM notification_queue WHERE user_id IS NOT NULL;
+DELETE FROM notification_delivery_log WHERE user_id IS NOT NULL;
+DELETE FROM notification_event_preferences WHERE user_id IS NOT NULL;
+DELETE FROM notification_channels WHERE user_id IS NOT NULL;
+
 -- User settings
 DELETE FROM user_settings WHERE user_id IS NOT NULL;
 DELETE FROM user_profiles WHERE user_id IS NOT NULL;

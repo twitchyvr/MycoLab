@@ -78,6 +78,9 @@ export const transformStrainFromDb = (row: any): Strain => ({
   description: row.description,
   notes: row.notes,
   isActive: row.is_active ?? true,
+  // Image support
+  images: row.images || [],
+  referenceImage: row.reference_image,
 });
 
 export const transformStrainToDb = (strain: Partial<Strain>, userId?: string | null) => ({
@@ -103,6 +106,9 @@ export const transformStrainToDb = (strain: Partial<Strain>, userId?: string | n
   description: strain.description,
   notes: strain.notes,
   is_active: strain.isActive,
+  // Image support
+  images: strain.images,
+  reference_image: strain.referenceImage,
   ...(userId && { user_id: userId }),
 });
 
@@ -191,6 +197,9 @@ export const transformLocationFromDb = (row: any): Location => ({
         unit: row.dimension_unit || 'cm',
       }
     : undefined,
+  // Image support
+  photos: row.photos || [],
+  currentPhoto: row.current_photo,
 });
 
 export const transformLocationToDb = (location: Partial<Location>, userId?: string | null) => ({
@@ -225,6 +234,9 @@ export const transformLocationToDb = (location: Partial<Location>, userId?: stri
   dimension_width: location.dimensions?.width,
   dimension_height: location.dimensions?.height,
   dimension_unit: location.dimensions?.unit || 'cm',
+  // Image support
+  photos: location.photos,
+  current_photo: location.currentPhoto,
   ...(userId && { user_id: userId }),
 });
 
@@ -427,6 +439,9 @@ export const transformCultureFromDb = (row: any): Culture => ({
   updatedAt: new Date(row.updated_at),
   observations: [],
   transfers: [],
+  // Image support
+  images: row.images || [],
+  primaryImage: row.primary_image,
   // Immutability fields
   version: row.version ?? 1,
   recordGroupId: row.record_group_id ?? row.id,
@@ -464,6 +479,9 @@ export const transformCultureToDb = (culture: Partial<Culture>) => {
   if (culture.supplierId !== undefined) result.supplier_id = culture.supplierId;
   if (culture.lotNumber !== undefined) result.lot_number = culture.lotNumber;
   if (culture.expiresAt !== undefined) result.expires_at = culture.expiresAt instanceof Date ? culture.expiresAt.toISOString() : culture.expiresAt;
+  // Image support
+  if (culture.images !== undefined) result.images = culture.images;
+  if (culture.primaryImage !== undefined) result.primary_image = culture.primaryImage;
   // Immutability fields
   if (culture.version !== undefined) result.version = culture.version;
   if (culture.recordGroupId !== undefined) result.record_group_id = culture.recordGroupId;
@@ -513,6 +531,9 @@ export const transformGrowFromDb = (row: any): Grow => ({
   createdAt: new Date(row.created_at),
   observations: [],
   flushes: [],
+  // Image support
+  images: row.images || [],
+  setupPhoto: row.setup_photo,
   // Immutability fields
   version: row.version ?? 1,
   recordGroupId: row.record_group_id ?? row.id,
@@ -555,6 +576,9 @@ export const transformGrowToDb = (grow: Partial<Grow>) => {
   if (grow.totalYield !== undefined) result.total_yield = grow.totalYield;
   if (grow.estimatedCost !== undefined) result.estimated_cost = grow.estimatedCost;
   if (grow.notes !== undefined) result.notes = grow.notes;
+  // Image support
+  if (grow.images !== undefined) result.images = grow.images;
+  if (grow.setupPhoto !== undefined) result.setup_photo = grow.setupPhoto;
   // Immutability fields
   if (grow.version !== undefined) result.version = grow.version;
   if (grow.recordGroupId !== undefined) result.record_group_id = grow.recordGroupId;
@@ -665,6 +689,9 @@ export const transformFlushFromDb = (row: any): Flush => ({
   mushroomCount: row.mushroom_count,
   quality: row.quality || 'good',
   notes: row.notes,
+  // Image support
+  harvestImages: row.harvest_images || [],
+  primaryHarvestPhoto: row.primary_harvest_photo,
 });
 
 /**
@@ -680,6 +707,9 @@ export const transformFlushToDb = (flush: Omit<Flush, 'id'>, growId: string) => 
   mushroom_count: flush.mushroomCount,
   quality: flush.quality,
   notes: flush.notes,
+  // Image support
+  harvest_images: flush.harvestImages,
+  primary_harvest_photo: flush.primaryHarvestPhoto,
 });
 
 // ============================================================================
