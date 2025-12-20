@@ -164,6 +164,12 @@ export interface Species {
   // Shelf life (days)
   shelfLifeDays?: { min: number; max: number };
 
+  // Cold storage requirements
+  // Some tropical species (Almond, Pink Oyster, Paddy Straw) require warmer storage (10°C/50°F)
+  // Standard species store well at 2-4°C/35-39°F
+  coldSensitive?: boolean;          // If true, do not store below 10°C/50°F
+  minStorageTempC?: number;         // Minimum safe storage temperature in Celsius (default 2)
+
   // Automation configuration (for future IoT integration)
   automationConfig?: SpeciesAutomationConfig;
 

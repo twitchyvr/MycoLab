@@ -869,6 +869,9 @@ export const transformSpeciesFromDb = (row: any): Species => ({
   shelfLifeDays: row.shelf_life_days_min && row.shelf_life_days_max
     ? { min: row.shelf_life_days_min, max: row.shelf_life_days_max }
     : undefined,
+  // Cold storage requirements
+  coldSensitive: row.cold_sensitive ?? false,
+  minStorageTempC: row.min_storage_temp_c ?? 2,
   // Automation configuration (for IoT/sensor integration)
   automationConfig: row.automation_config,
   // Stage-specific notes (easily accessible for UI)
@@ -909,6 +912,9 @@ export const transformSpeciesToDb = (species: Partial<Species>, userId?: string 
   // Shelf life
   shelf_life_days_min: species.shelfLifeDays?.min,
   shelf_life_days_max: species.shelfLifeDays?.max,
+  // Cold storage requirements
+  cold_sensitive: species.coldSensitive,
+  min_storage_temp_c: species.minStorageTempC,
   // Automation configuration (JSONB for IoT/sensor integration)
   automation_config: species.automationConfig,
   // Stage-specific notes

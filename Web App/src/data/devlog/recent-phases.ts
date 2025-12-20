@@ -4084,6 +4084,111 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1235',
+    title: 'P-Value Tracking, Shelf Life Indicators, and Culture Guide',
+    description: 'Comprehensive culture management enhancements including P-value display, shelf life calculations based on generation, cold-sensitive species handling, and an educational Culture Guide page.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 6,
+    completedAt: timestamp(),
+    notes: `Culture management knowledge base and shelf life tracking:
+
+**P-Value (Passage Number) Display:**
+- Changed "G#" notation to "P#" for industry standard terminology
+- Added P-value explanation to Culture Guide
+- Displays in culture cards (grid view), list view table, and detail panel
+- Lineage tree now shows P# notation (P0, P1, P2, etc.)
+
+**Shelf Life Calculation Utility (shelf-life.ts):**
+- calculateShelfLife() - returns status, remaining days, warnings
+- formatRemainingShelfLife() - human-readable "2 months", "5 days"
+- getExpectedShelfLifeDays() - by generation (P0=180d, P1=150d, P2=90d, P3+=60d)
+- getStorageRecommendation() - cold storage temps by species type
+- senescenceSigns[] - warning indicators with severity levels
+- expansionRatios{} - recommended ratios by culture type
+
+**Shelf Life Badge Component:**
+- ShelfLifeBadge displays on culture cards for aging/expiring cultures
+- Compact mode for cards, full mode for detail panel
+- Status: fresh (hidden), good, aging, expiring, expired
+- Color-coded with warning messages
+- Only shows for active cultures (hidden for archived/contaminated)
+
+**Cold-Sensitive Species:**
+- Added coldSensitive boolean to Species interface
+- Added minStorageTempC field (default 2°C, 10°C for tropical)
+- Schema migration for cold_sensitive and min_storage_temp_c columns
+- Transformation functions updated
+- coldSensitiveSpecies[] list in utility
+
+**Culture Guide Page (/culture-guide):**
+- Overview - culture types explained (LC, agar, slant, spore syringe)
+- P-Value System - generation definitions (P0 through P3+)
+- Shelf Life - visual cards showing expected life by generation
+- Senescence - warning signs with severity indicators
+- Storage - temperature recommendations, cold-sensitive species list
+- Expansion Ratios - recommended ratios for LC, agar, grain spawn
+- Terminology - mycology terms glossary
+
+**Files Changed:**
+- src/store/types.ts - coldSensitive, minStorageTempC
+- src/store/transformations.ts - species transformations
+- src/utils/shelf-life.ts - new utility file
+- src/utils/index.ts - export shelf-life
+- src/components/cultures/CultureManagement.tsx - ShelfLifeBadge, P# notation
+- src/components/library/CultureGuide.tsx - new page
+- src/components/library/index.ts - export CultureGuide
+- src/App.tsx - cultureguide route and nav
+- supabase-schema.sql - cold_sensitive, min_storage_temp_c columns`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1236',
+    title: 'Delete All My Data Feature',
+    description: 'Allow users to archive all their data while keeping their account, following non-destructive database policies.',
+    category: 'core',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 3,
+    completedAt: timestamp(),
+    notes: `Account data reset feature for Settings > My Data tab:
+
+**Feature Overview:**
+- Users can "delete" all their data (actually archives it)
+- Account remains active for a fresh start
+- Follows immutable/non-destructive database policy
+
+**3-Step Confirmation Flow:**
+1. Warning screen showing data counts (cultures, grows, recipes, inventory)
+2. Text confirmation - user must type "DELETE MY DATA"
+3. Processing/success screen with progress indicator
+
+**UI Design:**
+- Red danger zone styling to indicate severity
+- Mobile-first bottom sheet modal pattern
+- Touch-friendly 48px minimum button heights
+- Disabled state until confirmation text matches
+
+**Data Affected:**
+- Cultures (archived status)
+- Grows (archived status)
+- Recipes (archived status)
+- Inventory items (archived status)
+- Observations, flushes, and related data
+
+**What's Preserved:**
+- User account and authentication
+- User settings and preferences
+- System seed data (species, strains, container types)
+
+**Files Changed:**
+- src/components/settings/GrowerSettings.tsx - UI and confirmation modal`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

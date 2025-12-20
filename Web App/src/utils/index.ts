@@ -6,3 +6,4 @@
 export * from './taxonomy';
 export * from './temperature';
 export * from './weight';
+export * from './shelf-life';

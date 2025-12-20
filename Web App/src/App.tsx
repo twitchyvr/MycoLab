@@ -62,7 +62,7 @@ import { LabelDesigner } from './components/labels';
 import { QRScanner } from './components/qr';
 import { ColdStorageCheck } from './components/dailycheck';
 import { HarvestForecast } from './components/forecast/HarvestForecast';
-import { SpeciesLibrary } from './components/library';
+import { SpeciesLibrary, CultureGuide } from './components/library';
 import { Icons, SectionIcons } from './components/icons';
 
 // ============================================================================
@@ -118,7 +118,7 @@ const initialState: AppState = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes' | 'settings' | 'profile' | 'devlog' | 'featuretracker';
+type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'cultureguide' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes' | 'settings' | 'profile' | 'devlog' | 'featuretracker';
 
 // Route configuration: maps Page to URL paths
 // Routes with :id support deep-linking to specific items
@@ -133,6 +133,7 @@ const routeConfig: Record<Page, string> = {
   observations: '/observations',
   eventlog: '/event-log',
   library: '/library',
+  cultureguide: '/culture-guide',
   inventory: '/inventory',
   stock: '/stock',
   cultures: '/cultures',
@@ -224,6 +225,7 @@ const navGroups: NavGroup[] = [
     defaultOpen: false,
     items: [
       { id: 'library', label: 'Species & Strains', icon: Icons.Library },
+      { id: 'cultureguide', label: 'Culture Guide', icon: Icons.Culture },
       { id: 'recipes', label: 'Recipes', icon: Icons.Recipe },
     ],
   },
@@ -1141,6 +1143,7 @@ const AppWithRouter: React.FC = () => {
     observations: { title: 'Observations', subtitle: 'Timeline of all culture and grow observations' },
     eventlog: { title: 'Event Logger', subtitle: 'Log events, notes, and observations across your lab' },
     library: { title: 'Species & Strain Library', subtitle: 'Reference guide with growing parameters and terminology' },
+    cultureguide: { title: 'Culture Guide', subtitle: 'P-values, shelf life, senescence, and best practices' },
     inventory: { title: 'Lab Inventory', subtitle: 'All cultures, spawn, and grows' },
     stock: { title: 'Lab Stock', subtitle: 'Inventory lots, purchases, and tracking' },
     cultures: { title: 'Culture Library', subtitle: 'Manage your cultures and genetics' },
@@ -1206,6 +1209,12 @@ const AppWithRouter: React.FC = () => {
         return (
           <div className="p-6">
             <SpeciesLibrary />
+          </div>
+        );
+      case 'cultureguide':
+        return (
+          <div className="p-6">
+            <CultureGuide />
           </div>
         );
       case 'devlog':
