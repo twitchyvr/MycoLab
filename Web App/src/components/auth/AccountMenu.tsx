@@ -115,20 +115,30 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  // Prevent closing while processing
+  const handleBackdropClick = () => {
+    if (!isLoading) {
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
+      {/* Backdrop - don't close if loading */}
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
+        className={`absolute inset-0 bg-black/70 ${isLoading ? 'cursor-wait' : ''}`}
+        onClick={handleBackdropClick}
       />
 
       {/* Modal */}
       <div className="relative bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl max-w-md w-full p-6">
-        {/* Close button */}
+        {/* Close button - disabled while loading */}
         <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
+          onClick={handleBackdropClick}
+          disabled={isLoading}
+          className={`absolute top-4 right-4 transition-colors ${
+            isLoading ? 'text-zinc-600 cursor-not-allowed' : 'text-zinc-400 hover:text-white'
+          }`}
         >
           <Icons.X />
         </button>
@@ -271,14 +281,23 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ onNavigate }) => {
     setShowLogoutModal(true);
   };
 
-  // Confirm sign out
+  // Confirm sign out with hard timeout failsafe
   const handleSignOutConfirm = async () => {
     setIsLoggingOut(true);
+
+    // Hard failsafe - if nothing happens in 8 seconds, force logout
+    const failsafeTimer = setTimeout(() => {
+      console.warn('[MycoLab] Sign out failsafe triggered');
+      forceLogout();
+    }, 8000);
+
     try {
       await signOut();
+      clearTimeout(failsafeTimer);
       // Force page reload to ensure clean state after sign out
       window.location.reload();
     } catch (err) {
+      clearTimeout(failsafeTimer);
       console.error('Sign out error:', err);
       // Even if signOut throws, force logout to clear state
       forceLogout();

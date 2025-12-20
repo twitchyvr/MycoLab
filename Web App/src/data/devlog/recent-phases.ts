@@ -3973,6 +3973,117 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1233',
+    title: 'Release Preparation: Sign Out Fix, CSS Rework, Disposal Improvements',
+    description: 'Comprehensive release preparation including critical sign-out hang fix, foundational CSS design system rework, culture/grow disposal improvements using archive pattern, and mobile-first auth modal enhancements.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 8,
+    completedAt: timestamp(),
+    notes: `Release preparation batch - critical stability and UX improvements:
+
+**Fix #1 - Sign Out Hang (Critical):**
+- Problem: supabase.auth.signOut() hung indefinitely on some networks
+- User stuck on "Processing..." modal for 4+ minutes
+- Clicking backdrop closed modal but user still showed as logged in
+- Solution: Added 5-second timeout wrapper around signOut call
+- Added 8-second hard failsafe timer in AccountMenu
+- Prevented modal dismissal while processing
+- Even if signOut times out, local state is cleared properly
+
+**Fix #2 - Comprehensive CSS Design System Rework:**
+- Created unified design token system with semantic naming
+- Spacing scale (space-0 through space-16)
+- Timing/easing tokens (duration-instant through duration-breathing)
+- Shadow system (shadow-xs through shadow-2xl, plus glow variants)
+- Typography scale with custom fonts (Plus Jakarta Sans, JetBrains Mono)
+- Organic button styles with gradient backgrounds and spring animations
+- Input styles with breathing focus animations
+- Card styles with emergence effect on hover
+- Theme-aware badge and status indicator system
+- Table styles with organic feel
+- Modal system with mobile-first slide-up behavior
+- Ambient background effects with theme-specific gradients
+- Mobile performance optimizations (disable hover effects on touch)
+- Reduced motion support for accessibility
+
+**Fix #3 - Culture Disposal 409 Conflict (Critical):**
+- Problem: deleteCulture() failed with 409 FK constraint error
+- Cultures have FK references from: culture_transfers, prepared_spawn, grows
+- Solution: Changed disposal to use archiveCulture() instead of deleteCulture()
+- Archive is soft-delete that preserves data integrity
+- Outcome is saved first, then culture archived with descriptive reason
+- Same fix applied to grow disposal (archiveGrow instead of deleteGrow)
+
+**Fix #4 - Tiny Volume Threshold:**
+- Problem: Residual volumes like 0.00001ml from drops were not treated as empty
+- Solution: Added EMPTY_VOLUME_THRESHOLD_ML = 0.5
+- Volumes below 0.5ml now considered effectively depleted
+- Triggers proper depletion flow and disposal modal
+
+**Fix #5 - Mobile Auth Modal Improvements:**
+- Modal slides up from bottom on mobile, centered on desktop
+- Added min-height 48px to all inputs and buttons for touch targets
+- Used text-base (16px) to prevent iOS zoom on input focus
+- Added safe-area-bottom padding for notched devices
+
+**Files Changed:**
+- src/lib/AuthContext.tsx (signOut timeout wrapper)
+- src/components/auth/AccountMenu.tsx (failsafe timer, modal lock)
+- src/components/auth/AuthModal.tsx (mobile-first layout, touch targets)
+- src/styles/globals.css (complete design token system)
+- src/components/cultures/CultureManagement.tsx (archive instead of delete, volume threshold)
+- src/components/grows/GrowManagement.tsx (archive instead of delete)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1234',
+    title: 'Mobile Modal Refresh: Touch Targets & Bottom Sheet Pattern',
+    description: 'Comprehensive mobile refresh of all shared modal components with bottom-sheet pattern, proper touch targets, and iOS zoom prevention.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 4,
+    completedAt: timestamp(),
+    notes: `Mobile-first modal refresh for release preparation:
+
+**Pattern Applied Across All Modals:**
+- Bottom sheet on mobile (items-end + rounded-t-2xl)
+- Centered dialog on desktop (sm:items-center + sm:rounded-xl)
+- Max height 95vh mobile, 90vh desktop
+- safe-area-bottom padding for notched devices
+- overflow-y-auto for scrollable content
+
+**Touch Target Improvements:**
+- All buttons: min-h-[48px] for proper tap targets
+- Close buttons: min-w-[44px] min-h-[44px]
+- Star ratings: w-11 h-11 (was w-8 h-8)
+- Option buttons: min-h-[48px] to min-h-[72px] depending on content
+- Footer buttons: flex-1 on mobile for full-width taps
+
+**iOS Zoom Prevention:**
+- text-base (16px) on all inputs and textareas
+- Prevents automatic zoom on input focus
+
+**Modals Updated:**
+- EntityDisposalModal - disposal outcome selection
+- AmendmentModal - record amendment workflow
+- ExitSurveyModal - exit survey with star ratings
+- EntityFormModal - dynamic entity creation forms
+- AccountLinkingModal - account linking options
+
+**Files Changed:**
+- src/components/common/EntityDisposalModal.tsx
+- src/components/common/AmendmentModal.tsx
+- src/components/surveys/ExitSurveyModal.tsx
+- src/components/forms/EntityFormModal.tsx
+- src/components/auth/AccountLinkingModal.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

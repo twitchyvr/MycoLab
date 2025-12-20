@@ -423,15 +423,15 @@ export const AuthModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+      <div
+        className="fixed inset-0 bg-black/70"
         onClick={() => setShowAuthModal(false)}
       />
-      
-      {/* Modal */}
-      <div className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden">
+
+      {/* Modal - slides up from bottom on mobile, centered on desktop */}
+      <div className="relative w-full sm:max-w-md bg-zinc-900 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[95vh] sm:max-h-[90vh] overflow-y-auto safe-area-bottom">
         {/* Header */}
         <div className="p-6 border-b border-zinc-800 bg-gradient-to-r from-emerald-950/50 to-teal-950/50">
           <div className="flex items-center justify-between">
@@ -670,7 +670,7 @@ export const AuthModal: React.FC = () => {
                   // If no error, user will be redirected to Google
                 }}
                 disabled={isLoading}
-                className="w-full py-3 px-4 bg-white hover:bg-zinc-100 text-zinc-800 font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 border border-zinc-300"
+                className="w-full py-3 px-4 min-h-[48px] bg-white hover:bg-zinc-100 text-zinc-800 font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 border border-zinc-300"
               >
                 <Icons.Google />
                 <span>Continue with Google</span>
@@ -705,7 +705,7 @@ export const AuthModal: React.FC = () => {
                 placeholder="you@example.com"
                 required
                 autoComplete="email username"
-                className="w-full pl-11 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-colors"
+                className="w-full pl-11 pr-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-xl text-white text-base placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-colors"
               />
             </div>
           </div>
@@ -730,12 +730,12 @@ export const AuthModal: React.FC = () => {
                   required
                   minLength={6}
                   autoComplete={authModalMode === 'signup' ? 'new-password' : 'current-password'}
-                  className="w-full pl-11 pr-12 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-colors"
+                  className="w-full pl-11 pr-12 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-xl text-white text-base placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors p-2 -mr-2"
                 >
                   {showPassword ? <Icons.EyeOff /> : <Icons.Eye />}
                 </button>
@@ -763,7 +763,7 @@ export const AuthModal: React.FC = () => {
                   required
                   minLength={6}
                   autoComplete="new-password"
-                  className="w-full pl-11 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-colors"
+                  className="w-full pl-11 pr-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-xl text-white text-base placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-colors"
                 />
               </div>
             </div>
@@ -803,7 +803,7 @@ export const AuthModal: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading || !isSupabaseConfigured || !captchaToken}
-            className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+            className="w-full py-3 px-4 min-h-[48px] bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
           >
             {isLoading ? (
               <>
@@ -835,7 +835,7 @@ export const AuthModal: React.FC = () => {
                 type="button"
                 onClick={handleMagicLink}
                 disabled={isLoading || !isSupabaseConfigured || !captchaToken}
-                className="w-full py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-zinc-700"
+                className="w-full py-3 px-4 min-h-[48px] bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-zinc-700"
               >
                 <Icons.Mail />
                 <span>Sign in with Magic Link</span>

@@ -146,8 +146,8 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-        <div className="bg-zinc-900 rounded-xl border border-zinc-700 max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 sm:p-4 overflow-y-auto">
+        <div className="bg-zinc-900 w-full sm:max-w-lg rounded-t-2xl sm:rounded-xl border-t sm:border border-zinc-700 max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col safe-area-bottom">
         {/* Header */}
         <div className="p-4 border-b border-zinc-700">
           <h2 className="text-lg font-semibold text-zinc-100">{modalTitle}</h2>
@@ -186,7 +186,7 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
                           type="button"
                           onClick={() => setSelectedOutcome(option)}
                           className={`
-                            text-left p-2 rounded-lg border transition-all
+                            text-left p-3 rounded-lg border transition-all min-h-[48px]
                             ${isSelected
                               ? `${style.bg} ${style.border} ${style.text}`
                               : 'bg-zinc-800/50 border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-600'
@@ -217,7 +217,7 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
                 <select
                   value={contaminationType}
                   onChange={e => setContaminationType(e.target.value as ContaminationType | '')}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-base sm:text-sm text-zinc-100 min-h-[48px]"
                 >
                   <option value="">Not specified</option>
                   {CONTAMINATION_TYPE_OPTIONS.map(opt => (
@@ -234,7 +234,7 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
                 <select
                   value={suspectedCause}
                   onChange={e => setSuspectedCause(e.target.value as SuspectedCause | '')}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-base sm:text-sm text-zinc-100 min-h-[48px]"
                 >
                   <option value="">Not specified</option>
                   {SUSPECTED_CAUSE_OPTIONS.map(opt => (
@@ -256,7 +256,7 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Any additional details about why this is being disposed..."
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 resize-none"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-base sm:text-sm text-zinc-100 placeholder:text-zinc-500 resize-none"
               rows={3}
             />
           </div>
@@ -279,7 +279,7 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+            className="px-4 py-2.5 min-h-[48px] text-sm text-zinc-400 hover:text-zinc-200 transition-colors rounded-lg hover:bg-zinc-800"
           >
             Cancel
           </button>
@@ -288,7 +288,7 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
             onClick={handleConfirm}
             disabled={!selectedOutcome}
             className={`
-              px-4 py-2 text-sm font-medium rounded-lg transition-all
+              px-5 py-2.5 min-h-[48px] text-sm font-medium rounded-lg transition-all
               ${selectedOutcome
                 ? 'bg-red-600 hover:bg-red-500 text-white'
                 : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'

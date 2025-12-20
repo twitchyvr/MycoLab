@@ -135,7 +135,7 @@ export const AccountLinkingModal: React.FC<AccountLinkingModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -143,7 +143,7 @@ export const AccountLinkingModal: React.FC<AccountLinkingModalProps> = ({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full sm:max-w-lg bg-zinc-900 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden safe-area-bottom">
         {/* Header */}
         <div className="p-6 border-b border-zinc-800 bg-gradient-to-r from-amber-950/50 to-orange-950/50">
           <div className="flex items-center justify-between">
@@ -162,7 +162,7 @@ export const AccountLinkingModal: React.FC<AccountLinkingModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              className="p-2.5 min-w-[44px] min-h-[44px] rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center justify-center"
             >
               <Icons.X />
             </button>
@@ -216,10 +216,10 @@ export const AccountLinkingModal: React.FC<AccountLinkingModalProps> = ({
               {/* Option 1: Sign in with existing method */}
               <button
                 onClick={onSignInWithExisting}
-                className="w-full p-4 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-xl transition-colors text-left group"
+                className="w-full p-4 min-h-[72px] bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-xl transition-colors text-left group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-zinc-700 flex items-center justify-center group-hover:bg-zinc-600 transition-colors">
+                  <div className="w-11 h-11 min-w-[44px] rounded-lg bg-zinc-700 flex items-center justify-center group-hover:bg-zinc-600 transition-colors">
                     {existingAccount.has_google ? <Icons.Google /> : <Icons.Mail />}
                   </div>
                   <div className="flex-1">
@@ -238,10 +238,10 @@ export const AccountLinkingModal: React.FC<AccountLinkingModalProps> = ({
               <button
                 onClick={handleLinkAccounts}
                 disabled={isLinking}
-                className="w-full p-4 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-colors text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full p-4 min-h-[72px] bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-colors text-left group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/30 transition-colors">
+                  <div className="w-11 h-11 min-w-[44px] rounded-lg bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/30 transition-colors">
                     {isLinking ? <Icons.Loader /> : <Icons.Link />}
                   </div>
                   <div className="flex-1">
@@ -259,10 +259,10 @@ export const AccountLinkingModal: React.FC<AccountLinkingModalProps> = ({
               {/* Option 3: Keep separate (not recommended) */}
               <button
                 onClick={onKeepSeparate}
-                className="w-full p-4 bg-zinc-900 hover:bg-zinc-800/50 border border-zinc-800 rounded-xl transition-colors text-left group"
+                className="w-full p-4 min-h-[72px] bg-zinc-900 hover:bg-zinc-800/50 border border-zinc-800 rounded-xl transition-colors text-left group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-700 transition-colors">
+                  <div className="w-11 h-11 min-w-[44px] rounded-lg bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-700 transition-colors">
                     <Icons.Database />
                   </div>
                   <div className="flex-1">
@@ -283,7 +283,7 @@ export const AccountLinkingModal: React.FC<AccountLinkingModalProps> = ({
           {linkResult?.success && (
             <button
               onClick={onClose}
-              className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+              className="w-full py-3.5 min-h-[48px] px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
             >
               <span>Continue to MycoLab</span>
               <Icons.ArrowRight />

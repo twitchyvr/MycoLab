@@ -472,13 +472,14 @@ export const GrowManagement: React.FC = () => {
     getCulture,
     addGrow,
     updateGrow,
-    deleteGrow,
     advanceGrowStage,
     markGrowContaminated,
     addGrowObservation,
     addFlush,
     amendGrow,
     archiveGrow,
+    saveEntityOutcome,
+    saveContaminationDetails,
   } = useData();
 
   const grows = state.grows;
@@ -913,57 +914,85 @@ export const GrowManagement: React.FC = () => {
     setShowExitSurveyModal(true);
   };
 
+  // Exit survey completion - records outcome and archives grow (soft delete)
+  // Using archive instead of delete to preserve data integrity and FK relationships
   const handleExitSurveyComplete = async (surveyData: ExitSurveyData) => {
     if (!exitSurveyGrow) return;
 
-    const strain = getStrain(exitSurveyGrow.strainId);
-    const location = getLocation(exitSurveyGrow.locationId);
+    try {
+      const strain = getStrain(exitSurveyGrow.strainId);
+      const location = getLocation(exitSurveyGrow.locationId);
 
-    const outcomeData = {
-      entityType: 'grow' as const,
-      entityId: exitSurveyGrow.id,
-      entityName: exitSurveyGrow.name,
-      outcomeCategory: surveyData.outcomeCategory,
-      outcomeCode: surveyData.outcomeCode,
-      outcomeLabel: surveyData.outcomeLabel,
-      startedAt: exitSurveyGrow.spawnedAt,
-      endedAt: new Date(),
-      totalCost: exitSurveyGrow.estimatedCost,
-      totalYieldWet: exitSurveyGrow.totalYield,
-      flushCount: exitSurveyGrow.flushes.length,
-      strainId: exitSurveyGrow.strainId,
-      strainName: strain?.name,
-      locationId: exitSurveyGrow.locationId,
-      locationName: location?.name,
-      surveyResponses: {
-        contamination: surveyData.contamination,
-        feedback: surveyData.feedback,
-      },
-      notes: surveyData.feedback?.notes,
-    };
+      const outcomeData = {
+        entityType: 'grow' as const,
+        entityId: exitSurveyGrow.id,
+        entityName: exitSurveyGrow.name,
+        outcomeCategory: surveyData.outcomeCategory,
+        outcomeCode: surveyData.outcomeCode,
+        outcomeLabel: surveyData.outcomeLabel,
+        startedAt: exitSurveyGrow.spawnedAt,
+        endedAt: new Date(),
+        totalCost: exitSurveyGrow.estimatedCost,
+        totalYieldWet: exitSurveyGrow.totalYield,
+        flushCount: exitSurveyGrow.flushes.length,
+        strainId: exitSurveyGrow.strainId,
+        strainName: strain?.name,
+        locationId: exitSurveyGrow.locationId,
+        locationName: location?.name,
+        surveyResponses: {
+          contamination: surveyData.contamination,
+          feedback: surveyData.feedback,
+        },
+        notes: surveyData.feedback?.notes,
+      };
 
-    await deleteGrow(exitSurveyGrow.id, outcomeData);
+      // Step 1: Save the outcome record (append-only historical data)
+      const savedOutcome = await saveEntityOutcome(outcomeData);
 
-    setShowExitSurveyModal(false);
-    setExitSurveyGrow(null);
-    setPreselectedOutcome(undefined);
-    if (selectedGrow?.id === exitSurveyGrow.id) {
-      setSelectedGrow(null);
-      setShowDetailPanel(false);
-    }
-  };
+      // Step 2: Save contamination details if applicable
+      if (surveyData.contamination && savedOutcome.id) {
+        const contamDetails = surveyData.contamination;
+        if (contamDetails.type || contamDetails.suspectedCause) {
+          await saveContaminationDetails(savedOutcome.id, {
+            contaminationType: contamDetails.type,
+            suspectedCause: contamDetails.suspectedCause,
+          });
+        }
+      }
 
-  const handleSkipSurvey = async () => {
-    if (!exitSurveyGrow) return;
+      // Step 3: Archive the grow (soft delete - preserves FK relationships)
+      const archiveReason = `Disposed: ${surveyData.outcomeLabel}${surveyData.feedback?.notes ? ` - ${surveyData.feedback.notes}` : ''}`;
+      await archiveGrow(exitSurveyGrow.id, archiveReason);
 
-    if (confirm('Delete this grow without logging the outcome? This data helps track patterns.')) {
-      await deleteGrow(exitSurveyGrow.id);
       setShowExitSurveyModal(false);
       setExitSurveyGrow(null);
       setPreselectedOutcome(undefined);
       if (selectedGrow?.id === exitSurveyGrow.id) {
         setSelectedGrow(null);
         setShowDetailPanel(false);
+      }
+    } catch (error) {
+      console.error('Error completing exit survey:', error);
+      alert('Failed to archive grow. Please try again.');
+    }
+  };
+
+  const handleSkipSurvey = async () => {
+    if (!exitSurveyGrow) return;
+
+    if (confirm('Archive this grow without logging the outcome? This data helps track patterns.')) {
+      try {
+        await archiveGrow(exitSurveyGrow.id, 'Archived without outcome recording');
+        setShowExitSurveyModal(false);
+        setExitSurveyGrow(null);
+        setPreselectedOutcome(undefined);
+        if (selectedGrow?.id === exitSurveyGrow.id) {
+          setSelectedGrow(null);
+          setShowDetailPanel(false);
+        }
+      } catch (error) {
+        console.error('Error archiving grow:', error);
+        alert('Failed to archive grow. Please try again.');
       }
     }
   };
