@@ -1971,14 +1971,15 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   /**
    * Archive a culture record (soft-delete with reason)
+   * IDEMPOTENT: Safe to call multiple times - only archives if not already archived
    */
   const archiveCulture = useCallback(async (id: string, reason: string): Promise<void> => {
     const culture = state.cultures.find(c => c.id === id);
     if (!culture) throw new Error(`Culture not found: ${id}`);
 
-    // Guard: Prevent double-archiving (can cause 409 conflicts)
+    // Guard: Prevent double-archiving (local state check)
     if (culture.isArchived) {
-      console.warn(`[Archive] Culture ${id} is already archived, skipping`);
+      console.warn(`[Archive] Culture ${id} is already archived in local state, skipping`);
       return;
     }
 
@@ -1995,7 +1996,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     };
 
     if (supabase) {
-      const { error } = await supabase
+      // IDEMPOTENT: Only update if not already archived in database
+      // This prevents 409 conflicts from double-clicks or stale state
+      const { data, error } = await supabase
         .from('cultures')
         .update({
           is_archived: true,
@@ -2005,11 +2008,28 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           is_current: false,
           valid_to: now.toISOString(),
         })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('is_archived', false)  // Only update non-archived records
+        .select('id');
 
-      if (error) throw error;
+      if (error) {
+        // Log but don't throw - might be a race condition where it was already archived
+        console.error(`[Archive] Database error for culture ${id}:`, error);
+        throw error;
+      }
 
-      // Log to amendment log
+      // Check if we actually updated anything (0 rows = already archived in DB)
+      if (!data || data.length === 0) {
+        console.warn(`[Archive] Culture ${id} was already archived in database, skipping amendment log`);
+        // Still update local state to sync with DB
+        setState(prev => ({
+          ...prev,
+          cultures: prev.cultures.map(c => c.id === id ? { ...c, ...updates } : c),
+        }));
+        return;
+      }
+
+      // Log to amendment log only if we actually archived
       await supabase.from('data_amendment_log').insert({
         entity_type: 'cultures',
         original_record_id: id,
@@ -2120,14 +2140,15 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   /**
    * Archive a grow record (soft-delete with reason)
+   * IDEMPOTENT: Safe to call multiple times - only archives if not already archived
    */
   const archiveGrow = useCallback(async (id: string, reason: string): Promise<void> => {
     const grow = state.grows.find(g => g.id === id);
     if (!grow) throw new Error(`Grow not found: ${id}`);
 
-    // Guard: Prevent double-archiving (can cause 409 conflicts)
+    // Guard: Prevent double-archiving (local state check)
     if (grow.isArchived) {
-      console.warn(`[Archive] Grow ${id} is already archived, skipping`);
+      console.warn(`[Archive] Grow ${id} is already archived in local state, skipping`);
       return;
     }
 
@@ -2144,7 +2165,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     };
 
     if (supabase) {
-      const { error } = await supabase
+      // IDEMPOTENT: Only update if not already archived in database
+      // This prevents 409 conflicts from double-clicks or stale state
+      const { data, error } = await supabase
         .from('grows')
         .update({
           is_archived: true,
@@ -2154,11 +2177,27 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           is_current: false,
           valid_to: now.toISOString(),
         })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('is_archived', false)  // Only update non-archived records
+        .select('id');
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[Archive] Database error for grow ${id}:`, error);
+        throw error;
+      }
 
-      // Log to amendment log
+      // Check if we actually updated anything (0 rows = already archived in DB)
+      if (!data || data.length === 0) {
+        console.warn(`[Archive] Grow ${id} was already archived in database, skipping amendment log`);
+        // Still update local state to sync with DB
+        setState(prev => ({
+          ...prev,
+          grows: prev.grows.map(g => g.id === id ? { ...g, ...updates } : g),
+        }));
+        return;
+      }
+
+      // Log to amendment log only if we actually archived
       await supabase.from('data_amendment_log').insert({
         entity_type: 'grows',
         original_record_id: id,
