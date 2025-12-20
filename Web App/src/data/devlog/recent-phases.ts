@@ -4389,6 +4389,55 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1241',
+    title: 'Substrate Workbench - Comprehensive Substrate Planning Tool',
+    description: 'Complete redesign of the Substrate Calculator into a multi-tab Substrate Workbench with species integration, batch planning, and inventory awareness.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'high',
+    notes: `Deep creative redesign of the substrate calculator into a comprehensive workbench:
+
+**Tab 1 - Calculator (Enhanced Hydration Calculations):**
+- Substrate type selection grid with moisture targets from database
+- 4 calculation modes: Dry→Hydrated, Hydrated→Dry, Check Moisture, Spawn→Substrate
+- Custom moisture override option
+- Enhanced moisture bar with field capacity visualization
+- Spawn rate analysis with optimal/high/low status indicators
+- Quick reference section for field capacity test, spawn ratios, pasteurization
+
+**Tab 2 - Species Match (NEW):**
+- Species selector dropdown with scientific names
+- Recommended substrates for each species (based on knowledge base)
+- Substrate cards with difficulty rating (easy/moderate/advanced)
+- Species-substrate compatibility matrix table
+- Species include: Oysters, Lions Mane, Shiitake, Reishi, Wine Cap, etc.
+
+**Tab 3 - Batch Planner (NEW):**
+- Container list builder with name, count, weight per container
+- Spawn rate input
+- Automatic batch totals: containers, total substrate, water needed, spawn needed
+- Dry substrate calculation at target moisture
+
+**Tab 4 - Inventory Integration (NEW):**
+- Shows substrate materials from inventory (coir, vermiculite, gypsum, etc.)
+- Low stock warnings for materials below reorder point
+- Substrate recipes section linking to Recipe Builder
+- Preparation tips for common substrates (CVG ratio, coir prep, etc.)
+
+**Species-Substrate Knowledge Base:**
+- Mapping of species to preferred substrate codes
+- Oysters: straw, masters mix, sawdust, HWFP, CVG
+- Lions Mane/Shiitake: masters mix, supplemented sawdust
+- Wine Cap: wood chips, straw
+- Difficulty ratings and preparation tips per substrate
+
+**Files Changed:**
+- src/components/tools/SubstrateCalculator.tsx - COMPLETE REWRITE (450→1160 lines)
+- src/components/icons/IconLibrary.tsx - Added Dna icon`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
