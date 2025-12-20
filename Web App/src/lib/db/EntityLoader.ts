@@ -320,16 +320,22 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     name: 'cultures',
     orderBy: { column: 'created_at', ascending: false },
     required: true,
+    // Exclude archived records from loading
+    filter: (query: any) => query.or('is_archived.is.null,is_archived.eq.false'),
   },
   prepared_spawn: {
     name: 'prepared_spawn',
     orderBy: { column: 'prep_date', ascending: false },
     required: false,
+    // Exclude archived records from loading
+    filter: (query: any) => query.or('is_archived.is.null,is_archived.eq.false'),
   },
   grows: {
     name: 'grows',
     orderBy: { column: 'created_at', ascending: false },
     required: true,
+    // Exclude archived records from loading
+    filter: (query: any) => query.or('is_archived.is.null,is_archived.eq.false'),
   },
   flushes: {
     name: 'flushes',

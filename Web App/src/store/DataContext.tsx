@@ -2369,33 +2369,17 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       });
     }
 
-    // Update local state - mark all records as archived
-    const archiveUpdates = {
-      isArchived: true,
-      archivedAt: now,
-      archivedBy: userId,
-      archiveReason: reason,
-      isCurrent: false,
-      validTo: now,
-    };
+    // Update local state - REMOVE archived records from state entirely
+    // (they're preserved in the database but shouldn't show in UI)
+    const cultureIdsToRemove = new Set(culturesToArchive.map(c => c.id));
+    const growIdsToRemove = new Set(growsToArchive.map(g => g.id));
+    const spawnIdsToRemove = new Set(preparedSpawnToArchive.map(p => p.id));
 
     setState(prev => ({
       ...prev,
-      cultures: prev.cultures.map(c =>
-        culturesToArchive.some(ca => ca.id === c.id)
-          ? { ...c, ...archiveUpdates }
-          : c
-      ),
-      grows: prev.grows.map(g =>
-        growsToArchive.some(ga => ga.id === g.id)
-          ? { ...g, ...archiveUpdates }
-          : g
-      ),
-      preparedSpawn: prev.preparedSpawn.map(p =>
-        preparedSpawnToArchive.some(pa => pa.id === p.id)
-          ? { ...p, ...archiveUpdates }
-          : p
-      ),
+      cultures: prev.cultures.filter(c => !cultureIdsToRemove.has(c.id)),
+      grows: prev.grows.filter(g => !growIdsToRemove.has(g.id)),
+      preparedSpawn: prev.preparedSpawn.filter(p => !spawnIdsToRemove.has(p.id)),
     }));
 
     const total = results.culturesArchived + results.growsArchived + results.preparedSpawnArchived;
