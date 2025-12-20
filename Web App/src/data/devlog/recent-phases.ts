@@ -4638,7 +4638,7 @@ All grower settings PLUS Admin Console:
     phaseId: 32,
     title: 'Complete Database Reset Script',
     description: 'Added comprehensive SQL script to completely wipe and reset the Supabase database. Drops all tables, functions, triggers, policies, and custom types so schema can be rebuilt from scratch.',
-    category: 'data',
+    category: 'feature',
     status: 'completed',
     priority: 'medium',
     completedAt: timestamp(),
