@@ -22,6 +22,7 @@
 
 import React, { useMemo } from 'react';
 import { useCreation, CreatableEntityType, ENTITY_CONFIGS } from '../../store/CreationContext';
+import { useAuthGuard } from '../../lib/useAuthGuard';
 
 // Icons
 const Icons = {
@@ -91,6 +92,7 @@ export const StandardDropdown: React.FC<StandardDropdownProps> = ({
   addLabel,
 }) => {
   const creation = useCreation();
+  const { guardAction } = useAuthGuard();
 
   // Get entity config if entityType is provided
   const entityConfig = entityType ? ENTITY_CONFIGS[entityType] : null;
@@ -116,6 +118,7 @@ export const StandardDropdown: React.FC<StandardDropdownProps> = ({
   // Handle "Add New" click
   const handleAddNew = () => {
     if (!entityType) return;
+    if (!guardAction()) return; // Show auth modal if not authenticated
 
     // Start creation with field name so the context knows what to update
     creation.startCreation(entityType, {

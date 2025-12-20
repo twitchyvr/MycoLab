@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../store';
+import { useAuthGuard } from '../../lib/useAuthGuard';
 import type { InventoryLot, PurchaseOrder, PurchaseOrderItem, LotStatus, OrderStatus, PaymentStatus } from '../../store/types';
 import { StandardDropdown } from '../common/StandardDropdown';
 
@@ -128,6 +129,7 @@ export const StockManagement: React.FC = () => {
     generateOrderNumber,
     generateId,
   } = useData();
+  const { guardAction } = useAuthGuard();
 
   // UI State
   const [activeTab, setActiveTab] = useState<'lots' | 'orders'>('lots');
@@ -224,6 +226,7 @@ export const StockManagement: React.FC = () => {
 
   // Add lot handler
   const handleAddLot = async () => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     if (!newLot.inventoryItemId || !newLot.quantity) return;
 
     await addInventoryLot({
@@ -261,6 +264,7 @@ export const StockManagement: React.FC = () => {
 
   // Add order handler
   const handleAddOrder = async () => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     if (!newOrder.supplierId || newOrder.items.length === 0) return;
 
     const subtotal = newOrder.items.reduce((sum, item) => sum + item.totalCost, 0);

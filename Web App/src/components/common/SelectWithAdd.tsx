@@ -3,6 +3,7 @@
 // ============================================================================
 
 import React, { useState } from 'react';
+import { useAuthGuard } from '../../lib/useAuthGuard';
 
 interface Option {
   id: string;
@@ -52,6 +53,7 @@ export const SelectWithAdd: React.FC<SelectWithAddProps> = ({
   addFields,
   onAddComplete,
 }) => {
+  const { guardAction } = useAuthGuard();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItemName, setNewItemName] = useState('');
   const [addFormData, setAddFormData] = useState<Record<string, string>>({});
@@ -118,6 +120,12 @@ export const SelectWithAdd: React.FC<SelectWithAddProps> = ({
         value={value}
         onChange={e => {
           if (e.target.value === '__ADD_NEW__') {
+            // Guard action - show auth modal if not authenticated
+            if (!guardAction()) {
+              // Reset select to current value (user wasn't authenticated)
+              e.target.value = value;
+              return;
+            }
             setShowAddForm(true);
           } else {
             onChange(e.target.value);

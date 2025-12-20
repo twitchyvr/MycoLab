@@ -7,6 +7,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../store';
 import { useNotifications } from '../../store/NotificationContext';
+import { useAuthGuard } from '../../lib/useAuthGuard';
 import type { Location, LocationLevel, RoomPurpose, Culture, Grow } from '../../store/types';
 import { formatTemperatureRange, getTemperatureUnit, type TemperatureUnit } from '../../utils/temperature';
 
@@ -1534,6 +1535,7 @@ export const LabSpaces: React.FC<LabSpacesProps> = ({
 }) => {
   const { state, addLocation, updateLocation, deleteLocation, generateId } = useData();
   const { toast } = useNotifications();
+  const { guardAction, isAuthenticated } = useAuthGuard();
   const temperatureUnit: TemperatureUnit = state.settings?.defaultUnits || 'imperial';
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -1590,24 +1592,28 @@ export const LabSpaces: React.FC<LabSpacesProps> = ({
   }, []);
 
   const handleAddRoot = () => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     setEditingLocation(null);
     setParentForNew(null);
     setShowForm(true);
   };
 
   const handleAddChild = (parentId: string) => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     setEditingLocation(null);
     setParentForNew(parentId);
     setShowForm(true);
   };
 
   const handleEdit = (location: Location) => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     setEditingLocation(location);
     setParentForNew(null);
     setShowForm(true);
   };
 
   const handleDelete = async (location: Location) => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     const descendants = getDescendantIds(location.id, state.locations);
     const totalToDelete = descendants.length + 1;
 

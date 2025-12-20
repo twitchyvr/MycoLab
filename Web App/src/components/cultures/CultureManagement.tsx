@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData, EntityOutcomeData } from '../../store';
+import { useAuthGuard } from '../../lib/useAuthGuard';
 import { CultureWizard } from './CultureWizard';
 import { NumericInput } from '../common/NumericInput';
 import { EntityDisposalModal, DisposalOutcome } from '../common/EntityDisposalModal';
@@ -219,6 +220,7 @@ export const CultureManagement: React.FC = () => {
     saveEntityOutcome,
     saveContaminationDetails,
   } = useData();
+  const { guardAction } = useAuthGuard();
 
   const cultures = state.cultures;
 
@@ -259,12 +261,13 @@ export const CultureManagement: React.FC = () => {
   useEffect(() => {
     const handleCreateNew = (event: CustomEvent) => {
       if (event.detail?.page === 'cultures') {
+        if (!guardAction()) return; // Show auth modal if not authenticated
         setShowWizard(true);
       }
     };
     window.addEventListener('mycolab:create-new', handleCreateNew as EventListener);
     return () => window.removeEventListener('mycolab:create-new', handleCreateNew as EventListener);
-  }, []);
+  }, [guardAction]);
 
   // Listen for select-item and edit-item events from Lab Inventory
   useEffect(() => {
@@ -363,6 +366,7 @@ export const CultureManagement: React.FC = () => {
 
   // Add observation handler
   const handleAddObservation = () => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     if (!selectedCulture || !newObservation.notes) return;
 
     addCultureObservation(selectedCulture.id, {
@@ -395,6 +399,7 @@ export const CultureManagement: React.FC = () => {
 
   // Transfer handler
   const handleTransfer = async () => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     if (!selectedCulture) return;
 
     const toId = newTransfer.createNewRecord ? `culture-${Date.now()}` : undefined;
@@ -457,6 +462,7 @@ export const CultureManagement: React.FC = () => {
 
   // Delete handler - opens disposal modal for outcome tracking
   const handleDelete = (culture: Culture) => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     setCultureToDispose(culture);
     setShowDisposalModal(true);
   };
