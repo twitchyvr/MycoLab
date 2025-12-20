@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCreation, useEntityForm, CreatableEntityType, CreationResult, ENTITY_CONFIGS } from '../../store/CreationContext';
 import { useData } from '../../store';
+import { Portal } from '../common';
 import { StrainForm } from './StrainForm';
 import { LocationForm } from './LocationForm';
 import { ContainerForm } from './ContainerForm';
@@ -400,8 +401,9 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
   const zIndex = 100 + (creation.stackDepth - 1) * 10;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex }}>
-      <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+    <Portal>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex }}>
+        <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
           <div className="flex items-center gap-3">
@@ -494,8 +496,9 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
             </button>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 };
 

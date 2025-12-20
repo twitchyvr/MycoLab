@@ -20,6 +20,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useData } from '../../store';
 import { useCreation, ENTITY_CONFIGS } from '../../store/CreationContext';
+import { Portal } from '../common';
 import { StandardDropdown } from '../common/StandardDropdown';
 import { NumericInput } from '../common/NumericInput';
 import type { Culture, CultureType, CultureStatus } from '../../store/types';
@@ -945,8 +946,9 @@ export const CultureWizard: React.FC<CultureWizardProps> = ({
   const isFirstStep = currentStep === 1;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+    <Portal>
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-zinc-800">
           <div className="flex items-center justify-between mb-4">
@@ -1018,8 +1020,9 @@ export const CultureWizard: React.FC<CultureWizardProps> = ({
             </div>
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 };
 
