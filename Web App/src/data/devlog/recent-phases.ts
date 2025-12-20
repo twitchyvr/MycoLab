@@ -4509,6 +4509,51 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1244',
+    title: 'Feature Tracker Full-Screen Redesign',
+    description: 'Complete redesign of the DevLog/Feature Tracker page with full-screen detail views, cleaner list design, improved search and filtering, and navigation between related features.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    notes: `Complete UI overhaul addressing user feedback that item details were too cramped:
+
+**Full-Screen Detail View:**
+- Clicking any feature opens it in a full-screen view (replaces list)
+- Clean header with back button and status badge
+- All feature metadata displayed clearly with room to breathe
+- Dependencies section with clickable links to blocking features
+- "Unlocks" section showing what this feature enables (reverse dependencies)
+- Click related features to navigate directly to them
+
+**Improved List View:**
+- Cleaner FeatureListItem component with better visual hierarchy
+- Status indicator dots instead of bulky badges
+- Category tags as subtle pills
+- Priority icons for quick scanning
+- Hover states for interactivity
+
+**Search & Filter:**
+- Search input filters across title, description, ID, and notes
+- Status dropdown filter (All, Planned, In Progress, Completed)
+- Category dropdown filter
+- Filters work together and persist during session
+
+**View Modes:**
+- Phases view: Collapsible sections by development phase
+- List view: Flat list sorted by status (in_progress → planned → completed)
+- View toggle persists during session
+
+**Navigation:**
+- Breadcrumb-style back navigation from detail view
+- Direct links between related features via dependencies/unlocks
+- Smooth transitions between views
+
+**Files Changed:**
+- src/components/devlog/DevLogPage.tsx - Complete rewrite (816 lines)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
