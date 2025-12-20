@@ -51,6 +51,7 @@ import { SetupWizard } from './components/setup/SetupWizard';
 import { StockManagement } from './components/inventory/StockManagement';
 import { CommandCenter } from './components/command';
 import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
+import { AmbientBackground } from './components/common';
 import { ObservationTimeline, EventLogger } from './components/observations';
 import { ProfilePage } from './components/profile';
 import { FloatingActionButton, LabCommandCenter } from './components/dashboard';
@@ -1516,7 +1517,10 @@ const AppContent: React.FC<{
         onNavigate={handleSearchNavigate}
       />
 
-      <div className="h-screen flex bg-zinc-950 text-white overflow-hidden">
+      <div className="h-screen flex bg-zinc-950 text-white overflow-hidden relative">
+        {/* Ambient Background - Living atmosphere */}
+        <AmbientBackground showParticles={true} showVignette={true} />
+
         <Sidebar
           currentPage={currentPage}
           onNavigate={setCurrentPage}

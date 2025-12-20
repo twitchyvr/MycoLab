@@ -763,3 +763,611 @@ html, body {
     overflow-y: auto;
   }
 }
+
+/* ============================================================================
+   ECOLOGICAL AMBIENCE - Living Interface Effects
+   Subtle, organic, and performance-conscious animations
+   ============================================================================ */
+
+/* Living Background - Slow breathing gradient that evokes underground mycelium */
+@keyframes ambientBreathing {
+  0%, 100% {
+    background-position: 0% 50%;
+    filter: brightness(1);
+  }
+  25% {
+    background-position: 50% 100%;
+  }
+  50% {
+    background-position: 100% 50%;
+    filter: brightness(1.02);
+  }
+  75% {
+    background-position: 50% 0%;
+  }
+}
+
+.bg-ambient-living {
+  background:
+    radial-gradient(ellipse at 10% 20%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 80%, rgba(20, 184, 166, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(6, 95, 70, 0.02) 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background-size: 400% 400%;
+  animation: ambientBreathing 30s ease-in-out infinite;
+}
+
+/* Reduce motion for accessibility and mobile battery */
+@media (prefers-reduced-motion: reduce) {
+  .bg-ambient-living {
+    animation: none;
+  }
+}
+
+/* Subtle underground depth - adds texture like forest floor */
+.texture-organic {
+  position: relative;
+}
+
+.texture-organic::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+/* Bioluminescent focus rings - organic glow instead of harsh outline */
+.focus-bioluminescent:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--bg-primary),
+    0 0 0 4px rgba(16, 185, 129, 0.5),
+    0 0 20px rgba(16, 185, 129, 0.2);
+}
+
+/* Organic card hover - subtle lift like emerging from substrate */
+.card-organic {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.4s ease,
+              border-color 0.3s ease;
+}
+
+.card-organic:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 25px -5px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(16, 185, 129, 0.05);
+}
+
+/* Spore drift - very subtle floating particles */
+@keyframes sporeDrift {
+  0%, 100% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translateY(-8px) translateX(3px) rotate(90deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-15px) translateX(-2px) rotate(180deg);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translateY(-8px) translateX(4px) rotate(270deg);
+    opacity: 0.5;
+  }
+}
+
+.spore-particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: rgba(16, 185, 129, 0.6);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: sporeDrift 8s ease-in-out infinite;
+}
+
+/* Mycelium network pulse - for connected elements */
+@keyframes networkPulse {
+  0%, 100% {
+    opacity: 0.1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.2;
+    transform: scale(1.02);
+  }
+}
+
+.network-pulse {
+  animation: networkPulse 4s ease-in-out infinite;
+}
+
+/* Substrate gradient - rich earthy undertones */
+.gradient-substrate {
+  background: linear-gradient(
+    135deg,
+    rgba(15, 29, 50, 1) 0%,
+    rgba(12, 35, 30, 1) 50%,
+    rgba(15, 29, 50, 1) 100%
+  );
+}
+
+/* Colonization progress glow */
+@keyframes colonizationGlow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5), 0 0 30px rgba(16, 185, 129, 0.2);
+  }
+}
+
+.glow-colonization {
+  animation: colonizationGlow 3s ease-in-out infinite;
+}
+
+/* Organic border - subtle gradient border like mycelium edge */
+.border-organic {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box,
+    linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(20, 184, 166, 0.1), rgba(16, 185, 129, 0.2)) border-box;
+}
+
+/* Smooth state transitions - everything feels alive */
+.transition-organic {
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Fruiting stage shimmer - subtle iridescence */
+@keyframes fruitingShimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.shimmer-fruiting {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(168, 85, 247, 0.1) 25%,
+    rgba(16, 185, 129, 0.15) 50%,
+    rgba(168, 85, 247, 0.1) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: fruitingShimmer 8s linear infinite;
+}
+
+/* Enhanced status indicators with organic feel */
+.status-active-organic {
+  position: relative;
+}
+
+.status-active-organic::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: inherit;
+  border-radius: inherit;
+  filter: blur(4px);
+  opacity: 0.4;
+  z-index: -1;
+  animation: bioluminescence 3s ease-in-out infinite;
+}
+
+/* Underground depth shadows - multi-layered for realism */
+.shadow-depth {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    0 16px 32px rgba(0, 0, 0, 0.05);
+}
+
+/* Ambient underscore - subtle accent line with gradient */
+.accent-underscore {
+  position: relative;
+}
+
+.accent-underscore::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(16, 185, 129, 0.5) 20%,
+    rgba(20, 184, 166, 0.8) 50%,
+    rgba(16, 185, 129, 0.5) 80%,
+    transparent 100%
+  );
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.accent-underscore:hover::after,
+.accent-underscore:focus-within::after {
+  transform: scaleX(1);
+}
+
+/* Ecological color enhancements */
+.text-forest {
+  color: #059669;
+}
+
+.text-lichen {
+  color: #7BA588;
+}
+
+.text-substrate-brown {
+  color: #8B7355;
+}
+
+.bg-forest-floor {
+  background: linear-gradient(
+    to bottom,
+    rgba(6, 95, 70, 0.05) 0%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+/* Alive input fields - subtle breathing when focused */
+@keyframes inputBreathing {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4), 0 0 10px rgba(16, 185, 129, 0.1);
+  }
+}
+
+.input-organic:focus {
+  animation: inputBreathing 2s ease-in-out infinite;
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+/* Harvest celebration - golden warmth */
+@keyframes harvestGlow {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.glow-harvest {
+  background: linear-gradient(
+    90deg,
+    rgba(245, 158, 11, 0.1) 0%,
+    rgba(234, 179, 8, 0.2) 50%,
+    rgba(245, 158, 11, 0.1) 100%
+  );
+  background-size: 200% 100%;
+  animation: harvestGlow 4s ease-in-out infinite;
+}
+
+/* Mobile optimizations - reduce animations */
+@media (max-width: 640px) {
+  .bg-ambient-living {
+    animation-duration: 60s; /* Slower on mobile for battery */
+  }
+
+  .card-organic:hover {
+    transform: none; /* Disable hover transforms on touch */
+  }
+
+  .spore-particle {
+    animation: none;
+    display: none;
+  }
+}
+
+/* High performance mode - for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================================
+   THEME-SPECIFIC ECOLOGICAL AMBIENCE
+   Each theme has its own ambient living background and effects
+   ============================================================================ */
+
+/* MYCELIUM THEME - Bioluminescent underground network */
+[data-theme="mycelium"] {
+  --ambient-color-1: rgba(0, 217, 255, 0.04);
+  --ambient-color-2: rgba(124, 58, 237, 0.03);
+  --ambient-color-3: rgba(6, 182, 212, 0.03);
+  --glow-primary: rgba(0, 217, 255, 0.3);
+  --glow-secondary: rgba(124, 58, 237, 0.2);
+}
+
+[data-theme="mycelium"] .ambient-bg {
+  background:
+    radial-gradient(ellipse at 15% 25%, var(--ambient-color-1) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 75%, var(--ambient-color-2) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, var(--ambient-color-3) 0%, transparent 55%);
+}
+
+/* FRUITING THEME - Forest floor emergence */
+[data-theme="fruiting"] {
+  --ambient-color-1: rgba(6, 214, 160, 0.04);
+  --ambient-color-2: rgba(247, 127, 0, 0.03);
+  --ambient-color-3: rgba(27, 67, 50, 0.05);
+  --glow-primary: rgba(6, 214, 160, 0.3);
+  --glow-secondary: rgba(247, 127, 0, 0.2);
+}
+
+[data-theme="fruiting"] .ambient-bg {
+  background:
+    radial-gradient(ellipse at 20% 80%, var(--ambient-color-1) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, var(--ambient-color-2) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 100%, var(--ambient-color-3) 0%, transparent 60%);
+}
+
+/* SPORE THEME - Clean, airy, morning light */
+[data-theme="spore"] {
+  --ambient-color-1: rgba(123, 165, 136, 0.03);
+  --ambient-color-2: rgba(74, 144, 164, 0.02);
+  --ambient-color-3: rgba(168, 162, 158, 0.02);
+  --glow-primary: rgba(123, 165, 136, 0.2);
+  --glow-secondary: rgba(74, 144, 164, 0.15);
+}
+
+[data-theme="spore"] .ambient-bg {
+  background:
+    radial-gradient(ellipse at 10% 10%, var(--ambient-color-1) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 90%, var(--ambient-color-2) 0%, transparent 50%),
+    linear-gradient(180deg, transparent 0%, var(--ambient-color-3) 100%);
+}
+
+/* SUBSTRATE THEME - Warm, earthy, underground warmth */
+[data-theme="substrate"] {
+  --ambient-color-1: rgba(193, 154, 107, 0.04);
+  --ambient-color-2: rgba(85, 139, 47, 0.03);
+  --ambient-color-3: rgba(62, 39, 35, 0.05);
+  --glow-primary: rgba(193, 154, 107, 0.3);
+  --glow-secondary: rgba(85, 139, 47, 0.2);
+}
+
+[data-theme="substrate"] .ambient-bg {
+  background:
+    radial-gradient(ellipse at 25% 75%, var(--ambient-color-1) 0%, transparent 50%),
+    radial-gradient(ellipse at 75% 25%, var(--ambient-color-2) 0%, transparent 45%),
+    linear-gradient(135deg, var(--ambient-color-3) 0%, transparent 60%);
+}
+
+/* Universal ambient wrapper */
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-size: 400% 400%;
+  animation: ambientBreathing 30s ease-in-out infinite;
+}
+
+/* Floating spore particles - theme-aware */
+.ambient-particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.ambient-particles::before,
+.ambient-particles::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: var(--glow-primary);
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: sporeDrift 12s ease-in-out infinite;
+}
+
+.ambient-particles::before {
+  top: 20%;
+  left: 15%;
+  animation-delay: 0s;
+}
+
+.ambient-particles::after {
+  top: 60%;
+  right: 20%;
+  animation-delay: -6s;
+}
+
+/* Subtle vignette for depth */
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 60%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+}
+
+[data-theme="spore"] .vignette {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 70%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+}
+
+/* Animated gradient border for featured elements */
+@keyframes borderFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.border-animated {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box,
+    linear-gradient(90deg, var(--accent), var(--secondary), var(--accent)) border-box;
+  background-size: 200% 200%;
+  animation: borderFlow 4s ease infinite;
+}
+
+/* Card glass morphism effect */
+.glass {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-primary);
+}
+
+[data-theme="spore"] .glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Organic glow on hover for interactive elements */
+.hover-glow {
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px var(--glow-primary), 0 0 40px var(--glow-secondary);
+}
+
+/* Progress bars with organic flow */
+@keyframes progressFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.progress-organic {
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--accent-hover) 25%,
+    var(--accent) 50%,
+    var(--accent-hover) 75%,
+    var(--accent) 100%
+  );
+  background-size: 200% 100%;
+  animation: progressFlow 2s linear infinite;
+}
+
+/* Subtle texture noise overlay */
+.texture-noise {
+  position: relative;
+}
+
+.texture-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  border-radius: inherit;
+  z-index: 1;
+}
+
+[data-theme="spore"] .texture-noise::before {
+  opacity: 0.01;
+  mix-blend-mode: multiply;
+}
+
+/* Smooth page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+
+/* Status dot with pulse */
+.status-pulse {
+  position: relative;
+}
+
+.status-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.5;
+  animation: pulseRing 2s ease-out infinite;
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Theme transition smoothing */
+:root {
+  transition: background-color 0.3s ease-out, color 0.3s ease-out;
+}
+
+/* Mobile: Disable heavy effects for battery */
+@media (max-width: 640px) {
+  .ambient-bg {
+    animation-duration: 60s;
+  }
+
+  .ambient-particles::before,
+  .ambient-particles::after {
+    display: none;
+  }
+
+  .vignette {
+    background: none;
+  }
+
+  .hover-glow:hover {
+    box-shadow: none;
+  }
+}
