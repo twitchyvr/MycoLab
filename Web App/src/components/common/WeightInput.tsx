@@ -4,6 +4,7 @@
 // ============================================================================
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useData } from '../../store';
 import {
   WeightUnit,
@@ -78,9 +79,11 @@ export const WeightInput: React.FC<WeightInputProps> = ({
 
   // Show unit selector dropdown
   const [showUnitSelector, setShowUnitSelector] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const unitSelectorRef = useRef<HTMLDivElement>(null);
+  const unitButtonRef = useRef<HTMLButtonElement>(null);
 
   // Sync display value when external value changes (and not editing)
   useEffect(() => {
@@ -107,12 +110,32 @@ export const WeightInput: React.FC<WeightInputProps> = ({
   // Close unit selector when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (unitSelectorRef.current && !unitSelectorRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      // Check if click is outside both the button and the dropdown
+      if (
+        unitButtonRef.current && !unitButtonRef.current.contains(target) &&
+        unitSelectorRef.current && !unitSelectorRef.current.contains(target)
+      ) {
         setShowUnitSelector(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (showUnitSelector) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showUnitSelector]);
+
+  // Calculate dropdown position when opening
+  const openUnitSelector = useCallback(() => {
+    if (unitButtonRef.current) {
+      const rect = unitButtonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.right - 112, // 112px = w-28 (7rem)
+        width: 112,
+      });
+    }
+    setShowUnitSelector(true);
   }, []);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,10 +249,11 @@ export const WeightInput: React.FC<WeightInputProps> = ({
         />
 
         {/* Unit button/selector */}
-        <div className="relative flex-shrink-0" ref={unitSelectorRef}>
+        <div className="relative flex-shrink-0">
           <button
+            ref={unitButtonRef}
             type="button"
-            onClick={() => setShowUnitSelector(!showUnitSelector)}
+            onClick={() => showUnitSelector ? setShowUnitSelector(false) : openUnitSelector()}
             disabled={disabled}
             className={`
               h-full bg-zinc-700 border border-l-0 border-zinc-600 rounded-r-lg
@@ -252,9 +276,17 @@ export const WeightInput: React.FC<WeightInputProps> = ({
             </svg>
           </button>
 
-          {/* Unit dropdown */}
-          {showUnitSelector && (
-            <div className="absolute right-0 top-full mt-1 z-50 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl overflow-hidden w-28">
+          {/* Unit dropdown - rendered via portal to avoid overflow clipping */}
+          {showUnitSelector && dropdownPosition && createPortal(
+            <div
+              ref={unitSelectorRef}
+              className="fixed z-[9999] bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl overflow-hidden"
+              style={{
+                top: dropdownPosition.top,
+                left: dropdownPosition.left,
+                width: dropdownPosition.width,
+              }}
+            >
               <div className="py-1">
                 <div className="px-2 py-0.5 text-[10px] text-zinc-500 uppercase tracking-wide">Metric</div>
                 {['g', 'kg'].map(unit => (
@@ -288,7 +320,8 @@ export const WeightInput: React.FC<WeightInputProps> = ({
                   </button>
                 ))}
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       </div>
