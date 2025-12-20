@@ -4,6 +4,9 @@
 // ============================================================================
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useData } from '../../store';
+import type { TimerSoundType } from '../../store/types';
+import { playTimerSound, previewSound, timerSoundOptions } from '../../utils/timerSounds';
 
 interface PCPreset {
   id: string;
@@ -289,13 +292,15 @@ const formatTime = (seconds: number): string => {
 };
 
 export const PressureCookingCalculator: React.FC = () => {
+  const { state, updateSettings } = useData();
+
   // Calculator state
   const [selectedPreset, setSelectedPreset] = useState<string>(pcPresets[0].id);
   const [altitude, setAltitude] = useState<string>('0');
   const [quantity, setQuantity] = useState<string>('1');
   const [customMinutes, setCustomMinutes] = useState<string>('');
   const [useCustomTime, setUseCustomTime] = useState(false);
-  
+
   // Timer state
   const [timer, setTimer] = useState<TimerState>({
     isRunning: false,
@@ -304,9 +309,28 @@ export const PressureCookingCalculator: React.FC = () => {
     remainingSeconds: 0,
     startTime: null,
   });
-  
-  // Audio notification
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  // Sound settings from user preferences
+  const timerSound = state.settings.timerSound || 'bell';
+  const timerVolume = state.settings.timerVolume ?? 0.7;
+  const notificationsEnabled = timerSound !== 'none';
+
+  // Show sound selector dropdown
+  const [showSoundSelector, setShowSoundSelector] = useState(false);
+  const soundSelectorRef = React.useRef<HTMLDivElement>(null);
+
+  // Close sound selector when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (soundSelectorRef.current && !soundSelectorRef.current.contains(event.target as Node)) {
+        setShowSoundSelector(false);
+      }
+    };
+    if (showSoundSelector) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showSoundSelector]);
 
   // Get current preset
   const currentPreset = pcPresets.find(p => p.id === selectedPreset) || pcPresets[0];
@@ -348,23 +372,17 @@ export const PressureCookingCalculator: React.FC = () => {
           const newRemaining = prev.remainingSeconds - 1;
           
           if (newRemaining <= 0) {
-            // Timer complete
+            // Timer complete - play sound and show notification
             if (notificationsEnabled) {
-              // Try to play sound and show notification
-              try {
-                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleUY6teleU45YQkREg7yqmpKPl6mpnYVnSEVDiMD/');
-                audio.play().catch(() => {});
-              } catch (e) {
-                // Audio not supported
-              }
-              
-              // Browser notification
-              if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('Pressure Cooking Complete!', {
-                  body: `${currentPreset.name} sterilization is done.`,
-                  icon: '🍄',
-                });
-              }
+              playTimerSound(timerSound, timerVolume);
+            }
+
+            // Browser notification (always try if enabled in browser)
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('Pressure Cooking Complete!', {
+                body: `${currentPreset.name} sterilization is done.`,
+                icon: '🍄',
+              });
             }
             
             return {
@@ -385,7 +403,7 @@ export const PressureCookingCalculator: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [timer.isRunning, timer.isPaused, timer.remainingSeconds, notificationsEnabled, currentPreset.name]);
+  }, [timer.isRunning, timer.isPaused, timer.remainingSeconds, notificationsEnabled, timerSound, timerVolume, currentPreset.name]);
 
   // Start timer
   const startTimer = useCallback(() => {
@@ -622,15 +640,84 @@ export const PressureCookingCalculator: React.FC = () => {
                 <Icons.Clock />
                 Timer
               </h3>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={notificationsEnabled}
-                  onChange={e => setNotificationsEnabled(e.target.checked)}
-                  className="w-3 h-3 rounded bg-zinc-800 border-zinc-700 text-emerald-500 focus:ring-emerald-500"
-                />
-                <Icons.Bell />
-              </label>
+              {/* Sound selector */}
+              <div className="relative" ref={soundSelectorRef}>
+                <button
+                  onClick={() => setShowSoundSelector(!showSoundSelector)}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs transition-colors ${
+                    notificationsEnabled
+                      ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                      : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'
+                  }`}
+                  title="Timer sound settings"
+                >
+                  <Icons.Bell />
+                  <span className="hidden sm:inline capitalize">{timerSound}</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`w-3 h-3 transition-transform ${showSoundSelector ? 'rotate-180' : ''}`}>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {/* Sound selector dropdown */}
+                {showSoundSelector && (
+                  <div className="absolute right-0 top-full mt-1 z-50 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl overflow-hidden w-52">
+                    <div className="p-2 border-b border-zinc-700">
+                      <p className="text-xs text-zinc-400 font-medium">Timer Sound</p>
+                    </div>
+                    <div className="py-1 max-h-64 overflow-y-auto">
+                      {timerSoundOptions.map(option => (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            updateSettings({ timerSound: option.value });
+                            if (option.value !== 'none') {
+                              previewSound(option.value, timerVolume);
+                            }
+                          }}
+                          className={`w-full px-3 py-2 text-left flex items-center justify-between group ${
+                            timerSound === option.value
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'text-zinc-300 hover:bg-zinc-700'
+                          }`}
+                        >
+                          <div>
+                            <div className="text-sm font-medium">{option.label}</div>
+                            <div className="text-xs text-zinc-500">{option.description}</div>
+                          </div>
+                          {timerSound === option.value && (
+                            <Icons.Check />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Volume slider */}
+                    <div className="p-3 border-t border-zinc-700">
+                      <label className="flex items-center justify-between text-xs text-zinc-400 mb-2">
+                        <span>Volume</span>
+                        <span>{Math.round(timerVolume * 100)}%</span>
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={timerVolume * 100}
+                        onChange={e => {
+                          const vol = parseInt(e.target.value) / 100;
+                          updateSettings({ timerVolume: vol });
+                        }}
+                        className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                      />
+                      <button
+                        onClick={() => previewSound(timerSound, timerVolume)}
+                        disabled={timerSound === 'none'}
+                        className="mt-2 w-full py-1.5 text-xs bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 rounded transition-colors"
+                      >
+                        Test Sound
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Timer Display */}

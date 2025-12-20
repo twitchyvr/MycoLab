@@ -10,11 +10,11 @@ import { useData } from '../../store';
 // TYPES
 // ============================================================================
 
-type Page = 'dashboard' | 'today' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog';
+type Page = 'dashboard' | 'today' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency' | 'analytics' | 'settings' | 'devlog' | 'library' | 'cultureguide';
 
 interface SearchResult {
   id: string;
-  type: 'culture' | 'grow' | 'strain' | 'recipe' | 'species' | 'location' | 'inventory';
+  type: 'culture' | 'grow' | 'strain' | 'recipe' | 'species' | 'location' | 'inventory' | 'page' | 'guide';
   title: string;
   subtitle: string;
   icon: string;
@@ -108,6 +108,18 @@ const Icons = {
       <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z" />
     </svg>
   ),
+  Book: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  ),
+  GraduationCap: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+      <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
+    </svg>
+  ),
 };
 
 // ============================================================================
@@ -122,7 +134,101 @@ const typeConfig: Record<SearchResult['type'], { icon: React.FC; color: string; 
   species: { icon: Icons.Species, color: 'text-pink-400', bgColor: 'bg-pink-950/50' },
   location: { icon: Icons.Location, color: 'text-cyan-400', bgColor: 'bg-cyan-950/50' },
   inventory: { icon: Icons.Inventory, color: 'text-orange-400', bgColor: 'bg-orange-950/50' },
+  page: { icon: Icons.Book, color: 'text-indigo-400', bgColor: 'bg-indigo-950/50' },
+  guide: { icon: Icons.GraduationCap, color: 'text-teal-400', bgColor: 'bg-teal-950/50' },
 };
+
+// ============================================================================
+// STATIC SEARCHABLE CONTENT
+// Knowledge Base pages and Culture Guide sections
+// ============================================================================
+
+interface StaticSearchItem {
+  id: string;
+  type: 'page' | 'guide';
+  title: string;
+  subtitle: string;
+  keywords: string[];
+  page: Page;
+}
+
+const staticSearchItems: StaticSearchItem[] = [
+  // Knowledge Base / Library pages
+  {
+    id: 'page-library',
+    type: 'page',
+    title: 'Species & Strain Library',
+    subtitle: 'Browse all species and strains with growing parameters',
+    keywords: ['knowledge base', 'library', 'species', 'strain', 'reference', 'mushroom', 'growing'],
+    page: 'library',
+  },
+  {
+    id: 'page-cultureguide',
+    type: 'page',
+    title: 'Culture Guide',
+    subtitle: 'P-values, shelf life, senescence, and best practices',
+    keywords: ['culture', 'guide', 'p-value', 'pvalue', 'passage', 'shelf life', 'senescence', 'storage'],
+    page: 'cultureguide',
+  },
+
+  // Culture Guide sections
+  {
+    id: 'guide-overview',
+    type: 'guide',
+    title: 'Culture Types Overview',
+    subtitle: 'LC, agar plates, slants, and spore syringes explained',
+    keywords: ['culture', 'liquid culture', 'lc', 'agar', 'slant', 'spore', 'syringe', 'overview', 'types'],
+    page: 'cultureguide',
+  },
+  {
+    id: 'guide-pvalue',
+    type: 'guide',
+    title: 'P-Value System',
+    subtitle: 'Understanding passage numbers and generation tracking',
+    keywords: ['p-value', 'pvalue', 'passage', 'generation', 'transfer', 'genetics', 'vigor', 'senescence'],
+    page: 'cultureguide',
+  },
+  {
+    id: 'guide-shelflife',
+    type: 'guide',
+    title: 'Shelf Life by Generation',
+    subtitle: 'How long cultures remain viable based on P-value',
+    keywords: ['shelf life', 'viability', 'expiry', 'expiration', 'storage', 'longevity', 'fresh'],
+    page: 'cultureguide',
+  },
+  {
+    id: 'guide-senescence',
+    type: 'guide',
+    title: 'Recognizing Senescence',
+    subtitle: 'Signs of culture degradation and when to refresh genetics',
+    keywords: ['senescence', 'degradation', 'aging', 'weak', 'slow', 'contamination', 'refresh', 'genetics'],
+    page: 'cultureguide',
+  },
+  {
+    id: 'guide-storage',
+    type: 'guide',
+    title: 'Culture Storage & Temperature',
+    subtitle: 'Optimal storage conditions and cold-sensitive species',
+    keywords: ['storage', 'temperature', 'cold', 'fridge', 'refrigerator', 'freezer', 'preservation'],
+    page: 'cultureguide',
+  },
+  {
+    id: 'guide-expansion',
+    type: 'guide',
+    title: 'Expansion Ratios',
+    subtitle: 'Best practices for culture transfers and multiplication',
+    keywords: ['expansion', 'ratio', 'transfer', 'multiply', 'scale', 'propagate', 'inoculate'],
+    page: 'cultureguide',
+  },
+  {
+    id: 'guide-terminology',
+    type: 'guide',
+    title: 'Mycology Terminology',
+    subtitle: 'Key terms and definitions for mushroom cultivation',
+    keywords: ['terminology', 'glossary', 'terms', 'definitions', 'mycology', 'vocabulary', 'learn'],
+    page: 'cultureguide',
+  },
+];
 
 // ============================================================================
 // MAIN COMPONENT
@@ -258,6 +364,21 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose, onN
           subtitle: `${item.quantity} ${item.unit} in stock`,
           icon: '📦',
           page: 'stock',
+        });
+      }
+    });
+
+    // Search Knowledge Base pages and Culture Guide sections
+    staticSearchItems.forEach(item => {
+      const searchText = `${item.title} ${item.subtitle} ${item.keywords.join(' ')}`.toLowerCase();
+      if (searchText.includes(q)) {
+        results.push({
+          id: item.id,
+          type: item.type,
+          title: item.title,
+          subtitle: item.subtitle,
+          icon: item.type === 'page' ? '📚' : '🎓',
+          page: item.page,
         });
       }
     });

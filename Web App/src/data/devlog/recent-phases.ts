@@ -4242,7 +4242,7 @@ All grower settings PLUS Admin Console:
     id: 'dev-1238',
     title: 'Database-Level Idempotent Archive & Unit Standardization',
     description: 'Fixed remaining 409 conflict errors with database-level idempotent operations. Standardized unit inputs across calculators using the polished WeightInput component.',
-    category: 'fix',
+    category: 'bug_fix',
     status: 'completed',
     priority: 'high',
     notes: `Comprehensive fixes for archive conflicts and unit standardization:
@@ -4279,6 +4279,53 @@ All grower settings PLUS Admin Console:
 - src/store/DataContext.tsx - database-level idempotent archive operations
 - src/components/common/EntityDisposalModal.tsx - double-click protection, async handling
 - src/components/tools/SubstrateCalculator.tsx - complete refactor with WeightInput`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1239',
+    title: 'Timer Sound System & Knowledge Base Search',
+    description: 'Fixed timer notification with proper synthesized audio sounds and added Knowledge Base/Culture Guide to global search.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'medium',
+    notes: `Two improvements for user experience:
+
+**Fix #1 - Timer Sound Notification:**
+- Problem: Old timer used truncated/silent base64 audio
+- Solution: Created Web Audio API-based synthesized sounds
+- 6 sound options: Bell, Chime, Ding, Gong, Alert, None
+- New utility: src/utils/timerSounds.ts
+- Uses oscillator nodes to generate tones
+- Volume control saved to user settings
+- Added timerSound and timerVolume to AppSettings type
+- Sound selector dropdown in Pressure Cooking Calculator timer
+
+**Fix #2 - Knowledge Base in Global Search (Cmd+K):**
+- Added Species & Strain Library page to search
+- Added Culture Guide page and all 7 sections:
+  - Culture Types Overview
+  - P-Value System
+  - Shelf Life by Generation
+  - Recognizing Senescence
+  - Culture Storage & Temperature
+  - Expansion Ratios
+  - Mycology Terminology
+- Each section has relevant keywords for discoverability
+- New search result types: 'page' and 'guide'
+- Custom icons (Book, GraduationCap) for visual distinction
+
+**Technical Notes:**
+- Web Audio API works across all modern browsers
+- Sounds are synthesized on-demand, no audio files needed
+- Click-outside handler closes sound selector dropdown
+- Settings persist to user preferences
+
+**Files Changed:**
+- src/store/types.ts - added TimerSoundType, timerSound, timerVolume to AppSettings
+- src/utils/timerSounds.ts - NEW FILE - synthesized audio utility
+- src/components/tools/PressureCookingCalculator.tsx - sound selector UI, Web Audio integration
+- src/components/common/GlobalSearch.tsx - static search items for Knowledge Base`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },

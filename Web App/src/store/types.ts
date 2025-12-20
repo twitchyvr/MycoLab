@@ -1074,7 +1074,14 @@ export interface AppSettings {
   hasCompletedSetupWizard?: boolean;        // First-time wizard completed
   showTooltips?: boolean;                   // Show explanatory tooltips
   showGuidedWorkflows?: boolean;            // Show step-by-step wizards
+
+  // Timer sound settings
+  timerSound?: TimerSoundType;              // Which sound to play when timer completes
+  timerVolume?: number;                     // Volume 0-1 (default 0.7)
 }
+
+// Timer sound options
+export type TimerSoundType = 'bell' | 'chime' | 'ding' | 'gong' | 'alert' | 'none';
 
 // ============================================================================
 // LIBRARY SUGGESTIONS SYSTEM
