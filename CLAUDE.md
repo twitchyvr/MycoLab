@@ -243,7 +243,8 @@ Web App/
 ├── supabase-schema.sql         # 1️⃣ RUN FIRST - Database structure
 ├── supabase-seed-data.sql      # 2️⃣ RUN SECOND - Reference data
 ├── supabase-species-data.sql   # 3️⃣ RUN THIRD - Species/strain data
-└── supabase-wipe-user-data.sql # ⚠️ DESTRUCTIVE - Wipes all user data
+├── supabase-wipe-user-data.sql # ⚠️ DESTRUCTIVE - Wipes user data, keeps schema
+└── supabase-reset-database.sql # ☢️ NUCLEAR - Drops EVERYTHING (tables, functions, all)
 ```
 
 **SQL Files Relationship:**
@@ -251,12 +252,20 @@ Web App/
 - `supabase-seed-data.sql` - Populates reference tables (containers, categories). user_id=NULL for system data.
 - `supabase-species-data.sql` - Populates species/strains. user_id=NULL for system data.
 - `supabase-wipe-user-data.sql` - **DESTRUCTIVE**: Removes ALL user data, preserves seed data and schema.
+- `supabase-reset-database.sql` - **NUCLEAR**: Drops ALL tables, functions, triggers, policies. Use when schema has orphaned objects or needs complete rebuild. Requires running schema + seed scripts after.
+
+**Choosing the Right Reset Option:**
+| Script | Use Case | Preserves Schema | Preserves Seed Data |
+|--------|----------|------------------|---------------------|
+| `wipe-user-data.sql` | Clear user data for testing/GDPR | Yes | Yes |
+| `reset-database.sql` | Fix broken schema, remove old tables | No | No |
 
 **⚠️ When Schema Changes - Update These Files:**
 1. Add new table to `supabase-schema.sql`
 2. Add default data to `supabase-seed-data.sql` (if reference table)
 3. Add species data to `supabase-species-data.sql` (if species/strain)
 4. **Add to wipe script** `supabase-wipe-user-data.sql` (if table has user data)
+5. **Add to reset script** `supabase-reset-database.sql` (add to drop list for new tables)
 
 **DevLog Files Location:**
 ```
@@ -388,7 +397,7 @@ All operational data created by users during normal app usage.
 - Full CRUD via DataContext
 - RLS restricts to owner only
 - Subject to archive/versioning
-- Deleted by `supabase-wipe-user-data.sql`
+- Deleted by `supabase-wipe-user-data.sql` (preserves schema) or `supabase-reset-database.sql` (drops all)
 
 #### RLS Policy Pattern
 
@@ -408,7 +417,8 @@ CREATE POLICY "table_modify" ON table_name
 1. **Never mix tiers** - System data should never have user_id, user data should always have user_id
 2. **Seed data is idempotent** - Running seed files multiple times won't create duplicates (uses UPSERT)
 3. **User wipe is safe** - `supabase-wipe-user-data.sql` only removes Tier 2/3 data, preserves Tier 1
-4. **Strains are special** - System strains (Tier 1) are copied to user strains (Tier 2) on signup for personalization
+4. **Database reset is nuclear** - `supabase-reset-database.sql` drops EVERYTHING, requires rebuilding from schema + seed files
+5. **Strains are special** - System strains (Tier 1) are copied to user strains (Tier 2) on signup for personalization
 
 ### Type System
 

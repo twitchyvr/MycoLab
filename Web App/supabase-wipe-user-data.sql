@@ -17,6 +17,39 @@
 -- ⚠️ There is NO undo. Always backup your database first.
 --
 -- ============================================================================
+-- CHOOSING THE RIGHT RESET SCRIPT
+-- ============================================================================
+--
+-- MycoLab provides TWO reset options depending on your needs:
+--
+-- ┌─────────────────────────────────────────────────────────────────────┐
+-- │ supabase-wipe-user-data.sql (THIS FILE)                              │
+-- │ ────────────────────────────────────────────                         │
+-- │ USE WHEN: You want to clear user data but keep the schema           │
+-- │                                                                      │
+-- │ • Removes all user-created records (user_id IS NOT NULL)            │
+-- │ • PRESERVES database schema (tables, indexes, triggers, policies)   │
+-- │ • PRESERVES seed data (system species, strains, containers, etc.)   │
+-- │ • Fastest option - just DELETE statements                           │
+-- │ • Good for: Testing, dev reset, GDPR requests                       │
+-- └─────────────────────────────────────────────────────────────────────┘
+--
+-- ┌─────────────────────────────────────────────────────────────────────┐
+-- │ supabase-reset-database.sql (NUCLEAR OPTION)                         │
+-- │ ──────────────────────────────────────────────                       │
+-- │ USE WHEN: Schema is broken, has old tables, or needs fresh start    │
+-- │                                                                      │
+-- │ • DROPS EVERYTHING: tables, functions, triggers, policies, types    │
+-- │ • Removes ALL data including seed data                              │
+-- │ • Cleans up orphaned/unused objects from old schema versions        │
+-- │ • REQUIRES running these scripts after:                             │
+-- │     1. supabase-schema.sql (recreate schema)                        │
+-- │     2. supabase-seed-data.sql (populate reference data)             │
+-- │     3. supabase-species-data.sql (populate species/strains)         │
+-- │ • Good for: Schema drift, orphaned objects, major version upgrades  │
+-- └─────────────────────────────────────────────────────────────────────┘
+--
+-- ============================================================================
 -- SQL SCRIPTS RELATIONSHIP DOCUMENTATION
 -- ============================================================================
 --
@@ -29,7 +62,7 @@
 -- │ • Contains migrations for schema changes                            │
 -- │ • Idempotent: Safe to run multiple times                            │
 -- │ • Run FIRST when setting up database                                │
--- │ • Version: Check schema_version table (currently v20)               │
+-- │ • Version: Check schema_version table (currently v23)               │
 -- └─────────────────────────────────────────────────────────────────────┘
 --                                    │
 --                                    ▼
@@ -67,6 +100,15 @@
 -- │ New tables with user data must be added to deletion list below.      │
 -- └─────────────────────────────────────────────────────────────────────┘
 --
+-- ┌─────────────────────────────────────────────────────────────────────┐
+-- │ supabase-reset-database.sql                                          │
+-- │ ───────────────────────────                                          │
+-- │ • NUCLEAR OPTION - Drops EVERYTHING                                 │
+-- │ • Use when schema has orphaned objects or major drift               │
+-- │ • REQUIRES running schema + seed scripts after                      │
+-- │ • See file header for detailed usage instructions                   │
+-- └─────────────────────────────────────────────────────────────────────┘
+--
 -- DEPENDENCY ORDER:
 --   When ADDING data: Parents first, children last
 --   When DELETING data: Children first, parents last
@@ -81,6 +123,7 @@
 -- ☐ supabase-seed-data.sql - Add default values (if applicable)
 -- ☐ supabase-species-data.sql - Add species/strain data (if applicable)
 -- ☐ supabase-wipe-user-data.sql - Add to deletion list (if has user data)
+-- ☐ supabase-reset-database.sql - Add to drop list (if new table)
 --
 -- Tables with user data must be deleted in REVERSE dependency order:
 --   1. Delete from child tables (with foreign keys)
