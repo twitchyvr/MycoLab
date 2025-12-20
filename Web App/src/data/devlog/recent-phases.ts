@@ -4619,17 +4619,20 @@ All grower settings PLUS Admin Console:
    - Uses efficient batch UPDATE with IN clause
    - Logs to data_amendment_log for audit trail
 3. Updated GrowerSettings to call actual function
-4. Added refreshData() call after archive to update UI
+4. REMOVES archived records from local state immediately (not just marking them)
+5. Added database-level filters to exclude archived records on data load
 
 **Technical Details:**
 - Follows immutable database pattern (soft-delete via is_archived flag)
 - Returns counts of archived records for user feedback
 - Single audit log entry for bulk operation
-- Updates local state to reflect archived records
+- Local state removes archived records immediately (no page refresh needed)
+- EntityLoader TABLE_CONFIGS filter out is_archived=true records on load
 
 **Files Changed:**
-- src/store/DataContext.tsx (added archiveAllUserData function, interface, contextValue)
-- src/components/settings/GrowerSettings.tsx (call actual function instead of placeholder)`,
+- src/store/DataContext.tsx (added archiveAllUserData function, removes archived from state)
+- src/components/settings/GrowerSettings.tsx (call actual function instead of placeholder)
+- src/lib/db/EntityLoader.ts (added filter to exclude archived cultures, grows, prepared_spawn)`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
