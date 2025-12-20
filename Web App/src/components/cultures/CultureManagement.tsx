@@ -9,7 +9,7 @@ import { CultureWizard } from './CultureWizard';
 import { NumericInput } from '../common/NumericInput';
 import { EntityDisposalModal, DisposalOutcome } from '../common/EntityDisposalModal';
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
-import { calculateShelfLife, formatRemainingShelfLife } from '../../utils';
+import { calculateShelfLife, formatRemainingShelfLife, getStorageRecommendation, getExpectedShelfLifeDays, coldSensitiveSpecies } from '../../utils';
 import type { Culture, CultureType, CultureStatus, CultureObservation, PreparedSpawn, ContaminationType, SuspectedCause, AmendmentType } from '../../store/types';
 
 // Type configurations
@@ -57,6 +57,79 @@ const HealthBar: React.FC<{ rating: number }> = ({ rating }) => (
     ))}
   </div>
 );
+
+// P-value badge component with senescence risk indicator
+interface PValueBadgeProps {
+  generation: number;
+  strainName?: string;
+  compact?: boolean;
+  showShelfLife?: boolean;
+}
+
+const getSenescenceRisk = (generation: number): { risk: 'low' | 'moderate' | 'high' | 'critical'; label: string; color: string } => {
+  if (generation <= 1) return { risk: 'low', label: 'Excellent vigor', color: 'text-emerald-400 bg-emerald-950/50 border-emerald-800' };
+  if (generation === 2) return { risk: 'low', label: 'Good vigor', color: 'text-green-400 bg-green-950/50 border-green-800' };
+  if (generation === 3) return { risk: 'moderate', label: 'Moderate vigor', color: 'text-amber-400 bg-amber-950/50 border-amber-800' };
+  if (generation === 4) return { risk: 'high', label: 'Reduced vigor', color: 'text-orange-400 bg-orange-950/50 border-orange-800' };
+  return { risk: 'critical', label: 'Risk of senescence', color: 'text-red-400 bg-red-950/50 border-red-800' };
+};
+
+const PValueBadge: React.FC<PValueBadgeProps> = ({ generation, strainName, compact = false, showShelfLife = false }) => {
+  const senescence = getSenescenceRisk(generation);
+  const shelfLifeDays = getExpectedShelfLifeDays(generation);
+  const shelfLifeMonths = Math.round(shelfLifeDays / 30);
+
+  // Check if strain is cold-sensitive
+  const isColdSensitive = strainName ? coldSensitiveSpecies.some(s =>
+    strainName.toLowerCase().includes(s.toLowerCase()) ||
+    s.toLowerCase().includes(strainName.toLowerCase())
+  ) : false;
+  const storage = getStorageRecommendation(isColdSensitive);
+
+  if (compact) {
+    // Compact version for card/table view
+    return (
+      <span
+        className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded border ${senescence.color}`}
+        title={`${senescence.label} • ${shelfLifeMonths} month${shelfLifeMonths !== 1 ? 's' : ''} shelf life${isColdSensitive ? ' • Cold-sensitive!' : ''}`}
+      >
+        <span className="font-bold">P{generation}</span>
+        {generation >= 4 && <span className="text-[10px]">⚠</span>}
+      </span>
+    );
+  }
+
+  // Full version for detail panel
+  return (
+    <div className={`rounded-lg border p-3 ${senescence.color}`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-bold">P{generation}</span>
+          <span className="text-xs px-1.5 py-0.5 rounded bg-black/20 capitalize">{senescence.risk}</span>
+        </div>
+        {generation >= 4 && (
+          <span className="text-sm" title="High senescence risk">⚠️</span>
+        )}
+      </div>
+      <p className="text-sm opacity-90">{senescence.label}</p>
+      {showShelfLife && (
+        <div className="mt-2 pt-2 border-t border-current/20 space-y-1">
+          <p className="text-xs flex justify-between">
+            <span>Expected shelf life:</span>
+            <span className="font-medium">{shelfLifeMonths} month{shelfLifeMonths !== 1 ? 's' : ''}</span>
+          </p>
+          <p className="text-xs flex justify-between">
+            <span>Storage temp:</span>
+            <span className="font-medium">{storage.tempC}°C / {storage.tempF}°F</span>
+          </p>
+          {isColdSensitive && (
+            <p className="text-xs text-amber-300 mt-1">⚠️ Cold-sensitive species - do not refrigerate below {storage.tempC}°C!</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Shelf life indicator component
 const ShelfLifeBadge: React.FC<{ culture: Culture; compact?: boolean }> = ({ culture, compact }) => {
@@ -649,7 +722,7 @@ export const CultureManagement: React.FC = () => {
 
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
-                        <span className="text-zinc-500">P{culture.generation}</span>
+                        <PValueBadge generation={culture.generation} strainName={strain?.name} compact />
                         <HealthBar rating={culture.healthRating} />
                       </div>
                       {culture.volumeMl && (
@@ -705,7 +778,7 @@ export const CultureManagement: React.FC = () => {
                             {statusConfig.label}
                           </span>
                         </td>
-                        <td className="p-3 text-sm text-zinc-400">P{culture.generation}</td>
+                        <td className="p-3"><PValueBadge generation={culture.generation} strainName={strain?.name} compact /></td>
                         <td className="p-3"><HealthBar rating={culture.healthRating} /></td>
                         <td className="p-3 text-sm text-zinc-500">{daysAgo(culture.createdAt)}</td>
                         <td className="p-3"><ShelfLifeBadge culture={culture} compact /></td>
@@ -752,15 +825,18 @@ export const CultureManagement: React.FC = () => {
               ))}
             </div>
 
+            {/* P-Value and Senescence Info */}
+            <PValueBadge
+              generation={selectedCulture.generation}
+              strainName={getStrain(selectedCulture.strainId)?.name}
+              showShelfLife
+            />
+
             {/* Shelf Life Warning (if applicable) */}
             <ShelfLifeBadge culture={selectedCulture} />
 
             {/* Details */}
             <div className="space-y-2 text-sm mb-4">
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="text-zinc-500">Passage (P#)</span>
-                <span className="text-white">P{selectedCulture.generation}</span>
-              </div>
               <div className="flex justify-between py-2 border-b border-zinc-800">
                 <span className="text-zinc-500">Health</span>
                 <HealthBar rating={selectedCulture.healthRating} />

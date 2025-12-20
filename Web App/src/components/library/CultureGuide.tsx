@@ -16,7 +16,7 @@ import {
 // TYPES
 // ============================================================================
 
-type Section = 'overview' | 'pvalue' | 'shelflife' | 'senescence' | 'storage' | 'expansion' | 'terminology';
+type Section = 'overview' | 'reproduction' | 'pvalue' | 'shelflife' | 'senescence' | 'storage' | 'expansion' | 'terminology';
 
 interface SectionInfo {
   id: Section;
@@ -35,6 +35,12 @@ const sections: SectionInfo[] = [
     title: 'Overview',
     icon: '🧬',
     description: 'Introduction to culture management fundamentals',
+  },
+  {
+    id: 'reproduction',
+    title: 'Fungal Reproduction',
+    icon: '🔀',
+    description: 'Understanding spore genetics and dikaryotic mycelium',
   },
   {
     id: 'pvalue',
@@ -169,6 +175,120 @@ const OverviewSection: React.FC = () => (
           </p>
         </div>
       </div>
+    </div>
+  </div>
+);
+
+const ReproductionSection: React.FC = () => (
+  <div className="space-y-6">
+    <div className="p-6 bg-zinc-900/50 rounded-xl border border-zinc-800">
+      <h3 className="text-lg font-semibold text-white mb-4">How Mycelium Reproduces</h3>
+      <p className="text-zinc-300 leading-relaxed">
+        Understanding fungal reproduction is essential for cultivators. Mushrooms begin as <strong className="text-emerald-400">spores</strong>,
+        released from the gills of mature fruit bodies. A single mushroom can release <em>trillions</em> of spores
+        before decomposing. These microscopic spores travel through the air and, when landing in suitable conditions,
+        germinate and grow in search of nutrients.
+      </p>
+    </div>
+
+    <div className="p-6 bg-gradient-to-r from-purple-950/30 to-zinc-900/50 rounded-xl border border-purple-800/50">
+      <h3 className="text-lg font-semibold text-white mb-4">Sexual Reproduction in Fungi</h3>
+      <p className="text-zinc-300 leading-relaxed mb-4">
+        Unlike animals, fungi don't have male and female spores. Instead, there are <strong className="text-purple-400">two mating types</strong>,
+        often called <strong>A</strong> and <strong>B</strong>. Each type carries 50% of the genetic material needed
+        for reproduction.
+      </p>
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="p-4 bg-black/20 rounded-lg">
+          <h4 className="font-medium text-purple-400 mb-2">Monokaryotic Mycelium</h4>
+          <p className="text-sm text-zinc-400">
+            When a single spore germinates, it produces <strong className="text-zinc-300">monokaryotic mycelium</strong> -
+            having only one set of genetic information. This mycelium cannot produce mushrooms on its own.
+          </p>
+        </div>
+        <div className="p-4 bg-black/20 rounded-lg">
+          <h4 className="font-medium text-emerald-400 mb-2">Dikaryotic Mycelium</h4>
+          <p className="text-sm text-zinc-400">
+            When two compatible monokaryotic mycelia (A meets B) fuse, they form <strong className="text-zinc-300">dikaryotic mycelium</strong> -
+            having the full genetic blueprint to produce mushrooms.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div className="p-5 bg-emerald-950/30 rounded-xl border border-emerald-800/50">
+      <div className="flex items-start gap-3">
+        <Icons.Info />
+        <div>
+          <h4 className="font-medium text-emerald-400 mb-2">Why This Matters for Cultivators</h4>
+          <p className="text-sm text-zinc-400 mb-3">
+            In nature, mushrooms result from <strong className="text-zinc-300">multi-spore germination</strong>,
+            leading to unpredictable traits - similar to growing plants from seeds. Each mushroom could be different.
+          </p>
+          <p className="text-sm text-zinc-400">
+            For commercial cultivation, we need <strong className="text-zinc-300">predictable, consistent results</strong>.
+            This is why commercial cultures are created from specifically selected dikaryotic mycelium - ensuring
+            every grow produces mushrooms with the same traits: size, yield, color, flavor, and contamination resistance.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div className="space-y-3">
+      <h4 className="font-semibold text-white">How Commercial Cultures Are Created</h4>
+
+      <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">1</span>
+          <span className="font-medium text-white">Spore Isolation</span>
+        </div>
+        <p className="text-sm text-zinc-400 pl-11">
+          Researchers isolate individual spores under a microscope and pair them randomly on agar plates
+          (hundreds of combinations).
+        </p>
+      </div>
+
+      <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">2</span>
+          <span className="font-medium text-white">Compatibility Testing</span>
+        </div>
+        <p className="text-sm text-zinc-400 pl-11">
+          Since A/B types can't be visually identified, scientists observe which pairs successfully mate
+          to form dikaryotic mycelium. Successful pairs become <strong className="text-emerald-400">P0 (Generation Zero)</strong>.
+        </p>
+      </div>
+
+      <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">3</span>
+          <span className="font-medium text-white">Performance Testing</span>
+        </div>
+        <p className="text-sm text-zinc-400 pl-11">
+          Each successful strain is grown to fruiting. Traits like size, flavor, yield, color, and contamination
+          resistance are evaluated. Only strains meeting benchmarks are kept (often 7 out of 100).
+        </p>
+      </div>
+
+      <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">4</span>
+          <span className="font-medium text-white">Preservation & Distribution</span>
+        </div>
+        <p className="text-sm text-zinc-400 pl-11">
+          Selected P0 cultures are preserved in cryogenic storage (liquid nitrogen) to halt aging.
+          They're then expanded to P1 liquid cultures for distribution to growers.
+        </p>
+      </div>
+    </div>
+
+    <div className="p-5 bg-amber-950/30 rounded-xl border border-amber-800/50">
+      <h4 className="font-medium text-amber-400 mb-2">Working with Agar Plates</h4>
+      <p className="text-sm text-zinc-400">
+        When transferring from agar, always select mycelium from the <strong className="text-zinc-300">outer edge</strong> of the plate.
+        This is the youngest, most vigorous growth (vegetative stage). The center is older and has already
+        transitioned to reproductive stage - using it accelerates senescence.
+      </p>
     </div>
   </div>
 );
@@ -570,12 +690,17 @@ const TerminologySection: React.FC = () => (
 // MAIN COMPONENT
 // ============================================================================
 
-export const CultureGuide: React.FC = () => {
+interface CultureGuideProps {
+  onNavigate?: (page: string) => void;
+}
+
+export const CultureGuide: React.FC<CultureGuideProps> = ({ onNavigate }) => {
   const [activeSection, setActiveSection] = useState<Section>('overview');
 
   const renderSection = () => {
     switch (activeSection) {
       case 'overview': return <OverviewSection />;
+      case 'reproduction': return <ReproductionSection />;
       case 'pvalue': return <PValueSection />;
       case 'shelflife': return <ShelfLifeSection />;
       case 'senescence': return <SenescenceSection />;
@@ -620,6 +745,98 @@ export const CultureGuide: React.FC = () => {
           <p className="text-zinc-400">{currentSectionInfo.description}</p>
         </div>
         {renderSection()}
+
+        {/* Quick Actions - Links to App Features */}
+        <div className="mt-8 pt-6 border-t border-zinc-800">
+          <h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wide mb-4">Related Tools</h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {activeSection === 'expansion' && onNavigate && (
+              <button
+                onClick={() => onNavigate('multiplication')}
+                className="flex items-center gap-3 p-4 bg-emerald-950/30 border border-emerald-800/50 rounded-xl text-left hover:bg-emerald-950/50 transition-all group"
+              >
+                <span className="text-2xl">🧮</span>
+                <div>
+                  <p className="font-medium text-emerald-400 group-hover:text-emerald-300">Culture Expansion Calculator</p>
+                  <p className="text-xs text-zinc-500">Calculate costs and P-value progression</p>
+                </div>
+              </button>
+            )}
+            {(activeSection === 'overview' || activeSection === 'pvalue') && onNavigate && (
+              <button
+                onClick={() => onNavigate('cultures')}
+                className="flex items-center gap-3 p-4 bg-blue-950/30 border border-blue-800/50 rounded-xl text-left hover:bg-blue-950/50 transition-all group"
+              >
+                <span className="text-2xl">💧</span>
+                <div>
+                  <p className="font-medium text-blue-400 group-hover:text-blue-300">Culture Library</p>
+                  <p className="text-xs text-zinc-500">Manage your cultures and genetics</p>
+                </div>
+              </button>
+            )}
+            {activeSection === 'storage' && onNavigate && (
+              <button
+                onClick={() => onNavigate('coldstorage')}
+                className="flex items-center gap-3 p-4 bg-cyan-950/30 border border-cyan-800/50 rounded-xl text-left hover:bg-cyan-950/50 transition-all group"
+              >
+                <span className="text-2xl">❄️</span>
+                <div>
+                  <p className="font-medium text-cyan-400 group-hover:text-cyan-300">Cold Storage Check</p>
+                  <p className="text-xs text-zinc-500">Review fridge inventory</p>
+                </div>
+              </button>
+            )}
+            {activeSection === 'shelflife' && onNavigate && (
+              <button
+                onClick={() => onNavigate('multiplication')}
+                className="flex items-center gap-3 p-4 bg-amber-950/30 border border-amber-800/50 rounded-xl text-left hover:bg-amber-950/50 transition-all group"
+              >
+                <span className="text-2xl">📊</span>
+                <div>
+                  <p className="font-medium text-amber-400 group-hover:text-amber-300">Expansion Calculator</p>
+                  <p className="text-xs text-zinc-500">Track P-values and shelf life</p>
+                </div>
+              </button>
+            )}
+            {activeSection === 'senescence' && onNavigate && (
+              <>
+                <button
+                  onClick={() => onNavigate('cultures')}
+                  className="flex items-center gap-3 p-4 bg-red-950/30 border border-red-800/50 rounded-xl text-left hover:bg-red-950/50 transition-all group"
+                >
+                  <span className="text-2xl">⚠️</span>
+                  <div>
+                    <p className="font-medium text-red-400 group-hover:text-red-300">Check Culture Health</p>
+                    <p className="text-xs text-zinc-500">Review P-values and condition</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => onNavigate('contamination')}
+                  className="flex items-center gap-3 p-4 bg-orange-950/30 border border-orange-800/50 rounded-xl text-left hover:bg-orange-950/50 transition-all group"
+                >
+                  <span className="text-2xl">🔬</span>
+                  <div>
+                    <p className="font-medium text-orange-400 group-hover:text-orange-300">Contamination Analysis</p>
+                    <p className="text-xs text-zinc-500">Track contamination patterns</p>
+                  </div>
+                </button>
+              </>
+            )}
+            {/* Always show some helpful links */}
+            {onNavigate && (
+              <button
+                onClick={() => onNavigate('library')}
+                className="flex items-center gap-3 p-4 bg-zinc-800/50 border border-zinc-700 rounded-xl text-left hover:bg-zinc-800 transition-all group"
+              >
+                <span className="text-2xl">📚</span>
+                <div>
+                  <p className="font-medium text-zinc-300 group-hover:text-white">Species Library</p>
+                  <p className="text-xs text-zinc-500">Growing parameters by species</p>
+                </div>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

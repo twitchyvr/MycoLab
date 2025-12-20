@@ -3610,6 +3610,41 @@ VALUES (
 ) ON CONFLICT (name) WHERE user_id IS NULL DO NOTHING;
 
 -- ============================================================================
+-- COLD-SENSITIVE SPECIES UPDATES
+-- Set cold_sensitive flag and min_storage_temp_c for tropical species
+-- These species require warmer storage (10°C/50°F) and can die if refrigerated
+-- ============================================================================
+
+-- Pink Oyster - CRITICAL: Dies below 40°F (4°C), requires 10°C minimum storage
+UPDATE species SET cold_sensitive = true, min_storage_temp_c = 10
+WHERE scientific_name = 'Pleurotus djamor' AND user_id IS NULL;
+
+-- Golden Oyster - Tropical species, requires 10°C minimum storage
+UPDATE species SET cold_sensitive = true, min_storage_temp_c = 10
+WHERE scientific_name = 'Pleurotus citrinopileatus' AND user_id IS NULL;
+
+-- Wood Ear / Cloud Ear - Tropical species, cold sensitive
+UPDATE species SET cold_sensitive = true, min_storage_temp_c = 10
+WHERE scientific_name = 'Auricularia auricula-judae' AND user_id IS NULL;
+
+-- Phoenix Oyster - Warm weather variety, somewhat cold sensitive
+UPDATE species SET cold_sensitive = true, min_storage_temp_c = 8
+WHERE scientific_name = 'Pleurotus pulmonarius' AND user_id IS NULL;
+
+-- Reishi - Some strains are cold sensitive (tropical origin)
+UPDATE species SET cold_sensitive = true, min_storage_temp_c = 10
+WHERE scientific_name = 'Ganoderma lucidum' AND user_id IS NULL;
+
+-- Cordyceps - Rapid senescence species, temperature sensitive
+-- NOTE: Cordyceps militaris degenerates quickly, often losing fruiting ability after 4-6 months
+UPDATE species SET cold_sensitive = false, min_storage_temp_c = 4
+WHERE scientific_name = 'Cordyceps militaris' AND user_id IS NULL;
+
+-- Standard species - Set default cold storage temperature (2°C)
+UPDATE species SET cold_sensitive = false, min_storage_temp_c = 2
+WHERE cold_sensitive IS NULL AND user_id IS NULL;
+
+-- ============================================================================
 -- ROW LEVEL SECURITY
 -- ============================================================================
 

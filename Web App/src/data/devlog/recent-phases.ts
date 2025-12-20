@@ -4329,6 +4329,66 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1240',
+    title: 'Culture Expansion Calculator & Enhanced Mycology Knowledge Base',
+    description: 'New Culture Multiplication Calculator for P-value tracking, cost analysis, and expansion planning. Enhanced Culture Guide with fungal reproduction science, interactive app integration, and cold-sensitive species warnings.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'high',
+    notes: `Comprehensive mycology education and practical tools:
+
+**Feature #1 - Culture Expansion Calculator (NEW TOOL):**
+- Full P-value (Generation) tracking system with senescence risk indicators
+- Preset scenarios for P1, P2, P3 cultures with cost breakdowns
+- Custom calculator mode for building expansion chains
+- Expansion ratio recommendations (1:10 standard, warns if exceeding)
+- Cold-sensitive species toggle with storage temperature guidance
+- Cost per unit calculations through the expansion chain
+- Shelf life estimates by generation (P0=6mo, P1=5mo, P2=3mo, P3=2mo)
+- Visual workflow diagrams for expansion planning
+- Links: /culture-multiplication route, Calculators nav section
+
+**Feature #2 - Enhanced P-Value Display:**
+- New PValueBadge component with senescence risk visualization
+- Color-coded badges: emerald (P0-1), green (P2), amber (P3), orange (P4), red (P5+)
+- Compact view for culture cards/tables with hover tooltip
+- Full view for detail panels with shelf life and storage info
+- Cold-sensitive species detection with storage warnings
+- Integrated into CultureManagement card, table, and detail views
+
+**Feature #3 - Cold-Sensitive Species System:**
+- Updated species seed data with cold_sensitive flags
+- Species requiring 10°C minimum: Pink Oyster, Golden Oyster, Reishi, Wood Ear, Phoenix Oyster
+- ColdStorageCheck component shows warnings for affected cultures
+- Storage temperature warnings in culture detail panel
+- Shelf life utility functions updated with temperature guidance
+
+**Feature #4 - Enhanced Culture Guide (Knowledge Base):**
+- NEW: Fungal Reproduction section explaining dikaryotic/monokaryotic mycelium
+- Content: Spore genetics, A/B mating types, commercial culture creation process
+- Interactive "Related Tools" section linking to relevant calculators
+- Context-sensitive tool suggestions based on active section
+- Navigation integration with onNavigate prop
+- 8 sections total: Overview, Reproduction, P-Value, Shelf Life, Senescence, Storage, Expansion, Terminology
+
+**Educational Content Added (from RootLab Mycology):**
+- How commercial cultures are created (4-step isolation process)
+- Why dikaryotic mycelium matters for consistent results
+- Agar plate edge vs center transfer guidance
+- Species-specific senescence patterns (Cordyceps rapid, Oyster slow)
+- Expansion cost analysis workflows with real pricing examples
+
+**Files Changed:**
+- src/components/tools/CultureMultiplicationCalculator.tsx - NEW FILE
+- src/components/cultures/CultureManagement.tsx - PValueBadge component, enhanced displays
+- src/components/dailycheck/ColdStorageCheck.tsx - cold-sensitive species warnings
+- src/components/library/CultureGuide.tsx - Reproduction section, tool integration, onNavigate
+- src/App.tsx - multiplication route, navigation item, CultureGuide navigation prop
+- supabase-schema.sql - cold_sensitive species UPDATE statements`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

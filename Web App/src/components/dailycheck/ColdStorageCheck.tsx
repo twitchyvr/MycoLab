@@ -8,6 +8,17 @@ import { useData } from '../../store';
 import { format, differenceInDays, addDays } from 'date-fns';
 import type { Culture, Location } from '../../store/types';
 import { formatTemperatureRange, type TemperatureUnit } from '../../utils/temperature';
+import { coldSensitiveSpecies, getStorageRecommendation } from '../../utils/shelf-life';
+
+// Check if a strain name indicates a cold-sensitive species
+const isColdSensitiveStrain = (strainName?: string): boolean => {
+  if (!strainName) return false;
+  const lowerName = strainName.toLowerCase();
+  return coldSensitiveSpecies.some(species => {
+    const lowerSpecies = species.toLowerCase();
+    return lowerName.includes(lowerSpecies) || lowerSpecies.includes(lowerName);
+  });
+};
 
 // ============================================================================
 // TYPES
@@ -180,7 +191,17 @@ const StorageItemCard: React.FC<{
             )}
           </div>
           {item.strain && (
-            <p className="text-sm text-zinc-400 truncate">{item.strain}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-zinc-400 truncate">{item.strain}</p>
+              {isColdSensitiveStrain(item.strain) && (
+                <span
+                  className="px-1.5 py-0.5 text-[10px] rounded bg-amber-500/20 text-amber-400 font-medium flex-shrink-0"
+                  title="Cold-sensitive species - requires 10°C/50°F minimum storage"
+                >
+                  10°C min
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -222,6 +243,22 @@ const StorageItemCard: React.FC<{
             <p className="text-sm text-zinc-400 bg-zinc-800/30 rounded-lg p-2">
               {item.notes}
             </p>
+          )}
+
+          {/* Cold-Sensitive Species Warning */}
+          {isColdSensitiveStrain(item.strain) && (
+            <div className="p-3 bg-amber-950/30 border border-amber-800/50 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Icons.AlertTriangle />
+                <div className="text-sm">
+                  <p className="font-medium text-amber-400">Cold-Sensitive Species</p>
+                  <p className="text-amber-400/80 text-xs mt-1">
+                    This species requires warmer storage (10°C/50°F minimum).
+                    Standard refrigeration (2-4°C) can damage or kill the mycelium.
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Quick Actions */}
