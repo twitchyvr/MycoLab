@@ -507,11 +507,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       clearLocalData({ preserveSettings: true });
     }
 
+    // Wrap signOut in a timeout to prevent hanging indefinitely
+    // Some network conditions can cause Supabase signOut to hang
+    const SIGNOUT_TIMEOUT_MS = 5000;
+
     try {
-      await supabase.auth.signOut();
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise<{ error: Error }>((_, reject) =>
+        setTimeout(() => reject(new Error('Sign out timed out')), SIGNOUT_TIMEOUT_MS)
+      );
+
+      await Promise.race([signOutPromise, timeoutPromise]);
       console.log('[Auth] Supabase signOut completed');
     } catch (err) {
-      console.error('[Auth] Error during signOut:', err);
+      // Even if signOut fails or times out, we still clear local state
+      console.warn('[Auth] signOut issue (proceeding anyway):', err);
     }
 
     // Clear state immediately - don't wait for anonymous session
@@ -521,24 +531,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setProfile(null);
     console.log('[Auth] State cleared after signOut');
 
-    // Try anonymous session in background (non-blocking) with timeout
-    if (isAnonymousAuthAvailable()) {
-      // Use a timeout to prevent hanging
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
-
-      Promise.race([ensureSession(), timeoutPromise])
-        .then((anonSession) => {
-          if (anonSession) {
-            console.log('[Auth] Anonymous session created after signOut');
-            setSession(anonSession);
-            setUser(anonSession.user);
-            setIsAnonymous(true);
-          }
-        })
-        .catch((err) => {
-          console.warn('[Auth] Failed to create anonymous session after signOut:', err);
-        });
-    }
+    // Skip anonymous session creation after signOut - just leave user logged out
+    // This prevents potential hanging and provides a clean logout experience
+    // User can refresh the page if they want a new anonymous session
   }, []);
 
   const resetPassword = useCallback(async (email: string, captchaToken?: string) => {

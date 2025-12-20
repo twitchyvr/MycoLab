@@ -120,13 +120,13 @@ const StarRating: React.FC<{
   return (
     <div>
       {label && <p className="text-sm text-zinc-400 mb-2">{label}</p>}
-      <div className="flex gap-1">
+      <div className="flex gap-2">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             type="button"
             onClick={() => onChange(star)}
-            className={`w-8 h-8 rounded transition-colors ${
+            className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg transition-colors text-base font-medium ${
               star <= value
                 ? 'bg-amber-500 text-white'
                 : 'bg-zinc-800 text-zinc-600 hover:bg-zinc-700'
@@ -207,7 +207,7 @@ const OutcomeStep: React.FC<StepProps> = ({ surveyData, setSurveyData, entityTyp
                     outcomeCode: option.code,
                     outcomeLabel: option.label,
                   }))}
-                  className={`p-3 rounded-lg border text-left transition-all ${
+                  className={`p-4 min-h-[56px] rounded-lg border text-left transition-all ${
                     surveyData.outcomeCode === option.code
                       ? 'border-emerald-500 bg-emerald-950/30'
                       : 'border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800'
@@ -267,13 +267,13 @@ const ContaminationStep: React.FC<StepProps> = ({ surveyData, setSurveyData }) =
               key={option.code}
               type="button"
               onClick={() => updateContamination({ type: option.code })}
-              className={`p-2 rounded-lg border text-left transition-all ${
+              className={`p-3 min-h-[48px] rounded-lg border text-left transition-all ${
                 surveyData.contamination?.type === option.code
                   ? 'border-red-500 bg-red-950/30'
                   : 'border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800'
               }`}
             >
-              <p className={`font-medium text-xs ${
+              <p className={`font-medium text-sm ${
                 surveyData.contamination?.type === option.code ? 'text-red-400' : 'text-white'
               }`}>
                 {option.label}
@@ -292,7 +292,7 @@ const ContaminationStep: React.FC<StepProps> = ({ surveyData, setSurveyData }) =
               key={option.code}
               type="button"
               onClick={() => updateContamination({ stage: option.code })}
-              className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+              className={`px-4 py-2.5 min-h-[44px] rounded-lg border text-sm font-medium transition-all ${
                 surveyData.contamination?.stage === option.code
                   ? 'border-red-500 bg-red-950/30 text-red-400'
                   : 'border-zinc-700 bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800'
@@ -313,13 +313,13 @@ const ContaminationStep: React.FC<StepProps> = ({ surveyData, setSurveyData }) =
               key={option.code}
               type="button"
               onClick={() => updateContamination({ suspectedCause: option.code })}
-              className={`p-2 rounded-lg border text-left transition-all ${
+              className={`p-3 min-h-[48px] rounded-lg border text-left transition-all ${
                 surveyData.contamination?.suspectedCause === option.code
                   ? 'border-amber-500 bg-amber-950/30'
                   : 'border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800'
               }`}
             >
-              <p className={`font-medium text-xs ${
+              <p className={`font-medium text-sm ${
                 surveyData.contamination?.suspectedCause === option.code ? 'text-amber-400' : 'text-white'
               }`}>
                 {option.label}
@@ -337,7 +337,7 @@ const ContaminationStep: React.FC<StepProps> = ({ surveyData, setSurveyData }) =
           onChange={(e) => updateContamination({ notes: e.target.value })}
           placeholder="Any other details about the contamination..."
           rows={2}
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-3 text-base sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
         />
       </div>
     </div>
@@ -388,7 +388,7 @@ const FeedbackStep: React.FC<StepProps> = ({ surveyData, setSurveyData }) => {
               key={String(option.value)}
               type="button"
               onClick={() => updateFeedback({ wouldRepeat: option.value })}
-              className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
+              className={`flex-1 py-3 min-h-[48px] rounded-lg border text-sm font-medium transition-all ${
                 surveyData.feedback?.wouldRepeat === option.value
                   ? option.value
                     ? 'border-emerald-500 bg-emerald-950/30 text-emerald-400'
@@ -410,7 +410,7 @@ const FeedbackStep: React.FC<StepProps> = ({ surveyData, setSurveyData }) => {
           onChange={(e) => updateFeedback({ whatWorked: e.target.value })}
           placeholder="e.g., Substrate recipe was great, colonization was fast..."
           rows={2}
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-3 text-base sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
         />
       </div>
 
@@ -422,7 +422,7 @@ const FeedbackStep: React.FC<StepProps> = ({ surveyData, setSurveyData }) => {
           onChange={(e) => updateFeedback({ whatFailed: e.target.value })}
           placeholder="e.g., FAE was too low, humidity dropped..."
           rows={2}
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-3 text-base sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
         />
       </div>
 
@@ -434,7 +434,7 @@ const FeedbackStep: React.FC<StepProps> = ({ surveyData, setSurveyData }) => {
           onChange={(e) => updateFeedback({ notes: e.target.value })}
           placeholder="Any other thoughts or lessons learned..."
           rows={2}
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-3 text-base sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
         />
       </div>
     </div>
@@ -516,8 +516,8 @@ export const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-        <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+      <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 sm:p-4 overflow-y-auto">
+        <div className="bg-zinc-900 w-full sm:max-w-lg border-t sm:border border-zinc-700 rounded-t-2xl sm:rounded-xl max-h-[95vh] sm:max-h-[90vh] flex flex-col safe-area-bottom">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
           <div>
@@ -526,7 +526,7 @@ export const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors"
+            className="p-2.5 min-w-[44px] min-h-[44px] text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors flex items-center justify-center"
           >
             <Icons.X />
           </button>
@@ -576,19 +576,19 @@ export const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-zinc-800">
+        <div className="flex items-center justify-between p-4 border-t border-zinc-800 gap-2">
           <button
             onClick={onSkip}
-            className="px-4 py-2 text-zinc-400 hover:text-white text-sm transition-colors"
+            className="px-3 py-2.5 min-h-[48px] text-zinc-400 hover:text-white text-sm transition-colors rounded-lg hover:bg-zinc-800"
           >
-            Skip Survey
+            Skip
           </button>
 
           <div className="flex gap-2">
             {canGoBack && (
               <button
                 onClick={handleBack}
-                className="flex items-center gap-1 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-1 px-4 py-2.5 min-h-[48px] bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 <Icons.ChevronLeft />
                 Back
@@ -599,7 +599,7 @@ export const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
               <button
                 onClick={handleComplete}
                 disabled={!surveyData.outcomeCode}
-                className="flex items-center gap-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-1 px-5 py-2.5 min-h-[48px] bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 <Icons.Check />
                 Complete
@@ -608,7 +608,7 @@ export const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
               <button
                 onClick={handleNext}
                 disabled={currentStep === 0 && !surveyData.outcomeCode}
-                className="flex items-center gap-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-1 px-5 py-2.5 min-h-[48px] bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 Next
                 <Icons.ChevronRight />

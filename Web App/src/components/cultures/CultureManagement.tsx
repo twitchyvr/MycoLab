@@ -86,13 +86,14 @@ export const CultureManagement: React.FC = () => {
     generateCultureLabel,
     addCulture,
     updateCulture,
-    deleteCulture,
     addCultureObservation,
     addCultureTransfer,
     addPreparedSpawn,
     inoculatePreparedSpawn,
     amendCulture,
     archiveCulture,
+    saveEntityOutcome,
+    saveContaminationDetails,
   } = useData();
 
   const cultures = state.cultures;
@@ -252,6 +253,10 @@ export const CultureManagement: React.FC = () => {
     setNewObservation({ type: 'general', notes: '', healthRating: undefined });
   };
 
+  // Volume threshold below which a culture is considered effectively empty
+  // Small amounts from drops (e.g., 0.0001ml) should be treated as depleted
+  const EMPTY_VOLUME_THRESHOLD_ML = 0.5;
+
   // Transfer handler
   const handleTransfer = async () => {
     if (!selectedCulture) return;
@@ -267,8 +272,10 @@ export const CultureManagement: React.FC = () => {
     }
 
     // Check if this transfer will deplete the culture
+    // Use threshold to consider tiny amounts (like residue from drops) as effectively empty
     const currentFillVolume = selectedCulture.fillVolumeMl ?? selectedCulture.volumeMl ?? 0;
-    const willBeDepleted = currentFillVolume - transferredVolumeMl <= 0;
+    const remainingAfterTransfer = currentFillVolume - transferredVolumeMl;
+    const willBeDepleted = remainingAfterTransfer < EMPTY_VOLUME_THRESHOLD_ML;
 
     // Perform the transfer
     const newCulture = addCultureTransfer(selectedCulture.id, {
@@ -318,50 +325,76 @@ export const CultureManagement: React.FC = () => {
     setShowDisposalModal(true);
   };
 
-  // Disposal confirmation - records outcome and removes culture
+  // Disposal confirmation - records outcome and archives culture (soft delete)
+  // Using archive instead of delete to preserve data integrity and FK relationships
   const handleDisposalConfirm = async (outcome: DisposalOutcome) => {
     if (!cultureToDispose) return;
 
-    const strain = getStrain(cultureToDispose.strainId);
-    const location = cultureToDispose.locationId ? getLocation(cultureToDispose.locationId) : undefined;
+    try {
+      const strain = getStrain(cultureToDispose.strainId);
+      const location = cultureToDispose.locationId ? getLocation(cultureToDispose.locationId) : undefined;
 
-    // Build outcome data for historical record
-    const outcomeData: EntityOutcomeData = {
-      entityType: 'culture',
-      entityId: cultureToDispose.id,
-      entityName: cultureToDispose.label,
-      outcomeCategory: outcome.outcomeCategory,
-      outcomeCode: outcome.outcomeCode,
-      outcomeLabel: outcome.outcomeLabel,
-      startedAt: cultureToDispose.createdAt,
-      endedAt: new Date(),
-      strainId: cultureToDispose.strainId,
-      strainName: strain?.name,
-      speciesId: strain?.speciesId,
-      locationId: cultureToDispose.locationId || undefined,
-      locationName: location?.name,
-      notes: outcome.notes,
-    };
-
-    // Add contamination details if relevant
-    if (outcome.contaminationType || outcome.suspectedCause) {
-      outcomeData.surveyResponses = {
-        contamination: {
-          contaminationType: outcome.contaminationType as ContaminationType | undefined,
-          suspectedCause: outcome.suspectedCause as SuspectedCause | undefined,
-        },
+      // Build outcome data for historical record
+      const outcomeData: EntityOutcomeData = {
+        entityType: 'culture',
+        entityId: cultureToDispose.id,
+        entityName: cultureToDispose.label,
+        outcomeCategory: outcome.outcomeCategory,
+        outcomeCode: outcome.outcomeCode,
+        outcomeLabel: outcome.outcomeLabel,
+        startedAt: cultureToDispose.createdAt,
+        endedAt: new Date(),
+        strainId: cultureToDispose.strainId,
+        strainName: strain?.name,
+        speciesId: strain?.speciesId,
+        locationId: cultureToDispose.locationId || undefined,
+        locationName: location?.name,
+        notes: outcome.notes,
       };
-    }
 
-    // Delete with outcome recording
-    await deleteCulture(cultureToDispose.id, outcomeData);
+      // Add contamination details if relevant
+      if (outcome.contaminationType || outcome.suspectedCause) {
+        outcomeData.surveyResponses = {
+          contamination: {
+            contaminationType: outcome.contaminationType as ContaminationType | undefined,
+            suspectedCause: outcome.suspectedCause as SuspectedCause | undefined,
+          },
+        };
+      }
 
-    // Clear UI state
-    if (selectedCulture?.id === cultureToDispose.id) {
-      setSelectedCulture(null);
+      // Step 1: Save the outcome record (append-only historical data)
+      const savedOutcome = await saveEntityOutcome(outcomeData);
+
+      // Step 2: Save contamination details if applicable
+      if (outcomeData.surveyResponses?.contamination && savedOutcome.id) {
+        const contamDetails = outcomeData.surveyResponses.contamination as {
+          contaminationType?: ContaminationType;
+          suspectedCause?: SuspectedCause;
+        };
+        if (contamDetails.contaminationType || contamDetails.suspectedCause) {
+          await saveContaminationDetails(savedOutcome.id, {
+            contaminationType: contamDetails.contaminationType,
+            suspectedCause: contamDetails.suspectedCause,
+          });
+        }
+      }
+
+      // Step 3: Archive the culture (soft delete - preserves FK relationships)
+      // Build a descriptive reason from the outcome
+      const archiveReason = `Disposed: ${outcome.outcomeLabel}${outcome.notes ? ` - ${outcome.notes}` : ''}`;
+      await archiveCulture(cultureToDispose.id, archiveReason);
+
+      // Clear UI state
+      if (selectedCulture?.id === cultureToDispose.id) {
+        setSelectedCulture(null);
+      }
+      setCultureToDispose(null);
+      setShowDisposalModal(false);
+    } catch (error) {
+      console.error('Error disposing culture:', error);
+      // Show a user-friendly error message
+      alert('Failed to dispose culture. Please try again.');
     }
-    setCultureToDispose(null);
-    setShowDisposalModal(false);
   };
 
   // Status update handler

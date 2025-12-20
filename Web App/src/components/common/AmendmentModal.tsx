@@ -142,7 +142,7 @@ export function AmendmentModal<T extends Record<string, any>>({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto">
         {/* Backdrop */}
         <div
           className="absolute inset-0 bg-black/60"
@@ -150,7 +150,7 @@ export function AmendmentModal<T extends Record<string, any>>({
         />
 
         {/* Modal */}
-        <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl">
+        <div className="relative w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto bg-zinc-900 rounded-t-2xl sm:rounded-xl border-t sm:border border-zinc-700 shadow-2xl safe-area-bottom">
         {/* Header */}
         <div className="sticky top-0 bg-zinc-900 border-b border-zinc-700 px-6 py-4 z-10">
           <div className="flex items-center justify-between">
@@ -166,7 +166,7 @@ export function AmendmentModal<T extends Record<string, any>>({
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
+              className="p-2.5 min-w-[44px] min-h-[44px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors flex items-center justify-center"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -182,13 +182,13 @@ export function AmendmentModal<T extends Record<string, any>>({
               <label className="block text-sm font-medium text-zinc-300 mb-3">
                 Amendment Type
               </label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {AMENDMENT_OPTIONS.map((option) => (
                   <button
                     key={option.type}
                     type="button"
                     onClick={() => setAmendmentType(option.type)}
-                    className={`p-3 rounded-lg border transition-all text-left ${
+                    className={`p-4 min-h-[60px] rounded-lg border transition-all text-left ${
                       amendmentType === option.type
                         ? option.color + ' border-2'
                         : 'border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800'
@@ -213,7 +213,7 @@ export function AmendmentModal<T extends Record<string, any>>({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Explain why this record is being amended..."
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+                className="w-full px-3 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-base sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
                 rows={2}
                 required
               />
@@ -243,7 +243,7 @@ export function AmendmentModal<T extends Record<string, any>>({
                         <textarea
                           value={getFieldValue(field.key) ?? ''}
                           onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                          className={`w-full px-3 py-2 bg-zinc-800 border rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none ${
+                          className={`w-full px-3 py-3 bg-zinc-800 border rounded-lg text-base sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none ${
                             hasChanged(field.key) ? 'border-yellow-600' : 'border-zinc-700'
                           }`}
                           rows={3}
@@ -253,7 +253,7 @@ export function AmendmentModal<T extends Record<string, any>>({
                         <select
                           value={getFieldValue(field.key) ?? ''}
                           onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                          className={`w-full px-3 py-2 bg-zinc-800 border rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                          className={`w-full px-3 py-3 min-h-[48px] bg-zinc-800 border rounded-lg text-base sm:text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
                             hasChanged(field.key) ? 'border-yellow-600' : 'border-zinc-700'
                           }`}
                           required={field.required}
@@ -275,7 +275,7 @@ export function AmendmentModal<T extends Record<string, any>>({
                               field.type === 'number' ? parseFloat(e.target.value) : e.target.value
                             )
                           }
-                          className={`w-full px-3 py-2 bg-zinc-800 border rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                          className={`w-full px-3 py-3 min-h-[48px] bg-zinc-800 border rounded-lg text-base sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
                             hasChanged(field.key) ? 'border-yellow-600' : 'border-zinc-700'
                           }`}
                           required={field.required}
@@ -319,15 +319,15 @@ export function AmendmentModal<T extends Record<string, any>>({
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 bg-zinc-900 border-t border-zinc-700 px-6 py-4 flex items-center justify-between">
-            <p className="text-xs text-zinc-500">
+          <div className="sticky bottom-0 bg-zinc-900 border-t border-zinc-700 px-6 py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <p className="text-xs text-zinc-500 hidden sm:block">
               Changes will be recorded with full audit trail
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+                className="flex-1 sm:flex-none px-4 py-2.5 min-h-[48px] text-sm text-zinc-400 hover:text-zinc-200 transition-colors rounded-lg hover:bg-zinc-800"
                 disabled={isSubmitting}
               >
                 Cancel
@@ -335,7 +335,7 @@ export function AmendmentModal<T extends Record<string, any>>({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                className={`flex-1 sm:flex-none px-5 py-2.5 min-h-[48px] text-sm font-medium rounded-lg transition-colors ${
                   amendmentType === 'void'
                     ? 'bg-red-600 hover:bg-red-500 text-white'
                     : 'bg-emerald-600 hover:bg-emerald-500 text-white'

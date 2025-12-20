@@ -402,15 +402,15 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex }}>
-        <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+      <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto" style={{ zIndex }}>
+        <div className="bg-zinc-900 w-full sm:max-w-lg border-t sm:border border-zinc-700 rounded-t-2xl sm:rounded-xl max-h-[95vh] sm:max-h-[90vh] flex flex-col safe-area-bottom">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
           <div className="flex items-center gap-3">
             {creation.stackDepth > 1 && (
               <button
                 onClick={handleBack}
-                className="p-1 text-zinc-400 hover:text-white rounded transition-colors"
+                className="p-2.5 min-w-[44px] min-h-[44px] text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors flex items-center justify-center"
                 title="Back to previous form"
               >
                 <Icons.ChevronLeft />
@@ -430,7 +430,7 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
           </div>
           <button
             onClick={handleCancel}
-            className="text-zinc-400 hover:text-white transition-colors"
+            className="p-2.5 min-w-[44px] min-h-[44px] text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors flex items-center justify-center"
           >
             <Icons.X />
           </button>
@@ -463,24 +463,24 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3 p-4 border-t border-zinc-800">
-          <div className="text-xs text-zinc-500">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 border-t border-zinc-800">
+          <div className="text-xs text-zinc-500 hidden sm:block">
             {config.requiredFields.length > 0 && (
               <span>* Required fields</span>
             )}
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 w-full sm:w-auto">
             <button
               onClick={handleCancel}
               disabled={isSubmitting}
-              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-lg font-medium transition-colors"
+              className="flex-1 sm:flex-none px-4 py-2.5 min-h-[48px] bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-lg font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-800 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+              className="flex-1 sm:flex-none px-5 py-2.5 min-h-[48px] bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-800 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>

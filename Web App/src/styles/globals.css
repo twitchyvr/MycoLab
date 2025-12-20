@@ -1,4 +1,9 @@
-/* Custom Font - Using a distinctive sans-serif */
+/* ============================================================================
+   MYCOLAB - Global Styles
+   A living, breathing design system inspired by fungi and mycological processes
+   ============================================================================ */
+
+/* Typography - Distinctive sans-serif with monospace for data */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
@@ -6,52 +11,161 @@
 @tailwind utilities;
 
 /* ============================================================================
-   MYCOLAB - Global Styles
+   DESIGN TOKENS - The DNA of the Design System
    ============================================================================ */
 
 :root {
-  /* ============================================================================
-     THEME-AWARE CSS VARIABLES
-     These are set dynamically by ThemeContext but have fallbacks for default
-     ============================================================================ */
+  /* -------------------------------------------------------------------------
+     SPACING SCALE - Organic, breathing rhythm
+     Based on 4px base unit with natural growth pattern
+     ------------------------------------------------------------------------- */
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px - tight */
+  --space-2: 0.5rem;    /* 8px - compact */
+  --space-3: 0.75rem;   /* 12px - cozy */
+  --space-4: 1rem;      /* 16px - base */
+  --space-5: 1.25rem;   /* 20px - comfortable */
+  --space-6: 1.5rem;    /* 24px - relaxed */
+  --space-8: 2rem;      /* 32px - roomy */
+  --space-10: 2.5rem;   /* 40px - spacious */
+  --space-12: 3rem;     /* 48px - expansive */
+  --space-16: 4rem;     /* 64px - grand */
 
-  /* Background colors */
+  /* -------------------------------------------------------------------------
+     TIMING & EASING - Organic movement curves
+     Inspired by natural growth patterns
+     ------------------------------------------------------------------------- */
+  --duration-instant: 50ms;
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --duration-slower: 600ms;
+  --duration-ambient: 3000ms;
+  --duration-breathing: 8000ms;
+
+  /* Organic easing - natural acceleration/deceleration */
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-organic: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* -------------------------------------------------------------------------
+     SHADOW SYSTEM - Depth like underground layers
+     Progressive depth scale for elevation
+     ------------------------------------------------------------------------- */
+  --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 24px 48px rgba(0, 0, 0, 0.25), 0 12px 24px rgba(0, 0, 0, 0.15);
+
+  /* Glow shadows - bioluminescent effects */
+  --shadow-glow-sm: 0 0 8px var(--glow-primary, rgba(16, 185, 129, 0.3));
+  --shadow-glow-md: 0 0 16px var(--glow-primary, rgba(16, 185, 129, 0.4));
+  --shadow-glow-lg: 0 0 24px var(--glow-primary, rgba(16, 185, 129, 0.5)), 0 0 48px var(--glow-secondary, rgba(16, 185, 129, 0.2));
+
+  /* -------------------------------------------------------------------------
+     BORDER RADIUS - Organic, rounded forms
+     Progressive scale from subtle to pill
+     ------------------------------------------------------------------------- */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;   /* 4px - subtle */
+  --radius-md: 0.5rem;    /* 8px - default */
+  --radius-lg: 0.75rem;   /* 12px - rounded */
+  --radius-xl: 1rem;      /* 16px - soft */
+  --radius-2xl: 1.25rem;  /* 20px - organic */
+  --radius-3xl: 1.5rem;   /* 24px - flowing */
+  --radius-full: 9999px;  /* pill shape */
+
+  /* -------------------------------------------------------------------------
+     TYPOGRAPHY SCALE
+     ------------------------------------------------------------------------- */
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* -------------------------------------------------------------------------
+     Z-INDEX SCALE - Layered depth
+     ------------------------------------------------------------------------- */
+  --z-base: 0;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-modal-backdrop: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-tooltip: 70;
+  --z-toast: 80;
+
+  /* -------------------------------------------------------------------------
+     COLOR SYSTEM - Theme-aware with semantic naming
+     These are the default (Mycelium theme) values
+     ------------------------------------------------------------------------- */
+
+  /* Background hierarchy */
   --bg-primary: #000000;
   --bg-secondary: #0A1628;
   --bg-tertiary: #0F1D32;
+  --bg-elevated: #141E33;
   --bg-card: rgba(15, 29, 50, 0.5);
   --bg-card-hover: rgba(15, 29, 50, 0.7);
+  --bg-input: #0F172A;
+  --bg-input-focus: #1E293B;
 
-  /* Border colors */
-  --border-primary: #1E3A5F;
-  --border-secondary: #0F1D32;
+  /* Border hierarchy */
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: #1E3A5F;
+  --border-muted: #0F1D32;
+  --border-focus: var(--accent);
   --border-accent: rgba(0, 217, 255, 0.3);
 
-  /* Text colors */
+  /* Text hierarchy */
   --text-primary: #FFFFFF;
   --text-secondary: #94A3B8;
   --text-muted: #64748B;
+  --text-disabled: #475569;
   --text-accent: #00D9FF;
+  --text-inverse: #000000;
 
   /* Accent colors */
   --accent: #00D9FF;
   --accent-hover: #33E1FF;
   --accent-muted: rgba(0, 217, 255, 0.1);
-  --accent-glow: 0 0 20px rgba(0, 217, 255, 0.3);
+  --accent-subtle: rgba(0, 217, 255, 0.05);
 
   /* Secondary accent */
   --secondary: #7C3AED;
   --secondary-hover: #8B5CF6;
+  --secondary-muted: rgba(124, 58, 237, 0.1);
 
-  /* Status colors */
+  /* Status colors - consistent across themes */
   --success: #06D6A0;
   --success-muted: rgba(6, 214, 160, 0.1);
+  --success-text: #34D399;
   --warning: #F59E0B;
   --warning-muted: rgba(245, 158, 11, 0.1);
+  --warning-text: #FBBF24;
   --danger: #EF4444;
   --danger-muted: rgba(239, 68, 68, 0.1);
+  --danger-text: #F87171;
   --info: #06B6D4;
   --info-muted: rgba(6, 182, 212, 0.1);
+  --info-text: #22D3EE;
 
   /* Cultivation phase colors */
   --phase-inoculation: #7C3AED;
@@ -60,30 +174,34 @@
   --phase-harvest: #06D6A0;
   --phase-storage: #3B82F6;
 
-  /* Legacy color mappings for backwards compatibility */
+  /* Glow colors for effects */
+  --glow-primary: rgba(0, 217, 255, 0.3);
+  --glow-secondary: rgba(124, 58, 237, 0.2);
+
+  /* Ambient colors for background effects */
+  --ambient-color-1: rgba(0, 217, 255, 0.04);
+  --ambient-color-2: rgba(124, 58, 237, 0.03);
+  --ambient-color-3: rgba(6, 182, 212, 0.03);
+
+  /* Legacy mappings for backwards compatibility */
   --color-primary: var(--accent);
   --color-primary-hover: var(--accent-hover);
   --color-primary-muted: var(--accent-muted);
-
   --color-surface: var(--bg-primary);
   --color-surface-elevated: var(--bg-secondary);
   --color-surface-hover: var(--bg-tertiary);
-
-  --color-border: var(--border-primary);
-  --color-border-muted: var(--border-secondary);
-
+  --color-border: var(--border-default);
+  --color-border-muted: var(--border-muted);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
 
-  /* Spacing */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-
-  /* Border Radius */
+  /* Legacy spacing (still used by some components) */
+  --spacing-xs: var(--space-1);
+  --spacing-sm: var(--space-2);
+  --spacing-md: var(--space-4);
+  --spacing-lg: var(--space-6);
+  --spacing-xl: var(--space-8);
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
@@ -91,23 +209,252 @@
 }
 
 /* ============================================================================
-   THEME-SPECIFIC ADJUSTMENTS
+   THEME DEFINITIONS
+   Each theme overrides the color tokens while preserving the structure
    ============================================================================ */
 
-/* Light theme (Spore) needs inverted scrollbar */
+/* MYCELIUM THEME (Default) - Bioluminescent underground network */
+[data-theme="mycelium"] {
+  --bg-primary: #000000;
+  --bg-secondary: #0A1628;
+  --bg-tertiary: #0F1D32;
+  --bg-elevated: #141E33;
+  --bg-card: rgba(15, 29, 50, 0.5);
+  --bg-card-hover: rgba(15, 29, 50, 0.7);
+  --bg-input: #0F172A;
+  --bg-input-focus: #1E293B;
+
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: #1E3A5F;
+  --border-muted: #0F1D32;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-accent: #00D9FF;
+
+  --accent: #00D9FF;
+  --accent-hover: #33E1FF;
+  --accent-muted: rgba(0, 217, 255, 0.1);
+  --secondary: #7C3AED;
+  --secondary-hover: #8B5CF6;
+
+  --glow-primary: rgba(0, 217, 255, 0.3);
+  --glow-secondary: rgba(124, 58, 237, 0.2);
+
+  --ambient-color-1: rgba(0, 217, 255, 0.04);
+  --ambient-color-2: rgba(124, 58, 237, 0.03);
+  --ambient-color-3: rgba(6, 182, 212, 0.03);
+}
+
+/* FRUITING THEME - Forest floor emergence, warm greens and earth */
+[data-theme="fruiting"] {
+  --bg-primary: #0A1410;
+  --bg-secondary: #0D1B14;
+  --bg-tertiary: #122318;
+  --bg-elevated: #162A1D;
+  --bg-card: rgba(13, 27, 20, 0.6);
+  --bg-card-hover: rgba(22, 42, 29, 0.7);
+  --bg-input: #0D1B14;
+  --bg-input-focus: #162A1D;
+
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: #1F4D2E;
+  --border-muted: #122318;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #9DB5A5;
+  --text-muted: #6B8A77;
+  --text-accent: #06D6A0;
+
+  --accent: #06D6A0;
+  --accent-hover: #34E0B4;
+  --accent-muted: rgba(6, 214, 160, 0.1);
+  --secondary: #F77F00;
+  --secondary-hover: #FF9F33;
+
+  --glow-primary: rgba(6, 214, 160, 0.3);
+  --glow-secondary: rgba(247, 127, 0, 0.2);
+
+  --ambient-color-1: rgba(6, 214, 160, 0.04);
+  --ambient-color-2: rgba(247, 127, 0, 0.03);
+  --ambient-color-3: rgba(27, 67, 50, 0.05);
+}
+
+/* SPORE THEME - Light, airy, morning light (Light Mode) */
+[data-theme="spore"] {
+  --bg-primary: #F8F9FA;
+  --bg-secondary: #F0F2F4;
+  --bg-tertiary: #E8EBED;
+  --bg-elevated: #FFFFFF;
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --bg-card-hover: rgba(255, 255, 255, 0.95);
+  --bg-input: #FFFFFF;
+  --bg-input-focus: #FFFFFF;
+
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-default: #D4D9DE;
+  --border-muted: #E8EBED;
+
+  --text-primary: #1C1917;
+  --text-secondary: #57534E;
+  --text-muted: #78716C;
+  --text-disabled: #A8A29E;
+  --text-accent: #059669;
+  --text-inverse: #FFFFFF;
+
+  --accent: #059669;
+  --accent-hover: #047857;
+  --accent-muted: rgba(5, 150, 105, 0.1);
+  --secondary: #4A90A4;
+  --secondary-hover: #3B7A8E;
+
+  --glow-primary: rgba(123, 165, 136, 0.2);
+  --glow-secondary: rgba(74, 144, 164, 0.15);
+
+  --ambient-color-1: rgba(123, 165, 136, 0.03);
+  --ambient-color-2: rgba(74, 144, 164, 0.02);
+  --ambient-color-3: rgba(168, 162, 158, 0.02);
+
+  /* Light theme needs different shadow values */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.06);
+
+  /* Status colors adjusted for light theme */
+  --success: #059669;
+  --success-muted: rgba(5, 150, 105, 0.1);
+  --success-text: #047857;
+  --warning: #D97706;
+  --warning-muted: rgba(217, 119, 6, 0.1);
+  --warning-text: #B45309;
+  --danger: #DC2626;
+  --danger-muted: rgba(220, 38, 38, 0.1);
+  --danger-text: #B91C1C;
+  --info: #0891B2;
+  --info-muted: rgba(8, 145, 178, 0.1);
+  --info-text: #0E7490;
+}
+
+/* SUBSTRATE THEME - Warm earthy tones, underground warmth */
+[data-theme="substrate"] {
+  --bg-primary: #1A1612;
+  --bg-secondary: #231E18;
+  --bg-tertiary: #2D261E;
+  --bg-elevated: #362E24;
+  --bg-card: rgba(35, 30, 24, 0.6);
+  --bg-card-hover: rgba(54, 46, 36, 0.7);
+  --bg-input: #231E18;
+  --bg-input-focus: #2D261E;
+
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: #4A3F32;
+  --border-muted: #2D261E;
+
+  --text-primary: #FAFAF9;
+  --text-secondary: #BFB5A8;
+  --text-muted: #8C8275;
+  --text-accent: #C19A6B;
+
+  --accent: #C19A6B;
+  --accent-hover: #D4B088;
+  --accent-muted: rgba(193, 154, 107, 0.1);
+  --secondary: #558B2F;
+  --secondary-hover: #6B9F42;
+
+  --glow-primary: rgba(193, 154, 107, 0.3);
+  --glow-secondary: rgba(85, 139, 47, 0.2);
+
+  --ambient-color-1: rgba(193, 154, 107, 0.04);
+  --ambient-color-2: rgba(85, 139, 47, 0.03);
+  --ambient-color-3: rgba(62, 39, 35, 0.05);
+}
+
+/* ============================================================================
+   BASE RESET & DEFAULTS
+   ============================================================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  transition: background-color var(--duration-slow) var(--ease-out),
+              color var(--duration-slow) var(--ease-out);
+}
+
+/* Prevent horizontal overflow */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* ============================================================================
+   SCROLLBAR STYLING - Organic, subtle
+   ============================================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: var(--radius-full);
+  transition: background var(--duration-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Light theme scrollbar */
 [data-theme="spore"] ::-webkit-scrollbar-track {
-  background: #F5F5F0;
+  background: var(--bg-tertiary);
 }
 
 [data-theme="spore"] ::-webkit-scrollbar-thumb {
-  background: #D4D4C8;
+  background: var(--border-default);
 }
 
-[data-theme="spore"] ::-webkit-scrollbar-thumb:hover {
-  background: #A8A29E;
+/* Hide scrollbar utility */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
-/* Selection color based on theme */
+/* ============================================================================
+   SELECTION STYLING - Theme-aware
+   ============================================================================ */
+
+::selection {
+  background-color: var(--accent-muted);
+  color: var(--text-primary);
+}
+
 [data-theme="mycelium"] ::selection {
   background-color: rgba(0, 217, 255, 0.3);
 }
@@ -117,44 +464,544 @@
 }
 
 [data-theme="spore"] ::selection {
-  background-color: rgba(123, 165, 136, 0.3);
-  color: #1C1917;
+  background-color: rgba(5, 150, 105, 0.3);
+  color: var(--text-primary);
 }
 
 [data-theme="substrate"] ::selection {
   background-color: rgba(193, 154, 107, 0.3);
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* ============================================================================
+   FOCUS STATES - Bioluminescent glow
+   ============================================================================ */
+
+*:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--bg-primary),
+    0 0 0 4px var(--accent),
+    var(--shadow-glow-sm);
 }
 
-html {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  font-size: 16px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  min-height: 100vh;
-  transition: background-color 0.3s ease, color 0.3s ease;
+/* Alternative focus for non-interactive elements */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* ============================================================================
-   MODAL/DIALOG OVERLAY - Critical Fix for Scrolling
+   TYPOGRAPHY - Code & Monospace
    ============================================================================ */
 
-/* Modal backdrop must be scrollable when content is taller than viewport */
-.modal-overlay,
-[class*="fixed inset-0"][class*="bg-black"] {
-  overflow-y: auto !important;
+code, pre, .font-mono {
+  font-family: var(--font-mono);
+}
+
+/* ============================================================================
+   BUTTON SYSTEM - Organic, living interactions
+   ============================================================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: var(--leading-normal);
+  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    transform var(--duration-fast) var(--ease-spring);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary Button - Main action */
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: var(--text-inverse);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm), 0 0 0 0 var(--glow-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+  box-shadow: var(--shadow-md), var(--shadow-glow-sm);
+}
+
+.btn-primary:active:not(:disabled) {
+  box-shadow: var(--shadow-xs);
+}
+
+/* Spore theme primary button */
+[data-theme="spore"] .btn-primary {
+  color: #FFFFFF;
+}
+
+/* Secondary Button - Supporting action */
+.btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-elevated);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Ghost Button - Minimal, subtle */
+.btn-ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* Danger Button - Destructive actions */
+.btn-danger {
+  background: linear-gradient(135deg, var(--danger), #DC2626);
+  color: #FFFFFF;
+  border-color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #DC2626, var(--danger));
+  box-shadow: var(--shadow-md), 0 0 16px rgba(239, 68, 68, 0.3);
+}
+
+/* Icon Button - Square, for icons only */
+.btn-icon {
+  padding: var(--space-2);
+  aspect-ratio: 1;
+}
+
+/* Touch-friendly buttons */
+.btn-touch {
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .btn-touch {
+    min-height: auto;
+    padding: var(--space-2) var(--space-4);
+  }
+}
+
+/* ============================================================================
+   INPUT SYSTEM - Living, breathing form fields
+   ============================================================================ */
+
+.input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out);
+  -webkit-appearance: none;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:hover:not(:disabled):not(:focus) {
+  border-color: var(--text-muted);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background-color: var(--bg-input-focus);
+  box-shadow:
+    0 0 0 3px var(--accent-muted),
+    var(--shadow-glow-sm);
+}
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--bg-tertiary);
+}
+
+/* Input error state */
+.input-error {
+  border-color: var(--danger);
+}
+
+.input-error:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-muted);
+}
+
+/* Input success state */
+.input-success {
+  border-color: var(--success);
+}
+
+.input-success:focus {
+  border-color: var(--success);
+  box-shadow: 0 0 0 3px var(--success-muted);
+}
+
+/* Input label */
+.input-label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Input help text */
+.input-help {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Mobile touch-friendly inputs */
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px !important; /* Prevents iOS zoom */
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+/* ============================================================================
+   SELECT SYSTEM - Native with custom styling
+   ============================================================================ */
+
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  padding-right: var(--space-10);
+}
+
+[data-theme="spore"] .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2357534E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+/* ============================================================================
+   CARD SYSTEM - Organic depth with emergence effect
+   ============================================================================ */
+
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  transition:
+    transform var(--duration-normal) var(--ease-spring),
+    box-shadow var(--duration-normal) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.card-interactive {
+  cursor: pointer;
+}
+
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-sm);
+  border-color: var(--accent);
+}
+
+.card-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.card-body {
+  padding: var(--space-5);
+}
+
+.card-footer {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Responsive card */
+.card-responsive {
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+}
+
+@media (min-width: 640px) {
+  .card-responsive {
+    padding: var(--space-4);
+    border-radius: var(--radius-xl);
+  }
+}
+
+/* Glass morphism card */
+.card-glass {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+}
+
+[data-theme="spore"] .card-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ============================================================================
+   BADGE SYSTEM - Status indicators with organic feel
+   ============================================================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.badge-default {
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-color: var(--border-default);
+}
+
+.badge-success {
+  background-color: var(--success-muted);
+  color: var(--success-text);
+  border-color: var(--success);
+}
+
+.badge-warning {
+  background-color: var(--warning-muted);
+  color: var(--warning-text);
+  border-color: var(--warning);
+}
+
+.badge-danger, .badge-error {
+  background-color: var(--danger-muted);
+  color: var(--danger-text);
+  border-color: var(--danger);
+}
+
+.badge-info {
+  background-color: var(--info-muted);
+  color: var(--info-text);
+  border-color: var(--info);
+}
+
+.badge-accent {
+  background-color: var(--accent-muted);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ============================================================================
+   STATUS INDICATORS - Living dot system
+   ============================================================================ */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.status-active {
+  background-color: var(--success);
+}
+
+.status-warning {
+  background-color: var(--warning);
+}
+
+.status-error {
+  background-color: var(--danger);
+}
+
+.status-info {
+  background-color: var(--info);
+}
+
+/* Animated pulse for active status */
+.status-pulse {
+  position: relative;
+}
+
+.status-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: var(--radius-full);
+  background: inherit;
+  opacity: 0.5;
+  animation: pulseRing 2s var(--ease-out) infinite;
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* ============================================================================
+   TABLE SYSTEM - Clean, organic data display
+   ============================================================================ */
+
+.table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.table td {
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color var(--duration-fast);
+}
+
+.table tbody tr:hover td {
+  background-color: var(--bg-tertiary);
+}
+
+/* Scrollable table container */
+.table-container {
+  overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  margin: 0 calc(-1 * var(--space-4));
+  padding: 0 var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .table-container {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* ============================================================================
+   MODAL SYSTEM - Centered with organic emergence
+   ============================================================================ */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-4);
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: var(--z-modal-backdrop);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-content {
+  position: relative;
+  width: 100%;
+  max-width: 32rem;
+  margin: var(--space-8) 0;
+  padding: var(--space-6);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-2xl);
+  animation: modalEnter var(--duration-normal) var(--ease-spring);
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Mobile modal adjustments */
+@media (max-width: 640px) {
+  .modal-backdrop {
+    padding: var(--space-3);
+    align-items: flex-start;
+  }
+
+  .modal-content {
+    margin: var(--space-4) 0;
+    padding: var(--space-4);
+    max-height: calc(100vh - var(--space-8));
+    overflow-y: auto;
+  }
 }
 
 /* Ensure body doesn't scroll when modal is open */
@@ -167,609 +1014,154 @@ body.modal-open {
   overflow-y: auto;
 }
 
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 8px;
+/* ============================================================================
+   PROGRESS BAR - Organic flow
+   ============================================================================ */
+
+.progress-bar {
+  position: relative;
   height: 8px;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--color-surface);
+.progress-bar-fill {
+  position: absolute;
+  inset: 0;
+  right: auto;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  border-radius: var(--radius-full);
+  transition: width var(--duration-slow) var(--ease-out);
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 4px;
+/* Animated progress */
+.progress-organic {
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--accent-hover) 25%,
+    var(--accent) 50%,
+    var(--accent-hover) 75%,
+    var(--accent) 100%
+  );
+  background-size: 200% 100%;
+  animation: progressFlow 2s linear infinite;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-surface-hover);
+@keyframes progressFlow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
 }
 
-/* Selection */
-::selection {
-  background-color: rgba(16, 185, 129, 0.3);
-  color: var(--color-text-primary);
+/* ============================================================================
+   TOOLTIP
+   ============================================================================ */
+
+.tooltip {
+  position: absolute;
+  z-index: var(--z-tooltip);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
-/* Focus States */
-*:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+/* ============================================================================
+   SPINNER - Loading indicator
+   ============================================================================ */
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--accent);
+  border-radius: var(--radius-full);
+  animation: spin 0.8s linear infinite;
 }
 
-/* Code/Monospace */
-code, pre, .font-mono {
-  font-family: 'JetBrains Mono', monospace;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-/* Transitions */
-.transition-default {
-  transition: all 200ms ease;
+/* ============================================================================
+   EMPTY STATE
+   ============================================================================ */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12);
+  text-align: center;
 }
 
-/* Custom Button Styles */
-.btn {
-  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-950;
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  font-size: var(--text-2xl);
 }
 
-.btn-primary {
-  @apply bg-emerald-500 hover:bg-emerald-600 text-white focus:ring-emerald-500;
-}
+/* ============================================================================
+   ANIMATIONS - Organic movement
+   ============================================================================ */
 
-.btn-secondary {
-  @apply bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 focus:ring-zinc-500;
-}
-
-.btn-ghost {
-  @apply text-zinc-400 hover:text-white hover:bg-zinc-800;
-}
-
-/* Card Styles */
-.card {
-  @apply bg-zinc-900/50 border border-zinc-800 rounded-xl;
-}
-
-.card-header {
-  @apply p-5 border-b border-zinc-800;
-}
-
-.card-body {
-  @apply p-5;
-}
-
-/* Input Styles */
-.input {
-  @apply w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white placeholder-zinc-500;
-  @apply focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500;
-}
-
-.input-label {
-  @apply block text-sm font-medium text-zinc-400 mb-1;
-}
-
-/* Badge Styles */
-.badge {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-}
-
-.badge-success {
-  @apply bg-emerald-950/50 text-emerald-400 border border-emerald-800;
-}
-
-.badge-warning {
-  @apply bg-amber-950/50 text-amber-400 border border-amber-800;
-}
-
-.badge-error {
-  @apply bg-red-950/50 text-red-400 border border-red-800;
-}
-
-.badge-info {
-  @apply bg-blue-950/50 text-blue-400 border border-blue-800;
-}
-
-/* Status Indicators */
-.status-dot {
-  @apply w-2 h-2 rounded-full;
-}
-
-.status-active {
-  @apply bg-emerald-500;
-}
-
-.status-warning {
-  @apply bg-amber-500;
-}
-
-.status-error {
-  @apply bg-red-500;
-}
-
-/* Animation Classes */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(10px);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
   }
-  50% {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.8);
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 .animate-fade-in {
-  animation: fadeIn 300ms ease-out;
+  animation: fadeIn var(--duration-normal) var(--ease-out);
 }
 
 .animate-slide-up {
-  animation: slideUp 300ms ease-out;
+  animation: slideUp var(--duration-normal) var(--ease-out);
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-/* ============================================================================
-   MYCELIUM NAVIGATION SYSTEM - Organic Animations
-   ============================================================================ */
-
-/* Bioluminescent pulse - like glowing fungi */
-@keyframes bioluminescence {
-  0%, 100% {
-    opacity: 0.4;
-    filter: blur(8px);
-  }
-  50% {
-    opacity: 0.8;
-    filter: blur(12px);
-  }
-}
-
-.animate-bioluminescence {
-  animation: bioluminescence 3s ease-in-out infinite;
-}
-
-/* Spore dispersal - radial expansion */
-@keyframes sporeDisperse {
-  0% {
-    transform: scale(0) rotate(0deg);
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1) rotate(5deg);
-    opacity: 1;
-  }
-}
-
-.animate-spore-disperse {
-  animation: sporeDisperse 300ms ease-out forwards;
-}
-
-/* Mycelium thread drawing */
-@keyframes drawThread {
-  0% {
-    stroke-dashoffset: 100;
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-}
-
-.animate-draw-thread {
-  stroke-dasharray: 100;
-  animation: drawThread 500ms ease-out forwards;
-}
-
-/* Fruiting body emergence - for nodes appearing */
-@keyframes fruitingEmergence {
-  0% {
-    transform: translateY(20px) scale(0.8);
-    opacity: 0;
-  }
-  60% {
-    transform: translateY(-5px) scale(1.05);
-  }
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-}
-
-.animate-fruiting {
-  animation: fruitingEmergence 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-/* Hyphal growth - spreading effect */
-@keyframes hyphalGrowth {
-  0% {
-    clip-path: circle(0% at center);
-    opacity: 0;
-  }
-  100% {
-    clip-path: circle(100% at center);
-    opacity: 1;
-  }
-}
-
-.animate-hyphal-growth {
-  animation: hyphalGrowth 500ms ease-out forwards;
-}
-
-/* Substrate pulse - background breathing effect */
-@keyframes substratePulse {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-.animate-substrate-pulse {
-  background-size: 200% 200%;
-  animation: substratePulse 8s ease-in-out infinite;
-}
-
-/* Organic node hover effect */
-@keyframes organicBounce {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.hover-organic:hover {
-  animation: organicBounce 300ms ease-out;
-}
-
-/* Connection thread pulsing */
-@keyframes threadPulse {
-  0%, 100% {
-    stroke-opacity: 0.3;
-    stroke-width: 1;
-  }
-  50% {
-    stroke-opacity: 0.7;
-    stroke-width: 2;
-  }
-}
-
-.animate-thread-pulse {
-  animation: threadPulse 2s ease-in-out infinite;
-}
-
-/* Spore burst effect for menu */
-@keyframes sporeBurst {
-  0% {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* Staggered animation delays for spore items */
-.spore-item-0 { animation-delay: 0ms; }
-.spore-item-1 { animation-delay: 30ms; }
-.spore-item-2 { animation-delay: 60ms; }
-.spore-item-3 { animation-delay: 90ms; }
-.spore-item-4 { animation-delay: 120ms; }
-.spore-item-5 { animation-delay: 150ms; }
-.spore-item-6 { animation-delay: 180ms; }
-.spore-item-7 { animation-delay: 210ms; }
-
-/* Hide scrollbar for trail navigation */
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-
-/* Mycelium network background for hub */
-.bg-mycelium-network {
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(20, 184, 166, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 60%),
-    radial-gradient(circle at 30% 70%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 70% 30%, rgba(168, 85, 247, 0.05) 0%, transparent 40%);
-}
-
-/* Organic glow effects for different categories */
-.glow-emerald {
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5), 0 0 40px rgba(16, 185, 129, 0.2);
-}
-.glow-blue {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 0.2);
-}
-.glow-purple {
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.5), 0 0 40px rgba(168, 85, 247, 0.2);
-}
-.glow-amber {
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.5), 0 0 40px rgba(245, 158, 11, 0.2);
-}
-.glow-cyan {
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(6, 182, 212, 0.2);
-}
-.glow-pink {
-  box-shadow: 0 0 20px rgba(236, 72, 153, 0.5), 0 0 40px rgba(236, 72, 153, 0.2);
-}
-
-/* Progress Bar */
-.progress-bar {
-  @apply relative h-2 bg-zinc-800 rounded-full overflow-hidden;
-}
-
-.progress-bar-fill {
-  @apply absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500;
-}
-
-/* Table Styles */
-.table {
-  @apply w-full text-sm text-left;
-}
-
-.table th {
-  @apply px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider bg-zinc-900;
-}
-
-.table td {
-  @apply px-4 py-3 text-zinc-300 border-b border-zinc-800;
-}
-
-.table tr:hover td {
-  @apply bg-zinc-800/50;
-}
-
-/* Modal/Dialog Backdrop - Fixed for scroll */
-.modal-backdrop {
-  @apply fixed inset-0 bg-black/70 flex items-start justify-center z-50 overflow-y-auto p-4;
-}
-
-.modal-content {
-  @apply bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-full max-w-lg animate-slide-up my-8;
-}
-
-/* Ensure modals don't get cut off */
-@media (max-height: 600px) {
-  .modal-backdrop {
-    @apply items-start py-4;
-  }
-  .modal-content {
-    @apply my-4;
-  }
-}
-
-/* Tooltip */
-.tooltip {
-  @apply absolute z-50 px-2 py-1 text-xs text-white bg-zinc-800 rounded shadow-lg;
-}
-
-/* Empty State */
-.empty-state {
-  @apply flex flex-col items-center justify-center p-12 text-center;
-}
-
-.empty-state-icon {
-  @apply w-16 h-16 mb-4 rounded-full bg-zinc-800 flex items-center justify-center text-2xl;
-}
-
-/* Loading Spinner */
-.spinner {
-  @apply w-5 h-5 border-2 border-zinc-700 border-t-emerald-500 rounded-full animate-spin;
-}
-
-/* Organic/Mycelium Network Background Pattern */
-.bg-mycelium {
-  background-image: 
-    radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.03) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(20, 184, 166, 0.03) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(16, 185, 129, 0.02) 0%, transparent 30%);
-}
-
-/* Subtle grid pattern for scientific feel */
-.bg-grid {
-  background-image: 
-    linear-gradient(rgba(39, 39, 42, 0.5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(39, 39, 42, 0.5) 1px, transparent 1px);
-  background-size: 40px 40px;
+.animate-slide-down {
+  animation: slideDown var(--duration-normal) var(--ease-out);
 }
 
 /* ============================================================================
-   MOBILE-FIRST RESPONSIVE UTILITIES
+   ECOLOGICAL ANIMATIONS - Living interface
    ============================================================================ */
 
-/* Touch-friendly input sizing */
-@media (max-width: 640px) {
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="date"],
-  input[type="time"],
-  input[type="search"],
-  select,
-  textarea {
-    font-size: 16px !important; /* Prevents iOS zoom on focus */
-    min-height: 44px; /* Apple's recommended touch target */
-    padding: 0.75rem 1rem;
-  }
-
-  button {
-    min-height: 44px;
-  }
-}
-
-/* Safe area insets for notched devices */
-@supports (padding: max(0px)) {
-  .safe-area-inset {
-    padding-left: max(1rem, env(safe-area-inset-left));
-    padding-right: max(1rem, env(safe-area-inset-right));
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  }
-
-  .safe-area-bottom {
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
-  }
-}
-
-/* Responsive typography */
-.text-responsive-xs {
-  @apply text-xs sm:text-sm;
-}
-
-.text-responsive-sm {
-  @apply text-sm sm:text-base;
-}
-
-.text-responsive-base {
-  @apply text-base sm:text-lg;
-}
-
-.text-responsive-lg {
-  @apply text-lg sm:text-xl md:text-2xl;
-}
-
-.text-responsive-xl {
-  @apply text-xl sm:text-2xl md:text-3xl;
-}
-
-/* Touch-friendly buttons */
-.btn-touch {
-  @apply min-h-[44px] px-4 py-3 sm:min-h-0 sm:py-2;
-}
-
-/* Mobile-friendly spacing */
-.space-responsive {
-  @apply space-y-3 sm:space-y-4;
-}
-
-.gap-responsive {
-  @apply gap-2 sm:gap-3 md:gap-4;
-}
-
-.p-responsive {
-  @apply p-3 sm:p-4 md:p-6;
-}
-
-/* Prevent text overflow */
-.text-truncate {
-  @apply truncate;
-}
-
-/* Safe area for content - prevents overflow */
-.content-area {
-  @apply w-full max-w-full overflow-hidden;
-}
-
-/* Responsive grids that don't overflow */
-.responsive-grid {
-  @apply grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
-}
-
-/* Responsive stat cards */
-.stat-grid {
-  @apply grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6;
-}
-
-/* Detail panel responsive */
-@media (max-width: 1024px) {
-  .detail-panel {
-    @apply fixed inset-0 z-50 bg-zinc-950;
-  }
-}
-
-/* Hide on mobile */
-.hide-mobile {
-  @apply hidden sm:block;
-}
-
-/* Show only on mobile */
-.show-mobile {
-  @apply block sm:hidden;
-}
-
-/* Responsive filter bar */
-.filter-bar {
-  @apply flex flex-wrap items-center gap-2 sm:gap-3;
-}
-
-/* Scrollable table container */
-.table-container {
-  @apply overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
-}
-
-/* Mobile-friendly modal */
-@media (max-width: 640px) {
-  .modal-content {
-    @apply mx-4 max-h-[90vh] overflow-y-auto;
-  }
-}
-
-/* Prevent horizontal scroll on body */
-html, body {
-  overflow-x: hidden;
-  max-width: 100vw;
-}
-
-/* Safe content padding for pages */
-.page-content {
-  @apply p-4 sm:p-6;
-}
-
-/* Responsive card */
-.card-responsive {
-  @apply bg-zinc-900/50 border border-zinc-800 rounded-lg sm:rounded-xl p-3 sm:p-4;
-}
-
-/* Sticky sidebar for desktop */
-@media (min-width: 1024px) {
-  .sidebar-sticky {
-    position: sticky;
-    top: 1.5rem;
-    max-height: calc(100vh - 3rem);
-    overflow-y: auto;
-  }
-}
-
-/* ============================================================================
-   ECOLOGICAL AMBIENCE - Living Interface Effects
-   Subtle, organic, and performance-conscious animations
-   ============================================================================ */
-
-/* Living Background - Slow breathing gradient that evokes underground mycelium */
+/* Ambient breathing - slow background pulse */
 @keyframes ambientBreathing {
   0%, 100% {
     background-position: 0% 50%;
@@ -787,62 +1179,23 @@ html, body {
   }
 }
 
-.bg-ambient-living {
-  background:
-    radial-gradient(ellipse at 10% 20%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 90% 80%, rgba(20, 184, 166, 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(6, 95, 70, 0.02) 0%, transparent 60%),
-    linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-  background-size: 400% 400%;
-  animation: ambientBreathing 30s ease-in-out infinite;
-}
-
-/* Reduce motion for accessibility and mobile battery */
-@media (prefers-reduced-motion: reduce) {
-  .bg-ambient-living {
-    animation: none;
+/* Bioluminescent glow pulse */
+@keyframes bioluminescence {
+  0%, 100% {
+    opacity: 0.4;
+    filter: blur(8px);
+  }
+  50% {
+    opacity: 0.8;
+    filter: blur(12px);
   }
 }
 
-/* Subtle underground depth - adds texture like forest floor */
-.texture-organic {
-  position: relative;
+.animate-bioluminescence {
+  animation: bioluminescence var(--duration-ambient) var(--ease-in-out) infinite;
 }
 
-.texture-organic::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0.015;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  pointer-events: none;
-  mix-blend-mode: overlay;
-}
-
-/* Bioluminescent focus rings - organic glow instead of harsh outline */
-.focus-bioluminescent:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--bg-primary),
-    0 0 0 4px rgba(16, 185, 129, 0.5),
-    0 0 20px rgba(16, 185, 129, 0.2);
-}
-
-/* Organic card hover - subtle lift like emerging from substrate */
-.card-organic {
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.4s ease,
-              border-color 0.3s ease;
-}
-
-.card-organic:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 8px 25px -5px rgba(0, 0, 0, 0.4),
-    0 0 30px rgba(16, 185, 129, 0.05);
-}
-
-/* Spore drift - very subtle floating particles */
+/* Spore drift - floating particles */
 @keyframes sporeDrift {
   0%, 100% {
     transform: translateY(0) translateX(0) rotate(0deg);
@@ -862,17 +1215,26 @@ html, body {
   }
 }
 
-.spore-particle {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  background: rgba(16, 185, 129, 0.6);
-  border-radius: 50%;
-  pointer-events: none;
-  animation: sporeDrift 8s ease-in-out infinite;
+/* Fruiting emergence - spring up effect */
+@keyframes fruitingEmergence {
+  0% {
+    transform: translateY(20px) scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-5px) scale(1.05);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
-/* Mycelium network pulse - for connected elements */
+.animate-fruiting {
+  animation: fruitingEmergence var(--duration-slow) var(--ease-spring) forwards;
+}
+
+/* Network pulse */
 @keyframes networkPulse {
   0%, 100% {
     opacity: 0.1;
@@ -884,286 +1246,106 @@ html, body {
   }
 }
 
-.network-pulse {
-  animation: networkPulse 4s ease-in-out infinite;
-}
-
-/* Substrate gradient - rich earthy undertones */
-.gradient-substrate {
-  background: linear-gradient(
-    135deg,
-    rgba(15, 29, 50, 1) 0%,
-    rgba(12, 35, 30, 1) 50%,
-    rgba(15, 29, 50, 1) 100%
-  );
-}
-
-/* Colonization progress glow */
+/* Colonization glow */
 @keyframes colonizationGlow {
   0%, 100% {
-    box-shadow: 0 0 5px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 5px var(--glow-primary);
   }
   50% {
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5), 0 0 30px rgba(16, 185, 129, 0.2);
+    box-shadow: 0 0 15px var(--glow-primary), 0 0 30px var(--glow-secondary);
   }
 }
 
 .glow-colonization {
-  animation: colonizationGlow 3s ease-in-out infinite;
+  animation: colonizationGlow var(--duration-ambient) var(--ease-in-out) infinite;
 }
 
-/* Organic border - subtle gradient border like mycelium edge */
+/* Pulse glow */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--glow-primary);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--glow-primary);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s var(--ease-in-out) infinite;
+}
+
+/* ============================================================================
+   ORGANIC EFFECTS - Woven into components
+   ============================================================================ */
+
+/* Organic card hover */
+.card-organic {
+  transition:
+    transform var(--duration-slow) var(--ease-spring),
+    box-shadow var(--duration-slow) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.card-organic:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-sm);
+}
+
+/* Organic border gradient */
 .border-organic {
   border: 1px solid transparent;
   background:
     linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box,
-    linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(20, 184, 166, 0.1), rgba(16, 185, 129, 0.2)) border-box;
+    linear-gradient(135deg, var(--glow-primary), var(--glow-secondary), var(--glow-primary)) border-box;
 }
 
-/* Smooth state transitions - everything feels alive */
-.transition-organic {
-  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-/* Fruiting stage shimmer - subtle iridescence */
-@keyframes fruitingShimmer {
-  0% {
-    background-position: -200% center;
-  }
-  100% {
-    background-position: 200% center;
-  }
-}
-
-.shimmer-fruiting {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(168, 85, 247, 0.1) 25%,
-    rgba(16, 185, 129, 0.15) 50%,
-    rgba(168, 85, 247, 0.1) 75%,
-    transparent 100%
-  );
-  background-size: 200% 100%;
-  animation: fruitingShimmer 8s linear infinite;
-}
-
-/* Enhanced status indicators with organic feel */
-.status-active-organic {
-  position: relative;
-}
-
-.status-active-organic::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  background: inherit;
-  border-radius: inherit;
-  filter: blur(4px);
-  opacity: 0.4;
-  z-index: -1;
-  animation: bioluminescence 3s ease-in-out infinite;
-}
-
-/* Underground depth shadows - multi-layered for realism */
-.shadow-depth {
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.2),
-    0 4px 8px rgba(0, 0, 0, 0.15),
-    0 8px 16px rgba(0, 0, 0, 0.1),
-    0 16px 32px rgba(0, 0, 0, 0.05);
-}
-
-/* Ambient underscore - subtle accent line with gradient */
-.accent-underscore {
-  position: relative;
-}
-
-.accent-underscore::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(16, 185, 129, 0.5) 20%,
-    rgba(20, 184, 166, 0.8) 50%,
-    rgba(16, 185, 129, 0.5) 80%,
-    transparent 100%
-  );
-  transform: scaleX(0);
-  transition: transform 0.3s ease;
-}
-
-.accent-underscore:hover::after,
-.accent-underscore:focus-within::after {
-  transform: scaleX(1);
-}
-
-/* Ecological color enhancements */
-.text-forest {
-  color: #059669;
-}
-
-.text-lichen {
-  color: #7BA588;
-}
-
-.text-substrate-brown {
-  color: #8B7355;
-}
-
-.bg-forest-floor {
-  background: linear-gradient(
-    to bottom,
-    rgba(6, 95, 70, 0.05) 0%,
-    rgba(0, 0, 0, 0) 100%
-  );
-}
-
-/* Alive input fields - subtle breathing when focused */
+/* Living input focus */
 @keyframes inputBreathing {
   0%, 100% {
-    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 0 3px var(--accent-muted);
   }
   50% {
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4), 0 0 10px rgba(16, 185, 129, 0.1);
+    box-shadow: 0 0 0 3px var(--accent-muted), var(--shadow-glow-sm);
   }
 }
 
 .input-organic:focus {
-  animation: inputBreathing 2s ease-in-out infinite;
-  border-color: rgba(16, 185, 129, 0.5);
+  animation: inputBreathing 2s var(--ease-in-out) infinite;
+  border-color: var(--accent);
 }
 
-/* Harvest celebration - golden warmth */
-@keyframes harvestGlow {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
+/* Hover glow effect */
+.hover-glow {
+  transition: box-shadow var(--duration-fast) var(--ease-out);
 }
 
-.glow-harvest {
-  background: linear-gradient(
-    90deg,
-    rgba(245, 158, 11, 0.1) 0%,
-    rgba(234, 179, 8, 0.2) 50%,
-    rgba(245, 158, 11, 0.1) 100%
-  );
-  background-size: 200% 100%;
-  animation: harvestGlow 4s ease-in-out infinite;
+.hover-glow:hover {
+  box-shadow: var(--shadow-glow-md);
 }
 
-/* Mobile optimizations - reduce animations */
-@media (max-width: 640px) {
-  .bg-ambient-living {
-    animation-duration: 60s; /* Slower on mobile for battery */
-  }
-
-  .card-organic:hover {
-    transform: none; /* Disable hover transforms on touch */
-  }
-
-  .spore-particle {
-    animation: none;
-    display: none;
-  }
-}
-
-/* High performance mode - for users who prefer it */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+/* Organic transition timing */
+.transition-organic {
+  transition: all var(--duration-slow) var(--ease-organic);
 }
 
 /* ============================================================================
-   THEME-SPECIFIC ECOLOGICAL AMBIENCE
-   Each theme has its own ambient living background and effects
+   AMBIENT BACKGROUND - Theme-specific living atmosphere
    ============================================================================ */
 
-/* MYCELIUM THEME - Bioluminescent underground network */
-[data-theme="mycelium"] {
-  --ambient-color-1: rgba(0, 217, 255, 0.04);
-  --ambient-color-2: rgba(124, 58, 237, 0.03);
-  --ambient-color-3: rgba(6, 182, 212, 0.03);
-  --glow-primary: rgba(0, 217, 255, 0.3);
-  --glow-secondary: rgba(124, 58, 237, 0.2);
-}
-
-[data-theme="mycelium"] .ambient-bg {
-  background:
-    radial-gradient(ellipse at 15% 25%, var(--ambient-color-1) 0%, transparent 45%),
-    radial-gradient(ellipse at 85% 75%, var(--ambient-color-2) 0%, transparent 45%),
-    radial-gradient(ellipse at 50% 50%, var(--ambient-color-3) 0%, transparent 55%);
-}
-
-/* FRUITING THEME - Forest floor emergence */
-[data-theme="fruiting"] {
-  --ambient-color-1: rgba(6, 214, 160, 0.04);
-  --ambient-color-2: rgba(247, 127, 0, 0.03);
-  --ambient-color-3: rgba(27, 67, 50, 0.05);
-  --glow-primary: rgba(6, 214, 160, 0.3);
-  --glow-secondary: rgba(247, 127, 0, 0.2);
-}
-
-[data-theme="fruiting"] .ambient-bg {
-  background:
-    radial-gradient(ellipse at 20% 80%, var(--ambient-color-1) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, var(--ambient-color-2) 0%, transparent 45%),
-    radial-gradient(ellipse at 50% 100%, var(--ambient-color-3) 0%, transparent 60%);
-}
-
-/* SPORE THEME - Clean, airy, morning light */
-[data-theme="spore"] {
-  --ambient-color-1: rgba(123, 165, 136, 0.03);
-  --ambient-color-2: rgba(74, 144, 164, 0.02);
-  --ambient-color-3: rgba(168, 162, 158, 0.02);
-  --glow-primary: rgba(123, 165, 136, 0.2);
-  --glow-secondary: rgba(74, 144, 164, 0.15);
-}
-
-[data-theme="spore"] .ambient-bg {
-  background:
-    radial-gradient(ellipse at 10% 10%, var(--ambient-color-1) 0%, transparent 50%),
-    radial-gradient(ellipse at 90% 90%, var(--ambient-color-2) 0%, transparent 50%),
-    linear-gradient(180deg, transparent 0%, var(--ambient-color-3) 100%);
-}
-
-/* SUBSTRATE THEME - Warm, earthy, underground warmth */
-[data-theme="substrate"] {
-  --ambient-color-1: rgba(193, 154, 107, 0.04);
-  --ambient-color-2: rgba(85, 139, 47, 0.03);
-  --ambient-color-3: rgba(62, 39, 35, 0.05);
-  --glow-primary: rgba(193, 154, 107, 0.3);
-  --glow-secondary: rgba(85, 139, 47, 0.2);
-}
-
-[data-theme="substrate"] .ambient-bg {
-  background:
-    radial-gradient(ellipse at 25% 75%, var(--ambient-color-1) 0%, transparent 50%),
-    radial-gradient(ellipse at 75% 25%, var(--ambient-color-2) 0%, transparent 45%),
-    linear-gradient(135deg, var(--ambient-color-3) 0%, transparent 60%);
-}
-
-/* Universal ambient wrapper */
 .ambient-bg {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: -1;
+  background:
+    radial-gradient(ellipse at 15% 25%, var(--ambient-color-1) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 75%, var(--ambient-color-2) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, var(--ambient-color-3) 0%, transparent 55%);
   background-size: 400% 400%;
-  animation: ambientBreathing 30s ease-in-out infinite;
+  animation: ambientBreathing 30s var(--ease-in-out) infinite;
 }
 
-/* Floating spore particles - theme-aware */
+/* Floating particles */
 .ambient-particles {
   position: fixed;
   inset: 0;
@@ -1179,9 +1361,9 @@ html, body {
   width: 3px;
   height: 3px;
   background: var(--glow-primary);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   opacity: 0.4;
-  animation: sporeDrift 12s ease-in-out infinite;
+  animation: sporeDrift 12s var(--ease-in-out) infinite;
 }
 
 .ambient-particles::before {
@@ -1196,7 +1378,7 @@ html, body {
   animation-delay: -6s;
 }
 
-/* Subtle vignette for depth */
+/* Vignette for depth */
 .vignette {
   position: fixed;
   inset: 0;
@@ -1219,155 +1401,330 @@ html, body {
   );
 }
 
-/* Animated gradient border for featured elements */
-@keyframes borderFlow {
+/* ============================================================================
+   MYCELIUM NAVIGATION PATTERNS
+   ============================================================================ */
+
+/* Spore dispersal animation */
+@keyframes sporeDisperse {
   0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.border-animated {
-  border: 2px solid transparent;
-  background:
-    linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box,
-    linear-gradient(90deg, var(--accent), var(--secondary), var(--accent)) border-box;
-  background-size: 200% 200%;
-  animation: borderFlow 4s ease infinite;
-}
-
-/* Card glass morphism effect */
-.glass {
-  background: var(--bg-card);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--border-primary);
-}
-
-[data-theme="spore"] .glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-/* Organic glow on hover for interactive elements */
-.hover-glow {
-  transition: box-shadow 0.3s ease, transform 0.2s ease;
-}
-
-.hover-glow:hover {
-  box-shadow: 0 0 20px var(--glow-primary), 0 0 40px var(--glow-secondary);
-}
-
-/* Progress bars with organic flow */
-@keyframes progressFlow {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 200% 50%;
-  }
-}
-
-.progress-organic {
-  background: linear-gradient(
-    90deg,
-    var(--accent) 0%,
-    var(--accent-hover) 25%,
-    var(--accent) 50%,
-    var(--accent-hover) 75%,
-    var(--accent) 100%
-  );
-  background-size: 200% 100%;
-  animation: progressFlow 2s linear infinite;
-}
-
-/* Subtle texture noise overlay */
-.texture-noise {
-  position: relative;
-}
-
-.texture-noise::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0.02;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  pointer-events: none;
-  mix-blend-mode: overlay;
-  border-radius: inherit;
-  z-index: 1;
-}
-
-[data-theme="spore"] .texture-noise::before {
-  opacity: 0.01;
-  mix-blend-mode: multiply;
-}
-
-/* Smooth page transitions */
-.page-enter {
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-.page-enter-active {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 300ms ease-out, transform 300ms ease-out;
-}
-
-/* Status dot with pulse */
-.status-pulse {
-  position: relative;
-}
-
-.status-pulse::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: inherit;
-  opacity: 0.5;
-  animation: pulseRing 2s ease-out infinite;
-}
-
-@keyframes pulseRing {
-  0% {
-    transform: scale(1);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(2);
+    transform: scale(0) rotate(0deg);
     opacity: 0;
   }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(5deg);
+    opacity: 1;
+  }
 }
 
-/* Theme transition smoothing */
-:root {
-  transition: background-color 0.3s ease-out, color 0.3s ease-out;
+.animate-spore-disperse {
+  animation: sporeDisperse var(--duration-normal) var(--ease-out) forwards;
 }
 
-/* Mobile: Disable heavy effects for battery */
-@media (max-width: 640px) {
+/* Hyphal growth */
+@keyframes hyphalGrowth {
+  0% {
+    clip-path: circle(0% at center);
+    opacity: 0;
+  }
+  100% {
+    clip-path: circle(100% at center);
+    opacity: 1;
+  }
+}
+
+.animate-hyphal-growth {
+  animation: hyphalGrowth var(--duration-slow) var(--ease-out) forwards;
+}
+
+/* Staggered animation delays */
+.spore-item-0 { animation-delay: 0ms; }
+.spore-item-1 { animation-delay: 30ms; }
+.spore-item-2 { animation-delay: 60ms; }
+.spore-item-3 { animation-delay: 90ms; }
+.spore-item-4 { animation-delay: 120ms; }
+.spore-item-5 { animation-delay: 150ms; }
+.spore-item-6 { animation-delay: 180ms; }
+.spore-item-7 { animation-delay: 210ms; }
+
+/* Organic glow effects for categories */
+.glow-emerald {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5), 0 0 40px rgba(16, 185, 129, 0.2);
+}
+.glow-blue {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 0.2);
+}
+.glow-purple {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.5), 0 0 40px rgba(168, 85, 247, 0.2);
+}
+.glow-amber {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.5), 0 0 40px rgba(245, 158, 11, 0.2);
+}
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(6, 182, 212, 0.2);
+}
+.glow-pink {
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.5), 0 0 40px rgba(236, 72, 153, 0.2);
+}
+
+/* Mycelium network background */
+.bg-mycelium-network {
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(20, 184, 166, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 60%);
+}
+
+.bg-mycelium {
+  background-image:
+    radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(20, 184, 166, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(16, 185, 129, 0.02) 0%, transparent 30%);
+}
+
+/* Scientific grid background */
+.bg-grid {
+  background-image:
+    linear-gradient(var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ============================================================================
+   RESPONSIVE UTILITIES
+   ============================================================================ */
+
+/* Responsive typography */
+.text-responsive-xs { font-size: var(--text-xs); }
+.text-responsive-sm { font-size: var(--text-sm); }
+.text-responsive-base { font-size: var(--text-base); }
+.text-responsive-lg { font-size: var(--text-lg); }
+.text-responsive-xl { font-size: var(--text-xl); }
+
+@media (min-width: 640px) {
+  .text-responsive-xs { font-size: var(--text-sm); }
+  .text-responsive-sm { font-size: var(--text-base); }
+  .text-responsive-base { font-size: var(--text-lg); }
+  .text-responsive-lg { font-size: var(--text-xl); }
+  .text-responsive-xl { font-size: var(--text-2xl); }
+}
+
+@media (min-width: 768px) {
+  .text-responsive-lg { font-size: var(--text-2xl); }
+  .text-responsive-xl { font-size: var(--text-3xl); }
+}
+
+/* Responsive spacing */
+.p-responsive {
+  padding: var(--space-3);
+}
+
+@media (min-width: 640px) {
+  .p-responsive { padding: var(--space-4); }
+}
+
+@media (min-width: 768px) {
+  .p-responsive { padding: var(--space-6); }
+}
+
+.gap-responsive {
+  gap: var(--space-2);
+}
+
+@media (min-width: 640px) {
+  .gap-responsive { gap: var(--space-3); }
+}
+
+@media (min-width: 768px) {
+  .gap-responsive { gap: var(--space-4); }
+}
+
+/* Responsive grids */
+.responsive-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .responsive-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .responsive-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1280px) {
+  .responsive-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Stat grid */
+.stat-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 640px) {
+  .stat-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 768px) {
+  .stat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .stat-grid { grid-template-columns: repeat(6, 1fr); }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+  .safe-area-inset {
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
+  }
+}
+
+/* Page content padding */
+.page-content {
+  padding: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .page-content { padding: var(--space-6); }
+}
+
+/* Filter bar */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (min-width: 640px) {
+  .filter-bar { gap: var(--space-3); }
+}
+
+/* Detail panel responsive */
+@media (max-width: 1024px) {
+  .detail-panel {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    background-color: var(--bg-primary);
+  }
+}
+
+/* Sticky sidebar for desktop */
+@media (min-width: 1024px) {
+  .sidebar-sticky {
+    position: sticky;
+    top: var(--space-6);
+    max-height: calc(100vh - var(--space-12));
+    overflow-y: auto;
+  }
+}
+
+/* Hide/show on mobile */
+.hide-mobile {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .hide-mobile { display: block; }
+}
+
+.show-mobile {
+  display: block;
+}
+
+@media (min-width: 640px) {
+  .show-mobile { display: none; }
+}
+
+/* ============================================================================
+   ACCESSIBILITY - Reduced Motion Support
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
   .ambient-bg {
-    animation-duration: 60s;
+    animation: none;
   }
 
   .ambient-particles::before,
   .ambient-particles::after {
     display: none;
   }
+}
 
+/* ============================================================================
+   MOBILE PERFORMANCE OPTIMIZATIONS
+   ============================================================================ */
+
+@media (max-width: 640px) {
+  /* Slower animations for battery */
+  .ambient-bg {
+    animation-duration: 60s;
+  }
+
+  /* Disable hover transforms on touch */
+  .card-organic:hover {
+    transform: none;
+  }
+
+  /* Hide particles */
+  .ambient-particles::before,
+  .ambient-particles::after {
+    display: none;
+  }
+
+  /* Simplify vignette */
   .vignette {
     background: none;
   }
 
+  /* Disable hover glows */
   .hover-glow:hover {
     box-shadow: none;
+  }
+}
+
+/* ============================================================================
+   PRINT STYLES
+   ============================================================================ */
+
+@media print {
+  .ambient-bg,
+  .ambient-particles,
+  .vignette {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .card {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
   }
 }
