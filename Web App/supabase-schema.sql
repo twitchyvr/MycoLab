@@ -7335,20 +7335,16 @@ BEGIN
   -- Schedule notification check every 15 minutes
   PERFORM cron.schedule(
     'mycolab-notification-check',
-    '*/15 * * * *',  -- Every 15 minutes
-    $$SELECT process_scheduled_notifications()$$
+    '*/15 * * * *',
+    'SELECT process_scheduled_notifications()'
   );
   v_result := v_result || 'Scheduled: notification check every 15 minutes. ';
 
   -- Schedule queue cleanup daily at 3 AM
   PERFORM cron.schedule(
     'mycolab-queue-cleanup',
-    '0 3 * * *',  -- Daily at 3 AM
-    $$DELETE FROM notification_queue
-      WHERE (status = 'sent' AND sent_at < NOW() - INTERVAL '7 days')
-         OR (status = 'cancelled' AND created_at < NOW() - INTERVAL '7 days')
-         OR (status = 'failed' AND attempts >= 3 AND created_at < NOW() - INTERVAL '30 days')
-         OR (expires_at < NOW() AND status = 'pending')$$
+    '0 3 * * *',
+    'DELETE FROM notification_queue WHERE (status = ''sent'' AND sent_at < NOW() - INTERVAL ''7 days'') OR (status = ''cancelled'' AND created_at < NOW() - INTERVAL ''7 days'') OR (status = ''failed'' AND attempts >= 3 AND created_at < NOW() - INTERVAL ''30 days'') OR (expires_at < NOW() AND status = ''pending'')'
   );
   v_result := v_result || 'Scheduled: queue cleanup daily at 3 AM. ';
 
