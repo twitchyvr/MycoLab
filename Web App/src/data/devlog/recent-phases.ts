@@ -4438,6 +4438,45 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1242',
+    title: 'Pressure Cooking Calculator - Item Tracking & Auto-Logging',
+    description: 'Enhanced Pressure Cooking Calculator with item selection, sterilization logging, and automatic PreparedSpawn status updates when timer completes.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'medium',
+    notes: `Enhanced the Pressure Cooking Calculator to track and log sterilization events:
+
+**Item Selection:**
+- "Items Being Sterilized" section with Add Item button
+- Select from Prepared Spawn (needs sterilizing, reserved, or re-sterilize)
+- Add custom items with name and quantity
+- Shows item type icons and quantities
+
+**Automatic Tracking:**
+- When timer completes, updates all PreparedSpawn items with:
+  - sterilizationDate = completion time
+  - sterilizationMethod = "PC {psi}psi {minutes}min"
+  - status = 'available' (ready for inoculation)
+- Logs sterilization event with date, items, PSI, and time
+
+**Session History:**
+- View recent sterilizations (last 10)
+- Shows date/time, PSI, duration, and items sterilized
+- Toggle history panel visibility
+
+**UI Improvements:**
+- Dropdown selector with spawn categorization
+- Prepared Spawn shows status badges (needs sterilizing, reserved, re-sterilize)
+- Custom item input with quantity
+- Item list with remove buttons
+- Summary showing total items and units
+
+**Files Changed:**
+- src/components/tools/PressureCookingCalculator.tsx - Item tracking, auto-logging, history`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
