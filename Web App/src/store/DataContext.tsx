@@ -132,7 +132,11 @@ interface DataContextValue extends LookupHelpers {
   state: DataStoreState;
   isLoading: boolean;
   isConnected: boolean;
+  isAuthenticated: boolean; // true = logged in with real account, false = anonymous or not connected
   error: string | null;
+
+  // Auth helpers
+  requireAuth: () => void; // Call before CRUD operations - throws if not authenticated
   
   // Species CRUD
   addSpecies: (species: Omit<Species, 'id'>) => Promise<Species>;
@@ -314,6 +318,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [state, setState] = useState<DataStoreState>(emptyState);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
 
@@ -371,6 +376,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       // Only load settings from database for non-anonymous users
       // Anonymous users use localStorage only (RLS policies block them)
       const isAnon = await isAnonymousUser();
+      setIsAuthenticated(!isAnon);
+
       if (!isAnon) {
         const currentUserId = await getCachedUserId();
         if (currentUserId) {
@@ -717,8 +724,16 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Update authentication status
+        const isRealUser = !!session?.user && !session.user.is_anonymous;
+        setIsAuthenticated(isRealUser);
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[DataContext] Auth state:', event, isRealUser ? 'authenticated' : 'anonymous');
+        }
+
         // Reload data when user signs in (with a real account, not anonymous)
-        if (event === 'SIGNED_IN' && session?.user && !session.user.is_anonymous) {
+        if (event === 'SIGNED_IN' && isRealUser) {
           if (process.env.NODE_ENV === 'development') {
             console.log('[DataContext] Auth state changed to SIGNED_IN, reloading data...');
           }
@@ -729,7 +744,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         }
 
         // Also reload on TOKEN_REFRESHED to ensure we have fresh data after token refresh
-        if (event === 'TOKEN_REFRESHED' && session?.user && !session.user.is_anonymous) {
+        if (event === 'TOKEN_REFRESHED' && isRealUser) {
           if (process.env.NODE_ENV === 'development') {
             console.log('[DataContext] Token refreshed, ensuring data is current...');
           }
@@ -745,6 +760,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
               }
             }
           }
+        }
+
+        // Handle sign out
+        if (event === 'SIGNED_OUT') {
+          setIsAuthenticated(false);
         }
       }
     );
@@ -770,6 +790,20 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const generateId = useCallback((prefix: string): string => {
     return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 5)}`;
   }, []);
+
+  // ============================================================================
+  // AUTHENTICATION HELPERS
+  // ============================================================================
+
+  /**
+   * Check if user is authenticated (not anonymous).
+   * Throws an error if not authenticated - use this before any CRUD operation.
+   */
+  const requireAuth = useCallback(() => {
+    if (!isAuthenticated) {
+      throw new Error('Please sign in to make changes. Create a free account to save your data.');
+    }
+  }, [isAuthenticated]);
 
   // ============================================================================
   // LOOKUP HELPERS
@@ -3369,7 +3403,11 @@ const loadSettings = async (): Promise<AppSettings> => {
     state,
     isLoading,
     isConnected,
+    isAuthenticated,
     error,
+
+    // Auth helpers
+    requireAuth,
 
     // Lookup helpers
     getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
@@ -3408,7 +3446,8 @@ const loadSettings = async (): Promise<AppSettings> => {
     generateId,
     refreshData,
   }), [
-    state, isLoading, isConnected, error,
+    state, isLoading, isConnected, isAuthenticated, error,
+    requireAuth,
     getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
     getInventoryLot, getPurchaseOrder, getCulture, getPreparedSpawn, getGrow, getRecipe,

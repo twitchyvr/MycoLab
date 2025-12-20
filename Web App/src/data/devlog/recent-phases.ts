@@ -4477,6 +4477,38 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1243',
+    title: 'Anonymous User Authentication Restrictions',
+    description: 'Added isAuthenticated state and requireAuth helper to prevent anonymous users from attempting CRUD operations that would fail at the database level.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    notes: `Added authentication state tracking and restrictions:
+
+**New State Variables:**
+- isAuthenticated: boolean tracking if user is logged in with real account (not anonymous)
+- Updated on auth state changes and initial load
+
+**New Helper Function:**
+- requireAuth(): throws descriptive error if not authenticated
+- Components can call before CRUD operations or check isAuthenticated to hide edit buttons
+
+**Auth State Updates:**
+- Set during initial data load (checks isAnonymousUser)
+- Updated on SIGNED_IN, TOKEN_REFRESHED, and SIGNED_OUT events
+- Logs auth state changes in development mode
+
+**Usage by Components:**
+- Check isAuthenticated before showing add/edit/delete buttons
+- Call requireAuth() before CRUD operations for belt-and-suspenders safety
+- Error message directs users to create a free account
+
+**Files Changed:**
+- src/store/DataContext.tsx - isAuthenticated state, requireAuth helper, auth tracking`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
