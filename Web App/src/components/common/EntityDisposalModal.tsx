@@ -54,7 +54,7 @@ export interface DisposalOutcome {
 interface EntityDisposalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (outcome: DisposalOutcome) => void;
+  onConfirm: (outcome: DisposalOutcome) => void | Promise<void>;
   entityType: string;
   entityName: string;
   entityId?: string;
@@ -81,6 +81,7 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
   const [notes, setNotes] = useState('');
   const [contaminationType, setContaminationType] = useState<ContaminationType | ''>('');
   const [suspectedCause, setSuspectedCause] = useState<SuspectedCause | ''>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get outcome options for this entity type
   const outcomeOptions = useMemo(() => getOutcomeOptionsForEntity(entityType), [entityType]);
@@ -114,14 +115,17 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
       setNotes('');
       setContaminationType('');
       setSuspectedCause('');
+      setIsSubmitting(false);
     }
   }, [isOpen]);
 
   // Check if selected outcome is contamination-related
   const isContaminationOutcome = selectedOutcome?.code.includes('contamination');
 
-  const handleConfirm = () => {
-    if (!selectedOutcome) return;
+  const handleConfirm = async () => {
+    if (!selectedOutcome || isSubmitting) return;
+
+    setIsSubmitting(true);
 
     const outcome: DisposalOutcome = {
       outcomeCode: selectedOutcome.code,
@@ -136,7 +140,13 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
       if (suspectedCause) outcome.suspectedCause = suspectedCause;
     }
 
-    onConfirm(outcome);
+    try {
+      await onConfirm(outcome);
+    } catch (error) {
+      console.error('[Disposal] Error during confirmation:', error);
+      setIsSubmitting(false);  // Re-enable on error so user can retry
+    }
+    // Note: Don't reset isSubmitting on success - modal will be closed and reset by parent
   };
 
   if (!isOpen) return null;
@@ -279,23 +289,24 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 min-h-[48px] text-sm text-zinc-400 hover:text-zinc-200 transition-colors rounded-lg hover:bg-zinc-800"
+            disabled={isSubmitting}
+            className="px-4 py-2.5 min-h-[48px] text-sm text-zinc-400 hover:text-zinc-200 transition-colors rounded-lg hover:bg-zinc-800 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={!selectedOutcome}
+            disabled={!selectedOutcome || isSubmitting}
             className={`
               px-5 py-2.5 min-h-[48px] text-sm font-medium rounded-lg transition-all
-              ${selectedOutcome
+              ${selectedOutcome && !isSubmitting
                 ? 'bg-red-600 hover:bg-red-500 text-white'
                 : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
               }
             `}
           >
-            Confirm Disposal
+            {isSubmitting ? 'Processing...' : 'Confirm Disposal'}
           </button>
         </div>
         </div>

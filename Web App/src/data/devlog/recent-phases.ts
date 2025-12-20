@@ -4238,6 +4238,50 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1238',
+    title: 'Database-Level Idempotent Archive & Unit Standardization',
+    description: 'Fixed remaining 409 conflict errors with database-level idempotent operations. Standardized unit inputs across calculators using the polished WeightInput component.',
+    category: 'fix',
+    status: 'completed',
+    priority: 'high',
+    notes: `Comprehensive fixes for archive conflicts and unit standardization:
+
+**Fix #1 - Database-Level Idempotent Archive (Critical):**
+- Problem: 409 conflict still occurred despite local state guards
+- Root cause: Local state can be stale; database might already have is_archived=true
+- Solution: Added .eq('is_archived', false) to UPDATE queries
+- If 0 rows affected, culture was already archived - skip amendment log
+- Gracefully syncs local state to match database
+- Same pattern applied to both archiveCulture() and archiveGrow()
+
+**Fix #2 - Double-Click Protection in EntityDisposalModal:**
+- Problem: Rapid clicks could trigger multiple disposal attempts
+- Solution: Added isSubmitting state to disable buttons during processing
+- Made onConfirm async-aware with Promise<void> return type
+- Shows "Processing..." text while submitting
+- Disabled Cancel button during submission to prevent escape
+
+**Fix #3 - SubstrateCalculator Unit Standardization:**
+- Refactored to use WeightInput component for weight fields
+- Polished unit dropdowns matching New Grow modal style
+- Each weight input has its own unit selection (g, kg, oz, lb)
+- Percentage input styled to match (input + % suffix)
+- Results display in user's preferred unit from settings
+- Saved calculations show weights in preferred unit
+
+**Technical Notes:**
+- WeightInput stores values in grams internally
+- User preferences from state.settings.defaultUnits
+- Responsive design with flex layout
+
+**Files Changed:**
+- src/store/DataContext.tsx - database-level idempotent archive operations
+- src/components/common/EntityDisposalModal.tsx - double-click protection, async handling
+- src/components/tools/SubstrateCalculator.tsx - complete refactor with WeightInput`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
