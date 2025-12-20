@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
+import { useAuthGuard } from '../../lib/useAuthGuard';
 import type { Recipe, RecipeCategory, RecipeIngredient, RecipeCategoryItem } from '../../store/types';
 import { StandardDropdown } from '../common/StandardDropdown';
 
@@ -32,6 +33,7 @@ export const RecipeBuilder: React.FC = () => {
     scaleRecipe,
     generateId,
   } = useData();
+  const { guardAction } = useAuthGuard();
 
   const recipes = state.recipes.filter(r => r.isActive);
 
@@ -92,6 +94,7 @@ export const RecipeBuilder: React.FC = () => {
   useEffect(() => {
     const handleCreateNew = (event: CustomEvent) => {
       if (event.detail?.page === 'recipes') {
+        if (!guardAction()) return; // Show auth modal if not authenticated
         resetForm();
         setEditMode(false);
         setShowCreateModal(true);
@@ -99,7 +102,7 @@ export const RecipeBuilder: React.FC = () => {
     };
     window.addEventListener('mycolab:create-new', handleCreateNew as EventListener);
     return () => window.removeEventListener('mycolab:create-new', handleCreateNew as EventListener);
-  }, []);
+  }, [guardAction]);
 
   // Filtered recipes
   const filteredRecipes = useMemo(() => {
@@ -217,6 +220,7 @@ export const RecipeBuilder: React.FC = () => {
 
   // Save recipe
   const handleSaveRecipe = async () => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     if (!formData.name || formData.ingredients.length === 0) return;
     const recipeData = {
       name: formData.name,
@@ -246,6 +250,7 @@ export const RecipeBuilder: React.FC = () => {
 
   // Duplicate recipe
   const handleDuplicateRecipe = async (recipe: Recipe) => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     const duplicate = await addRecipe({
       ...recipe,
       name: `${recipe.name} (Copy)`,
@@ -256,6 +261,7 @@ export const RecipeBuilder: React.FC = () => {
 
   // Delete recipe
   const handleDeleteRecipe = async (id: string) => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     if (confirm('Delete this recipe?')) {
       await deleteRecipe(id);
       if (selectedRecipe?.id === id) setSelectedRecipe(null);

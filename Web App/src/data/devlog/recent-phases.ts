@@ -4554,6 +4554,47 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1245',
+    title: 'Anonymous User UI Guards for CRUD Operations',
+    description: 'Applied useAuthGuard hook to all CRUD operation entry points. Anonymous users now see the auth modal when trying to add, edit, or delete data instead of getting database errors.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    notes: `Implemented proactive UI guards for anonymous users:
+
+**New Hook:**
+- Created useAuthGuard hook in src/lib/useAuthGuard.ts
+- Provides guardAction() function that shows auth modal if not authenticated
+- Returns true if action should proceed, false if blocked
+
+**Components Updated:**
+- LabSpaces: Add/Edit/Delete location buttons
+- SelectWithAdd: Inline "Add New" dropdown option
+- StandardDropdown: "Add New" button
+- CultureManagement: Create, Transfer, Observation, Delete handlers
+- GrowManagement: Create, Edit, Advance Stage, Harvest, Observation handlers
+- RecipeBuilder: Create, Save, Duplicate, Delete handlers
+- StockManagement: Add lot, Add order handlers
+
+**User Experience:**
+- Anonymous users can browse/read all data
+- Clicking add/edit/delete shows signup modal immediately
+- No more confusing database errors for anonymous users
+- Clear path to create account to unlock features
+
+**Files Changed:**
+- src/lib/useAuthGuard.ts (new)
+- src/components/locations/LabSpaces.tsx
+- src/components/common/SelectWithAdd.tsx
+- src/components/common/StandardDropdown.tsx
+- src/components/cultures/CultureManagement.tsx
+- src/components/grows/GrowManagement.tsx
+- src/components/recipes/RecipeBuilder.tsx
+- src/components/inventory/StockManagement.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

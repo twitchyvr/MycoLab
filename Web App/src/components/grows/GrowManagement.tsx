@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useData } from '../../store';
+import { useAuthGuard } from '../../lib/useAuthGuard';
 import type { Grow, GrowStage, GrowStatus, GrowObservation, Flush, GrowOutcomeCode, AmendmentType } from '../../store/types';
 import { StandardDropdown } from '../common/StandardDropdown';
 import { NumericInput } from '../common/NumericInput';
@@ -481,6 +482,7 @@ export const GrowManagement: React.FC = () => {
     saveEntityOutcome,
     saveContaminationDetails,
   } = useData();
+  const { guardAction } = useAuthGuard();
 
   const grows = state.grows;
   const cultures = state.cultures;
@@ -605,7 +607,10 @@ export const GrowManagement: React.FC = () => {
   // Event listeners
   useEffect(() => {
     const handleCreateNew = (event: CustomEvent) => {
-      if (event.detail?.page === 'grows') setShowCreateModal(true);
+      if (event.detail?.page === 'grows') {
+        if (!guardAction()) return; // Show auth modal if not authenticated
+        setShowCreateModal(true);
+      }
     };
     const handleSelectItem = (event: CustomEvent) => {
       if (event.detail?.type === 'grow') {
@@ -618,6 +623,7 @@ export const GrowManagement: React.FC = () => {
     };
     const handleEditItem = (event: CustomEvent) => {
       if (event.detail?.type === 'grow') {
+        if (!guardAction()) return; // Show auth modal if not authenticated
         const grow = grows.find(g => g.id === event.detail.id);
         if (grow) {
           setSelectedGrow(grow);
@@ -633,7 +639,7 @@ export const GrowManagement: React.FC = () => {
       window.removeEventListener('mycolab:select-item', handleSelectItem as EventListener);
       window.removeEventListener('mycolab:edit-item', handleEditItem as EventListener);
     };
-  }, [grows]);
+  }, [grows, guardAction]);
 
   // Sync selectedGrow with state
   useEffect(() => {
@@ -781,6 +787,7 @@ export const GrowManagement: React.FC = () => {
   }, []);
 
   const handleCreateGrow = () => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     if (!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerId || !newGrow.locationId) return;
 
     const strain = getStrain(newGrow.strainId);
@@ -844,6 +851,7 @@ export const GrowManagement: React.FC = () => {
   };
 
   const handleUpdateGrow = async () => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     if (!editGrow.id || !editGrow.strainId || !editGrow.substrateTypeId || !editGrow.containerId || !editGrow.locationId) return;
 
     const inoculationDate = editGrow.inoculationDate
@@ -877,10 +885,12 @@ export const GrowManagement: React.FC = () => {
   };
 
   const handleAdvanceStage = async (growId: string) => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     await advanceGrowStage(growId);
   };
 
   const handleRecordHarvest = async (growId: string, wetWeight: number, dryWeight: number, quality: Flush['quality'], notes: string, mushroomCount?: number) => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     await addFlush(growId, {
       harvestDate: new Date(),
       wetWeight,
@@ -892,6 +902,7 @@ export const GrowManagement: React.FC = () => {
   };
 
   const handleAddObservation = () => {
+    if (!guardAction()) return; // Show auth modal if not authenticated
     if (!selectedGrow || !newObservation.title) return;
 
     addGrowObservation(selectedGrow.id, {
