@@ -6832,6 +6832,581 @@ DO $$ BEGIN
 END $$;
 
 -- ============================================================================
+-- IMAGE SUPPORT MIGRATION
+-- Add image columns to core tables for photo documentation
+-- Pattern: images TEXT[] storing URLs to Supabase Storage or external CDN
+-- ============================================================================
+
+DO $$ BEGIN
+  RAISE NOTICE 'Adding image columns to core tables...';
+END $$;
+
+-- Cultures: Track visual state through lifecycle (inoculation, growth, contamination)
+DO $$ BEGIN
+  ALTER TABLE cultures ADD COLUMN IF NOT EXISTS images TEXT[];
+  ALTER TABLE cultures ADD COLUMN IF NOT EXISTS primary_image TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Culture Observations: Attach photos to progress notes
+DO $$ BEGIN
+  ALTER TABLE culture_observations ADD COLUMN IF NOT EXISTS images TEXT[];
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Grows: Document from setup through harvest
+DO $$ BEGIN
+  ALTER TABLE grows ADD COLUMN IF NOT EXISTS images TEXT[];
+  ALTER TABLE grows ADD COLUMN IF NOT EXISTS setup_photo TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Grow Observations: Attach photos to environmental readings and progress notes
+DO $$ BEGIN
+  ALTER TABLE grow_observations ADD COLUMN IF NOT EXISTS images TEXT[];
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Flushes: Photo harvested mushrooms for documentation and sales
+DO $$ BEGIN
+  ALTER TABLE flushes ADD COLUMN IF NOT EXISTS harvest_images TEXT[];
+  ALTER TABLE flushes ADD COLUMN IF NOT EXISTS primary_harvest_photo TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Locations: Document setup and current state of lab/grow areas
+DO $$ BEGIN
+  ALTER TABLE locations ADD COLUMN IF NOT EXISTS photos TEXT[];
+  ALTER TABLE locations ADD COLUMN IF NOT EXISTS current_photo TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Strains: Reference images for identification and genetics documentation
+DO $$ BEGIN
+  ALTER TABLE strains ADD COLUMN IF NOT EXISTS images TEXT[];
+  ALTER TABLE strains ADD COLUMN IF NOT EXISTS reference_image TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  RAISE NOTICE 'Image columns added successfully!';
+END $$;
+
+-- ============================================================================
+-- PG_CRON SCHEDULED NOTIFICATIONS
+-- ============================================================================
+-- pg_cron must be enabled in Supabase Dashboard:
+-- Database > Extensions > pg_cron (Enable)
+--
+-- These scheduled jobs run when users are NOT logged in to send:
+-- - Stage transition reminders (grow stage due for advancement)
+-- - Culture expiration warnings (approaching expiry dates)
+-- - Low inventory alerts (items below reorder threshold)
+-- - Harvest ready notifications (grows ready for harvest)
+-- - Contamination follow-up reminders
+-- ============================================================================
+
+-- ============================================================================
+-- NOTIFICATION QUEUE TABLE
+-- Used to batch and schedule notifications for delivery
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS notification_queue (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+
+  -- Notification content
+  event_category TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+
+  -- Related entity (for deduplication and linking)
+  related_table TEXT,
+  related_id UUID,
+
+  -- Delivery status
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'queued', 'sent', 'failed', 'cancelled')),
+  priority INTEGER DEFAULT 5 CHECK (priority BETWEEN 1 AND 10), -- 1 = highest
+
+  -- Scheduling
+  scheduled_for TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '24 hours'),
+
+  -- Delivery tracking
+  attempts INTEGER DEFAULT 0,
+  last_attempt_at TIMESTAMPTZ,
+  last_error TEXT,
+  sent_at TIMESTAMPTZ,
+
+  -- Metadata
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for efficient queue processing
+CREATE INDEX IF NOT EXISTS idx_notification_queue_status ON notification_queue(status);
+CREATE INDEX IF NOT EXISTS idx_notification_queue_scheduled ON notification_queue(scheduled_for) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_notification_queue_user_id ON notification_queue(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_queue_dedup ON notification_queue(user_id, event_category, related_table, related_id) WHERE status = 'pending';
+
+-- RLS for notification_queue
+ALTER TABLE notification_queue ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "notification_queue_select" ON notification_queue;
+DROP POLICY IF EXISTS "notification_queue_insert" ON notification_queue;
+DROP POLICY IF EXISTS "notification_queue_update" ON notification_queue;
+DROP POLICY IF EXISTS "notification_queue_delete" ON notification_queue;
+
+CREATE POLICY "notification_queue_select" ON notification_queue
+  FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_queue_insert" ON notification_queue
+  FOR INSERT WITH CHECK (user_id = auth.uid() OR is_admin() OR is_service_role());
+CREATE POLICY "notification_queue_update" ON notification_queue
+  FOR UPDATE USING (user_id = auth.uid() OR is_admin() OR is_service_role());
+CREATE POLICY "notification_queue_delete" ON notification_queue
+  FOR DELETE USING (user_id = auth.uid() OR is_admin());
+
+-- ============================================================================
+-- NOTIFICATION GENERATION FUNCTIONS
+-- These functions check conditions and queue notifications
+-- ============================================================================
+
+-- Check for cultures approaching expiration
+CREATE OR REPLACE FUNCTION check_culture_expirations()
+RETURNS INTEGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_culture RECORD;
+  v_user_prefs RECORD;
+BEGIN
+  -- Find cultures expiring within their configured warning period
+  FOR v_culture IN
+    SELECT c.id, c.user_id, c.label, c.type, c.expiry_date,
+           s.name as strain_name,
+           EXTRACT(DAY FROM (c.expiry_date - NOW()))::INTEGER as days_until_expiry
+    FROM cultures c
+    LEFT JOIN strains s ON c.strain_id = s.id
+    WHERE c.is_current = true
+      AND c.is_archived = false
+      AND c.status NOT IN ('depleted', 'contaminated', 'archived')
+      AND c.expiry_date IS NOT NULL
+      AND c.expiry_date > NOW()
+      AND c.expiry_date <= NOW() + INTERVAL '7 days'
+  LOOP
+    -- Check if user has this notification type enabled
+    SELECT * INTO v_user_prefs
+    FROM notification_event_preferences
+    WHERE user_id = v_culture.user_id AND event_category = 'culture_expiring';
+
+    IF v_user_prefs IS NOT NULL AND v_user_prefs.enabled = true THEN
+      -- Check for duplicate (don't queue same notification twice)
+      IF NOT EXISTS (
+        SELECT 1 FROM notification_queue
+        WHERE user_id = v_culture.user_id
+          AND event_category = 'culture_expiring'
+          AND related_table = 'cultures'
+          AND related_id = v_culture.id
+          AND status = 'pending'
+          AND created_at > NOW() - INTERVAL '24 hours'
+      ) THEN
+        INSERT INTO notification_queue (
+          user_id, event_category, title, body,
+          related_table, related_id, priority, metadata
+        ) VALUES (
+          v_culture.user_id,
+          'culture_expiring',
+          'Culture Expiring Soon',
+          format('%s (%s) expires in %s days',
+            v_culture.label,
+            COALESCE(v_culture.strain_name, v_culture.type),
+            v_culture.days_until_expiry),
+          'cultures',
+          v_culture.id,
+          CASE WHEN v_culture.days_until_expiry <= 2 THEN 2 ELSE 5 END,
+          jsonb_build_object(
+            'culture_label', v_culture.label,
+            'culture_type', v_culture.type,
+            'strain_name', v_culture.strain_name,
+            'expiry_date', v_culture.expiry_date,
+            'days_until_expiry', v_culture.days_until_expiry
+          )
+        );
+        v_count := v_count + 1;
+      END IF;
+    END IF;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Check for grows ready for stage advancement
+CREATE OR REPLACE FUNCTION check_grow_stage_transitions()
+RETURNS INTEGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_grow RECORD;
+  v_user_prefs RECORD;
+  v_days_in_stage INTEGER;
+BEGIN
+  FOR v_grow IN
+    SELECT g.id, g.user_id, g.name, g.current_stage, g.stage_started_at,
+           s.name as strain_name
+    FROM grows g
+    LEFT JOIN strains s ON g.strain_id = s.id
+    WHERE g.is_current = true
+      AND g.is_archived = false
+      AND g.status = 'active'
+      AND g.current_stage NOT IN ('completed', 'contaminated', 'aborted')
+      AND g.stage_started_at IS NOT NULL
+  LOOP
+    v_days_in_stage := EXTRACT(DAY FROM (NOW() - v_grow.stage_started_at))::INTEGER;
+
+    -- Check if stage has been going on too long (likely ready for transition)
+    -- These thresholds can be refined based on species-specific data
+    IF (v_grow.current_stage = 'colonization' AND v_days_in_stage >= 14) OR
+       (v_grow.current_stage = 'fruiting' AND v_days_in_stage >= 7) OR
+       (v_grow.current_stage = 'pinning' AND v_days_in_stage >= 5) THEN
+
+      SELECT * INTO v_user_prefs
+      FROM notification_event_preferences
+      WHERE user_id = v_grow.user_id AND event_category = 'stage_transition';
+
+      IF v_user_prefs IS NOT NULL AND v_user_prefs.enabled = true THEN
+        IF NOT EXISTS (
+          SELECT 1 FROM notification_queue
+          WHERE user_id = v_grow.user_id
+            AND event_category = 'stage_transition'
+            AND related_table = 'grows'
+            AND related_id = v_grow.id
+            AND status = 'pending'
+            AND created_at > NOW() - INTERVAL '24 hours'
+        ) THEN
+          INSERT INTO notification_queue (
+            user_id, event_category, title, body,
+            related_table, related_id, priority, metadata
+          ) VALUES (
+            v_grow.user_id,
+            'stage_transition',
+            'Grow Stage Check Needed',
+            format('%s (%s) has been in %s for %s days - check if ready to advance',
+              v_grow.name,
+              COALESCE(v_grow.strain_name, 'Unknown strain'),
+              v_grow.current_stage,
+              v_days_in_stage),
+            'grows',
+            v_grow.id,
+            5,
+            jsonb_build_object(
+              'grow_name', v_grow.name,
+              'strain_name', v_grow.strain_name,
+              'current_stage', v_grow.current_stage,
+              'days_in_stage', v_days_in_stage
+            )
+          );
+          v_count := v_count + 1;
+        END IF;
+      END IF;
+    END IF;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Check for low inventory items
+CREATE OR REPLACE FUNCTION check_low_inventory()
+RETURNS INTEGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_item RECORD;
+  v_user_prefs RECORD;
+BEGIN
+  FOR v_item IN
+    SELECT i.id, i.user_id, i.name, i.current_stock, i.reorder_point, i.unit,
+           c.name as category_name
+    FROM inventory_items i
+    LEFT JOIN inventory_categories c ON i.category_id = c.id
+    WHERE i.is_current = true
+      AND i.is_archived = false
+      AND i.reorder_point IS NOT NULL
+      AND i.current_stock <= i.reorder_point
+      AND i.current_stock >= 0
+  LOOP
+    SELECT * INTO v_user_prefs
+    FROM notification_event_preferences
+    WHERE user_id = v_item.user_id AND event_category = 'low_inventory';
+
+    IF v_user_prefs IS NOT NULL AND v_user_prefs.enabled = true THEN
+      IF NOT EXISTS (
+        SELECT 1 FROM notification_queue
+        WHERE user_id = v_item.user_id
+          AND event_category = 'low_inventory'
+          AND related_table = 'inventory_items'
+          AND related_id = v_item.id
+          AND status = 'pending'
+          AND created_at > NOW() - INTERVAL '48 hours'  -- Less frequent for inventory
+      ) THEN
+        INSERT INTO notification_queue (
+          user_id, event_category, title, body,
+          related_table, related_id, priority, metadata
+        ) VALUES (
+          v_item.user_id,
+          'low_inventory',
+          'Low Inventory Alert',
+          format('%s is running low: %s %s remaining (reorder point: %s)',
+            v_item.name,
+            v_item.current_stock,
+            COALESCE(v_item.unit, 'units'),
+            v_item.reorder_point),
+          'inventory_items',
+          v_item.id,
+          CASE WHEN v_item.current_stock = 0 THEN 1 ELSE 6 END,
+          jsonb_build_object(
+            'item_name', v_item.name,
+            'category', v_item.category_name,
+            'current_stock', v_item.current_stock,
+            'reorder_point', v_item.reorder_point,
+            'unit', v_item.unit
+          )
+        );
+        v_count := v_count + 1;
+      END IF;
+    END IF;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Check for grows ready for harvest (based on stage and time)
+CREATE OR REPLACE FUNCTION check_harvest_ready()
+RETURNS INTEGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_grow RECORD;
+  v_user_prefs RECORD;
+  v_days_in_harvesting INTEGER;
+BEGIN
+  FOR v_grow IN
+    SELECT g.id, g.user_id, g.name, g.current_stage, g.stage_started_at,
+           s.name as strain_name
+    FROM grows g
+    LEFT JOIN strains s ON g.strain_id = s.id
+    WHERE g.is_current = true
+      AND g.is_archived = false
+      AND g.status = 'active'
+      AND g.current_stage = 'harvesting'
+      AND g.stage_started_at IS NOT NULL
+  LOOP
+    v_days_in_harvesting := EXTRACT(DAY FROM (NOW() - v_grow.stage_started_at))::INTEGER;
+
+    -- Remind to harvest daily during harvesting stage
+    SELECT * INTO v_user_prefs
+    FROM notification_event_preferences
+    WHERE user_id = v_grow.user_id AND event_category = 'harvest_ready';
+
+    IF v_user_prefs IS NOT NULL AND v_user_prefs.enabled = true THEN
+      IF NOT EXISTS (
+        SELECT 1 FROM notification_queue
+        WHERE user_id = v_grow.user_id
+          AND event_category = 'harvest_ready'
+          AND related_table = 'grows'
+          AND related_id = v_grow.id
+          AND status = 'pending'
+          AND created_at > NOW() - INTERVAL '12 hours'
+      ) THEN
+        INSERT INTO notification_queue (
+          user_id, event_category, title, body,
+          related_table, related_id, priority, metadata
+        ) VALUES (
+          v_grow.user_id,
+          'harvest_ready',
+          'Harvest Reminder',
+          format('%s (%s) is ready for harvest - check for mature fruits',
+            v_grow.name,
+            COALESCE(v_grow.strain_name, 'Unknown strain')),
+          'grows',
+          v_grow.id,
+          3,  -- High priority
+          jsonb_build_object(
+            'grow_name', v_grow.name,
+            'strain_name', v_grow.strain_name,
+            'days_in_harvesting', v_days_in_harvesting
+          )
+        );
+        v_count := v_count + 1;
+      END IF;
+    END IF;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Master function to run all notification checks
+CREATE OR REPLACE FUNCTION process_scheduled_notifications()
+RETURNS TABLE (
+  check_name TEXT,
+  notifications_queued INTEGER
+)
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_culture_count INTEGER;
+  v_stage_count INTEGER;
+  v_inventory_count INTEGER;
+  v_harvest_count INTEGER;
+BEGIN
+  -- Run all checks
+  v_culture_count := check_culture_expirations();
+  v_stage_count := check_grow_stage_transitions();
+  v_inventory_count := check_low_inventory();
+  v_harvest_count := check_harvest_ready();
+
+  -- Return results
+  check_name := 'culture_expirations'; notifications_queued := v_culture_count;
+  RETURN NEXT;
+
+  check_name := 'stage_transitions'; notifications_queued := v_stage_count;
+  RETURN NEXT;
+
+  check_name := 'low_inventory'; notifications_queued := v_inventory_count;
+  RETURN NEXT;
+
+  check_name := 'harvest_ready'; notifications_queued := v_harvest_count;
+  RETURN NEXT;
+
+  -- Log the run
+  RAISE NOTICE 'Scheduled notification check complete: cultures=%, stages=%, inventory=%, harvest=%',
+    v_culture_count, v_stage_count, v_inventory_count, v_harvest_count;
+
+  RETURN;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- PG_CRON JOB SCHEDULING
+-- NOTE: pg_cron extension must be enabled in Supabase Dashboard first!
+-- After enabling, run these commands to set up the scheduled jobs.
+-- ============================================================================
+
+-- Function to safely create cron jobs (idempotent)
+CREATE OR REPLACE FUNCTION setup_notification_cron_jobs()
+RETURNS TEXT
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result TEXT := '';
+BEGIN
+  -- Check if pg_cron extension is available
+  IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    RETURN 'pg_cron extension not enabled. Enable it in Supabase Dashboard > Database > Extensions';
+  END IF;
+
+  -- Remove existing jobs (if any) to prevent duplicates
+  BEGIN
+    PERFORM cron.unschedule('mycolab-notification-check');
+  EXCEPTION WHEN OTHERS THEN
+    -- Job doesn't exist, that's fine
+    NULL;
+  END;
+
+  BEGIN
+    PERFORM cron.unschedule('mycolab-queue-cleanup');
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+
+  -- Schedule notification check every 15 minutes
+  PERFORM cron.schedule(
+    'mycolab-notification-check',
+    '*/15 * * * *',  -- Every 15 minutes
+    $$SELECT process_scheduled_notifications()$$
+  );
+  v_result := v_result || 'Scheduled: notification check every 15 minutes. ';
+
+  -- Schedule queue cleanup daily at 3 AM
+  PERFORM cron.schedule(
+    'mycolab-queue-cleanup',
+    '0 3 * * *',  -- Daily at 3 AM
+    $$DELETE FROM notification_queue
+      WHERE (status = 'sent' AND sent_at < NOW() - INTERVAL '7 days')
+         OR (status = 'cancelled' AND created_at < NOW() - INTERVAL '7 days')
+         OR (status = 'failed' AND attempts >= 3 AND created_at < NOW() - INTERVAL '30 days')
+         OR (expires_at < NOW() AND status = 'pending')$$
+  );
+  v_result := v_result || 'Scheduled: queue cleanup daily at 3 AM. ';
+
+  RETURN v_result || 'Cron jobs configured successfully!';
+
+EXCEPTION WHEN OTHERS THEN
+  RETURN 'Error setting up cron jobs: ' || SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Helper function to manually trigger notification processing (for testing)
+CREATE OR REPLACE FUNCTION trigger_notification_check()
+RETURNS TABLE (
+  check_name TEXT,
+  notifications_queued INTEGER
+)
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM process_scheduled_notifications();
+END;
+$$ LANGUAGE plpgsql;
+
+-- View pending notifications for a user
+CREATE OR REPLACE FUNCTION get_pending_notifications(p_user_id UUID DEFAULT NULL)
+RETURNS TABLE (
+  id UUID,
+  event_category TEXT,
+  title TEXT,
+  body TEXT,
+  related_table TEXT,
+  related_id UUID,
+  priority INTEGER,
+  scheduled_for TIMESTAMPTZ,
+  created_at TIMESTAMPTZ
+)
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT nq.id, nq.event_category, nq.title, nq.body,
+         nq.related_table, nq.related_id, nq.priority,
+         nq.scheduled_for, nq.created_at
+  FROM notification_queue nq
+  WHERE nq.status = 'pending'
+    AND (p_user_id IS NULL OR nq.user_id = p_user_id)
+    AND nq.expires_at > NOW()
+  ORDER BY nq.priority ASC, nq.scheduled_for ASC;
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$ BEGIN
+  RAISE NOTICE 'pg_cron notification system added. Run SELECT setup_notification_cron_jobs() after enabling pg_cron extension.';
+END $$;
+
+-- ============================================================================
 -- SUCCESS MESSAGE
 -- ============================================================================
 -- If you see this, the schema was applied successfully!

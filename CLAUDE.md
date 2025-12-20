@@ -329,6 +329,87 @@ const {
    - `mycolab-supabase-url`
    - `mycolab-supabase-key`
 
+### Data Architecture Tiers
+
+The application uses a three-tier data architecture for multi-tenant operation:
+
+#### Tier 1: System Shared Data (`user_id = NULL`)
+Global reference data visible to ALL users. Managed via SQL seed files.
+
+| Table | Purpose | Examples |
+|-------|---------|----------|
+| `species` | Mushroom species taxonomy | Pleurotus ostreatus, Hericium erinaceus |
+| `strains` (system) | Common/commercial strains | Blue Oyster, Lion's Mane, etc. |
+| `container_types` | Standard container definitions | 1L jar, 5lb bag, petri dish |
+| `substrate_types` | Common substrate formulas | Masters Mix, CVG, etc. |
+| `inventory_categories` | Standard supply categories | Grains, chemicals, equipment |
+| `recipe_categories` | Recipe type definitions | Agar, LC, grain spawn |
+| `location_types` | Location category definitions | Incubator, fruiting room |
+| `grain_types` | Common grain spawn bases | Rye, millet, oats |
+
+**Key characteristics:**
+- `user_id IS NULL` in database
+- Defined in `supabase-seed-data.sql` and `supabase-species-data.sql`
+- Visible via RLS policies: `user_id IS NULL OR user_id = auth.uid()`
+- Users CANNOT modify system data
+- Updates require schema migration
+
+#### Tier 2: Default Seed Data (Created at Account Signup)
+User-owned copies of common reference data, created when account is first established.
+
+| Data Type | Purpose | Source |
+|-----------|---------|--------|
+| User strains | Personal strain library | Copied from system strains |
+| User locations | Lab/grow room definitions | Default templates |
+| User settings | Preferences, units, timezone | Default values |
+| Notification prefs | Alert configurations | Default enabled categories |
+
+**Key characteristics:**
+- `user_id = auth.uid()` (user-owned)
+- Created by `handle_new_user()` trigger on signup
+- Users CAN modify their copies
+- Provides personalization starting point
+
+#### Tier 3: User-Generated Data
+All operational data created by users during normal app usage.
+
+| Table | Purpose |
+|-------|---------|
+| `cultures` | Spore syringes, LC, agar plates, slants |
+| `grows` | Grow projects with stage tracking |
+| `flushes` | Harvest records per grow |
+| `recipes` | Custom recipes (agar, LC, substrates) |
+| `inventory_items` | Supply tracking with stock levels |
+| `observations` | Culture/grow observations and logs |
+| `prepared_spawn` | Prepared grain spawn jars/bags |
+
+**Key characteristics:**
+- `user_id = auth.uid()` always
+- Full CRUD via DataContext
+- RLS restricts to owner only
+- Subject to archive/versioning
+- Deleted by `supabase-wipe-user-data.sql`
+
+#### RLS Policy Pattern
+
+All tables follow this visibility pattern:
+```sql
+-- System data (NULL user_id) visible to all, user data only to owner
+CREATE POLICY "table_select" ON table_name
+  FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
+
+-- Users can only modify their own data
+CREATE POLICY "table_modify" ON table_name
+  FOR ALL USING (user_id = auth.uid());
+```
+
+#### Important: Data Separation Rules
+
+1. **Never mix tiers** - System data should never have user_id, user data should always have user_id
+2. **Seed data is idempotent** - Running seed files multiple times won't create duplicates (uses UPSERT)
+3. **User wipe is safe** - `supabase-wipe-user-data.sql` only removes Tier 2/3 data, preserves Tier 1
+4. **Strains are special** - System strains (Tier 1) are copied to user strains (Tier 2) on signup for personalization
+
 ### Type System
 
 Two type definition files exist:
@@ -621,12 +702,13 @@ This project follows semantic versioning but is currently in **early beta** (v0.
 6. **Idempotent schema** - SQL migrations are safe to re-run
 7. **No testing yet** - Be careful with refactoring without tests
 8. **Version control** - See "Versioning Policy" above - NEVER bump version without user approval
-9. **⚠️ MANDATORY PRE-COMMIT: Check SQL files BEFORE EVERY COMMIT** - Not "when relevant", EVERY commit:
-   - READ `supabase-schema.sql` - verify schema changes are included
-   - READ `supabase-seed-data.sql` - verify reference data is included
-   - READ `supabase-species-data.sql` - verify species/strain data is included
-   - DO NOT SKIP THIS. DO NOT ASSUME. READ THE FILES.
-10. **⚠️ MANDATORY PRE-COMMIT: Update DevLog BEFORE EVERY COMMIT** - Not "when relevant", EVERY commit:
+9. **⛔ NEVER ESTIMATE TIME** - Do not provide time estimates, hour counts, or timeline projections for any work. This is not a metric the user wants, needs, or uses. Focus on what needs to be done, not how long it takes. This is a mandatory directive - no exceptions.
+10. **⚠️ MANDATORY PRE-COMMIT: Check SQL files BEFORE EVERY COMMIT** - Not "when relevant", EVERY commit:
+    - READ `supabase-schema.sql` - verify schema changes are included
+    - READ `supabase-seed-data.sql` - verify reference data is included
+    - READ `supabase-species-data.sql` - verify species/strain data is included
+    - DO NOT SKIP THIS. DO NOT ASSUME. READ THE FILES.
+11. **⚠️ MANDATORY PRE-COMMIT: Update DevLog BEFORE EVERY COMMIT** - Not "when relevant", EVERY commit:
     - READ `src/data/devlog/*.ts` files
     - UPDATE status for features you touched
     - ADD new entries for features not already tracked

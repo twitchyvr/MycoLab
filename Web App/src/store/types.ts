@@ -200,6 +200,10 @@ export interface Strain {
   description?: string; // Detailed description of characteristics
   notes?: string;
   isActive: boolean;
+
+  // Image support
+  images?: string[];           // Reference images for identification
+  referenceImage?: string;     // Primary reference image
 }
 
 // Location type lookup (customizable dropdown)
@@ -278,6 +282,10 @@ export interface Location {
     height?: number;
     unit?: 'cm' | 'in' | 'm' | 'ft';
   };
+
+  // Image support
+  photos?: string[];           // Photos of the location
+  currentPhoto?: string;       // Current state photo
 }
 
 // Container categories - unified from former 'vessels' and 'container_types'
@@ -584,6 +592,10 @@ export interface Culture {
   observations: CultureObservation[];
   transfers: CultureTransfer[];
 
+  // Image support
+  images?: string[];           // Array of image URLs
+  primaryImage?: string;       // Main/featured image URL
+
   // Immutability fields (optional for backwards compatibility)
   version?: number;
   recordGroupId?: string;
@@ -682,6 +694,7 @@ export interface GrowObservation {
   temperature?: number;
   humidity?: number;
   colonizationPercent?: number;
+  images?: string[];           // Attached photos for this observation
 }
 
 export interface Flush {
@@ -693,6 +706,8 @@ export interface Flush {
   mushroomCount?: number;
   quality: 'excellent' | 'good' | 'fair' | 'poor';
   notes?: string;
+  harvestImages?: string[];      // Photos of harvested mushrooms
+  primaryHarvestPhoto?: string;  // Main harvest photo for display
 }
 
 export interface Grow {
@@ -757,6 +772,10 @@ export interface Grow {
 
   // Notes
   notes: string;
+
+  // Image support
+  images?: string[];           // Array of image URLs through grow lifecycle
+  setupPhoto?: string;         // Initial setup photo
 
   // Immutability fields (optional for backwards compatibility)
   version?: number;

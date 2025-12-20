@@ -2701,6 +2701,56 @@ Created comprehensive weight utilities (utils/weight.ts):
     updatedAt: timestamp(),
   },
   {
+    id: 'dev-1301',
+    title: 'pg_cron Scheduled Notification System',
+    description: 'Background job scheduling using PostgreSQL pg_cron extension. Automatically generates notifications for expiring cultures, stage transitions, low inventory, and harvest reminders even when users are not logged in.',
+    category: 'core',
+    status: 'in_progress',
+    priority: 'high',
+    notes: `pg_cron Background Notification System:
+
+**Notification Queue Table:**
+- notification_queue: Central queue for all pending notifications
+- Status tracking: pending → queued → sent/failed/cancelled
+- Priority levels (1-10, 1 = highest)
+- Automatic expiration (24 hours default)
+- Deduplication to prevent repeat notifications
+
+**Notification Check Functions:**
+- check_culture_expirations(): Cultures expiring within 7 days
+- check_grow_stage_transitions(): Grows overdue for stage advancement
+- check_low_inventory(): Items at or below reorder point
+- check_harvest_ready(): Grows in harvesting stage
+- process_scheduled_notifications(): Master function running all checks
+
+**Cron Job Configuration:**
+- mycolab-notification-check: Runs every 15 minutes
+- mycolab-queue-cleanup: Daily cleanup at 3 AM
+
+**Setup Process:**
+1. Enable pg_cron extension in Supabase Dashboard
+2. Run schema migration (creates tables and functions)
+3. Execute: SELECT setup_notification_cron_jobs()
+4. Verify with: SELECT * FROM cron.job
+
+**Helper Functions:**
+- trigger_notification_check(): Manual testing
+- get_pending_notifications(): View queued notifications
+- setup_notification_cron_jobs(): Idempotent job setup
+
+**RLS Policies:**
+- Users can view their own queued notifications
+- Service role can insert/update for background processing
+- Admins have full access
+
+**Integration Points:**
+- Respects notification_event_preferences per user
+- Uses notification_channels for delivery routing
+- Logs to notification_delivery_log for audit trail`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
     id: 'dev-1204',
     title: 'Fix Data Not Loading After Email Login',
     description: 'Fixed bug where data would not display after logging in with email/password, but worked correctly with Google OAuth. Root cause was DataContext not listening to auth state changes.',
