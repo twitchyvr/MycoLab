@@ -3923,6 +3923,43 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1233',
+    title: 'Fix RLS Policies for Anonymous Users',
+    description: 'Fixed critical bug where anonymous users could not access their own data, causing data loss on page refresh.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 2,
+    actualHours: 1,
+    completedAt: timestamp(),
+    notes: `**Critical Bug Fix:**
+
+The RLS (Row-Level Security) policies were blocking anonymous users from accessing their own data.
+This caused cultures, grows, and other records to "disappear" on page refresh.
+
+**Root Cause:**
+- Policies used \`is_not_anonymous()\` check which returns FALSE for anonymous users
+- This blocked anonymous users from SELECT/INSERT/UPDATE/DELETE on their own records
+- Data was saved to local UI state but never persisted to database
+- On refresh, empty results were returned and cached
+
+**Fix Applied:**
+- Removed \`is_not_anonymous()\` from user data policies
+- Changed to simple \`user_id = auth.uid()\` check
+- Anonymous users can now access their own data
+- Maintains security - users still can only access their own records
+
+**Tables Fixed:**
+- cultures, culture_observations, culture_transfers
+- grows, grow_observations, flushes
+- recipes, recipe_ingredients
+- locations, suppliers
+- inventory_items, inventory_lots, inventory_usages
+- purchase_orders`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
