@@ -308,6 +308,18 @@ export const CultureManagement: React.FC = () => {
   // Small amounts from drops (e.g., 0.0001ml) should be treated as depleted
   const EMPTY_VOLUME_THRESHOLD_ML = 0.5;
 
+  // Helper: Normalize volumes - treat anything below threshold as zero
+  const normalizeVolume = (volume: number | undefined | null): number => {
+    if (volume === undefined || volume === null) return 0;
+    return volume < EMPTY_VOLUME_THRESHOLD_ML ? 0 : volume;
+  };
+
+  // Helper: Format volume for display - show "empty" for tiny amounts
+  const formatVolume = (volume: number | undefined | null): string => {
+    const normalized = normalizeVolume(volume);
+    return normalized === 0 ? 'empty' : `${normalized.toFixed(1)}ml`;
+  };
+
   // Transfer handler
   const handleTransfer = async () => {
     if (!selectedCulture) return;
@@ -381,24 +393,41 @@ export const CultureManagement: React.FC = () => {
   const handleDisposalConfirm = async (outcome: DisposalOutcome) => {
     if (!cultureToDispose) return;
 
+    // Get fresh culture state from context to avoid stale data (prevents 409 conflicts)
+    const freshCulture = cultures.find(c => c.id === cultureToDispose.id);
+    if (!freshCulture) {
+      console.warn('[Dispose] Culture not found in state, may have been deleted');
+      setCultureToDispose(null);
+      setShowDisposalModal(false);
+      return;
+    }
+
+    // Skip if already archived (handles double-click, stale modals)
+    if (freshCulture.isArchived) {
+      console.warn('[Dispose] Culture already archived, closing modal');
+      setCultureToDispose(null);
+      setShowDisposalModal(false);
+      return;
+    }
+
     try {
-      const strain = getStrain(cultureToDispose.strainId);
-      const location = cultureToDispose.locationId ? getLocation(cultureToDispose.locationId) : undefined;
+      const strain = getStrain(freshCulture.strainId);
+      const location = freshCulture.locationId ? getLocation(freshCulture.locationId) : undefined;
 
       // Build outcome data for historical record
       const outcomeData: EntityOutcomeData = {
         entityType: 'culture',
-        entityId: cultureToDispose.id,
-        entityName: cultureToDispose.label,
+        entityId: freshCulture.id,
+        entityName: freshCulture.label,
         outcomeCategory: outcome.outcomeCategory,
         outcomeCode: outcome.outcomeCode,
         outcomeLabel: outcome.outcomeLabel,
-        startedAt: cultureToDispose.createdAt,
+        startedAt: freshCulture.createdAt,
         endedAt: new Date(),
-        strainId: cultureToDispose.strainId,
+        strainId: freshCulture.strainId,
         strainName: strain?.name,
         speciesId: strain?.speciesId,
-        locationId: cultureToDispose.locationId || undefined,
+        locationId: freshCulture.locationId || undefined,
         locationName: location?.name,
         notes: outcome.notes,
       };
@@ -433,10 +462,10 @@ export const CultureManagement: React.FC = () => {
       // Step 3: Archive the culture (soft delete - preserves FK relationships)
       // Build a descriptive reason from the outcome
       const archiveReason = `Disposed: ${outcome.outcomeLabel}${outcome.notes ? ` - ${outcome.notes}` : ''}`;
-      await archiveCulture(cultureToDispose.id, archiveReason);
+      await archiveCulture(freshCulture.id, archiveReason);
 
       // Clear UI state
-      if (selectedCulture?.id === cultureToDispose.id) {
+      if (selectedCulture?.id === freshCulture.id) {
         setSelectedCulture(null);
       }
       setCultureToDispose(null);
@@ -759,29 +788,51 @@ export const CultureManagement: React.FC = () => {
               )}
               
               {/* Volume info - show both capacity and fill amount */}
-              {(selectedCulture.volumeMl || selectedCulture.fillVolumeMl) && (
-                <div className="py-2 border-b border-zinc-800">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-zinc-500">Volume</span>
-                    <span className="text-white">
-                      {selectedCulture.fillVolumeMl || selectedCulture.volumeMl}ml
-                      {selectedCulture.fillVolumeMl && selectedCulture.volumeMl && selectedCulture.fillVolumeMl !== selectedCulture.volumeMl && (
-                        <span className="text-zinc-500 text-xs ml-1">
-                          / {selectedCulture.volumeMl}ml ({Math.round((selectedCulture.fillVolumeMl / selectedCulture.volumeMl) * 100)}% full)
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  {selectedCulture.fillVolumeMl && selectedCulture.volumeMl && (
-                    <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-emerald-500 rounded-full"
-                        style={{ width: `${Math.min(100, (selectedCulture.fillVolumeMl / selectedCulture.volumeMl) * 100)}%` }}
-                      />
+              {(selectedCulture.volumeMl || selectedCulture.fillVolumeMl) && (() => {
+                const normalizedFill = normalizeVolume(selectedCulture.fillVolumeMl);
+                const capacity = selectedCulture.volumeMl ?? 0;
+                const fillPercentage = capacity > 0 ? Math.round((normalizedFill / capacity) * 100) : 0;
+                const isEffectivelyEmpty = normalizedFill === 0 && (selectedCulture.fillVolumeMl ?? 0) > 0;
+
+                return (
+                  <div className="py-2 border-b border-zinc-800">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-zinc-500">Volume</span>
+                      <span className="text-white">
+                        {normalizedFill > 0 ? (
+                          <>
+                            {normalizedFill.toFixed(1)}ml
+                            {capacity > 0 && normalizedFill !== capacity && (
+                              <span className="text-zinc-500 text-xs ml-1">
+                                / {capacity}ml ({fillPercentage}% full)
+                              </span>
+                            )}
+                          </>
+                        ) : isEffectivelyEmpty ? (
+                          <span className="text-amber-400">empty (residue)</span>
+                        ) : capacity > 0 ? (
+                          `${capacity}ml`
+                        ) : (
+                          'N/A'
+                        )}
+                      </span>
                     </div>
-                  )}
-                </div>
-              )}
+                    {normalizedFill > 0 && capacity > 0 && (
+                      <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full"
+                          style={{ width: `${Math.min(100, fillPercentage)}%` }}
+                        />
+                      </div>
+                    )}
+                    {isEffectivelyEmpty && (
+                      <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-500/50 rounded-full" style={{ width: '2%' }} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               
               {/* Prep Date */}
               {selectedCulture.prepDate && (
@@ -802,7 +853,8 @@ export const CultureManagement: React.FC = () => {
               {(() => {
                 const totalCost = (selectedCulture.purchaseCost ?? 0) + (selectedCulture.productionCost ?? 0)
                                 + (selectedCulture.parentCultureCost ?? 0) + (selectedCulture.cost ?? 0);
-                const fillVolume = selectedCulture.fillVolumeMl ?? selectedCulture.volumeMl ?? 0;
+                // Use normalized volume for cost-per-ml to avoid dividing by tiny residue amounts
+                const fillVolume = normalizeVolume(selectedCulture.fillVolumeMl ?? selectedCulture.volumeMl);
                 const costPerMl = fillVolume > 0 ? totalCost / fillVolume : 0;
                 const hasDetailedCost = (selectedCulture.purchaseCost ?? 0) > 0
                                      || (selectedCulture.productionCost ?? 0) > 0
@@ -1041,8 +1093,10 @@ export const CultureManagement: React.FC = () => {
         // Calculate transfer cost for display
         const sourceTotalCost = (selectedCulture.purchaseCost ?? 0) + (selectedCulture.productionCost ?? 0)
                               + (selectedCulture.parentCultureCost ?? 0) + (selectedCulture.cost ?? 0);
-        const sourceFillVolume = selectedCulture.fillVolumeMl ?? selectedCulture.volumeMl ?? 1;
-        const costPerMl = sourceFillVolume > 0 ? sourceTotalCost / sourceFillVolume : 0;
+        // Use normalized volume - treat tiny residue as zero
+        const sourceFillVolume = normalizeVolume(selectedCulture.fillVolumeMl ?? selectedCulture.volumeMl);
+        const actualFillVolume = sourceFillVolume > 0 ? sourceFillVolume : 1; // Avoid division by zero
+        const costPerMl = sourceTotalCost / actualFillVolume;
 
         // Convert quantity to ml for cost calculation
         let transferredVolumeMl = newTransfer.quantity;
@@ -1051,7 +1105,7 @@ export const CultureManagement: React.FC = () => {
         } else if (newTransfer.unit === 'cc') {
           transferredVolumeMl = newTransfer.quantity;
         } else if (newTransfer.unit === 'wedge') {
-          transferredVolumeMl = sourceFillVolume * 0.1 * newTransfer.quantity;
+          transferredVolumeMl = actualFillVolume * 0.1 * newTransfer.quantity;
         }
 
         const transferCost = costPerMl * transferredVolumeMl;

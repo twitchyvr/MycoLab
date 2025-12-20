@@ -1976,6 +1976,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     const culture = state.cultures.find(c => c.id === id);
     if (!culture) throw new Error(`Culture not found: ${id}`);
 
+    // Guard: Prevent double-archiving (can cause 409 conflicts)
+    if (culture.isArchived) {
+      console.warn(`[Archive] Culture ${id} is already archived, skipping`);
+      return;
+    }
+
     const now = new Date();
     const userId = await getCurrentUserId();
 
@@ -2118,6 +2124,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const archiveGrow = useCallback(async (id: string, reason: string): Promise<void> => {
     const grow = state.grows.find(g => g.id === id);
     if (!grow) throw new Error(`Grow not found: ${id}`);
+
+    // Guard: Prevent double-archiving (can cause 409 conflicts)
+    if (grow.isArchived) {
+      console.warn(`[Archive] Grow ${id} is already archived, skipping`);
+      return;
+    }
 
     const now = new Date();
     const userId = await getCurrentUserId();

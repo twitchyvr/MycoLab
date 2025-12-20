@@ -4189,6 +4189,55 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1237',
+    title: 'Bug Fixes: Sign Out Hang, Archive Guards, Volume Display, Calculator Units',
+    description: 'Multiple bug fixes and improvements: fixed sign-out modal hanging, added archive guards to prevent 409 conflicts, improved volume display for tiny amounts, and added unit flexibility to spawn rate calculator.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    completedAt: timestamp(),
+    notes: `Session bug fixes and improvements:
+
+**Fix #1 - Sign Out Hang (Critical):**
+- Problem: Sign out modal stuck in "Processing..." state
+- Root cause: Awaiting Supabase signOut which could hang indefinitely
+- Solution: Clear UI state FIRST (session, user, profile), then fire Supabase signOut in background
+- Added 3-second timeout with Promise.race for Supabase call
+- UI now clears instantly regardless of Supabase response
+
+**Fix #2 - Culture Disposal 409 Conflict Guard:**
+- Problem: Disposing a culture twice caused 409 conflict error
+- Root cause: No check for already-archived cultures
+- Solution: Added guard clause in archiveCulture() to skip if already archived
+- Added fresh state check in handleDisposalConfirm() before archiving
+- Same guard added to archiveGrow()
+
+**Fix #3 - Volume Display Improvements:**
+- Problem: Tiny residue volumes (0.00001ml) displayed instead of "empty"
+- Solution: Added normalizeVolume() helper to treat <0.5ml as zero
+- Volume display now shows "empty (residue)" for tiny amounts
+- Progress bar shows minimal sliver for residue state
+- Cost-per-ml calculations use normalized volume to avoid division issues
+
+**Fix #4 - Spawn Rate Calculator Units:**
+- Added unit selector dropdown (g, kg, oz, lb) for weight inputs
+- Calculations convert to grams internally for consistency
+- Added "suggestion" feature: enter one value, see optimal other value
+- Bidirectional calculation with Apply button
+
+**TypeScript Fix:**
+- Fixed null safety issue in AuthContext signOut closure
+- Captured supabase reference before async function for TypeScript
+
+**Files Changed:**
+- src/lib/AuthContext.tsx - signOut state clearing order, null safety
+- src/store/DataContext.tsx - archive guards for cultures and grows
+- src/components/cultures/CultureManagement.tsx - fresh state check, volume display helpers
+- src/components/tools/SpawnRateCalculator.tsx - unit selectors, suggestions`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

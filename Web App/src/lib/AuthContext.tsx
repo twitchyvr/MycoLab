@@ -490,50 +490,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signOut = useCallback(async (options: { clearData?: boolean } = {}) => {
     console.log('[Auth] signOut called');
-    if (!supabase) {
-      console.log('[Auth] No supabase client, clearing state');
-      setSession(null);
-      setUser(null);
-      setIsAnonymous(true);
-      setProfile(null);
-      return;
-    }
 
-    // Clear local data if requested (preserves settings by default)
-    if (options.clearData) {
-      clearLocalData({ preserveSettings: false });
-    } else {
-      // Just clear auth-related data on normal logout
-      clearLocalData({ preserveSettings: true });
-    }
-
-    // Wrap signOut in a timeout to prevent hanging indefinitely
-    // Some network conditions can cause Supabase signOut to hang
-    const SIGNOUT_TIMEOUT_MS = 5000;
-
-    try {
-      const signOutPromise = supabase.auth.signOut();
-      const timeoutPromise = new Promise<{ error: Error }>((_, reject) =>
-        setTimeout(() => reject(new Error('Sign out timed out')), SIGNOUT_TIMEOUT_MS)
-      );
-
-      await Promise.race([signOutPromise, timeoutPromise]);
-      console.log('[Auth] Supabase signOut completed');
-    } catch (err) {
-      // Even if signOut fails or times out, we still clear local state
-      console.warn('[Auth] signOut issue (proceeding anyway):', err);
-    }
-
-    // Clear state immediately - don't wait for anonymous session
+    // FIRST: Clear state immediately - don't wait for anything else
+    // This ensures the user sees logout even if network calls hang
     setSession(null);
     setUser(null);
     setIsAnonymous(true);
     setProfile(null);
-    console.log('[Auth] State cleared after signOut');
+    console.log('[Auth] State cleared');
 
-    // Skip anonymous session creation after signOut - just leave user logged out
-    // This prevents potential hanging and provides a clean logout experience
-    // User can refresh the page if they want a new anonymous session
+    // Clear local data (preserves settings by default)
+    if (options.clearData) {
+      clearLocalData({ preserveSettings: false });
+    } else {
+      clearLocalData({ preserveSettings: true });
+    }
+
+    // NOW try to sign out from Supabase - but don't block on it
+    if (supabase) {
+      // Capture supabase reference for closure (TypeScript null safety)
+      const supabaseRef = supabase;
+
+      // Fire and forget with a short timeout - don't await it blocking the UI
+      const signOutWithTimeout = async () => {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+          // Try to sign out but don't let it hang
+          await Promise.race([
+            supabaseRef.auth.signOut(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Sign out timed out')), 3000)
+            )
+          ]);
+
+          clearTimeout(timeoutId);
+          console.log('[Auth] Supabase signOut completed');
+        } catch (err) {
+          console.warn('[Auth] signOut background cleanup failed (UI already cleared):', err);
+        }
+      };
+
+      // Run sign out in background - don't await, UI is already cleared
+      signOutWithTimeout().catch(() => {});
+    }
+
+    console.log('[Auth] signOut complete (UI cleared)');
   }, []);
 
   const resetPassword = useCallback(async (email: string, captchaToken?: string) => {
