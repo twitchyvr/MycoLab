@@ -220,6 +220,20 @@ export const Icons = {
       <path d="M8 15h8"/>
     </svg>
   ),
+  Dna: ({ className = defaultIconClass }: IconProps = {}) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M2 15c6.667-6 13.333 0 20-6"/>
+      <path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993"/>
+      <path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993"/>
+      <path d="M17 6l-2.5-2.5"/>
+      <path d="M14 8l-1-1"/>
+      <path d="M7 18l2.5 2.5"/>
+      <path d="M3.5 14.5l.5.5"/>
+      <path d="M20.5 9.5l.5.5"/>
+      <path d="M10 16l1 1"/>
+      <path d="M2 9c6.667 6 13.333 0 20 6"/>
+    </svg>
+  ),
 };
 
 // ============================================================================

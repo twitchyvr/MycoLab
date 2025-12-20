@@ -1,12 +1,22 @@
 // ============================================================================
 // PRESSURE COOKING CALCULATOR
 // Calculate sterilization times with altitude adjustment and built-in timer
+// Enhanced with item selection and sterilization logging
 // ============================================================================
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useData } from '../../store';
-import type { TimerSoundType } from '../../store/types';
+import type { TimerSoundType, PreparedSpawn } from '../../store/types';
 import { playTimerSound, previewSound, timerSoundOptions } from '../../utils/timerSounds';
+
+// Item being sterilized
+interface SterilizationItem {
+  id: string;
+  type: 'prepared_spawn' | 'inventory' | 'custom';
+  name: string;
+  quantity: number;
+  refId?: string; // Reference ID for prepared_spawn or inventory item
+}
 
 interface PCPreset {
   id: string;
@@ -277,6 +287,40 @@ const Icons = {
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
   ),
+  Package: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+      <path d="M16.5 9.4l-9-5.19"/>
+      <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+      <line x1="12" y1="22.08" x2="12" y2="12"/>
+    </svg>
+  ),
+  Plus: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  ),
+  X: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  ),
+  Jar: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <path d="M10 2v2.343a5 5 0 00-1.464 1.036L8 6h8l-.536-.621A5 5 0 0014 4.343V2"/>
+      <rect x="6" y="6" width="12" height="14" rx="2"/>
+      <path d="M6 10h12"/>
+    </svg>
+  ),
+  History: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+      <path d="M3 3v5h5"/>
+      <path d="M12 7v5l4 2"/>
+    </svg>
+  ),
 };
 
 // Format time for display
@@ -292,7 +336,7 @@ const formatTime = (seconds: number): string => {
 };
 
 export const PressureCookingCalculator: React.FC = () => {
-  const { state, updateSettings } = useData();
+  const { state, updateSettings, updatePreparedSpawn, getContainer, getGrainType, getRecipe } = useData();
 
   // Calculator state
   const [selectedPreset, setSelectedPreset] = useState<string>(pcPresets[0].id);
@@ -300,6 +344,14 @@ export const PressureCookingCalculator: React.FC = () => {
   const [quantity, setQuantity] = useState<string>('1');
   const [customMinutes, setCustomMinutes] = useState<string>('');
   const [useCustomTime, setUseCustomTime] = useState(false);
+
+  // Item tracking state
+  const [sterilizationItems, setSterilizationItems] = useState<SterilizationItem[]>([]);
+  const [showItemSelector, setShowItemSelector] = useState(false);
+  const [customItemName, setCustomItemName] = useState('');
+  const [customItemQty, setCustomItemQty] = useState('1');
+  const [sterilizationLog, setSterilizationLog] = useState<{date: Date; items: SterilizationItem[]; psi: number; minutes: number}[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Timer state
   const [timer, setTimer] = useState<TimerState>({
@@ -318,19 +370,92 @@ export const PressureCookingCalculator: React.FC = () => {
   // Show sound selector dropdown
   const [showSoundSelector, setShowSoundSelector] = useState(false);
   const soundSelectorRef = React.useRef<HTMLDivElement>(null);
+  const itemSelectorRef = React.useRef<HTMLDivElement>(null);
 
-  // Close sound selector when clicking outside
+  // Get prepared spawn that needs sterilization (not yet sterilized - no sterilization date)
+  const needsSterilizationSpawn = useMemo(() => {
+    return state.preparedSpawn.filter(s =>
+      s.isActive && s.status === 'available' && !s.sterilizationDate
+    );
+  }, [state.preparedSpawn]);
+
+  // Available prepared spawn that could be re-sterilized (already sterilized)
+  const availableSpawn = useMemo(() => {
+    return state.preparedSpawn.filter(s =>
+      s.isActive && s.status === 'available' && s.sterilizationDate
+    );
+  }, [state.preparedSpawn]);
+
+  // Reserved spawn waiting to be sterilized
+  const reservedSpawn = useMemo(() => {
+    return state.preparedSpawn.filter(s => s.isActive && s.status === 'reserved');
+  }, [state.preparedSpawn]);
+
+  // Helper to get spawn display name
+  const getSpawnDisplayName = useCallback((spawn: PreparedSpawn): string => {
+    if (spawn.label) return spawn.label;
+    const container = getContainer(spawn.containerId);
+    const grainType = spawn.grainTypeId ? getGrainType(spawn.grainTypeId) : null;
+    const recipe = spawn.recipeId ? getRecipe(spawn.recipeId) : null;
+
+    let name = container?.name || spawn.type;
+    if (grainType) name += ` - ${grainType.name}`;
+    if (recipe) name += ` - ${recipe.name}`;
+    return name;
+  }, [getContainer, getGrainType, getRecipe]);
+
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (soundSelectorRef.current && !soundSelectorRef.current.contains(event.target as Node)) {
         setShowSoundSelector(false);
       }
+      if (itemSelectorRef.current && !itemSelectorRef.current.contains(event.target as Node)) {
+        setShowItemSelector(false);
+      }
     };
-    if (showSoundSelector) {
+    if (showSoundSelector || showItemSelector) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showSoundSelector]);
+  }, [showSoundSelector, showItemSelector]);
+
+  // Add a prepared spawn to sterilization items
+  const addPreparedSpawnItem = useCallback((spawn: PreparedSpawn) => {
+    // Check if already added
+    if (sterilizationItems.some(item => item.refId === spawn.id)) return;
+
+    const newItem: SterilizationItem = {
+      id: `spawn-${spawn.id}`,
+      type: 'prepared_spawn',
+      name: getSpawnDisplayName(spawn),
+      quantity: spawn.containerCount,
+      refId: spawn.id,
+    };
+    setSterilizationItems(prev => [...prev, newItem]);
+    setShowItemSelector(false);
+  }, [sterilizationItems, getSpawnDisplayName]);
+
+  // Add a custom item
+  const addCustomItem = useCallback(() => {
+    if (!customItemName.trim()) return;
+
+    const newItem: SterilizationItem = {
+      id: `custom-${Date.now()}`,
+      type: 'custom',
+      name: customItemName.trim(),
+      quantity: parseInt(customItemQty) || 1,
+    };
+    setSterilizationItems(prev => [...prev, newItem]);
+    setCustomItemName('');
+    setCustomItemQty('1');
+    setShowItemSelector(false);
+  }, [customItemName, customItemQty]);
+
+  // Remove an item from sterilization list
+  const removeItem = useCallback((itemId: string) => {
+    setSterilizationItems(prev => prev.filter(item => item.id !== itemId));
+  }, []);
 
   // Get current preset
   const currentPreset = pcPresets.find(p => p.id === selectedPreset) || pcPresets[0];
@@ -362,6 +487,43 @@ export const PressureCookingCalculator: React.FC = () => {
     };
   }, [selectedPreset, altitude, quantity, customMinutes, useCustomTime, currentPreset]);
 
+  // Handle sterilization completion
+  const handleSterilizationComplete = useCallback(async () => {
+    const sterilizationMethod = `PC ${calculation.psi}psi ${calculation.minutes}min`;
+    const sterilizationDate = new Date();
+
+    // Update all prepared spawn items that were sterilized
+    for (const item of sterilizationItems) {
+      if (item.type === 'prepared_spawn' && item.refId) {
+        try {
+          await updatePreparedSpawn(item.refId, {
+            status: 'available',
+            sterilizationDate,
+            sterilizationMethod,
+          });
+        } catch (error) {
+          console.error('Failed to update prepared spawn:', error);
+        }
+      }
+    }
+
+    // Log the sterilization event
+    if (sterilizationItems.length > 0) {
+      setSterilizationLog(prev => [
+        {
+          date: sterilizationDate,
+          items: [...sterilizationItems],
+          psi: calculation.psi,
+          minutes: calculation.minutes,
+        },
+        ...prev.slice(0, 9), // Keep last 10 entries
+      ]);
+    }
+
+    // Clear items after successful sterilization
+    setSterilizationItems([]);
+  }, [sterilizationItems, calculation.psi, calculation.minutes, updatePreparedSpawn]);
+
   // Timer tick effect
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -379,12 +541,17 @@ export const PressureCookingCalculator: React.FC = () => {
 
             // Browser notification (always try if enabled in browser)
             if ('Notification' in window && Notification.permission === 'granted') {
+              const itemCount = sterilizationItems.length;
               new Notification('Pressure Cooking Complete!', {
-                body: `${currentPreset.name} sterilization is done.`,
+                body: itemCount > 0
+                  ? `${currentPreset.name} sterilization complete. ${itemCount} item(s) updated.`
+                  : `${currentPreset.name} sterilization is done.`,
                 icon: '🍄',
               });
             }
-            
+
+            // Log sterilization and update items (handled via useEffect below)
+
             return {
               ...prev,
               isRunning: false,
@@ -403,7 +570,28 @@ export const PressureCookingCalculator: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [timer.isRunning, timer.isPaused, timer.remainingSeconds, notificationsEnabled, timerSound, timerVolume, currentPreset.name]);
+  }, [timer.isRunning, timer.isPaused, timer.remainingSeconds, notificationsEnabled, timerSound, timerVolume, currentPreset.name, sterilizationItems.length]);
+
+  // Track previous timer state to detect completion
+  const prevTimerRef = React.useRef({ wasRunning: false, remainingSeconds: 0 });
+
+  // Effect to handle sterilization completion when timer finishes
+  useEffect(() => {
+    const prevWasRunning = prevTimerRef.current.wasRunning;
+    const prevRemaining = prevTimerRef.current.remainingSeconds;
+
+    // Detect timer completion: was running, now stopped, and finished at 0
+    if (prevWasRunning && !timer.isRunning && prevRemaining > 0 && timer.remainingSeconds === 0) {
+      // Timer just completed - update items
+      handleSterilizationComplete();
+    }
+
+    // Update ref
+    prevTimerRef.current = {
+      wasRunning: timer.isRunning,
+      remainingSeconds: timer.remainingSeconds,
+    };
+  }, [timer.isRunning, timer.remainingSeconds, handleSterilizationComplete]);
 
   // Start timer
   const startTimer = useCallback(() => {
@@ -585,6 +773,194 @@ export const PressureCookingCalculator: React.FC = () => {
                 />
               )}
             </div>
+          </div>
+
+          {/* Items Being Sterilized */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Icons.Package />
+                Items Being Sterilized
+              </h3>
+              <div className="flex items-center gap-2">
+                {sterilizationLog.length > 0 && (
+                  <button
+                    onClick={() => setShowHistory(!showHistory)}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${
+                      showHistory
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Icons.History />
+                    History ({sterilizationLog.length})
+                  </button>
+                )}
+                <div className="relative" ref={itemSelectorRef}>
+                  <button
+                    onClick={() => setShowItemSelector(!showItemSelector)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Icons.Plus />
+                    Add Item
+                  </button>
+
+                  {/* Item selector dropdown */}
+                  {showItemSelector && (
+                    <div className="absolute right-0 top-full mt-1 z-50 bg-zinc-800 border border-zinc-700 rounded-xl shadow-xl overflow-hidden w-80">
+                      {/* Prepared Spawn Section */}
+                      {(needsSterilizationSpawn.length > 0 || reservedSpawn.length > 0 || availableSpawn.length > 0) && (
+                        <div className="p-2 border-b border-zinc-700">
+                          <p className="text-xs text-zinc-400 font-medium mb-2 flex items-center gap-1">
+                            <Icons.Jar />
+                            Prepared Spawn
+                          </p>
+                          <div className="max-h-32 overflow-y-auto space-y-1">
+                            {needsSterilizationSpawn.map(spawn => (
+                              <button
+                                key={spawn.id}
+                                onClick={() => addPreparedSpawnItem(spawn)}
+                                disabled={sterilizationItems.some(item => item.refId === spawn.id)}
+                                className="w-full px-2 py-1.5 text-left text-sm rounded hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+                              >
+                                <span className="text-zinc-200 truncate">{getSpawnDisplayName(spawn)}</span>
+                                <span className="text-xs text-amber-400 ml-2 shrink-0">needs sterilizing</span>
+                              </button>
+                            ))}
+                            {reservedSpawn.map(spawn => (
+                              <button
+                                key={spawn.id}
+                                onClick={() => addPreparedSpawnItem(spawn)}
+                                disabled={sterilizationItems.some(item => item.refId === spawn.id)}
+                                className="w-full px-2 py-1.5 text-left text-sm rounded hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+                              >
+                                <span className="text-zinc-200 truncate">{getSpawnDisplayName(spawn)}</span>
+                                <span className="text-xs text-blue-400 ml-2 shrink-0">reserved</span>
+                              </button>
+                            ))}
+                            {availableSpawn.slice(0, 5).map(spawn => (
+                              <button
+                                key={spawn.id}
+                                onClick={() => addPreparedSpawnItem(spawn)}
+                                disabled={sterilizationItems.some(item => item.refId === spawn.id)}
+                                className="w-full px-2 py-1.5 text-left text-sm rounded hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+                              >
+                                <span className="text-zinc-200 truncate">{getSpawnDisplayName(spawn)}</span>
+                                <span className="text-xs text-zinc-500 ml-2 shrink-0">re-sterilize</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Custom Item */}
+                      <div className="p-3">
+                        <p className="text-xs text-zinc-400 font-medium mb-2">Custom Item</p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={customItemName}
+                            onChange={e => setCustomItemName(e.target.value)}
+                            placeholder="Item name..."
+                            className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                          />
+                          <input
+                            type="number"
+                            value={customItemQty}
+                            onChange={e => setCustomItemQty(e.target.value)}
+                            min="1"
+                            className="w-14 bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:border-emerald-500"
+                          />
+                          <button
+                            onClick={addCustomItem}
+                            disabled={!customItemName.trim()}
+                            className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg transition-colors"
+                          >
+                            <Icons.Plus />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* History View */}
+            {showHistory && sterilizationLog.length > 0 && (
+              <div className="mb-4 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                <p className="text-xs text-zinc-400 mb-2">Recent Sterilizations</p>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {sterilizationLog.map((log, idx) => (
+                    <div key={idx} className="text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-zinc-300">
+                          {log.date.toLocaleDateString()} {log.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="text-xs text-zinc-500">{log.psi}psi • {log.minutes}min</span>
+                      </div>
+                      <div className="text-xs text-zinc-500">
+                        {log.items.map(item => `${item.name} (×${item.quantity})`).join(', ')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Current Items List */}
+            {sterilizationItems.length > 0 ? (
+              <div className="space-y-2">
+                {sterilizationItems.map(item => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-700"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        item.type === 'prepared_spawn' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-700 text-zinc-400'
+                      }`}>
+                        {item.type === 'prepared_spawn' ? <Icons.Jar /> : <Icons.Package />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">{item.name}</p>
+                        <p className="text-xs text-zinc-500">
+                          Qty: {item.quantity}
+                          {item.type === 'prepared_spawn' && ' • Will update status when complete'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeItem(item.id)}
+                      className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"
+                    >
+                      <Icons.X />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Summary */}
+                <div className="mt-3 pt-3 border-t border-zinc-700 flex items-center justify-between text-sm">
+                  <span className="text-zinc-400">
+                    {sterilizationItems.length} item{sterilizationItems.length !== 1 ? 's' : ''} •
+                    {sterilizationItems.reduce((sum, i) => sum + i.quantity, 0)} total units
+                  </span>
+                  {sterilizationItems.some(i => i.type === 'prepared_spawn') && (
+                    <span className="text-xs text-emerald-400">
+                      Spawn status will update on completion
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6 text-zinc-500">
+                <Icons.Package />
+                <p className="mt-2 text-sm">No items selected</p>
+                <p className="text-xs text-zinc-600 mt-1">
+                  Add prepared spawn or custom items to track and log sterilization
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Result */}

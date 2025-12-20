@@ -4389,6 +4389,171 @@ All grower settings PLUS Admin Console:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1241',
+    title: 'Substrate Workbench - Comprehensive Substrate Planning Tool',
+    description: 'Complete redesign of the Substrate Calculator into a multi-tab Substrate Workbench with species integration, batch planning, and inventory awareness.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'high',
+    notes: `Deep creative redesign of the substrate calculator into a comprehensive workbench:
+
+**Tab 1 - Calculator (Enhanced Hydration Calculations):**
+- Substrate type selection grid with moisture targets from database
+- 4 calculation modes: Dry→Hydrated, Hydrated→Dry, Check Moisture, Spawn→Substrate
+- Custom moisture override option
+- Enhanced moisture bar with field capacity visualization
+- Spawn rate analysis with optimal/high/low status indicators
+- Quick reference section for field capacity test, spawn ratios, pasteurization
+
+**Tab 2 - Species Match (NEW):**
+- Species selector dropdown with scientific names
+- Recommended substrates for each species (based on knowledge base)
+- Substrate cards with difficulty rating (easy/moderate/advanced)
+- Species-substrate compatibility matrix table
+- Species include: Oysters, Lions Mane, Shiitake, Reishi, Wine Cap, etc.
+
+**Tab 3 - Batch Planner (NEW):**
+- Container list builder with name, count, weight per container
+- Spawn rate input
+- Automatic batch totals: containers, total substrate, water needed, spawn needed
+- Dry substrate calculation at target moisture
+
+**Tab 4 - Inventory Integration (NEW):**
+- Shows substrate materials from inventory (coir, vermiculite, gypsum, etc.)
+- Low stock warnings for materials below reorder point
+- Substrate recipes section linking to Recipe Builder
+- Preparation tips for common substrates (CVG ratio, coir prep, etc.)
+
+**Species-Substrate Knowledge Base:**
+- Mapping of species to preferred substrate codes
+- Oysters: straw, masters mix, sawdust, HWFP, CVG
+- Lions Mane/Shiitake: masters mix, supplemented sawdust
+- Wine Cap: wood chips, straw
+- Difficulty ratings and preparation tips per substrate
+
+**Files Changed:**
+- src/components/tools/SubstrateCalculator.tsx - COMPLETE REWRITE (450→1160 lines)
+- src/components/icons/IconLibrary.tsx - Added Dna icon`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1242',
+    title: 'Pressure Cooking Calculator - Item Tracking & Auto-Logging',
+    description: 'Enhanced Pressure Cooking Calculator with item selection, sterilization logging, and automatic PreparedSpawn status updates when timer completes.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'medium',
+    notes: `Enhanced the Pressure Cooking Calculator to track and log sterilization events:
+
+**Item Selection:**
+- "Items Being Sterilized" section with Add Item button
+- Select from Prepared Spawn (needs sterilizing, reserved, or re-sterilize)
+- Add custom items with name and quantity
+- Shows item type icons and quantities
+
+**Automatic Tracking:**
+- When timer completes, updates all PreparedSpawn items with:
+  - sterilizationDate = completion time
+  - sterilizationMethod = "PC {psi}psi {minutes}min"
+  - status = 'available' (ready for inoculation)
+- Logs sterilization event with date, items, PSI, and time
+
+**Session History:**
+- View recent sterilizations (last 10)
+- Shows date/time, PSI, duration, and items sterilized
+- Toggle history panel visibility
+
+**UI Improvements:**
+- Dropdown selector with spawn categorization
+- Prepared Spawn shows status badges (needs sterilizing, reserved, re-sterilize)
+- Custom item input with quantity
+- Item list with remove buttons
+- Summary showing total items and units
+
+**Files Changed:**
+- src/components/tools/PressureCookingCalculator.tsx - Item tracking, auto-logging, history`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1243',
+    title: 'Anonymous User Authentication Restrictions',
+    description: 'Added isAuthenticated state and requireAuth helper to prevent anonymous users from attempting CRUD operations that would fail at the database level.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    notes: `Added authentication state tracking and restrictions:
+
+**New State Variables:**
+- isAuthenticated: boolean tracking if user is logged in with real account (not anonymous)
+- Updated on auth state changes and initial load
+
+**New Helper Function:**
+- requireAuth(): throws descriptive error if not authenticated
+- Components can call before CRUD operations or check isAuthenticated to hide edit buttons
+
+**Auth State Updates:**
+- Set during initial data load (checks isAnonymousUser)
+- Updated on SIGNED_IN, TOKEN_REFRESHED, and SIGNED_OUT events
+- Logs auth state changes in development mode
+
+**Usage by Components:**
+- Check isAuthenticated before showing add/edit/delete buttons
+- Call requireAuth() before CRUD operations for belt-and-suspenders safety
+- Error message directs users to create a free account
+
+**Files Changed:**
+- src/store/DataContext.tsx - isAuthenticated state, requireAuth helper, auth tracking`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1244',
+    title: 'Feature Tracker Full-Screen Redesign',
+    description: 'Complete redesign of the DevLog/Feature Tracker page with full-screen detail views, cleaner list design, improved search and filtering, and navigation between related features.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'medium',
+    notes: `Complete UI overhaul addressing user feedback that item details were too cramped:
+
+**Full-Screen Detail View:**
+- Clicking any feature opens it in a full-screen view (replaces list)
+- Clean header with back button and status badge
+- All feature metadata displayed clearly with room to breathe
+- Dependencies section with clickable links to blocking features
+- "Unlocks" section showing what this feature enables (reverse dependencies)
+- Click related features to navigate directly to them
+
+**Improved List View:**
+- Cleaner FeatureListItem component with better visual hierarchy
+- Status indicator dots instead of bulky badges
+- Category tags as subtle pills
+- Priority icons for quick scanning
+- Hover states for interactivity
+
+**Search & Filter:**
+- Search input filters across title, description, ID, and notes
+- Status dropdown filter (All, Planned, In Progress, Completed)
+- Category dropdown filter
+- Filters work together and persist during session
+
+**View Modes:**
+- Phases view: Collapsible sections by development phase
+- List view: Flat list sorted by status (in_progress → planned → completed)
+- View toggle persists during session
+
+**Navigation:**
+- Breadcrumb-style back navigation from detail view
+- Direct links between related features via dependencies/unlocks
+- Smooth transitions between views
+
+**Files Changed:**
+- src/components/devlog/DevLogPage.tsx - Complete rewrite (816 lines)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
