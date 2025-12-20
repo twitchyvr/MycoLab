@@ -4,6 +4,7 @@
 // ============================================================================
 
 import React, { useState, useMemo } from 'react';
+import { Portal } from '../common';
 import {
   OutcomeCategory,
   OutcomeCode,
@@ -514,8 +515,9 @@ export const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
   const CurrentStepComponent = steps[currentStep].component;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+    <Portal>
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
           <div>
@@ -614,8 +616,9 @@ export const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
             )}
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 };
 

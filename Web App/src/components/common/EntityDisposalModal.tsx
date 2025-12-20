@@ -6,6 +6,7 @@
 // ============================================================================
 
 import React, { useState, useMemo } from 'react';
+import { Portal } from './Portal';
 import {
   OutcomeOption,
   OutcomeCategory,
@@ -144,8 +145,9 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
   const modalTitle = title || `Dispose ${entityLabel}`;
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-900 rounded-xl border border-zinc-700 max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <Portal>
+      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div className="bg-zinc-900 rounded-xl border border-zinc-700 max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-zinc-700">
           <h2 className="text-lg font-semibold text-zinc-100">{modalTitle}</h2>
@@ -296,8 +298,9 @@ export const EntityDisposalModal: React.FC<EntityDisposalModalProps> = ({
             Confirm Disposal
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 };
 

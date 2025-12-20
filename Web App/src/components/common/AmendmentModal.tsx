@@ -4,6 +4,7 @@
 // ============================================================================
 
 import React, { useState, useCallback } from 'react';
+import { Portal } from './Portal';
 import { AmendmentType } from '../../store/types';
 
 // Amendment type options with descriptions
@@ -140,15 +141,16 @@ export function AmendmentModal<T extends Record<string, any>>({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <Portal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/60"
+          onClick={onClose}
+        />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl">
+        {/* Modal */}
+        <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl">
         {/* Header */}
         <div className="sticky top-0 bg-zinc-900 border-b border-zinc-700 px-6 py-4 z-10">
           <div className="flex items-center justify-between">
@@ -368,8 +370,9 @@ export function AmendmentModal<T extends Record<string, any>>({
             </div>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 }
 

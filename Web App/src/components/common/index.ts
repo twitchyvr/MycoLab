@@ -2,6 +2,9 @@
 // COMMON COMPONENTS - Barrel Export
 // ============================================================================
 
+// Core Components
+export { Portal } from './Portal';
+
 // Form Components
 export { SelectWithAdd } from './SelectWithAdd';
 export { NumericInput } from './NumericInput';

@@ -5,6 +5,7 @@
 // ============================================================================
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 // Build time is injected by Vite at build time
 declare const __BUILD_TIME__: string;
@@ -238,7 +239,8 @@ export const VersionUpdateModal: React.FC = () => {
     }
   };
 
-  return (
+  // Use createPortal to render directly to body, bypassing any transform containment
+  return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-4">
       <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
         {/* Header */}
@@ -320,7 +322,8 @@ export const VersionUpdateModal: React.FC = () => {
           </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
