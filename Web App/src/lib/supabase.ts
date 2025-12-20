@@ -111,14 +111,12 @@ export const ensureSession = async (): Promise<Session | null> => {
         );
       } else if (signInError.message?.toLowerCase().includes('captcha') ||
                  signInError.status === 500) {
-        // CAPTCHA is enabled which blocks anonymous auth - this is expected behavior
-        console.warn(
-          '%c[MycoLab] Anonymous auth blocked by CAPTCHA protection.',
-          'color: #f59e0b',
-          '\nTo enable anonymous auth, disable CAPTCHA in Supabase:',
-          '\n  Authentication > Attack Protection > Disable Captcha',
-          '\nOr use email/password sign-in for cloud sync.',
-          '\nUsing localStorage fallback for now.'
+        // CAPTCHA is enabled which blocks anonymous auth - this is normal/expected
+        // Use console.log instead of warn to avoid alarming appearance
+        console.log(
+          '%c[MycoLab] Using local storage mode (CAPTCHA protection active)',
+          'color: #10b981',
+          '\nSign in with email/password for cloud sync.'
         );
       } else {
         console.warn('[MycoLab] Anonymous sign-in unavailable:', signInError.message);

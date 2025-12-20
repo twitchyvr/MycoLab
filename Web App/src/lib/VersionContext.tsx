@@ -205,11 +205,29 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
 export const VersionUpdateModal: React.FC = () => {
   const { versionInfo, forceRefresh, clearSessionAndRefresh } = useVersion();
   const [showDetails, setShowDetails] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Only show if there's a new version and not dismissed
   if (!versionInfo.isNewVersion || versionInfo.isDismissed) {
     return null;
   }
+
+  // Don't render during refresh to prevent Safari crash
+  if (isRefreshing) {
+    return null;
+  }
+
+  // Wrapped refresh handlers to prevent rendering during reload
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    // Small delay to ensure state update completes before reload
+    setTimeout(forceRefresh, 50);
+  };
+
+  const handleClearAndRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(clearSessionAndRefresh, 50);
+  };
 
   const formatBuildTime = (isoString: string) => {
     try {
@@ -221,7 +239,7 @@ export const VersionUpdateModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-4">
       <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-4">
@@ -280,7 +298,7 @@ export const VersionUpdateModal: React.FC = () => {
         {/* Actions */}
         <div className="px-6 py-4 bg-zinc-800/50 border-t border-zinc-700 space-y-3">
           <button
-            onClick={forceRefresh}
+            onClick={handleRefresh}
             className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
@@ -291,7 +309,7 @@ export const VersionUpdateModal: React.FC = () => {
           </button>
 
           <button
-            onClick={clearSessionAndRefresh}
+            onClick={handleClearAndRefresh}
             className="w-full py-2.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded-lg font-medium transition-colors text-sm"
           >
             Clear Session & Refresh
