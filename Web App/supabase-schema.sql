@@ -4260,8 +4260,16 @@ DROP TRIGGER IF EXISTS update_strains_updated_at ON strains;
 DROP TRIGGER IF EXISTS update_location_types_updated_at ON location_types;
 DROP TRIGGER IF EXISTS update_location_classifications_updated_at ON location_classifications;
 DROP TRIGGER IF EXISTS update_locations_updated_at ON locations;
-DROP TRIGGER IF EXISTS update_vessels_updated_at ON vessels;
-DROP TRIGGER IF EXISTS update_container_types_updated_at ON container_types;
+-- Legacy: Only drop vessel/container_types triggers if they exist as base tables (not views)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels' AND table_type = 'BASE TABLE') THEN
+    DROP TRIGGER IF EXISTS update_vessels_updated_at ON vessels;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types' AND table_type = 'BASE TABLE') THEN
+    DROP TRIGGER IF EXISTS update_container_types_updated_at ON container_types;
+  END IF;
+END $$;
 DROP TRIGGER IF EXISTS update_substrate_types_updated_at ON substrate_types;
 DROP TRIGGER IF EXISTS update_suppliers_updated_at ON suppliers;
 DROP TRIGGER IF EXISTS update_inventory_categories_updated_at ON inventory_categories;
@@ -4281,8 +4289,16 @@ CREATE TRIGGER update_strains_updated_at BEFORE UPDATE ON strains FOR EACH ROW E
 CREATE TRIGGER update_location_types_updated_at BEFORE UPDATE ON location_types FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_location_classifications_updated_at BEFORE UPDATE ON location_classifications FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_locations_updated_at BEFORE UPDATE ON locations FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_vessels_updated_at BEFORE UPDATE ON vessels FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_container_types_updated_at BEFORE UPDATE ON container_types FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+-- Legacy: Only create vessel/container_types triggers if they exist as base tables (not views)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels' AND table_type = 'BASE TABLE') THEN
+    CREATE TRIGGER update_vessels_updated_at BEFORE UPDATE ON vessels FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types' AND table_type = 'BASE TABLE') THEN
+    CREATE TRIGGER update_container_types_updated_at BEFORE UPDATE ON container_types FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  END IF;
+END $$;
 CREATE TRIGGER update_substrate_types_updated_at BEFORE UPDATE ON substrate_types FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON suppliers FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_inventory_categories_updated_at BEFORE UPDATE ON inventory_categories FOR EACH ROW EXECUTE FUNCTION update_updated_at();
