@@ -285,10 +285,30 @@ export const UnifiedItemView: React.FC<UnifiedItemViewProps> = ({ onNavigate }) 
             Your lab inventory is empty. Add cultures and start grows to see them here.
           </p>
           <div className="flex justify-center gap-3">
-            <button className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium">
+            <button
+              onClick={() => {
+                if (onNavigate) {
+                  onNavigate('cultures');
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'cultures' } }));
+                  }, 100);
+                }
+              }}
+              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium"
+            >
               Add Culture
             </button>
-            <button className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium border border-zinc-700">
+            <button
+              onClick={() => {
+                if (onNavigate) {
+                  onNavigate('grows');
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'grows' } }));
+                  }, 100);
+                }
+              }}
+              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium border border-zinc-700"
+            >
               Start Grow
             </button>
           </div>

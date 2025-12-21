@@ -4692,6 +4692,48 @@ Complete 8-phase database reset that drops everything in correct dependency orde
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1302',
+    title: 'Pressure Cook Lab Inventory Selection & Auto-Preset',
+    description: 'Enhanced Pressure Cooking Calculator to select items from Lab Inventory with automatic preset suggestions. Fixed Lab Inventory page buttons.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'medium',
+    phaseId: 30,
+    notes: `Pressure Cooking Calculator - Lab Inventory Integration:
+
+**New Feature - Lab Inventory Selection:**
+- Added "Lab Inventory" section to item selector dropdown
+- Auto-filters to show sterilizable items (jars, bags, grains, substrate, agar, tools, syringes)
+- Each item shows available quantity and category
+- Selecting an item auto-suggests appropriate preset (time/PSI)
+
+**Auto-Preset Suggestions:**
+- Maps inventory categories/names to PC presets:
+  - grain → Grain Jars (Quart)
+  - substrate → Sawdust Blocks
+  - agar → Agar Plates
+  - liquid → LC Jars
+  - bags → Grain Bags
+  - tools/syringes → Tools
+- When item is selected, preset and quantity auto-update
+
+**UI Improvements:**
+- Inventory items show in blue (distinct from green spawn items)
+- Selected items display their suggested preset in the item list
+- Updated empty state text to mention lab inventory
+
+**Bug Fix - Lab Inventory Buttons:**
+- "Add Culture" and "Start Grow" buttons on Lab Inventory page now work
+- Navigate to respective pages and trigger creation modals
+- Uses standardized mycolab:create-new event system
+
+**Files Changed:**
+- src/components/tools/PressureCookingCalculator.tsx - Lab inventory selection, auto-preset
+- src/components/inventory/UnifiedItemView.tsx - Fixed button handlers`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
