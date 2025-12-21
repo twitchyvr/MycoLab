@@ -18,12 +18,26 @@ const Icons = {
   Settings: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
   ExternalLink: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>,
   Send: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+  Clock: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  Database: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+  Play: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+  Bell: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
 };
 
 interface ServiceStatus {
   configured: boolean;
   provider?: string;
   lastTest?: string;
+  error?: string;
+}
+
+interface CronStatus {
+  pgCronEnabled: boolean;
+  cronJobsConfigured: boolean;
+  cronJobs: Array<{ name: string; schedule: string; active: boolean }>;
+  pendingNotifications: number;
+  lastNotificationSent: string | null;
+  supabaseConfigured: boolean;
   error?: string;
 }
 
@@ -45,6 +59,20 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
   const [testEmail, setTestEmail] = useState('');
   const [testPhone, setTestPhone] = useState('');
   const [sendingTest, setSendingTest] = useState<'email' | 'sms' | null>(null);
+
+  // pg_cron status
+  const [cronStatus, setCronStatus] = useState<CronStatus>({
+    pgCronEnabled: false,
+    cronJobsConfigured: false,
+    cronJobs: [],
+    pendingNotifications: 0,
+    lastNotificationSent: null,
+    supabaseConfigured: false,
+  });
+  const [checkingCron, setCheckingCron] = useState(false);
+  const [settingUpCron, setSettingUpCron] = useState(false);
+  const [triggeringCheck, setTriggeringCheck] = useState(false);
+  const [triggerResult, setTriggerResult] = useState<string | null>(null);
 
   // Clear messages after delay
   useEffect(() => {
@@ -161,6 +189,111 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
       setSendingTest(null);
     }
   };
+
+  // Check pg_cron status via Netlify Function
+  const checkCronStatus = async () => {
+    setCheckingCron(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/pg-cron-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'status' }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setCronStatus(prev => ({ ...prev, error: data.error || 'Failed to check status' }));
+      } else {
+        setCronStatus({
+          pgCronEnabled: data.pgCronEnabled || false,
+          cronJobsConfigured: data.cronJobsConfigured || false,
+          cronJobs: data.cronJobs || [],
+          pendingNotifications: data.pendingNotifications || 0,
+          lastNotificationSent: data.lastNotificationSent,
+          supabaseConfigured: data.supabaseConfigured || false,
+          error: data.error,
+        });
+      }
+    } catch (err: any) {
+      setCronStatus(prev => ({ ...prev, error: `Failed to check cron status: ${err.message}` }));
+    } finally {
+      setCheckingCron(false);
+    }
+  };
+
+  // Set up cron jobs
+  const setupCronJobs = async () => {
+    setSettingUpCron(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/pg-cron-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setup' }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Failed to set up cron jobs');
+        if (data.hint) {
+          setError(`${data.error}. ${data.hint}`);
+        }
+      } else {
+        setSuccess(data.message || 'Cron jobs configured successfully!');
+        // Refresh status
+        await checkCronStatus();
+      }
+    } catch (err: any) {
+      setError(`Failed to set up cron jobs: ${err.message}`);
+    } finally {
+      setSettingUpCron(false);
+    }
+  };
+
+  // Manually trigger notification check
+  const triggerNotificationCheck = async () => {
+    setTriggeringCheck(true);
+    setError(null);
+    setTriggerResult(null);
+
+    try {
+      const response = await fetch('/api/pg-cron-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'trigger' }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Failed to trigger notification check');
+      } else {
+        const total = data.totalNotificationsQueued || 0;
+        const checks = data.checksRun || [];
+        setTriggerResult(
+          `Checked: ${checks.map((c: { name: string; notificationsQueued: number }) =>
+            `${c.name} (${c.notificationsQueued} queued)`
+          ).join(', ')}. Total: ${total} notifications queued.`
+        );
+        setSuccess('Notification check completed!');
+        // Refresh status
+        await checkCronStatus();
+      }
+    } catch (err: any) {
+      setError(`Failed to trigger notification check: ${err.message}`);
+    } finally {
+      setTriggeringCheck(false);
+    }
+  };
+
+  // Check cron status on mount (if connected)
+  useEffect(() => {
+    if (isAdmin && isConnected) {
+      checkCronStatus();
+    }
+  }, [isAdmin, isConnected]);
 
   if (!isAdmin) {
     return (
@@ -369,6 +502,164 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
             </div>
           )}
         </div>
+      </div>
+
+      {/* pg_cron Background Notifications */}
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${
+              cronStatus.pgCronEnabled && cronStatus.cronJobsConfigured
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : cronStatus.pgCronEnabled
+                  ? 'bg-yellow-500/20 text-yellow-400'
+                  : 'bg-zinc-800 text-zinc-500'
+            }`}>
+              <Icons.Clock />
+            </div>
+            <div>
+              <h3 className="text-white font-medium">Background Notifications</h3>
+              <p className="text-xs text-zinc-500">
+                pg_cron scheduled jobs for email alerts
+              </p>
+            </div>
+          </div>
+          <div className={`px-2 py-1 rounded text-xs font-medium ${
+            cronStatus.pgCronEnabled && cronStatus.cronJobsConfigured
+              ? 'bg-emerald-500/20 text-emerald-400'
+              : cronStatus.pgCronEnabled
+                ? 'bg-yellow-500/20 text-yellow-400'
+                : 'bg-zinc-800 text-zinc-500'
+          }`}>
+            {cronStatus.pgCronEnabled && cronStatus.cronJobsConfigured
+              ? 'Active'
+              : cronStatus.pgCronEnabled
+                ? 'Extension Enabled'
+                : 'Not Configured'}
+          </div>
+        </div>
+
+        {cronStatus.error && (
+          <p className="text-xs text-red-400 mb-3">{cronStatus.error}</p>
+        )}
+
+        {/* Status Details */}
+        <div className="space-y-3 mb-4">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <span className={cronStatus.supabaseConfigured ? 'text-emerald-400' : 'text-zinc-500'}>
+                {cronStatus.supabaseConfigured ? <Icons.Check /> : <Icons.X />}
+              </span>
+              <span className="text-zinc-400">Supabase Connected</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={cronStatus.pgCronEnabled ? 'text-emerald-400' : 'text-zinc-500'}>
+                {cronStatus.pgCronEnabled ? <Icons.Check /> : <Icons.X />}
+              </span>
+              <span className="text-zinc-400">pg_cron Extension</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={cronStatus.cronJobsConfigured ? 'text-emerald-400' : 'text-zinc-500'}>
+                {cronStatus.cronJobsConfigured ? <Icons.Check /> : <Icons.X />}
+              </span>
+              <span className="text-zinc-400">Cron Jobs Active</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-blue-400"><Icons.Bell /></span>
+              <span className="text-zinc-400">{cronStatus.pendingNotifications} Pending</span>
+            </div>
+          </div>
+
+          {cronStatus.cronJobs.length > 0 && (
+            <div className="bg-zinc-950 rounded-lg p-3 text-xs">
+              <p className="text-zinc-500 mb-2">Scheduled Jobs:</p>
+              {cronStatus.cronJobs.map((job, i) => (
+                <div key={i} className="flex items-center justify-between py-1">
+                  <span className="text-zinc-300">{job.name}</span>
+                  <span className="text-zinc-500">{job.schedule}</span>
+                  <span className={job.active ? 'text-emerald-400' : 'text-red-400'}>
+                    {job.active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {cronStatus.lastNotificationSent && (
+            <p className="text-xs text-zinc-500">
+              Last notification sent: {new Date(cronStatus.lastNotificationSent).toLocaleString()}
+            </p>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2">
+          {!cronStatus.pgCronEnabled && (
+            <div className="text-sm text-zinc-400 w-full mb-2">
+              <p className="mb-2">To enable background notifications:</p>
+              <ol className="list-decimal list-inside space-y-1 text-xs">
+                <li>Go to <strong>Supabase Dashboard</strong> → Database → Extensions</li>
+                <li>Search for <code className="bg-zinc-800 px-1 rounded">pg_cron</code> and enable it</li>
+                <li>Click "Setup Cron Jobs" below to configure scheduled tasks</li>
+              </ol>
+            </div>
+          )}
+
+          {cronStatus.pgCronEnabled && !cronStatus.cronJobsConfigured && (
+            <button
+              onClick={setupCronJobs}
+              disabled={settingUpCron}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-2"
+            >
+              {settingUpCron ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <Icons.Database />
+              )}
+              Setup Cron Jobs
+            </button>
+          )}
+
+          {cronStatus.cronJobsConfigured && (
+            <button
+              onClick={triggerNotificationCheck}
+              disabled={triggeringCheck}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-2"
+            >
+              {triggeringCheck ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <Icons.Play />
+              )}
+              Run Check Now
+            </button>
+          )}
+
+          <button
+            onClick={checkCronStatus}
+            disabled={checkingCron}
+            className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-2"
+          >
+            <Icons.Refresh />
+            {checkingCron ? 'Checking...' : 'Refresh'}
+          </button>
+        </div>
+
+        {triggerResult && (
+          <div className="mt-3 bg-blue-950/30 border border-blue-800 rounded-lg p-3 text-xs text-blue-300">
+            {triggerResult}
+          </div>
+        )}
+
+        {cronStatus.cronJobsConfigured && (
+          <div className="mt-4 bg-emerald-950/30 border border-emerald-800 rounded-lg p-3">
+            <p className="text-sm text-emerald-300 font-medium mb-1">✓ Background Notifications Active</p>
+            <p className="text-xs text-zinc-400">
+              The system checks for expiring cultures, grow stage transitions, low inventory, and harvest-ready grows every 15 minutes.
+              Users will receive email notifications based on their preferences.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Refresh Status */}
