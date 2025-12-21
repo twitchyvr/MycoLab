@@ -402,6 +402,22 @@ export const CultureMultiplicationCalculator: React.FC = () => {
         </div>
       </div>
 
+      {/* Info Box */}
+      <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+        <div className="flex items-start gap-3">
+          <Icons.Info />
+          <div className="text-sm text-blue-300">
+            <p className="font-medium mb-1">What is P-value and why does it matter?</p>
+            <p className="text-blue-200/80">
+              P-value (Passage value) tracks how many times a culture has been expanded.
+              P0 is from spores, P1 is the first expansion, etc. Each expansion increases
+              senescence risk (genetic degradation). Commercial labs typically stop at P3-P4.
+              Use this tool to plan your expansion chain and track costs.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Panel */}
         <div className="lg:col-span-2 space-y-6">

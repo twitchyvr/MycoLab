@@ -220,6 +220,22 @@ export const BiologicalEfficiencyCalculator: React.FC = () => {
         <p className="text-zinc-400 text-sm">Calculate and track BE% across your grows</p>
       </div>
 
+      {/* Info Box */}
+      <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+        <div className="flex items-start gap-3">
+          <Icons.Info />
+          <div className="text-sm text-blue-300">
+            <p className="font-medium mb-1">What is Biological Efficiency (BE%)?</p>
+            <p className="text-blue-200/80">
+              BE% measures how efficiently your substrate converts to mushroom yield.
+              It's calculated as (fresh harvest weight / dry substrate weight) × 100.
+              100% means you harvested the same weight in mushrooms as your dry substrate input -
+              anything over 100% is excellent! Use this to compare strains, substrates, and techniques.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">

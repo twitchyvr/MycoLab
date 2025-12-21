@@ -4787,6 +4787,47 @@ Complete 8-phase database reset that drops everything in correct dependency orde
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1304',
+    title: 'UX Improvements: Explanatory Text & Wizard Enhancements',
+    description: 'Added explanatory info boxes to all calculators and enhanced onboarding wizard with mushroom categories and setting consequences.',
+    category: 'ux',
+    status: 'completed',
+    priority: 'medium',
+    phaseId: 25,
+    notes: `UX improvements for clarity and usability:
+
+**Calculator Info Boxes Added:**
+- PressureCookingCalculator - How pressure cooking works
+- SubstrateCalculator - What hydration means and why it matters
+- SpawnRateCalculator - What spawn rate is and how to use it
+- BiologicalEfficiencyCalculator - What BE% means and why it matters
+- CultureMultiplicationCalculator - What P-value is and senescence concerns
+
+**Onboarding Wizard Enhancements:**
+- Added consequence explanations for each experience level and purpose
+- Changed species/strain selection to mushroom categories (Culinary, Medicinal, Research)
+- Added info boxes to location and equipment steps
+- Added equipment descriptions explaining what each enables
+- Updated types.ts: preferredCategories instead of preferredSpeciesIds/preferredStrainIds
+
+**Navigation Fixes:**
+- Removed persistent "New Culture" button from header (too many buttons)
+- Made nav category badge in GrowthTrail clickable (opens nav hub)
+
+**Files Changed:**
+- src/components/tools/PressureCookingCalculator.tsx - Info box, field helper text
+- src/components/tools/SubstrateCalculator.tsx - Info box
+- src/components/tools/SpawnRateCalculator.tsx - Info box
+- src/components/analysis/BiologicalEfficiencyCalculator.tsx - Info box
+- src/components/tools/CultureMultiplicationCalculator.tsx - Info box
+- src/components/setup/OnboardingWizard.tsx - Categories, consequences, info boxes
+- src/components/navigation/GrowthTrail.tsx - Clickable category badge
+- src/App.tsx - Removed newButtonConfig entries
+- src/store/types.ts - preferredCategories type change`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

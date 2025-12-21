@@ -734,13 +734,9 @@ interface HeaderProps {
 }
 
 // Map pages to their "new" action pages
+// Removed: persistent "New" button was confusing with multiple create options already on pages
 const newButtonConfig: Partial<Record<Page, { label: string; page: Page }>> = {
-  dashboard: { label: 'New Culture', page: 'cultures' },
-  today: { label: 'New Culture', page: 'cultures' },
-  cultures: { label: 'New Culture', page: 'cultures' },
-  grows: { label: 'New Grow', page: 'grows' },
-  recipes: { label: 'New Recipe', page: 'recipes' },
-  inventory: { label: 'New Culture', page: 'cultures' },
+  // Empty - pages have their own create buttons
 };
 
 const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigate, onMenuClick, onSearchClick }) => {

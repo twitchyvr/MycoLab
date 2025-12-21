@@ -1097,8 +1097,7 @@ export interface AppSettings {
   // Growing purpose and equipment (v20 - onboarding wizard)
   growingPurpose?: GrowingPurpose;          // Why the user is growing
   labEquipment?: LabEquipment;              // What equipment they have
-  preferredSpeciesIds?: string[];           // Species they're interested in
-  preferredStrainIds?: string[];            // Strains they want to grow
+  preferredCategories?: string[];           // Mushroom categories: 'culinary', 'medicinal', 'research'
 
   // Timer sound settings
   timerSound?: TimerSoundType;              // Which sound to play when timer completes

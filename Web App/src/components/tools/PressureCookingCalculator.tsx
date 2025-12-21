@@ -744,6 +744,22 @@ export const PressureCookingCalculator: React.FC = () => {
         </div>
       </div>
 
+      {/* Info Box */}
+      <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+        <div className="flex items-start gap-3">
+          <Icons.Info />
+          <div className="text-sm text-blue-300">
+            <p className="font-medium mb-1">How this works:</p>
+            <ul className="list-disc list-inside space-y-1 text-blue-200/80">
+              <li>Select what you're sterilizing to get the recommended time and pressure</li>
+              <li>Higher altitude = lower boiling point, so you need more PSI</li>
+              <li>Start the timer only after your cooker reaches full pressure</li>
+              <li>Add items from your inventory to track what you sterilized</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Calculator */}
         <div className="lg:col-span-2 space-y-6">
@@ -776,7 +792,8 @@ export const PressureCookingCalculator: React.FC = () => {
 
           {/* Preset Selection */}
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
-            <label className="block text-sm font-medium text-zinc-400 mb-3">What are you sterilizing?</label>
+            <label className="block text-sm font-medium text-zinc-400 mb-1">What are you sterilizing?</label>
+            <p className="text-xs text-zinc-500 mb-3">Each item type has different heat penetration - grains need longer than liquids</p>
             <div className="grid sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
               {filteredPresets.map(preset => (
                 <button

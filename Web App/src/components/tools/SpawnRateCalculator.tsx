@@ -408,7 +408,7 @@ export const SpawnRateCalculator: React.FC = () => {
           </h2>
           <p className="text-zinc-400 text-sm">Calculate optimal spawn-to-substrate ratios</p>
         </div>
-        
+
         {/* Mode Toggle */}
         <div className="flex bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
           <button
@@ -431,6 +431,23 @@ export const SpawnRateCalculator: React.FC = () => {
           >
             Plan Batch
           </button>
+        </div>
+      </div>
+
+      {/* Info Box */}
+      <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+        <div className="flex items-start gap-3">
+          <div className="p-1 text-blue-400 shrink-0">
+            <Icons.Info />
+          </div>
+          <div className="text-sm text-blue-300">
+            <p className="font-medium mb-1">What is spawn rate?</p>
+            <p className="text-blue-200/80">
+              Spawn rate is the percentage of colonized grain spawn relative to total bulk substrate weight.
+              Higher rates = faster colonization but use more spawn. Lower rates = slower but more efficient.
+              Use <span className="font-medium">Calculate Rate</span> to check your current mix, or <span className="font-medium">Plan Batch</span> to figure out how much you need.
+            </p>
+          </div>
         </div>
       </div>
 
