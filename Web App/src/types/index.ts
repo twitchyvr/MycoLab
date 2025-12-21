@@ -721,6 +721,7 @@ export type FeaturePriority = 'critical' | 'high' | 'medium' | 'low' | 'nice_to_
 
 export interface DevLogFeature extends Timestamped {
   id: UUID;
+  phaseId?: number;
   title: string;
   description?: string;
   category: 'core' | 'ui' | 'ux' | 'data' | 'integration' | 'optimization' | 'bug_fix' | 'enhancement' | 'security' | 'feature';
