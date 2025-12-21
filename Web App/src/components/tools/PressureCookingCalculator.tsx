@@ -16,6 +16,7 @@ interface SterilizationItem {
   name: string;
   quantity: number;
   refId?: string; // Reference ID for prepared_spawn or inventory item
+  suggestedPreset?: string; // Suggested preset ID based on item type
 }
 
 interface PCPreset {
@@ -335,8 +336,22 @@ const formatTime = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+// Map inventory categories to suggested presets
+const categoryToPresetMap: Record<string, string> = {
+  'grain': 'grain-quart',
+  'substrate': 'sawdust-block',
+  'agar': 'agar-plates',
+  'liquid': 'lc-jar',
+  'jars': 'grain-quart',
+  'bags': 'grain-bag-3lb',
+  'containers': 'grain-quart',
+  'tools': 'tools-syringes',
+  'syringes': 'tools-syringes',
+  'scalpels': 'tools-scalpels',
+};
+
 export const PressureCookingCalculator: React.FC = () => {
-  const { state, updateSettings, updatePreparedSpawn, getContainer, getGrainType, getRecipe } = useData();
+  const { state, updateSettings, updatePreparedSpawn, getContainer, getGrainType, getRecipe, getInventoryCategory } = useData();
 
   // Calculator state
   const [selectedPreset, setSelectedPreset] = useState<string>(pcPresets[0].id);
@@ -391,6 +406,29 @@ export const PressureCookingCalculator: React.FC = () => {
     return state.preparedSpawn.filter(s => s.isActive && s.status === 'reserved');
   }, [state.preparedSpawn]);
 
+  // Get sterilizable inventory items (items that could be pressure cooked)
+  const sterilizableInventoryItems = useMemo(() => {
+    // Keywords that indicate items suitable for pressure cooking
+    const sterilizableKeywords = ['jar', 'bag', 'grain', 'substrate', 'agar', 'media', 'syringe', 'needle', 'scalpel', 'tool'];
+
+    return state.inventoryItems.filter(item => {
+      if (!item.isActive || item.quantity <= 0) return false;
+
+      // Check item name for keywords
+      const nameLower = item.name.toLowerCase();
+      if (sterilizableKeywords.some(kw => nameLower.includes(kw))) return true;
+
+      // Check category name for keywords
+      const category = getInventoryCategory(item.categoryId);
+      if (category) {
+        const catLower = category.name.toLowerCase();
+        if (sterilizableKeywords.some(kw => catLower.includes(kw))) return true;
+      }
+
+      return false;
+    });
+  }, [state.inventoryItems, getInventoryCategory]);
+
   // Helper to get spawn display name
   const getSpawnDisplayName = useCallback((spawn: PreparedSpawn): string => {
     if (spawn.label) return spawn.label;
@@ -436,21 +474,72 @@ export const PressureCookingCalculator: React.FC = () => {
     setShowItemSelector(false);
   }, [sterilizationItems, getSpawnDisplayName]);
 
+  // Get suggested preset for an inventory item based on its name/category
+  const getSuggestedPreset = useCallback((itemName: string, categoryId?: string): string | undefined => {
+    const nameLower = itemName.toLowerCase();
+    const category = categoryId ? getInventoryCategory(categoryId) : undefined;
+    const catNameLower = category?.name?.toLowerCase() || '';
+
+    // Check name and category for preset matches
+    for (const [keyword, presetId] of Object.entries(categoryToPresetMap)) {
+      if (nameLower.includes(keyword) || catNameLower.includes(keyword)) {
+        return presetId;
+      }
+    }
+    return undefined;
+  }, [getInventoryCategory]);
+
+  // Add an inventory item to sterilization list
+  const addInventoryItem = useCallback((item: typeof state.inventoryItems[0], qty?: number) => {
+    // Check if already added
+    if (sterilizationItems.some(si => si.refId === item.id && si.type === 'inventory')) return;
+
+    const suggestedPreset = getSuggestedPreset(item.name, item.categoryId);
+    const quantity = qty || Math.min(item.quantity, 12); // Default to available qty, max 12
+
+    const newItem: SterilizationItem = {
+      id: `inv-${item.id}`,
+      type: 'inventory',
+      name: item.name,
+      quantity,
+      refId: item.id,
+      suggestedPreset,
+    };
+    setSterilizationItems(prev => [...prev, newItem]);
+
+    // Auto-select suggested preset if one is found
+    if (suggestedPreset) {
+      setSelectedPreset(suggestedPreset);
+    }
+
+    // Update quantity
+    setQuantity(quantity.toString());
+    setShowItemSelector(false);
+  }, [sterilizationItems, getSuggestedPreset]);
+
   // Add a custom item
   const addCustomItem = useCallback(() => {
     if (!customItemName.trim()) return;
 
+    const suggestedPreset = getSuggestedPreset(customItemName);
     const newItem: SterilizationItem = {
       id: `custom-${Date.now()}`,
       type: 'custom',
       name: customItemName.trim(),
       quantity: parseInt(customItemQty) || 1,
+      suggestedPreset,
     };
     setSterilizationItems(prev => [...prev, newItem]);
+
+    // Auto-select suggested preset if one is found
+    if (suggestedPreset) {
+      setSelectedPreset(suggestedPreset);
+    }
+
     setCustomItemName('');
     setCustomItemQty('1');
     setShowItemSelector(false);
-  }, [customItemName, customItemQty]);
+  }, [customItemName, customItemQty, getSuggestedPreset]);
 
   // Remove an item from sterilization list
   const removeItem = useCallback((itemId: string) => {
@@ -853,6 +942,43 @@ export const PressureCookingCalculator: React.FC = () => {
                         </div>
                       )}
 
+                      {/* Inventory Items Section */}
+                      {sterilizableInventoryItems.length > 0 && (
+                        <div className="p-2 border-b border-zinc-700">
+                          <p className="text-xs text-zinc-400 font-medium mb-2 flex items-center gap-1">
+                            <Icons.Package />
+                            Lab Inventory
+                          </p>
+                          <div className="max-h-40 overflow-y-auto space-y-1">
+                            {sterilizableInventoryItems.map(item => {
+                              const isAdded = sterilizationItems.some(si => si.refId === item.id && si.type === 'inventory');
+                              const category = getInventoryCategory(item.categoryId);
+                              const suggestedPreset = getSuggestedPreset(item.name, item.categoryId);
+                              const presetName = suggestedPreset ? pcPresets.find(p => p.id === suggestedPreset)?.name : undefined;
+                              return (
+                                <button
+                                  key={item.id}
+                                  onClick={() => addInventoryItem(item)}
+                                  disabled={isAdded}
+                                  className="w-full px-2 py-1.5 text-left text-sm rounded hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-zinc-200 truncate">{item.name}</span>
+                                    <span className="text-xs text-zinc-500 ml-2 shrink-0">{item.quantity} {item.unit}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between mt-0.5">
+                                    <span className="text-xs text-zinc-500">{category?.name || 'Supplies'}</span>
+                                    {presetName && (
+                                      <span className="text-xs text-emerald-400">{presetName}</span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Custom Item */}
                       <div className="p-3">
                         <p className="text-xs text-zinc-400 font-medium mb-2">Custom Item</p>
@@ -911,38 +1037,50 @@ export const PressureCookingCalculator: React.FC = () => {
             {/* Current Items List */}
             {sterilizationItems.length > 0 ? (
               <div className="space-y-2">
-                {sterilizationItems.map(item => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-700"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        item.type === 'prepared_spawn' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-700 text-zinc-400'
-                      }`}>
-                        {item.type === 'prepared_spawn' ? <Icons.Jar /> : <Icons.Package />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">{item.name}</p>
-                        <p className="text-xs text-zinc-500">
-                          Qty: {item.quantity}
-                          {item.type === 'prepared_spawn' && ' • Will update status when complete'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"
+                {sterilizationItems.map(item => {
+                  const itemBgColor = item.type === 'prepared_spawn'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : item.type === 'inventory'
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'bg-zinc-700 text-zinc-400';
+                  const presetLabel = item.suggestedPreset
+                    ? pcPresets.find(p => p.id === item.suggestedPreset)?.name
+                    : undefined;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-700"
                     >
-                      <Icons.X />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${itemBgColor}`}>
+                          {item.type === 'prepared_spawn' ? <Icons.Jar /> : <Icons.Package />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white">{item.name}</p>
+                          <p className="text-xs text-zinc-500">
+                            Qty: {item.quantity}
+                            {item.type === 'prepared_spawn' && ' • Will update status when complete'}
+                            {item.type === 'inventory' && presetLabel && (
+                              <span className="text-emerald-400 ml-1">• {presetLabel}</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeItem(item.id)}
+                        className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"
+                      >
+                        <Icons.X />
+                      </button>
+                    </div>
+                  );
+                })}
 
                 {/* Summary */}
                 <div className="mt-3 pt-3 border-t border-zinc-700 flex items-center justify-between text-sm">
                   <span className="text-zinc-400">
-                    {sterilizationItems.length} item{sterilizationItems.length !== 1 ? 's' : ''} •
+                    {sterilizationItems.length} item{sterilizationItems.length !== 1 ? 's' : ''} •{' '}
                     {sterilizationItems.reduce((sum, i) => sum + i.quantity, 0)} total units
                   </span>
                   {sterilizationItems.some(i => i.type === 'prepared_spawn') && (
@@ -957,7 +1095,7 @@ export const PressureCookingCalculator: React.FC = () => {
                 <Icons.Package />
                 <p className="mt-2 text-sm">No items selected</p>
                 <p className="text-xs text-zinc-600 mt-1">
-                  Add prepared spawn or custom items to track and log sterilization
+                  Add items from lab inventory, prepared spawn, or custom items
                 </p>
               </div>
             )}

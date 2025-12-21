@@ -5,7 +5,7 @@
 import React, { useState, createContext, useContext, useEffect, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
 import { DataProvider, useData, CreationProvider, useCreation, NotificationProvider, ThemeProvider } from './store';
-import { AuthProvider } from './lib/AuthContext';
+import { AuthProvider, useAuth } from './lib/AuthContext';
 import { VersionProvider, VersionUpdateModal } from './lib/VersionContext';
 import { EntityFormModal } from './components/forms';
 import { AuthModal, AccountMenu } from './components/auth';
@@ -49,6 +49,7 @@ import { LineageVisualization } from './components/cultures/LineageVisualization
 import { GrowManagement } from './components/grows/GrowManagement';
 import { RecipeBuilder } from './components/recipes/RecipeBuilder';
 import { SetupWizard } from './components/setup/SetupWizard';
+import { OnboardingWizard } from './components/setup/OnboardingWizard';
 import { StockManagement } from './components/inventory/StockManagement';
 import { CommandCenter } from './components/command';
 import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
@@ -1454,8 +1455,28 @@ const AppContent: React.FC<{
   pageConfig,
 }) => {
   const { state } = useData();
+  const { user, isAuthenticated } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [previousPages, setPreviousPages] = useState<Page[]>([]);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check if user needs onboarding
+  useEffect(() => {
+    // Show onboarding wizard if:
+    // 1. User is authenticated AND
+    // 2. User hasn't completed the setup wizard
+    const needsOnboarding = isAuthenticated && !state.settings.hasCompletedSetupWizard;
+
+    // Small delay to prevent flash on initial load
+    if (needsOnboarding) {
+      const timer = setTimeout(() => {
+        setShowOnboarding(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setShowOnboarding(false);
+    }
+  }, [isAuthenticated, state.settings.hasCompletedSetupWizard]);
 
   // Track navigation history for breadcrumb trail
   useEffect(() => {
@@ -1527,6 +1548,13 @@ const AppContent: React.FC<{
             localStorage.setItem('mycolab-setup-complete', 'true');
             setShowSetup(false);
           }}
+        />
+      )}
+      {/* Onboarding Wizard for new authenticated users */}
+      {showOnboarding && (
+        <OnboardingWizard
+          onComplete={() => setShowOnboarding(false)}
+          onSkip={() => setShowOnboarding(false)}
         />
       )}
       {/* Global Search Modal */}

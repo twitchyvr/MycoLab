@@ -1046,6 +1046,25 @@ export interface NotificationTemplate {
 // Controls which features, options, and guidance are shown
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
 
+// Growing purpose - why the user is growing
+// Affects which features/metrics are emphasized
+export type GrowingPurpose = 'hobby' | 'commercial' | 'research' | 'mixed';
+
+// Lab equipment that the user has available
+export interface LabEquipment {
+  hasPressureCooker?: boolean;
+  pressureCookerSize?: string;  // e.g., "23qt", "41qt"
+  hasFlowHood?: boolean;
+  flowHoodSize?: string;
+  hasStillAirBox?: boolean;
+  hasDehydrator?: boolean;
+  hasIncubationChamber?: boolean;
+  hasFruitingChamber?: boolean;
+  hasScales?: boolean;
+  scalesPrecision?: string;  // e.g., "0.01g", "0.1g", "1g"
+  otherEquipment?: string[];
+}
+
 export interface AppSettings {
   defaultUnits: 'metric' | 'imperial';
   defaultCurrency: string;
@@ -1074,6 +1093,12 @@ export interface AppSettings {
   hasCompletedSetupWizard?: boolean;        // First-time wizard completed
   showTooltips?: boolean;                   // Show explanatory tooltips
   showGuidedWorkflows?: boolean;            // Show step-by-step wizards
+
+  // Growing purpose and equipment (v20 - onboarding wizard)
+  growingPurpose?: GrowingPurpose;          // Why the user is growing
+  labEquipment?: LabEquipment;              // What equipment they have
+  preferredSpeciesIds?: string[];           // Species they're interested in
+  preferredStrainIds?: string[];            // Strains they want to grow
 
   // Timer sound settings
   timerSound?: TimerSoundType;              // Which sound to play when timer completes

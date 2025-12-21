@@ -411,9 +411,115 @@ const QuickActionButton: React.FC<{
 // MAIN COMPONENT
 // ============================================================================
 
+// Getting Started Guide for Beginners
+const GettingStartedGuide: React.FC<{
+  onNavigate: (page: Page, itemId?: string) => void;
+  experienceLevel?: string;
+  purpose?: string;
+}> = ({ onNavigate, experienceLevel, purpose }) => {
+  const steps = [
+    {
+      icon: <Icons.Flask />,
+      title: 'Create Your First Culture',
+      description: 'Start by adding a spore syringe, liquid culture, or agar plate to your lab.',
+      action: () => {
+        onNavigate('cultures');
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'cultures' } }));
+        }, 100);
+      },
+      buttonText: 'Add Culture',
+    },
+    {
+      icon: <Icons.Container />,
+      title: 'Prepare Your Spawn',
+      description: 'Set up grain jars or bags for sterilization and inoculation.',
+      action: () => onNavigate('stock'),
+      buttonText: 'View Supplies',
+    },
+    {
+      icon: <Icons.Grow />,
+      title: 'Start Your First Grow',
+      description: 'Once you have colonized spawn, start tracking your first grow project.',
+      action: () => {
+        onNavigate('grows');
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'grows' } }));
+        }, 100);
+      },
+      buttonText: 'Start Grow',
+    },
+  ];
+
+  const purposeMessages: Record<string, string> = {
+    hobby: 'Enjoy tracking your personal grows and watching your skills develop.',
+    commercial: 'Track costs, yields, and optimize for profit with detailed analytics.',
+    research: 'Document experiments, track variables, and analyze results scientifically.',
+    mixed: 'Get the best of all worlds with comprehensive tracking features.',
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-emerald-950/30 to-zinc-900/50 border border-emerald-800/30 rounded-xl p-6 mb-6">
+      <div className="flex items-start gap-4 mb-6">
+        <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+          🌱
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-white mb-1">Welcome to MycoLab!</h2>
+          <p className="text-zinc-400 text-sm">
+            {purpose && purposeMessages[purpose]
+              ? purposeMessages[purpose]
+              : "Let's get your mycology journey started."}
+          </p>
+        </div>
+      </div>
+
+      <h3 className="text-sm font-medium text-zinc-300 mb-4">Getting Started</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {steps.map((step, index) => (
+          <div
+            key={index}
+            className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex flex-col"
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-emerald-400">
+                {step.icon}
+              </div>
+              <span className="text-xs text-zinc-500">Step {index + 1}</span>
+            </div>
+            <h4 className="font-medium text-white mb-1">{step.title}</h4>
+            <p className="text-xs text-zinc-500 mb-4 flex-1">{step.description}</p>
+            <button
+              onClick={step.action}
+              className="w-full px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/50 text-emerald-400 rounded-lg text-sm font-medium transition-colors"
+            >
+              {step.buttonText}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {experienceLevel === 'beginner' && (
+        <div className="mt-4 p-3 bg-blue-950/30 border border-blue-800/30 rounded-lg">
+          <p className="text-xs text-blue-300">
+            <span className="font-medium">Tip:</span> As a beginner, we'll show you helpful tooltips and guidance throughout the app.
+            You can change this in Settings anytime.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const LabCommandCenter: React.FC<LabCommandCenterProps> = ({ onNavigate }) => {
   const { state, activeStrains } = useData();
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+
+  // Get user settings for personalized experience
+  const experienceLevel = state.settings.experienceLevel;
+  const growingPurpose = state.settings.growingPurpose;
+  const isNewUser = state.cultures.length === 0 && state.grows.length === 0;
+  const showGettingStarted = isNewUser && (experienceLevel === 'beginner' || experienceLevel === 'intermediate' || !experienceLevel);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -568,6 +674,15 @@ export const LabCommandCenter: React.FC<LabCommandCenterProps> = ({ onNavigate }
           </button>
         </div>
       </div>
+
+      {/* Getting Started Guide for New/Beginner Users */}
+      {showGettingStarted && (
+        <GettingStartedGuide
+          onNavigate={onNavigate}
+          experienceLevel={experienceLevel}
+          purpose={growingPurpose}
+        />
+      )}
 
       {/* Status Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -4692,6 +4692,101 @@ Complete 8-phase database reset that drops everything in correct dependency orde
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1302',
+    title: 'Pressure Cook Lab Inventory Selection & Auto-Preset',
+    description: 'Enhanced Pressure Cooking Calculator to select items from Lab Inventory with automatic preset suggestions. Fixed Lab Inventory page buttons.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'medium',
+    phaseId: 30,
+    notes: `Pressure Cooking Calculator - Lab Inventory Integration:
+
+**New Feature - Lab Inventory Selection:**
+- Added "Lab Inventory" section to item selector dropdown
+- Auto-filters to show sterilizable items (jars, bags, grains, substrate, agar, tools, syringes)
+- Each item shows available quantity and category
+- Selecting an item auto-suggests appropriate preset (time/PSI)
+
+**Auto-Preset Suggestions:**
+- Maps inventory categories/names to PC presets:
+  - grain → Grain Jars (Quart)
+  - substrate → Sawdust Blocks
+  - agar → Agar Plates
+  - liquid → LC Jars
+  - bags → Grain Bags
+  - tools/syringes → Tools
+- When item is selected, preset and quantity auto-update
+
+**UI Improvements:**
+- Inventory items show in blue (distinct from green spawn items)
+- Selected items display their suggested preset in the item list
+- Updated empty state text to mention lab inventory
+
+**Bug Fix - Lab Inventory Buttons:**
+- "Add Culture" and "Start Grow" buttons on Lab Inventory page now work
+- Navigate to respective pages and trigger creation modals
+- Uses standardized mycolab:create-new event system
+
+**Files Changed:**
+- src/components/tools/PressureCookingCalculator.tsx - Lab inventory selection, auto-preset
+- src/components/inventory/UnifiedItemView.tsx - Fixed button handlers`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1303',
+    title: 'First-Run Onboarding Wizard',
+    description: 'Comprehensive onboarding wizard for new users with experience level, purpose, location setup, equipment selection, and strain preferences.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 25,
+    notes: `First-Run Onboarding Wizard Implementation:
+
+**Wizard Steps:**
+1. **Welcome** - Introduction with skip option
+2. **Experience Level** - Beginner, Intermediate, Advanced, Expert
+3. **Growing Purpose** - Hobby, Commercial, Research, Mixed
+4. **First Location** - Create initial grow space/room
+5. **Equipment** - Select available lab equipment (PC, flow hood, SAB, etc.)
+6. **Preferred Strains** - Choose species and strains of interest
+7. **Complete** - Summary and start growing
+
+**New Types Added:**
+- GrowingPurpose: 'hobby' | 'commercial' | 'research' | 'mixed'
+- LabEquipment interface: Tracks user's available equipment
+
+**AppSettings Extended:**
+- growingPurpose: Why the user is growing
+- labEquipment: What equipment they have
+- preferredSpeciesIds: Species of interest
+- preferredStrainIds: Strains they want to grow
+
+**Wizard Triggers:**
+- Shows automatically for authenticated users who haven't completed setup
+- hasCompletedSetupWizard flag marks completion
+- Skippable at any step
+
+**Experience-Based Features:**
+- Beginners: Tooltips enabled, guided workflows on
+- Intermediate: Standard UI
+- Advanced/Expert: All features unlocked, no hand-holding
+
+**Dashboard Enhancements:**
+- Getting Started Guide for new/beginner users
+- Purpose-specific welcome messages
+- Step-by-step onboarding cards
+- Tips panel for beginners
+
+**Files Changed:**
+- src/store/types.ts - GrowingPurpose, LabEquipment types, AppSettings updates
+- src/components/setup/OnboardingWizard.tsx (NEW) - Full wizard component
+- src/App.tsx - Import OnboardingWizard, add trigger logic
+- src/components/dashboard/LabCommandCenter.tsx - GettingStartedGuide component`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
