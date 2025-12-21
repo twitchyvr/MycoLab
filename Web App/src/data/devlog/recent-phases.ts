@@ -4734,6 +4734,59 @@ Complete 8-phase database reset that drops everything in correct dependency orde
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1303',
+    title: 'First-Run Onboarding Wizard',
+    description: 'Comprehensive onboarding wizard for new users with experience level, purpose, location setup, equipment selection, and strain preferences.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 25,
+    notes: `First-Run Onboarding Wizard Implementation:
+
+**Wizard Steps:**
+1. **Welcome** - Introduction with skip option
+2. **Experience Level** - Beginner, Intermediate, Advanced, Expert
+3. **Growing Purpose** - Hobby, Commercial, Research, Mixed
+4. **First Location** - Create initial grow space/room
+5. **Equipment** - Select available lab equipment (PC, flow hood, SAB, etc.)
+6. **Preferred Strains** - Choose species and strains of interest
+7. **Complete** - Summary and start growing
+
+**New Types Added:**
+- GrowingPurpose: 'hobby' | 'commercial' | 'research' | 'mixed'
+- LabEquipment interface: Tracks user's available equipment
+
+**AppSettings Extended:**
+- growingPurpose: Why the user is growing
+- labEquipment: What equipment they have
+- preferredSpeciesIds: Species of interest
+- preferredStrainIds: Strains they want to grow
+
+**Wizard Triggers:**
+- Shows automatically for authenticated users who haven't completed setup
+- hasCompletedSetupWizard flag marks completion
+- Skippable at any step
+
+**Experience-Based Features:**
+- Beginners: Tooltips enabled, guided workflows on
+- Intermediate: Standard UI
+- Advanced/Expert: All features unlocked, no hand-holding
+
+**Dashboard Enhancements:**
+- Getting Started Guide for new/beginner users
+- Purpose-specific welcome messages
+- Step-by-step onboarding cards
+- Tips panel for beginners
+
+**Files Changed:**
+- src/store/types.ts - GrowingPurpose, LabEquipment types, AppSettings updates
+- src/components/setup/OnboardingWizard.tsx (NEW) - Full wizard component
+- src/App.tsx - Import OnboardingWizard, add trigger logic
+- src/components/dashboard/LabCommandCenter.tsx - GettingStartedGuide component`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
