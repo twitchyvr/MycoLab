@@ -245,14 +245,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
   };
 
   const handleSkip = async () => {
-    // Save minimal settings but mark as not completed
-    if (experienceLevel) {
-      await updateSettings({
+    // Save settings and mark wizard as completed so it doesn't pop up again
+    await updateSettings({
+      hasCompletedSetupWizard: true,
+      ...(experienceLevel && {
         experienceLevel,
         showTooltips: experienceLevel === 'beginner' || experienceLevel === 'intermediate',
         showGuidedWorkflows: experienceLevel === 'beginner',
-      });
-    }
+      }),
+    });
     if (onSkip) {
       onSkip();
     } else {
