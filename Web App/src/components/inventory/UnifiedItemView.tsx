@@ -22,6 +22,7 @@ const Icons = {
   Plus: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   X: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
   Refresh: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
+  Info: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
 };
 
 const typeConfig: Record<ItemType, { label: string; icon: React.FC; color: string; bgColor: string }> = {
@@ -244,6 +245,21 @@ export const UnifiedItemView: React.FC<UnifiedItemViewProps> = ({ onNavigate }) 
           />
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
             <Icons.Search />
+          </div>
+        </div>
+
+        {/* Info Box */}
+        <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg mb-4">
+          <div className="flex items-start gap-3">
+            <div className="text-blue-400 shrink-0 mt-0.5">
+              <Icons.Info />
+            </div>
+            <div className="text-sm text-blue-300">
+              <p className="text-blue-200/80">
+                View all your lab items in one place - cultures, grows, strains, and supplies.
+                Use the filters to focus on specific types. Click any item to view details.
+              </p>
+            </div>
           </div>
         </div>
 
