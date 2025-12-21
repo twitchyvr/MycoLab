@@ -1042,6 +1042,25 @@ export const GrowManagement: React.FC = () => {
         </div>
       </div>
 
+      {/* Info Box - Collapsible for experienced users */}
+      {state.settings?.experienceLevel === 'beginner' && (
+        <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+          <div className="flex items-start gap-3">
+            <div className="text-blue-400 shrink-0 mt-0.5">
+              <Icons.Zap />
+            </div>
+            <div className="text-sm text-blue-300">
+              <p className="font-medium mb-1">How to use the Grow Tracker</p>
+              <p className="text-blue-200/80">
+                Grows move through stages: Spawning → Colonization → Fruiting → Harvesting → Complete.
+                Click the arrow button on a card to advance to the next stage.
+                Use "Today's Focus" for quick actions on grows that need attention.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Today's Focus */}
       <TodaysFocus
         tasks={focusTasks}

@@ -3,7 +3,7 @@
 // Guides new users through initial configuration
 // ============================================================================
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useData } from '../../store';
 import type { ExperienceLevel, GrowingPurpose, LabEquipment } from '../../store/types';
 
@@ -93,62 +93,92 @@ const Icons = {
 
 const STEPS: WizardStep[] = ['welcome', 'experience', 'purpose', 'location', 'equipment', 'strains', 'complete'];
 
-const experienceLevels: { level: ExperienceLevel; title: string; description: string; icon: React.ReactNode }[] = [
+const experienceLevels: { level: ExperienceLevel; title: string; description: string; consequences: string; icon: React.ReactNode }[] = [
   {
     level: 'beginner',
     title: 'Beginner',
-    description: 'New to mushroom cultivation. Want guidance and tutorials.',
+    description: 'New to mushroom cultivation.',
+    consequences: 'Shows tooltips, step-by-step guides, and simplified options',
     icon: <span className="text-2xl">🌱</span>,
   },
   {
     level: 'intermediate',
     title: 'Intermediate',
-    description: 'Have done a few grows. Understand the basics.',
+    description: 'Done a few grows, understand the basics.',
+    consequences: 'Shows helpful hints but fewer prompts',
     icon: <span className="text-2xl">🍄</span>,
   },
   {
     level: 'advanced',
     title: 'Advanced',
-    description: 'Experienced grower. Comfortable with complex techniques.',
+    description: 'Experienced with complex techniques.',
+    consequences: 'All features visible, no hand-holding',
     icon: <span className="text-2xl">🔬</span>,
   },
   {
     level: 'expert',
     title: 'Expert',
-    description: 'Professional cultivator. Want all advanced features.',
+    description: 'Professional cultivator.',
+    consequences: 'Full access, bulk operations, detailed data',
     icon: <span className="text-2xl">🎓</span>,
   },
 ];
 
-const growingPurposes: { purpose: GrowingPurpose; title: string; description: string; icon: React.ReactNode }[] = [
+const growingPurposes: { purpose: GrowingPurpose; title: string; description: string; consequences: string; icon: React.ReactNode }[] = [
   {
     purpose: 'hobby',
     title: 'Hobby / Personal',
-    description: 'Growing for personal use, fun, and learning.',
+    description: 'Growing for personal use and learning.',
+    consequences: 'Focus on grow tracking, simple yield logging',
     icon: <Icons.Home />,
   },
   {
     purpose: 'commercial',
     title: 'Commercial',
-    description: 'Growing to sell. Track costs, yields, and profits.',
+    description: 'Growing to sell mushrooms.',
+    consequences: 'Cost tracking, profit analytics, batch management',
     icon: <Icons.Dollar />,
   },
   {
     purpose: 'research',
     title: 'Research',
-    description: 'Scientific study, strain development, or genetics work.',
+    description: 'Experiments, strain development, genetics.',
+    consequences: 'Detailed observations, variable tracking, lineage focus',
     icon: <Icons.Microscope />,
   },
   {
     purpose: 'mixed',
     title: 'Mixed',
-    description: 'A combination of the above purposes.',
+    description: 'A combination of the above.',
+    consequences: 'All features available, customize as needed',
     icon: <Icons.Mix />,
   },
 ];
 
+// Mushroom categories for interest selection
+const mushroomCategories = [
+  {
+    id: 'culinary',
+    title: 'Culinary / Gourmet',
+    description: 'Oyster, Shiitake, King Trumpet, Enoki, etc.',
+    icon: '🍳',
+  },
+  {
+    id: 'medicinal',
+    title: 'Medicinal',
+    description: "Lion's Mane, Reishi, Turkey Tail, Cordyceps, etc.",
+    icon: '💊',
+  },
+  {
+    id: 'research',
+    title: 'Research / Exotic',
+    description: 'Rare species, genetic work, experimental grows.',
+    icon: '🔬',
+  },
+];
+
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip }) => {
-  const { state, updateSettings, addLocation, activeSpecies, activeStrains, activeLocationTypes } = useData();
+  const { state, updateSettings, addLocation, activeLocationTypes } = useData();
 
   const [currentStep, setCurrentStep] = useState<WizardStep>('welcome');
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel | null>(
@@ -167,22 +197,19 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
   // Equipment
   const [equipment, setEquipment] = useState<LabEquipment>(state.settings.labEquipment || {});
 
-  // Preferred strains
-  const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<string[]>(
-    state.settings.preferredSpeciesIds || []
-  );
-  const [selectedStrainIds, setSelectedStrainIds] = useState<string[]>(
-    state.settings.preferredStrainIds || []
-  );
+  // Preferred mushroom categories
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const currentStepIndex = STEPS.indexOf(currentStep);
   const progress = ((currentStepIndex) / (STEPS.length - 1)) * 100;
 
-  // Filter strains by selected species
-  const filteredStrains = useMemo(() => {
-    if (selectedSpeciesIds.length === 0) return activeStrains;
-    return activeStrains.filter(strain => strain.speciesId && selectedSpeciesIds.includes(strain.speciesId));
-  }, [activeStrains, selectedSpeciesIds]);
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
 
   const canProceed = (): boolean => {
     switch (currentStep) {
@@ -235,8 +262,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
       experienceLevel: experienceLevel || 'beginner',
       growingPurpose: growingPurpose || 'hobby',
       labEquipment: equipment,
-      preferredSpeciesIds: selectedSpeciesIds,
-      preferredStrainIds: selectedStrainIds,
+      preferredCategories: selectedCategories,
       hasCompletedSetupWizard: true,
       showTooltips: experienceLevel === 'beginner' || experienceLevel === 'intermediate',
       showGuidedWorkflows: experienceLevel === 'beginner',
@@ -245,14 +271,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
   };
 
   const handleSkip = async () => {
-    // Save minimal settings but mark as not completed
-    if (experienceLevel) {
-      await updateSettings({
+    // Save settings and mark wizard as completed so it doesn't pop up again
+    await updateSettings({
+      hasCompletedSetupWizard: true,
+      ...(experienceLevel && {
         experienceLevel,
         showTooltips: experienceLevel === 'beginner' || experienceLevel === 'intermediate',
         showGuidedWorkflows: experienceLevel === 'beginner',
-      });
-    }
+      }),
+    });
     if (onSkip) {
       onSkip();
     } else {
@@ -265,22 +292,6 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
       ...prev,
       [key]: !prev[key],
     }));
-  };
-
-  const toggleSpecies = (speciesId: string) => {
-    setSelectedSpeciesIds(prev =>
-      prev.includes(speciesId)
-        ? prev.filter(id => id !== speciesId)
-        : [...prev, speciesId]
-    );
-  };
-
-  const toggleStrain = (strainId: string) => {
-    setSelectedStrainIds(prev =>
-      prev.includes(strainId)
-        ? prev.filter(id => id !== strainId)
-        : [...prev, strainId]
-    );
   };
 
   const renderStepContent = () => {
@@ -317,7 +328,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
               This helps us show you the right level of detail and guidance.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {experienceLevels.map(({ level, title, description, icon }) => (
+              {experienceLevels.map(({ level, title, description, consequences, icon }) => (
                 <button
                   key={level}
                   onClick={() => setExperienceLevel(level)}
@@ -332,6 +343,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                     <div>
                       <p className="font-medium">{title}</p>
                       <p className="text-xs text-zinc-500 mt-1">{description}</p>
+                      {experienceLevel === level && (
+                        <p className="text-xs text-emerald-400/80 mt-2 italic">{consequences}</p>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -348,7 +362,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
               This helps us highlight the most relevant features for you.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {growingPurposes.map(({ purpose, title, description, icon }) => (
+              {growingPurposes.map(({ purpose, title, description, consequences, icon }) => (
                 <button
                   key={purpose}
                   onClick={() => setGrowingPurpose(purpose)}
@@ -363,6 +377,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                     <div>
                       <p className="font-medium">{title}</p>
                       <p className="text-xs text-zinc-500 mt-1">{description}</p>
+                      {growingPurpose === purpose && (
+                        <p className="text-xs text-emerald-400/80 mt-2 italic">{consequences}</p>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -375,9 +392,17 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
         return (
           <div className="py-4">
             <h2 className="text-xl font-bold text-white mb-2">Set up your first space</h2>
-            <p className="text-zinc-400 text-sm mb-6">
+            <p className="text-zinc-400 text-sm mb-4">
               Create your first grow room or lab space. You can add more later.
             </p>
+
+            {/* Info box explaining locations */}
+            <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg mb-4">
+              <p className="text-xs text-blue-300">
+                <span className="font-medium">Why locations matter:</span> Track where your cultures and grows are stored.
+                This helps organize your lab and monitor environmental conditions per space.
+              </p>
+            </div>
 
             {createdLocationId ? (
               <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center">
@@ -400,6 +425,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                     placeholder="e.g., Fruiting Chamber, Incubation Closet"
                     className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
                   />
+                  <p className="text-xs text-zinc-500 mt-1">Give it a memorable name you'll recognize</p>
                 </div>
 
                 <div>
@@ -416,6 +442,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                       <option key={lt.id} value={lt.id}>{lt.name}</option>
                     ))}
                   </select>
+                  <p className="text-xs text-zinc-500 mt-1">Helps filter and organize your spaces</p>
                 </div>
 
                 <div>
@@ -443,31 +470,40 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
         return (
           <div className="py-4">
             <h2 className="text-xl font-bold text-white mb-2">What equipment do you have?</h2>
-            <p className="text-zinc-400 text-sm mb-6">
+            <p className="text-zinc-400 text-sm mb-4">
               This helps us recommend appropriate techniques and workflows.
             </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {/* Equipment items with descriptions */}
+            <div className="space-y-2">
               {[
-                { key: 'hasPressureCooker', label: 'Pressure Cooker', icon: '🍳' },
-                { key: 'hasFlowHood', label: 'Flow Hood', icon: '🌬️' },
-                { key: 'hasStillAirBox', label: 'Still Air Box', icon: '📦' },
-                { key: 'hasDehydrator', label: 'Dehydrator', icon: '☀️' },
-                { key: 'hasIncubationChamber', label: 'Incubation Chamber', icon: '🌡️' },
-                { key: 'hasFruitingChamber', label: 'Fruiting Chamber', icon: '🍄' },
-                { key: 'hasScales', label: 'Digital Scale', icon: '⚖️' },
-              ].map(({ key, label, icon }) => (
+                { key: 'hasPressureCooker', label: 'Pressure Cooker', icon: '🍳', hint: 'Enables grain/agar sterilization' },
+                { key: 'hasFlowHood', label: 'Flow Hood', icon: '🌬️', hint: 'Sterile work with low contamination' },
+                { key: 'hasStillAirBox', label: 'Still Air Box', icon: '📦', hint: 'Budget-friendly sterile work' },
+                { key: 'hasDehydrator', label: 'Dehydrator', icon: '☀️', hint: 'Dry harvests for long-term storage' },
+                { key: 'hasIncubationChamber', label: 'Incubation Chamber', icon: '🌡️', hint: 'Controlled colonization temps' },
+                { key: 'hasFruitingChamber', label: 'Fruiting Chamber', icon: '🍄', hint: 'Humidity/FAE for fruiting' },
+                { key: 'hasScales', label: 'Digital Scale', icon: '⚖️', hint: 'Accurate yield tracking' },
+              ].map(({ key, label, icon, hint }) => (
                 <button
                   key={key}
                   onClick={() => toggleEquipment(key as keyof LabEquipment)}
-                  className={`p-3 rounded-xl border text-center transition-all ${
+                  className={`w-full p-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
                     equipment[key as keyof LabEquipment]
                       ? 'bg-emerald-500/20 border-emerald-500 text-white'
                       : 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-600 text-zinc-400'
                   }`}
                 >
-                  <div className="text-2xl mb-1">{icon}</div>
-                  <p className="text-xs font-medium">{label}</p>
+                  <div className="text-2xl shrink-0">{icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{label}</p>
+                    <p className="text-xs text-zinc-500 truncate">{hint}</p>
+                  </div>
+                  {equipment[key as keyof LabEquipment] && (
+                    <div className="text-emerald-400 shrink-0">
+                      <Icons.Check />
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -483,50 +519,36 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
           <div className="py-4">
             <h2 className="text-xl font-bold text-white mb-2">What do you want to grow?</h2>
             <p className="text-zinc-400 text-sm mb-6">
-              Select species and strains you're interested in. We'll highlight these in your dashboard.
+              Select the categories you're most interested in. We'll tailor your experience accordingly.
             </p>
 
-            {/* Species Selection */}
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-zinc-300 mb-2">Species</h3>
-              <div className="flex flex-wrap gap-2">
-                {activeSpecies.slice(0, 12).map(species => (
-                  <button
-                    key={species.id}
-                    onClick={() => toggleSpecies(species.id)}
-                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                      selectedSpeciesIds.includes(species.id)
-                        ? 'bg-emerald-500/20 border border-emerald-500 text-emerald-400'
-                        : 'bg-zinc-800 border border-zinc-700 text-zinc-400 hover:border-zinc-600'
-                    }`}
-                  >
-                    {species.name}
-                  </button>
-                ))}
-              </div>
+            {/* Category Selection */}
+            <div className="space-y-3">
+              {mushroomCategories.map(({ id, title, description, icon }) => (
+                <button
+                  key={id}
+                  onClick={() => toggleCategory(id)}
+                  className={`w-full p-4 rounded-xl border text-left transition-all ${
+                    selectedCategories.includes(id)
+                      ? 'bg-emerald-500/20 border-emerald-500 text-white'
+                      : 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-600 text-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="text-2xl shrink-0">{icon}</div>
+                    <div>
+                      <p className="font-medium">{title}</p>
+                      <p className="text-xs text-zinc-500 mt-1">{description}</p>
+                    </div>
+                    {selectedCategories.includes(id) && (
+                      <div className="ml-auto text-emerald-400">
+                        <Icons.Check />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))}
             </div>
-
-            {/* Strain Selection */}
-            {selectedSpeciesIds.length > 0 && filteredStrains.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-zinc-300 mb-2">Popular Strains</h3>
-                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                  {filteredStrains.slice(0, 20).map(strain => (
-                    <button
-                      key={strain.id}
-                      onClick={() => toggleStrain(strain.id)}
-                      className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                        selectedStrainIds.includes(strain.id)
-                          ? 'bg-blue-500/20 border border-blue-500 text-blue-400'
-                          : 'bg-zinc-800 border border-zinc-700 text-zinc-400 hover:border-zinc-600'
-                      }`}
-                    >
-                      {strain.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <p className="text-xs text-zinc-500 mt-4 text-center">
               This step is optional. You can change your preferences anytime.

@@ -1124,6 +1124,22 @@ export const SubstrateCalculator: React.FC = () => {
         </div>
       </div>
 
+      {/* Info Box */}
+      <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+        <div className="flex items-start gap-3">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-blue-400 shrink-0 mt-0.5">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <div className="text-sm text-blue-300">
+            <p className="font-medium mb-1">What is this tool for?</p>
+            <p className="text-blue-200/80">
+              Proper substrate hydration is critical for mushroom cultivation. Too dry = slow colonization. Too wet = contamination.
+              Use this tool to calculate exact water amounts, find substrate-species matches, and plan batch sizes.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 border-b border-zinc-800 pb-2">
         {[

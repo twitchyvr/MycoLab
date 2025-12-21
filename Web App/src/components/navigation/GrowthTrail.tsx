@@ -209,12 +209,16 @@ export const GrowthTrail: React.FC<GrowthTrailProps> = ({
         <RelatedPages currentPage={currentPage} onNavigate={onNavigate} />
       </div>
 
-      {/* Right: Category indicator */}
+      {/* Right: Category indicator - clickable to open nav hub */}
       {meta && currentNode && (
-        <div
+        <button
+          onClick={onOpenHub}
+          title={`Browse ${meta.label} pages`}
           className={`
             flex items-center gap-2 px-3 py-1 rounded-full
             bg-${meta.color}-500/10 border border-${meta.color}-500/30
+            hover:bg-${meta.color}-500/20 hover:border-${meta.color}-500/50
+            transition-colors cursor-pointer
             flex-shrink-0 ml-4
           `}
         >
@@ -226,7 +230,7 @@ export const GrowthTrail: React.FC<GrowthTrailProps> = ({
             className={`w-1.5 h-1.5 rounded-full bg-${meta.color}-400 animate-pulse`}
             style={{ boxShadow: `0 0 6px ${meta.glowColor}` }}
           />
-        </div>
+        </button>
       )}
     </div>
   );
