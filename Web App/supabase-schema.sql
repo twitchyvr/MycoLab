@@ -620,12 +620,34 @@ CREATE TABLE IF NOT EXISTS culture_observations (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   culture_id UUID REFERENCES cultures(id) ON DELETE CASCADE,
   date TIMESTAMPTZ DEFAULT NOW(),
-  type TEXT CHECK (type IN ('growth', 'contamination', 'transfer', 'general')) DEFAULT 'general',
+  type TEXT CHECK (type IN ('growth', 'contamination', 'transfer', 'general', 'harvest')) DEFAULT 'general',
   notes TEXT,
   colonization_percent INTEGER,
+  health_rating INTEGER CHECK (health_rating BETWEEN 1 AND 5),
+  images TEXT[],
   created_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
+
+-- Add missing columns to culture_observations if they don't exist (for existing databases)
+DO $$ BEGIN
+  ALTER TABLE culture_observations ADD COLUMN IF NOT EXISTS health_rating INTEGER CHECK (health_rating BETWEEN 1 AND 5);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE culture_observations ADD COLUMN IF NOT EXISTS images TEXT[];
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Update type constraint to include 'harvest' if needed
+DO $$ BEGIN
+  -- Drop old constraint and add new one with harvest type
+  ALTER TABLE culture_observations DROP CONSTRAINT IF EXISTS culture_observations_type_check;
+  ALTER TABLE culture_observations ADD CONSTRAINT culture_observations_type_check
+    CHECK (type IN ('growth', 'contamination', 'transfer', 'general', 'harvest'));
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- Culture transfers
 CREATE TABLE IF NOT EXISTS culture_transfers (
