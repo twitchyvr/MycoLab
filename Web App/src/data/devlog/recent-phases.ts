@@ -5506,6 +5506,44 @@ When loading settings from the database, if has_completed_setup_wizard was NULL 
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1320',
+    title: 'RoomCheckForm - Deduplicate DailyCheck & CommandCenter',
+    description: 'Created canonical RoomCheckForm to eliminate duplicate room check form implementations in DailyCheck and CommandCenter components.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `Eliminated critical code duplication:
+
+**PROBLEM IDENTIFIED:**
+- DailyCheck.tsx had RoomDetailView with ~140 lines of inline form
+- CommandCenter.tsx had RoomDetailView with ~110 lines of duplicate form
+- Same fields: needsAttention, attentionReason, harvestEstimate, notes, checked
+- Different styling but identical functionality
+
+**SOLUTION:**
+Created canonical RoomCheckForm.tsx:
+- RoomCheckFormData interface for consistent data structure
+- getDefaultRoomCheckFormData() helper
+- Configurable: compact mode, custom button labels
+- Consistent styling with app theme
+
+**CODE REDUCTION:**
+- DailyCheck: ~55 lines removed
+- CommandCenter: ~60 lines removed
+- Total: ~115 lines of duplicate code eliminated
+- Both now use single source of truth
+
+**Files Created:**
+- src/components/forms/RoomCheckForm.tsx
+
+**Files Updated:**
+- src/components/dailycheck/DailyCheck.tsx - Uses RoomCheckForm
+- src/components/command/CommandCenter.tsx - Uses RoomCheckForm`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

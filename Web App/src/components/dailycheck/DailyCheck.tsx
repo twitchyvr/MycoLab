@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
+import { RoomCheckForm, type RoomCheckFormData } from '../forms/RoomCheckForm';
 import type { Grow, GrowStage, Location } from '../../store/types';
 
 // ============================================================================
@@ -228,69 +229,20 @@ const RoomDetailView: React.FC<{
         )}
       </div>
 
-      {/* Attention Flag */}
-      <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-zinc-400">Needs Attention?</h3>
-          <button
-            onClick={() => onUpdate({ needsAttention: !checkData.needsAttention })}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              checkData.needsAttention
-                ? 'bg-amber-500 text-white'
-                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-            }`}
-          >
-            <span className="flex items-center gap-1">
-              <Icons.Flag />
-              {checkData.needsAttention ? 'Flagged' : 'Flag Room'}
-            </span>
-          </button>
-        </div>
-        {checkData.needsAttention && (
-          <textarea
-            value={checkData.attentionReason}
-            onChange={e => onUpdate({ attentionReason: e.target.value })}
-            placeholder="Describe what needs attention..."
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500 resize-none"
-            rows={2}
-          />
-        )}
-      </div>
-
-      {/* Harvest Estimate */}
-      <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-zinc-400 mb-3">7-Day Harvest Estimate (grams)</h3>
-        <input
-          type="number"
-          value={checkData.harvestEstimate || ''}
-          onChange={e => onUpdate({ harvestEstimate: parseInt(e.target.value) || 0 })}
-          placeholder="0"
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-2xl font-bold text-emerald-400 text-center focus:outline-none focus:border-emerald-500"
-        />
-      </div>
-
-      {/* Notes */}
-      <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-zinc-400 mb-3">Notes</h3>
-        <textarea
-          value={checkData.notes}
-          onChange={e => onUpdate({ notes: e.target.value })}
-          placeholder="Any observations or notes..."
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 resize-none"
-          rows={3}
-        />
-      </div>
-
-      {/* Actions */}
-      <div className="flex gap-3">
-        <button
-          onClick={handleMarkComplete}
-          className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
-        >
-          <Icons.Check />
-          {checkData.checked ? 'Update & Continue' : 'Mark Complete'}
-        </button>
-      </div>
+      {/* Canonical Room Check Form */}
+      <RoomCheckForm
+        data={{
+          checked: checkData.checked,
+          checkTime: checkData.checkTime,
+          needsAttention: checkData.needsAttention,
+          attentionReason: checkData.attentionReason,
+          harvestEstimate: checkData.harvestEstimate,
+          notes: checkData.notes,
+        }}
+        onChange={(updates) => onUpdate(updates)}
+        onComplete={handleMarkComplete}
+        completeButtonLabel={checkData.checked ? 'Update & Continue' : 'Mark Complete'}
+      />
     </div>
   );
 };

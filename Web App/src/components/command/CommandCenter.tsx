@@ -10,6 +10,7 @@ import type { Grow, Culture, Location, Flush } from '../../store/types';
 import { format, differenceInDays, addDays } from 'date-fns';
 import { NumericInput } from '../common/NumericInput';
 import { HarvestEntryForm, getDefaultHarvestEntryData, type HarvestEntryData } from '../forms/HarvestEntryForm';
+import { RoomCheckForm } from '../forms/RoomCheckForm';
 
 // ============================================================================
 // TYPES
@@ -794,70 +795,20 @@ const RoomDetailView: React.FC<RoomDetailViewProps> = ({
         })}
       </div>
 
-      {/* Check Controls */}
-      <div className="space-y-3 pt-4 border-t border-zinc-800">
-        {/* Needs Attention Toggle */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
-          <div className="flex items-center gap-2">
-            <Icons.AlertTriangle />
-            <span className="text-white">Needs Attention</span>
-          </div>
-          <button
-            onClick={() => onUpdate({ needsAttention: !room.needsAttention })}
-            className={`w-12 h-6 rounded-full transition-colors ${
-              room.needsAttention ? 'bg-amber-500' : 'bg-zinc-700'
-            }`}
-          >
-            <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-              room.needsAttention ? 'translate-x-6' : 'translate-x-0.5'
-            }`} />
-          </button>
-        </div>
-
-        {room.needsAttention && (
-          <input
-            type="text"
-            placeholder="What needs attention?"
-            value={room.attentionReason || ''}
-            onChange={(e) => onUpdate({ attentionReason: e.target.value })}
-            className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500"
-          />
-        )}
-
-        {/* Harvest Estimate */}
-        <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
-          <label className="block text-sm text-zinc-400 mb-2">7-Day Harvest Estimate (g)</label>
-          <NumericInput
-            value={room.harvestEstimate}
-            onChange={(value) => onUpdate({ harvestEstimate: value ?? 0 })}
-            placeholder="0"
-            className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white"
-          />
-        </div>
-
-        {/* Notes */}
-        <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
-          <label className="block text-sm text-zinc-400 mb-2">Notes</label>
-          <textarea
-            value={room.notes || ''}
-            onChange={(e) => onUpdate({ notes: e.target.value })}
-            placeholder="Observations, conditions, etc."
-            rows={2}
-            className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500"
-          />
-        </div>
-
-        {/* Mark Checked Button */}
-        <button
-          onClick={() => onUpdate({ checked: !room.checked })}
-          className={`w-full py-3 rounded-lg font-medium transition-all ${
-            room.checked
-              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
-              : 'bg-emerald-500 text-white hover:bg-emerald-600'
-          }`}
-        >
-          {room.checked ? '✓ Room Checked' : 'Mark Room Checked'}
-        </button>
+      {/* Canonical Room Check Form */}
+      <div className="pt-4 border-t border-zinc-800">
+        <RoomCheckForm
+          data={{
+            checked: room.checked,
+            needsAttention: room.needsAttention,
+            attentionReason: room.attentionReason || '',
+            harvestEstimate: room.harvestEstimate || 0,
+            notes: room.notes || '',
+          }}
+          onChange={(updates) => onUpdate(updates)}
+          completeButtonLabel={room.checked ? '✓ Room Checked' : 'Mark Room Checked'}
+          compact
+        />
       </div>
     </div>
   );
