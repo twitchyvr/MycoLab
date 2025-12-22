@@ -103,8 +103,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const isAuthenticated = !!user && !isAnonymous;
   const isAdmin = profile?.is_admin ?? false;
 
-  // Fetch user profile from database
-  const fetchProfile = async (userId: string) => {
+  // Fetch user profile from database (auto-creates if missing)
+  const fetchProfile = async (userId: string, userEmail?: string | null) => {
     if (!supabase) return null;
 
     try {
@@ -124,6 +124,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         }
         return null;
+      }
+
+      // SELF-HEALING: If no profile exists, create one
+      // This handles users who signed up before the trigger was added
+      if (!data && userEmail) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Auth] No profile found, creating one for user:', userId);
+        }
+        const { data: newProfile, error: createError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: userId,
+            email: userEmail,
+            is_admin: false,
+            is_active: true,
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[Auth] Failed to create profile:', createError.message);
+          }
+          return null;
+        }
+        return newProfile as UserProfile;
       }
 
       return data as UserProfile | null;
@@ -174,9 +200,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (newSession?.user) {
           setIsAnonymous(newSession.user.is_anonymous ?? false);
 
-          // Fetch profile for authenticated users
+          // Fetch profile for authenticated users (auto-creates if missing)
           if (!newSession.user.is_anonymous) {
-            const userProfile = await fetchProfile(newSession.user.id);
+            const userProfile = await fetchProfile(newSession.user.id, newSession.user.email);
             setProfile(userProfile);
           } else {
             setProfile(null);
@@ -245,9 +271,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser(existingSession.user);
           setIsAnonymous(existingSession.user.is_anonymous ?? false);
 
-          // Fetch profile for authenticated users
+          // Fetch profile for authenticated users (auto-creates if missing)
           if (!existingSession.user.is_anonymous) {
-            const userProfile = await fetchProfile(existingSession.user.id);
+            const userProfile = await fetchProfile(existingSession.user.id, existingSession.user.email);
             setProfile(userProfile);
           }
         } else {

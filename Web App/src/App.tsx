@@ -1461,7 +1461,26 @@ const AppContent: React.FC<{
     // Show onboarding wizard if:
     // 1. User is authenticated AND
     // 2. User hasn't completed the setup wizard
-    const needsOnboarding = isAuthenticated && !state.settings.hasCompletedSetupWizard;
+
+    // CRITICAL: Check localStorage directly as an additional fallback
+    // This handles race conditions where state.settings hasn't loaded yet
+    let localStorageComplete = false;
+    try {
+      const storedSettings = localStorage.getItem('mycolab-settings');
+      if (storedSettings) {
+        const parsed = JSON.parse(storedSettings);
+        localStorageComplete = parsed.hasCompletedSetupWizard === true;
+      }
+      // Also check the legacy key from SetupWizard
+      if (!localStorageComplete && localStorage.getItem('mycolab-setup-complete') === 'true') {
+        localStorageComplete = true;
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+
+    const hasCompletedWizard = state.settings.hasCompletedSetupWizard || localStorageComplete;
+    const needsOnboarding = isAuthenticated && !hasCompletedWizard;
 
     // Small delay to prevent flash on initial load
     if (needsOnboarding) {

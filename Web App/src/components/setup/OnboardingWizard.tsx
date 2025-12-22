@@ -257,7 +257,17 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
   };
 
   const handleComplete = async () => {
-    // Save all settings
+    // CRITICAL: Save to localStorage FIRST before any async operations
+    // This ensures the wizard won't show again even if DB save fails
+    try {
+      const stored = localStorage.getItem('mycolab-settings');
+      const current = stored ? JSON.parse(stored) : {};
+      localStorage.setItem('mycolab-settings', JSON.stringify({ ...current, hasCompletedSetupWizard: true }));
+    } catch (e) {
+      console.warn('[OnboardingWizard] Failed to save to localStorage:', e);
+    }
+
+    // Save all settings (includes async DB save)
     await updateSettings({
       experienceLevel: experienceLevel || 'beginner',
       growingPurpose: growingPurpose || 'hobby',
@@ -271,6 +281,16 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
   };
 
   const handleSkip = async () => {
+    // CRITICAL: Save to localStorage FIRST before any async operations
+    // This ensures the wizard won't show again even if DB save fails
+    try {
+      const stored = localStorage.getItem('mycolab-settings');
+      const current = stored ? JSON.parse(stored) : {};
+      localStorage.setItem('mycolab-settings', JSON.stringify({ ...current, hasCompletedSetupWizard: true }));
+    } catch (e) {
+      console.warn('[OnboardingWizard] Failed to save to localStorage:', e);
+    }
+
     // Save settings and mark wizard as completed so it doesn't pop up again
     await updateSettings({
       hasCompletedSetupWizard: true,
