@@ -5220,6 +5220,58 @@ When loading settings from the database, if has_completed_setup_wizard was NULL 
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1314',
+    title: 'Reimagined Culture Detail View',
+    description: 'Complete UX redesign of the culture detail panel following industry best practices for information hierarchy, progressive disclosure, and responsive design.',
+    category: 'ux',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `Culture Detail View redesign for better UX:
+
+**Problems Addressed:**
+- Cramped 384px fixed-width sidebar
+- "Created" date in footer was low-value info
+- No information hierarchy - everything had equal visual weight
+- No progressive disclosure - all info shown at once
+- Lineage was text-only, not interactive
+- FAB button overlapped with detail panel
+
+**New Architecture:**
+- Created standalone CultureDetailView component (reusable)
+- Three-tier information hierarchy:
+  1. Quick Stats bar (Age, Viability, Value)
+  2. Always-visible Health & Volume section
+  3. Collapsible sections for Location, Recipe, Cost, Lineage, Notes, Observations
+
+**Footer Improvements:**
+- Replaced "Created" with contextual info:
+  - Age (calculated from acquisition date with context: "since received" or "since prep")
+  - Last Activity timestamp
+
+**Progressive Disclosure:**
+- CollapsibleSection component for hiding complexity
+- Sections show badges with counts (e.g., "Lineage (5)")
+- Default open for most important sections
+
+**Responsive Design:**
+- Mobile-first component structure
+- Panel variant for sidebar use
+- Drawer variant for mobile
+- Page variant for dedicated detail pages
+
+**FAB Overlap Fix:**
+- FAB now detects when detail panels are open via data-detail-panel attribute
+- Hides when detail panel is visible to prevent overlap
+
+**Files Changed:**
+- src/components/cultures/CultureDetailView.tsx - NEW: Standalone detail component
+- src/components/cultures/CultureManagement.tsx - Use new component
+- src/components/dashboard/QuickActionsWidget.tsx - FAB hides when detail panels open`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

@@ -306,22 +306,38 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
 
 export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onNavigate }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [shouldHide, setShouldHide] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Detect when modals are open (check for modal overlays)
+  // Detect when to hide the FAB:
+  // 1. When modals are open
+  // 2. When detail panels are open (to avoid overlap)
+  // 3. On larger screens where header buttons provide same functionality
   useEffect(() => {
-    const checkForModals = () => {
-      // Look for modal overlays (fixed elements with backdrop)
+    const checkVisibility = () => {
+      // Check for modal overlays
       const modals = document.querySelectorAll('.fixed.inset-0.bg-black\\/50, .fixed.inset-0[class*="bg-black"]');
-      setIsModalOpen(modals.length > 0);
+      if (modals.length > 0) {
+        setShouldHide(true);
+        return;
+      }
+
+      // Check for detail panels (CultureDetailView or similar right-side panels)
+      // These typically have the data-detail-panel attribute or are positioned sticky on the right
+      const detailPanels = document.querySelectorAll('[data-detail-panel], .sticky.top-6.max-w-md');
+      if (detailPanels.length > 0) {
+        setShouldHide(true);
+        return;
+      }
+
+      setShouldHide(false);
     };
 
     // Initial check
-    checkForModals();
+    checkVisibility();
 
     // Use MutationObserver to detect DOM changes
-    const observer = new MutationObserver(checkForModals);
+    const observer = new MutationObserver(checkVisibility);
     observer.observe(document.body, { childList: true, subtree: true });
 
     return () => observer.disconnect();
@@ -341,8 +357,8 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onNa
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  // Don't render if modal is open
-  if (isModalOpen) {
+  // Don't render if should hide
+  if (shouldHide) {
     return null;
   }
 
