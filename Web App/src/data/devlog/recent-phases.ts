@@ -5460,6 +5460,52 @@ When loading settings from the database, if has_completed_setup_wizard was NULL 
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1319',
+    title: 'Canonical Forms - GrowForm & RecipeBuilder Migration',
+    description: 'Created canonical GrowForm.tsx and migrated GrowManagement create/edit modals. Fixed RecipeBuilder to use existing RecipeForm.tsx which was not being used.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `Extended canonical forms architecture:
+
+**NEW: GrowForm.tsx Canonical Form:**
+- Created components/forms/GrowForm.tsx as single source of truth
+- GrowFormData type with all grow creation fields
+- getDefaultGrowFormData() helper for consistent defaults
+- validateGrowFormData() for form validation
+- Spawn rate calculator built into form
+- Conditional advanced fields (temperature targets)
+- Experience-level aware (showAdvanced prop)
+
+**GrowManagement Modal Migrations:**
+- Create modal → Uses canonical GrowForm (~150 lines removed)
+- Edit modal → Uses canonical GrowForm (~65 lines removed)
+- Total: ~215 lines of inline form code replaced with GrowForm
+
+**RecipeBuilder Migration:**
+- RecipeForm.tsx (686 lines) existed but was NOT being used!
+- Updated RecipeBuilder to import and use canonical RecipeForm
+- ~130 lines of inline form code replaced
+- Fixed type conversion between RecipeFormData and Recipe
+
+**Architecture Pattern Verified:**
+- data + onChange props pattern (controlled components)
+- Form receives entity lists as props
+- Parent handles CRUD operations
+- Form handles validation display
+- Consistent error display pattern
+
+**Files Created:**
+- src/components/forms/GrowForm.tsx - New canonical grow form
+
+**Files Updated:**
+- src/components/grows/GrowManagement.tsx - Uses GrowForm for create/edit
+- src/components/recipes/RecipeBuilder.tsx - Uses RecipeForm`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

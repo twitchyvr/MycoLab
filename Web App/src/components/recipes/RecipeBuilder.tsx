@@ -8,6 +8,8 @@ import { useData } from '../../store';
 import { useAuthGuard } from '../../lib/useAuthGuard';
 import type { Recipe, RecipeCategory, RecipeIngredient, RecipeCategoryItem } from '../../store/types';
 import { StandardDropdown } from '../common/StandardDropdown';
+// Canonical forms
+import { RecipeForm, getDefaultRecipeFormData, type RecipeFormData } from '../forms/RecipeForm';
 
 // Icons
 const Icons = {
@@ -56,40 +58,8 @@ export const RecipeBuilder: React.FC = () => {
   const [editMode, setEditMode] = useState(false);
   const [scaleFactor, setScaleFactor] = useState(1);
 
-  // Form state
-  const [formData, setFormData] = useState<{
-    name: string;
-    category: RecipeCategory;
-    description: string;
-    yield: { amount: number; unit: string };
-    prepTime: number;
-    sterilizationTime: number;
-    sterilizationPsi: number;
-    ingredients: RecipeIngredient[];
-    instructions: string[];
-    tips: string[];
-    notes: string;
-  }>({
-    name: '',
-    category: 'agar',
-    description: '',
-    yield: { amount: 500, unit: 'ml' },
-    prepTime: 15,
-    sterilizationTime: 45,
-    sterilizationPsi: 15,
-    ingredients: [],
-    instructions: [''],
-    tips: [],
-    notes: '',
-  });
-
-  // New ingredient form
-  const [newIngredient, setNewIngredient] = useState({
-    inventoryItemId: '',
-    name: '',
-    quantity: 0,
-    unit: 'g',
-  });
+  // Form state - uses canonical RecipeFormData type
+  const [formData, setFormData] = useState<RecipeFormData>(getDefaultRecipeFormData());
 
   // Listen for header "New" button click
   useEffect(() => {
@@ -152,90 +122,50 @@ export const RecipeBuilder: React.FC = () => {
     return scaleRecipe(selectedRecipe, scaleFactor);
   }, [selectedRecipe, scaleFactor, scaleRecipe]);
 
-  // Reset form
+  // Reset form - uses canonical getDefaultRecipeFormData
   const resetForm = () => {
-    setFormData({
-      name: '', category: 'agar', description: '',
-      yield: { amount: 500, unit: 'ml' },
-      prepTime: 15, sterilizationTime: 45, sterilizationPsi: 15,
-      ingredients: [], instructions: [''], tips: [], notes: '',
-    });
-    setNewIngredient({ inventoryItemId: '', name: '', quantity: 0, unit: 'g' });
+    setFormData(getDefaultRecipeFormData());
   };
 
-  // Load recipe for editing
+  // Load recipe for editing - maps Recipe to RecipeFormData
   const loadRecipeForEdit = (recipe: Recipe) => {
     setFormData({
       name: recipe.name,
       category: recipe.category,
       description: recipe.description,
-      yield: { ...recipe.yield },
+      yield: recipe.yield ? { ...recipe.yield } : { amount: 500, unit: 'ml' },
       prepTime: recipe.prepTime || 0,
       sterilizationTime: recipe.sterilizationTime || 0,
       sterilizationPsi: recipe.sterilizationPsi || 15,
       ingredients: recipe.ingredients.map(i => ({ ...i })),
       instructions: [...recipe.instructions],
       tips: recipe.tips ? [...recipe.tips] : [],
+      sourceUrl: recipe.sourceUrl || '',
       notes: recipe.notes || '',
+      isActive: recipe.isActive !== false,
     });
     setEditMode(true);
     setShowCreateModal(true);
   };
 
-  // Add ingredient
-  const handleAddIngredient = () => {
-    if (!newIngredient.name || !newIngredient.quantity) return;
-    const ingredient: RecipeIngredient = {
-      id: generateId('ing'),
-      inventoryItemId: newIngredient.inventoryItemId || undefined,
-      name: newIngredient.name,
-      quantity: newIngredient.quantity,
-      unit: newIngredient.unit,
-    };
-    setFormData(prev => ({ ...prev, ingredients: [...prev.ingredients, ingredient] }));
-    setNewIngredient({ inventoryItemId: '', name: '', quantity: 0, unit: 'g' });
-  };
-
-  // Remove ingredient
-  const handleRemoveIngredient = (id: string) => {
-    setFormData(prev => ({ ...prev, ingredients: prev.ingredients.filter(i => i.id !== id) }));
-  };
-
-  // Add instruction
-  const handleAddInstruction = () => {
-    setFormData(prev => ({ ...prev, instructions: [...prev.instructions, ''] }));
-  };
-
-  // Update instruction
-  const handleUpdateInstruction = (index: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      instructions: prev.instructions.map((inst, i) => i === index ? value : inst),
-    }));
-  };
-
-  // Remove instruction
-  const handleRemoveInstruction = (index: number) => {
-    setFormData(prev => ({ ...prev, instructions: prev.instructions.filter((_, i) => i !== index) }));
-  };
-
-  // Save recipe
+  // Save recipe - handles RecipeFormData from canonical form
   const handleSaveRecipe = async () => {
     if (!guardAction()) return; // Show auth modal if not authenticated
     if (!formData.name || formData.ingredients.length === 0) return;
     const recipeData = {
       name: formData.name,
       category: formData.category,
-      description: formData.description,
-      yield: formData.yield,
-      prepTime: formData.prepTime || undefined,
-      sterilizationTime: formData.sterilizationTime || undefined,
-      sterilizationPsi: formData.sterilizationPsi || undefined,
+      description: formData.description || '',
+      yield: formData.yield || { amount: 1, unit: 'batch' },
+      prepTime: formData.prepTime,
+      sterilizationTime: formData.sterilizationTime,
+      sterilizationPsi: formData.sterilizationPsi,
       ingredients: formData.ingredients,
       instructions: formData.instructions.filter(i => i.trim()),
-      tips: formData.tips.filter(t => t.trim()),
-      notes: formData.notes || undefined,
-      isActive: true,
+      tips: (formData.tips || []).filter(t => t.trim()),
+      sourceUrl: formData.sourceUrl,
+      notes: formData.notes,
+      isActive: formData.isActive !== false,
     };
     if (editMode && selectedRecipe) {
       await updateRecipe(selectedRecipe.id, recipeData);
@@ -269,13 +199,7 @@ export const RecipeBuilder: React.FC = () => {
     }
   };
 
-  // Handle inventory selection
-  const handleInventorySelect = (itemId: string) => {
-    const item = getInventoryItem(itemId);
-    if (item) {
-      setNewIngredient(prev => ({ ...prev, inventoryItemId: itemId, name: item.name, unit: item.unit }));
-    }
-  };
+  // Note: Inventory selection is now handled by the canonical RecipeForm component
 
   return (
     <div className="space-y-6">
@@ -528,7 +452,7 @@ export const RecipeBuilder: React.FC = () => {
         )}
       </div>
 
-      {/* Create/Edit Modal */}
+      {/* Create/Edit Modal - Uses canonical RecipeForm */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -537,118 +461,16 @@ export const RecipeBuilder: React.FC = () => {
               <button onClick={() => { setShowCreateModal(false); resetForm(); }} className="text-zinc-400 hover:text-white"><Icons.X /></button>
             </div>
 
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-sm text-zinc-400 mb-2">Name *</label>
-                  <input type="text" value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" placeholder="e.g., Standard MEA" />
-                </div>
-                <StandardDropdown
-                  label="Category"
-                  value={formData.category}
-                  onChange={(val) => setFormData(prev => ({ ...prev, category: val as RecipeCategory }))}
-                  options={activeRecipeCategories.map(cat => ({
-                    id: cat.code,
-                    name: `${cat.icon} ${cat.name}`,
-                  }))}
-                  placeholder="Select category..."
-                  entityType="recipeCategory"
-                  fieldName="category"
-                />
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Yield</label>
-                  <div className="flex gap-2">
-                    <input type="number" value={formData.yield.amount} onChange={e => setFormData(prev => ({ ...prev, yield: { ...prev.yield, amount: parseFloat(e.target.value) || 0 } }))} className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
-                    <select value={formData.yield.unit} onChange={e => setFormData(prev => ({ ...prev, yield: { ...prev.yield, unit: e.target.value } }))} className="w-24 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white">
-                      <option value="ml">ml</option><option value="L">L</option><option value="g">g</option><option value="kg">kg</option><option value="plates">plates</option><option value="jars">jars</option><option value="quarts">quarts</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm text-zinc-400 mb-2">Description</label>
-                  <textarea value={formData.description} onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))} rows={2} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Prep (min)</label>
-                  <input type="number" value={formData.prepTime} onChange={e => setFormData(prev => ({ ...prev, prepTime: parseInt(e.target.value) || 0 }))} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
-                </div>
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Sterilize (min)</label>
-                  <input type="number" value={formData.sterilizationTime} onChange={e => setFormData(prev => ({ ...prev, sterilizationTime: parseInt(e.target.value) || 0 }))} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
-                </div>
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">PSI</label>
-                  <input type="number" value={formData.sterilizationPsi} onChange={e => setFormData(prev => ({ ...prev, sterilizationPsi: parseInt(e.target.value) || 15 }))} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Ingredients *</label>
-                {formData.ingredients.length > 0 && (
-                  <div className="space-y-2 mb-3">
-                    {formData.ingredients.map(ing => (
-                      <div key={ing.id} className="flex items-center gap-2 bg-zinc-800/50 rounded-lg px-3 py-2">
-                        <span className="flex-1 text-white">{ing.name}</span>
-                        <span className="text-emerald-400">{ing.quantity} {ing.unit}</span>
-                        <button onClick={() => handleRemoveIngredient(ing.id)} className="text-red-400 hover:text-red-300"><Icons.X /></button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="bg-zinc-800/30 rounded-lg p-3 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-zinc-500 mb-1">From Inventory</label>
-                      <select value={newIngredient.inventoryItemId} onChange={e => handleInventorySelect(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-white">
-                        <option value="">Manual entry...</option>
-                        {activeInventoryItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-zinc-500 mb-1">Name</label>
-                      <input type="text" value={newIngredient.name} onChange={e => setNewIngredient(prev => ({ ...prev, name: e.target.value }))} className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-white" placeholder="Ingredient name" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs text-zinc-500 mb-1">Quantity</label>
-                      <input type="number" value={newIngredient.quantity || ''} onChange={e => setNewIngredient(prev => ({ ...prev, quantity: parseFloat(e.target.value) || 0 }))} className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-white" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-zinc-500 mb-1">Unit</label>
-                      <select value={newIngredient.unit} onChange={e => setNewIngredient(prev => ({ ...prev, unit: e.target.value }))} className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm text-white">
-                        <option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="L">L</option><option value="tsp">tsp</option><option value="tbsp">tbsp</option><option value="cup">cup</option><option value="lb">lb</option><option value="brick">brick</option><option value="quart">quart</option>
-                      </select>
-                    </div>
-                    <div className="flex items-end">
-                      <button onClick={handleAddIngredient} disabled={!newIngredient.name || !newIngredient.quantity} className="w-full py-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded text-sm font-medium">Add</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Instructions</label>
-                <div className="space-y-2">
-                  {formData.instructions.map((inst, i) => (
-                    <div key={i} className="flex gap-2">
-                      <span className="flex-shrink-0 w-6 h-9 flex items-center justify-center text-zinc-500 text-sm">{i + 1}.</span>
-                      <input type="text" value={inst} onChange={e => handleUpdateInstruction(i, e.target.value)} className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white" placeholder={`Step ${i + 1}...`} />
-                      <button onClick={() => handleRemoveInstruction(i)} className="text-zinc-500 hover:text-red-400"><Icons.X /></button>
-                    </div>
-                  ))}
-                  <button onClick={handleAddInstruction} className="text-sm text-emerald-400 hover:text-emerald-300">+ Add step</button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Notes</label>
-                <textarea value={formData.notes} onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))} rows={2} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" />
-              </div>
-            </div>
+            {/* Canonical RecipeForm Component */}
+            <RecipeForm
+              data={formData}
+              onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
+              recipeCategories={activeRecipeCategories.map(cat => ({
+                id: cat.id,
+                name: cat.name,
+                code: cat.code,
+              }))}
+            />
 
             <div className="flex gap-3 mt-6">
               <button onClick={() => { setShowCreateModal(false); resetForm(); }} className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium">Cancel</button>
