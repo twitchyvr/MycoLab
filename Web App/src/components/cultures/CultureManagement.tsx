@@ -8,6 +8,7 @@ import { useData, EntityOutcomeData } from '../../store';
 import { useAuthGuard } from '../../lib/useAuthGuard';
 import { CultureWizard } from './CultureWizard';
 import { CultureDetailView } from './CultureDetailView';
+import { CultureDetailModal } from '../modals/CultureDetailModal';
 import { NumericInput } from '../common/NumericInput';
 import { EntityDisposalModal, DisposalOutcome } from '../common/EntityDisposalModal';
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
@@ -241,6 +242,7 @@ export const CultureManagement: React.FC = () => {
   const [showDisposalModal, setShowDisposalModal] = useState(false);
   const [cultureToDispose, setCultureToDispose] = useState<Culture | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   // newObservation state removed - using canonical ObservationModal
 
@@ -794,7 +796,7 @@ export const CultureManagement: React.FC = () => {
           )}
         </div>
 
-        {/* Detail Panel - New Reimagined Component */}
+        {/* Detail Panel - Quick context view with link to full modal */}
         {selectedCulture && (
           <div className="w-full max-w-md sticky top-6 h-fit" data-detail-panel="culture">
             <CultureDetailView
@@ -804,10 +806,22 @@ export const CultureManagement: React.FC = () => {
               onStatusChange={handleStatusChange}
               onLogObservation={() => setShowObservationModal(true)}
               onTransfer={() => setShowTransferModal(true)}
-              onViewHistory={() => setShowHistoryModal(true)}
+              onViewHistory={() => setShowDetailModal(true)}
               onDispose={() => handleDelete(selectedCulture)}
               variant="panel"
             />
+            {/* View Full Details button */}
+            <button
+              onClick={() => setShowDetailModal(true)}
+              className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors"
+            >
+              <span>View Full Details</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </button>
           </div>
         )}
       </div>
@@ -1223,6 +1237,35 @@ export const CultureManagement: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Full Detail Modal - Tabbed view with timeline, history, lineage */}
+      {selectedCulture && (
+        <CultureDetailModal
+          isOpen={showDetailModal}
+          onClose={() => setShowDetailModal(false)}
+          culture={selectedCulture}
+          onLogObservation={() => {
+            setShowDetailModal(false);
+            setShowObservationModal(true);
+          }}
+          onTransfer={() => {
+            setShowDetailModal(false);
+            setShowTransferModal(true);
+          }}
+          onEdit={() => {
+            setShowDetailModal(false);
+            setShowHistoryModal(true);
+          }}
+          onDispose={() => {
+            setShowDetailModal(false);
+            handleDelete(selectedCulture);
+          }}
+          onNavigateToCulture={(culture) => {
+            setSelectedCulture(culture);
+            // Keep the modal open to show the new culture
+          }}
+        />
       )}
     </div>
   );
