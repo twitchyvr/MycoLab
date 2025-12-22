@@ -200,6 +200,8 @@ export const transformLocationFromDb = (row: any): Location => ({
   // Image support
   photos: row.photos || [],
   currentPhoto: row.current_photo,
+  // Notification preferences
+  notificationsMuted: row.notifications_muted ?? false,
 });
 
 export const transformLocationToDb = (location: Partial<Location>, userId?: string | null) => ({
@@ -237,6 +239,8 @@ export const transformLocationToDb = (location: Partial<Location>, userId?: stri
   // Image support
   photos: location.photos,
   current_photo: location.currentPhoto,
+  // Notification preferences
+  notifications_muted: location.notificationsMuted,
   ...(userId && { user_id: userId }),
 });
 
@@ -367,6 +371,8 @@ export const transformInventoryItemFromDb = (row: any): InventoryItem => ({
   createdAt: new Date(row.created_at),
   updatedAt: new Date(row.updated_at),
   isActive: row.is_active ?? true,
+  // Notification preferences
+  notificationsMuted: row.notifications_muted ?? false,
 });
 
 export const transformInventoryItemToDb = (item: Partial<InventoryItem>, userId?: string | null) => ({
@@ -384,6 +390,8 @@ export const transformInventoryItemToDb = (item: Partial<InventoryItem>, userId?
   lot_number: item.lotNumber,
   notes: item.notes,
   is_active: item.isActive,
+  // Notification preferences
+  notifications_muted: item.notificationsMuted,
   ...(userId && { user_id: userId }),
 });
 
@@ -456,6 +464,8 @@ export const transformCultureFromDb = (row: any): Culture => ({
   amendmentType: row.amendment_type ?? 'original',
   amendmentReason: row.amendment_reason,
   amendsRecordId: row.amends_record_id,
+  // Notification preferences
+  notificationsMuted: row.notifications_muted ?? false,
 });
 
 export const transformCultureToDb = (culture: Partial<Culture>) => {
@@ -496,6 +506,8 @@ export const transformCultureToDb = (culture: Partial<Culture>) => {
   if (culture.amendmentType !== undefined) result.amendment_type = culture.amendmentType;
   if (culture.amendmentReason !== undefined) result.amendment_reason = culture.amendmentReason;
   if (culture.amendsRecordId !== undefined) result.amends_record_id = culture.amendsRecordId;
+  // Notification preferences
+  if (culture.notificationsMuted !== undefined) result.notifications_muted = culture.notificationsMuted;
   return result;
 };
 
@@ -549,6 +561,8 @@ export const transformGrowFromDb = (row: any): Grow => ({
   amendmentReason: row.amendment_reason,
   amendsRecordId: row.amends_record_id,
   sourceCultureSnapshot: row.source_culture_snapshot,
+  // Notification preferences
+  notificationsMuted: row.notifications_muted ?? false,
 });
 
 export const transformGrowToDb = (grow: Partial<Grow>) => {
@@ -594,6 +608,8 @@ export const transformGrowToDb = (grow: Partial<Grow>) => {
   if (grow.amendmentReason !== undefined) result.amendment_reason = grow.amendmentReason;
   if (grow.amendsRecordId !== undefined) result.amends_record_id = grow.amendsRecordId;
   if (grow.sourceCultureSnapshot !== undefined) result.source_culture_snapshot = grow.sourceCultureSnapshot;
+  // Notification preferences
+  if (grow.notificationsMuted !== undefined) result.notifications_muted = grow.notificationsMuted;
   return result;
 };
 
@@ -986,6 +1002,8 @@ export const transformPreparedSpawnFromDb = (row: any): PreparedSpawn => ({
   amendmentType: row.amendment_type ?? 'original',
   amendmentReason: row.amendment_reason,
   amendsRecordId: row.amends_record_id,
+  // Notification preferences
+  notificationsMuted: row.notifications_muted ?? false,
 });
 
 export const transformPreparedSpawnToDb = (spawn: Partial<PreparedSpawn>, userId?: string | null) => ({
@@ -1038,6 +1056,8 @@ export const transformPreparedSpawnToDb = (spawn: Partial<PreparedSpawn>, userId
   ...(spawn.amendmentType !== undefined && { amendment_type: spawn.amendmentType }),
   ...(spawn.amendmentReason !== undefined && { amendment_reason: spawn.amendmentReason }),
   ...(spawn.amendsRecordId !== undefined && { amends_record_id: spawn.amendsRecordId }),
+  // Notification preferences
+  ...(spawn.notificationsMuted !== undefined && { notifications_muted: spawn.notificationsMuted }),
 });
 
 // ============================================================================

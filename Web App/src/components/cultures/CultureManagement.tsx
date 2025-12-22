@@ -10,6 +10,7 @@ import { CultureWizard } from './CultureWizard';
 import { NumericInput } from '../common/NumericInput';
 import { EntityDisposalModal, DisposalOutcome } from '../common/EntityDisposalModal';
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
+import { NotificationBellCompact } from '../common/NotificationBell';
 import { calculateShelfLife, formatRemainingShelfLife, getStorageRecommendation, getExpectedShelfLifeDays, coldSensitiveSpecies } from '../../utils';
 import type { Culture, CultureType, CultureStatus, CultureObservation, PreparedSpawn, ContaminationType, SuspectedCause, AmendmentType } from '../../store/types';
 
@@ -809,9 +810,16 @@ export const CultureManagement: React.FC = () => {
                   <p className="text-sm text-zinc-400">{getStrain(selectedCulture.strainId)?.name}</p>
                 </div>
               </div>
-              <button onClick={() => setSelectedCulture(null)} className="text-zinc-400 hover:text-white">
-                <Icons.X />
-              </button>
+              <div className="flex items-center gap-2">
+                <NotificationBellCompact
+                  muted={selectedCulture.notificationsMuted ?? false}
+                  onToggle={(muted) => updateCulture(selectedCulture.id, { notificationsMuted: muted })}
+                  itemLabel={`culture ${selectedCulture.label}`}
+                />
+                <button onClick={() => setSelectedCulture(null)} className="text-zinc-400 hover:text-white">
+                  <Icons.X />
+                </button>
+              </div>
             </div>
 
             {/* Status badges */}
