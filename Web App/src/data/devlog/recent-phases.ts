@@ -4985,6 +4985,49 @@ Fix:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1308',
+    title: 'Modal Consolidation & Unit Input Components',
+    description: 'Multiple improvements to modal/form architecture: fixed Settings page auth buttons, added VolumeInput component with unit selection, created canonical HarvestEntryForm.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 25,
+    notes: `Key Changes:
+
+1. **Settings Page Auth Buttons Fix**
+   - AnonymousSettings.tsx buttons now use useAuth directly
+   - "Create Account" opens signup modal, "Sign In" opens login modal
+   - No longer relies on optional onSignUpClick prop
+
+2. **VolumeInput Component**
+   - New component at src/components/common/VolumeInput.tsx
+   - Supports ml, L, cc, fl oz, cup, qt, gal
+   - Auto-converts to/from ml for database storage
+   - Shows conversion hints between metric/imperial
+   - Used in ContainerForm for volume field
+
+3. **volume.ts Utility Module**
+   - New utility at src/utils/volume.ts
+   - parseVolume(), toMl(), fromMl(), formatVolume()
+   - Matches pattern from weight.ts for consistency
+
+4. **Canonical HarvestEntryForm (In Progress)**
+   - Created src/components/forms/HarvestEntryForm.tsx
+   - Features: WeightInput with unit conversion, quality selector, BE preview
+   - CommandCenter.tsx updated to use canonical form
+   - GrowManagement.tsx and HarvestWorkflow.tsx still need updating
+
+**Files Changed:**
+- src/components/settings/AnonymousSettings.tsx - Auth button fix
+- src/utils/volume.ts - New volume utility module
+- src/components/common/VolumeInput.tsx - New volume input component
+- src/components/forms/ContainerForm.tsx - Use VolumeInput
+- src/components/forms/HarvestEntryForm.tsx - New canonical form
+- src/components/command/CommandCenter.tsx - Use canonical HarvestEntryForm`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
