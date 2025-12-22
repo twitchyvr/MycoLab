@@ -7058,6 +7058,7 @@ DECLARE
   v_user_prefs RECORD;
 BEGIN
   -- Find cultures expiring within their configured warning period
+  -- Only for users with active profiles (for future tier-based filtering)
   FOR v_culture IN
     SELECT c.id, c.user_id, c.label, c.type, c.expires_at,
            s.name as strain_name,
@@ -7070,6 +7071,13 @@ BEGIN
       AND c.expires_at IS NOT NULL
       AND c.expires_at > NOW()
       AND c.expires_at <= NOW() + INTERVAL '7 days'
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = c.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
   LOOP
     -- Check if user has this notification type enabled
     SELECT * INTO v_user_prefs
@@ -7131,6 +7139,7 @@ DECLARE
   v_days_in_stage INTEGER;
   v_stage_start TIMESTAMPTZ;
 BEGIN
+  -- Only for users with active profiles
   FOR v_grow IN
     SELECT g.id, g.user_id, g.name, g.current_stage,
            g.spawned_at, g.colonization_started_at, g.fruiting_started_at,
@@ -7141,6 +7150,13 @@ BEGIN
       AND g.is_archived = false
       AND g.status = 'active'
       AND g.current_stage NOT IN ('completed', 'contaminated', 'aborted')
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = g.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
   LOOP
     -- Determine stage start time based on current stage
     v_stage_start := CASE v_grow.current_stage
@@ -7221,6 +7237,7 @@ DECLARE
   v_item RECORD;
   v_user_prefs RECORD;
 BEGIN
+  -- Only for users with active profiles
   FOR v_item IN
     SELECT i.id, i.user_id, i.name, i.quantity, i.reorder_point, i.unit,
            c.name as category_name
@@ -7231,6 +7248,13 @@ BEGIN
       AND i.reorder_point > 0
       AND i.quantity <= i.reorder_point
       AND i.quantity >= 0
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = i.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
   LOOP
     SELECT * INTO v_user_prefs
     FROM notification_event_preferences
@@ -7291,6 +7315,7 @@ DECLARE
   v_days_in_harvesting INTEGER;
   v_harvest_start TIMESTAMPTZ;
 BEGIN
+  -- Only for users with active profiles
   FOR v_grow IN
     SELECT g.id, g.user_id, g.name, g.current_stage,
            g.first_harvest_at, g.fruiting_started_at,
@@ -7301,6 +7326,13 @@ BEGIN
       AND g.is_archived = false
       AND g.status = 'active'
       AND g.current_stage = 'harvesting'
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = g.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
   LOOP
     -- Use first_harvest_at if available, otherwise fall back to fruiting_started_at
     v_harvest_start := COALESCE(v_grow.first_harvest_at, v_grow.fruiting_started_at);
