@@ -5314,6 +5314,50 @@ When loading settings from the database, if has_completed_setup_wizard was NULL 
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1316',
+    title: 'Fix Culture Observation Persistence to Database',
+    description: 'Fixed critical bug where culture observations were not persisted to Supabase database. Observations appeared in the UI but disappeared after page refresh.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    phaseId: 30,
+    notes: `Critical persistence bug fix:
+
+**Problem:**
+- User logs a culture observation (e.g., contamination with health rating)
+- Observation shows in UI, culture status updates to "Contaminated"
+- After page refresh: observation is gone, culture status reverts to original
+- Data only existed in local state, never saved to Supabase
+
+**Root Causes (3 issues found):**
+1. addCultureObservation() only updated local setState - no Supabase insert
+2. Culture observations never loaded from culture_observations table on app init
+3. Database schema missing health_rating and images columns
+
+**Solution - Schema (supabase-schema.sql):**
+- Added health_rating INTEGER CHECK (1-5) to culture_observations table
+- Added images TEXT[] array column
+- Added idempotent ALTER TABLE migrations for existing databases
+- Updated type constraint to include 'harvest' observation type
+
+**Solution - addCultureObservation (DataContext.tsx):**
+- Now async function (returns Promise<void>)
+- Inserts observation to culture_observations table via Supabase
+- Updates parent culture's health_rating and status in cultures table
+- Falls back to local-only state update when Supabase not connected
+
+**Solution - Data Loading (DataContext.tsx):**
+- loadDataFromSupabase now fetches culture_observations table
+- Observations attached to each culture during transformation
+- Sorted by date descending for consistent display
+
+**Files Changed:**
+- Web App/supabase-schema.sql - Added columns, migrations, constraints
+- Web App/src/store/DataContext.tsx - Async save, cascade updates, load observations`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

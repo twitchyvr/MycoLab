@@ -217,7 +217,7 @@ interface DataContextValue extends LookupHelpers {
   addCulture: (culture: Omit<Culture, 'id' | 'createdAt' | 'updatedAt' | 'observations' | 'transfers'>) => Promise<Culture>;
   updateCulture: (id: string, updates: Partial<Culture>) => Promise<void>;
   deleteCulture: (id: string, outcome?: EntityOutcomeData) => Promise<void>;
-  addCultureObservation: (cultureId: string, observation: Omit<CultureObservation, 'id'>) => void;
+  addCultureObservation: (cultureId: string, observation: Omit<CultureObservation, 'id'>) => Promise<void>;
   addCultureTransfer: (cultureId: string, transfer: Omit<CultureTransfer, 'id'>) => Culture | null;
   getCultureLineage: (cultureId: string) => { ancestors: Culture[]; descendants: Culture[] };
   generateCultureLabel: (type: Culture['type']) => string;
@@ -554,6 +554,13 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .order('created_at', { ascending: false });
       if (culturesError) throw culturesError;
 
+      // Load culture observations
+      const { data: cultureObservationsData, error: cultureObservationsError } = await client
+        .from('culture_observations')
+        .select('*')
+        .order('date', { ascending: false });
+      if (cultureObservationsError) console.warn('Culture observations error:', cultureObservationsError);
+
       // Load prepared spawn
       const { data: preparedSpawnData, error: preparedSpawnError } = await client
         .from('prepared_spawn')
@@ -679,7 +686,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         inventoryItems: (inventoryItemsData || []).map(transformInventoryItemFromDb),
         recipeCategories: (recipeCategoriesData || []).map(transformRecipeCategoryFromDb),
         grainTypes: (grainTypesData || []).map(transformGrainTypeFromDb),
-        cultures: (culturesData || []).map(transformCultureFromDb),
+        cultures: (culturesData || []).map(row => {
+          const culture = transformCultureFromDb(row);
+          // Attach observations from culture_observations table
+          const observations: CultureObservation[] = (cultureObservationsData || [])
+            .filter((obs: any) => obs.culture_id === row.id)
+            .map((obs: any) => ({
+              id: obs.id,
+              date: new Date(obs.date),
+              type: obs.type || 'general',
+              notes: obs.notes || '',
+              healthRating: obs.health_rating,
+              images: obs.images || [],
+            }));
+          return { ...culture, observations };
+        }),
         preparedSpawn: (preparedSpawnData || []).map(transformPreparedSpawnFromDb),
         grows: growsWithFlushes,
         recipes: (recipesData || []).map(transformRecipeFromDb),
@@ -1402,34 +1423,80 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     return { ancestors, descendants };
   }, [state.cultures]);
 
-  const addCultureObservation = useCallback((cultureId: string, observation: Omit<CultureObservation, 'id'>) => {
+  const addCultureObservation = useCallback(async (cultureId: string, observation: Omit<CultureObservation, 'id'>) => {
     const newObs: CultureObservation = { ...observation, id: generateId('obs') };
 
+    // Determine cascade updates for the culture
+    const cultureUpdates: Partial<Culture> = {
+      updatedAt: new Date(),
+    };
+
+    // CASCADE: If observation includes health rating, update the culture's health
+    if (observation.healthRating !== undefined && observation.healthRating !== null) {
+      cultureUpdates.healthRating = observation.healthRating;
+    }
+
+    // CASCADE: If observation type indicates contamination, update culture status
+    if (observation.type === 'contamination') {
+      cultureUpdates.status = 'contaminated';
+    }
+
+    // Persist to Supabase if connected
+    if (supabase) {
+      try {
+        const userId = await getCachedUserId();
+
+        // Insert the observation to culture_observations table
+        const { error: obsError } = await supabase
+          .from('culture_observations')
+          .insert({
+            id: newObs.id,
+            culture_id: cultureId,
+            date: observation.date instanceof Date ? observation.date.toISOString() : observation.date,
+            type: observation.type,
+            notes: observation.notes,
+            health_rating: observation.healthRating,
+            images: observation.images,
+            user_id: userId,
+          });
+
+        if (obsError) {
+          console.error('Failed to save observation to database:', obsError);
+          throw obsError;
+        }
+
+        // Update the culture's health_rating and status if needed
+        if (Object.keys(cultureUpdates).length > 1) { // More than just updatedAt
+          const { error: cultureError } = await supabase
+            .from('cultures')
+            .update(transformCultureToDb(cultureUpdates))
+            .eq('id', cultureId);
+
+          if (cultureError) {
+            console.error('Failed to update culture cascade:', cultureError);
+            // Don't throw - observation was saved, just log the cascade failure
+          }
+        }
+      } catch (error) {
+        console.error('Error persisting observation:', error);
+        throw error;
+      }
+    }
+
+    // Update local state
     setState(prev => ({
       ...prev,
       cultures: prev.cultures.map(c => {
         if (c.id !== cultureId) return c;
 
-        // Start with the observation being added
-        const updates: Partial<Culture> = {
+        return {
+          ...c,
           observations: [...c.observations, newObs],
-          updatedAt: new Date(),
+          ...cultureUpdates,
         };
-
-        // CASCADE: If observation includes health rating, update the culture's health
-        if (observation.healthRating !== undefined && observation.healthRating !== null) {
-          updates.healthRating = observation.healthRating;
-        }
-
-        // CASCADE: If observation type indicates contamination, update culture status
-        if (observation.type === 'contamination') {
-          updates.status = 'contaminated';
-        }
-
-        return { ...c, ...updates };
       })
     }));
-  }, [generateId]);
+  }, [generateId, supabase, getCachedUserId]);
 
   const addCultureTransfer = useCallback((cultureId: string, transfer: Omit<CultureTransfer, 'id'>): Culture | null => {
     // 1. Get source culture
