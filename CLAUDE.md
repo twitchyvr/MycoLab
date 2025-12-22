@@ -285,7 +285,19 @@ This app has suffered from:
 
 **BEFORE writing ANY code, you MUST complete ALL of these steps:**
 
-**Step 1: SEARCH for existing implementations**
+**Step 1: CHECK FOR RECENT CHANGES**
+```bash
+# Before ANY modification, check what has recently changed:
+git log --oneline -10                    # Recent commits
+git diff HEAD~3 --stat                   # Files changed in last 3 commits
+git log --oneline --all -20 -- src/      # Recent changes to src/
+```
+- Read any `<system-reminder>` tags about recent file modifications
+- Ask: "Has something been modified recently that affects what I'm about to change?"
+- Ask: "Will my change conflict with or undo recent work?"
+- If related files were recently modified → READ them before proceeding
+
+**Step 2: SEARCH for existing implementations**
 ```bash
 # Before creating ANY new component, modal, or form:
 grep -r "CultureModal\|CultureForm\|EditCulture" src/
@@ -296,18 +308,18 @@ grep -r "[Yy]our[Ff]eature" src/
 grep -r "functionName\|similarFunction" src/
 ```
 
-**Step 2: READ existing code that touches the same entity**
+**Step 3: READ existing code that touches the same entity**
 - If editing cultures → READ all files in `components/cultures/`
 - If editing grows → READ all files in `components/grows/`
 - If editing data layer → READ the ENTIRE relevant section of `DataContext.tsx`
 
-**Step 3: MAP all places this entity appears**
+**Step 4: MAP all places this entity appears**
 - Which pages display this data?
 - Which modals edit this data?
 - Which other entities reference this data?
 - Which calculations depend on this data?
 
-**Step 4: VERIFY your approach with these questions:**
+**Step 5: VERIFY your approach with these questions:**
 - [ ] Does a component/modal for this already exist? → **UPDATE IT, don't create new**
 - [ ] Is there similar code elsewhere? → **REUSE IT, don't duplicate**
 - [ ] What will break if I change this? → **FIX ALL BREAKING CHANGES**
@@ -446,7 +458,7 @@ Before ANY commit, verify:
 
 ### !!! MANDATORY PRE-COMMIT CHECKLIST - NO EXCEPTIONS !!!
 
-**⚠️ STOP! BEFORE RUNNING `git commit`, YOU MUST COMPLETE ALL THREE CHECKS BELOW. ⚠️**
+**⚠️ STOP! BEFORE RUNNING `git commit`, YOU MUST COMPLETE ALL FOUR CHECKS BELOW. ⚠️**
 
 **This is NOT optional. This is NOT "when relevant." This is EVERY SINGLE COMMIT.**
 
@@ -558,6 +570,37 @@ Before ANY commit, verify:
 - [ ] Include `actualHours` if known
 
 **If your changes implement, modify, or complete ANY feature - UPDATE THE DEVLOG.**
+
+---
+
+#### ✅ CHECK 4: Recent Changes Impact Analysis
+**BEFORE EVERY COMMIT, analyze recent changes for conflicts:**
+
+**Git History Check:**
+```bash
+git log --oneline -10                           # Recent commits
+git diff HEAD~5 --stat                          # Files changed recently
+git log --oneline --all -- [files-you-touched]  # History of files you modified
+```
+
+**Impact Analysis:**
+- [ ] Did anyone (including you) recently modify files related to your changes?
+- [ ] Could your changes conflict with or undo recent work?
+- [ ] Do recent commits affect the same entities, cascades, or relationships?
+- [ ] Were there recent schema changes that affect your code?
+- [ ] Were there recent changes to DataContext.tsx that affect your work?
+
+**System Reminders:**
+- [ ] Read ALL `<system-reminder>` tags about recent file modifications
+- [ ] If a reminder says a file was modified → READ that file to understand the change
+- [ ] Consider how those modifications interact with your changes
+
+**Resolution:**
+- If conflicts exist → Merge/reconcile the changes, don't overwrite
+- If recent changes affect your work → Adapt your approach accordingly
+- If unsure → Review the recent commits in detail before proceeding
+
+**If recent changes touch the same areas as your changes - RECONCILE BEFORE COMMITTING.**
 
 ---
 
