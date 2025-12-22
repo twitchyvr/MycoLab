@@ -5544,6 +5544,71 @@ Created canonical RoomCheckForm.tsx:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1321',
+    title: 'Detail View Architecture - EntityDetailModal with Tabs',
+    description: 'Created comprehensive entity detail modal architecture with tabbed navigation for cultures and grows. Exposes existing audit infrastructure through user-facing timeline and history views.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `Implemented detail view architecture per ARCHITECTURE_PLAN.md:
+
+**CORE COMPONENTS CREATED:**
+
+1. **EntityDetailModal** - Generic modal wrapper with:
+   - Portal-based rendering
+   - Tab navigation infrastructure
+   - Size variants (default, wide, full)
+   - Escape key handling and body scroll lock
+   - Footer actions area
+
+2. **useEntityTimeline Hook** - Aggregates history from multiple sources:
+   - Observations, transfers, status changes
+   - Grouped by date with relative labels
+   - Filtering by event type
+
+3. **Tab Components:**
+   - CultureOverviewTab - Key metrics, volume bar, lineage preview
+   - GrowOverviewTab - Stage progress, harvest history, cost analysis
+   - TimelineTab - Chronological event timeline with filtering
+   - HistoryTab - Version history with immutability info
+
+4. **Entity-specific Modals:**
+   - CultureDetailModal - 4 tabs: Overview, Timeline, Lineage, History
+   - GrowDetailModal - 3 tabs: Overview, Timeline, History
+
+5. **Card Components:**
+   - EntityCard - Standardized list view cards
+   - SummaryPanel - Right-side quick view panel
+
+**INTEGRATION:**
+- CultureManagement: Added "View Full Details" button
+- GrowManagement: View History now opens full detail modal
+
+**UX IMPROVEMENTS:**
+- Replaced cramped accordions with spacious tabbed navigation
+- 3-level hierarchy: List → Quick View → Detail Modal
+- Consistent pattern across entity types
+
+**Files Created:**
+- src/components/modals/EntityDetailModal.tsx
+- src/components/modals/CultureDetailModal.tsx
+- src/components/modals/GrowDetailModal.tsx
+- src/components/modals/useEntityTimeline.ts
+- src/components/modals/entity-tabs/CultureOverviewTab.tsx
+- src/components/modals/entity-tabs/GrowOverviewTab.tsx
+- src/components/modals/entity-tabs/TimelineTab.tsx
+- src/components/modals/entity-tabs/HistoryTab.tsx
+- src/components/cards/EntityCard.tsx
+- src/components/cards/SummaryPanel.tsx
+
+**Files Updated:**
+- src/components/cultures/CultureManagement.tsx
+- src/components/grows/GrowManagement.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

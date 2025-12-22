@@ -13,6 +13,7 @@ import { WeightInput } from '../common/WeightInput';
 import { ExitSurveyModal, ExitSurveyData } from '../surveys';
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
 import { NotificationBellCompact } from '../common/NotificationBell';
+import { GrowDetailModal } from '../modals/GrowDetailModal';
 // Canonical forms
 import { ObservationModal, type ObservationFormData } from '../forms/ObservationForm';
 import { HarvestEntryForm, getDefaultHarvestEntryData, type HarvestEntryData } from '../forms/HarvestEntryForm';
@@ -482,6 +483,7 @@ export const GrowManagement: React.FC = () => {
   const [hasDraft, setHasDraft] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyGrow, setHistoryGrow] = useState<Grow | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   // Form state uses canonical GrowFormData type
   const getInitialFormState = (): GrowFormData => {
@@ -1138,8 +1140,8 @@ export const GrowManagement: React.FC = () => {
                           setShowObservationModal(true);
                         }}
                         onViewHistory={() => {
-                          setHistoryGrow(grow);
-                          setShowHistoryModal(true);
+                          setSelectedGrow(grow);
+                          setShowDetailModal(true);
                         }}
                         onToggleMute={(muted) => updateGrow(grow.id, { notificationsMuted: muted })}
                       />
@@ -1446,6 +1448,34 @@ export const GrowManagement: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Grow Detail Modal */}
+      {selectedGrow && (
+        <GrowDetailModal
+          isOpen={showDetailModal}
+          onClose={() => setShowDetailModal(false)}
+          grow={selectedGrow}
+          onLogObservation={() => {
+            setShowDetailModal(false);
+            setShowObservationModal(true);
+          }}
+          onRecordHarvest={() => {
+            setShowDetailModal(false);
+            setExpandedCards(new Set([selectedGrow.id]));
+          }}
+          onAdvanceStage={() => handleAdvanceStage(selectedGrow.id)}
+          onMarkContaminated={() => handleMarkContaminatedWithSurvey(selectedGrow)}
+          onComplete={() => handleCompleteGrow(selectedGrow)}
+          onEdit={() => {
+            setShowDetailModal(false);
+            openEditModal(selectedGrow);
+          }}
+          onDispose={() => {
+            setShowDetailModal(false);
+            openExitSurvey(selectedGrow);
+          }}
+        />
       )}
     </div>
   );
