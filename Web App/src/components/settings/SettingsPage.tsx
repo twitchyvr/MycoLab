@@ -174,15 +174,31 @@ export const SettingsPage: React.FC = () => {
   const [verifySuccess, setVerifySuccess] = useState<string | null>(null);
   const [codeSent, setCodeSent] = useState(false);
 
-  // Notification event preferences state
+  // Notification event preferences state - all 17 categories
   const [eventPreferences, setEventPreferences] = useState<Record<NotificationCategory, { email: boolean; sms: boolean }>>({
-    contamination: { email: true, sms: true },
-    harvest_ready: { email: true, sms: false },
-    stage_transition: { email: true, sms: false },
-    low_inventory: { email: true, sms: false },
+    // Culture notifications
     culture_expiring: { email: true, sms: false },
     lc_age: { email: true, sms: false },
+    transfer_due: { email: true, sms: false },
+    culture_ready: { email: true, sms: false },
+    // Grow notifications
+    stage_transition: { email: true, sms: false },
+    harvest_ready: { email: true, sms: false },
+    colonization_complete: { email: true, sms: false },
     slow_growth: { email: true, sms: false },
+    contamination: { email: true, sms: true }, // Urgent - SMS enabled
+    // Inventory notifications
+    low_inventory: { email: true, sms: false },
+    item_expiring: { email: true, sms: false },
+    // Spawn notifications
+    spawn_ready: { email: true, sms: false },
+    spawn_expiring: { email: true, sms: false },
+    // Maintenance notifications
+    cold_storage_check: { email: true, sms: false },
+    maintenance_due: { email: true, sms: false },
+    // Engagement notifications
+    photo_documentation: { email: true, sms: false },
+    // System notifications
     system: { email: true, sms: false },
     user: { email: false, sms: false },
   });
