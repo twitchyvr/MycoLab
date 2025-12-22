@@ -738,8 +738,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         // Reload data when user signs in (with a real account, not anonymous)
         if (event === 'SIGNED_IN' && isRealUser) {
           if (process.env.NODE_ENV === 'development') {
-            console.log('[DataContext] Auth state changed to SIGNED_IN, reloading data...');
+            console.log('[DataContext] Auth state changed to SIGNED_IN, reloading data and settings...');
           }
+          // Reload settings first (includes hasCompletedSetupWizard)
+          const settings = await loadSettings();
+          setState(prev => ({ ...prev, settings }));
+          // Then reload all data
           const client = getSupabaseClient();
           if (client) {
             await loadDataFromSupabase(client);
@@ -3411,6 +3415,15 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         if (updates.notifications.lowStockAlerts !== undefined) dbUpdates.low_stock_alerts = updates.notifications.lowStockAlerts;
         if (updates.notifications.contaminationAlerts !== undefined) dbUpdates.contamination_alerts = updates.notifications.contaminationAlerts;
       }
+      // Onboarding wizard and user experience settings
+      if (updates.hasCompletedSetupWizard !== undefined) dbUpdates.has_completed_setup_wizard = updates.hasCompletedSetupWizard;
+      if (updates.experienceLevel !== undefined) dbUpdates.experience_level = updates.experienceLevel;
+      if (updates.growingPurpose !== undefined) dbUpdates.growing_purpose = updates.growingPurpose;
+      if (updates.showTooltips !== undefined) dbUpdates.show_tooltips = updates.showTooltips;
+      if (updates.showGuidedWorkflows !== undefined) dbUpdates.show_guided_workflows = updates.showGuidedWorkflows;
+      if (updates.advancedMode !== undefined) dbUpdates.advanced_mode = updates.advancedMode;
+      if (updates.preferredCategories !== undefined) dbUpdates.preferred_categories = updates.preferredCategories;
+      if (updates.labEquipment !== undefined) dbUpdates.lab_equipment = updates.labEquipment;
       dbUpdates.updated_at = new Date().toISOString();
 
       // Check if a settings row already exists for this user
@@ -3518,6 +3531,15 @@ const loadSettings = async (): Promise<AppSettings> => {
               lowStockAlerts: data.low_stock_alerts,
               contaminationAlerts: data.contamination_alerts,
             },
+            // Onboarding wizard and user experience settings
+            hasCompletedSetupWizard: data.has_completed_setup_wizard ?? false,
+            experienceLevel: data.experience_level,
+            growingPurpose: data.growing_purpose,
+            showTooltips: data.show_tooltips ?? true,
+            showGuidedWorkflows: data.show_guided_workflows ?? false,
+            advancedMode: data.advanced_mode ?? false,
+            preferredCategories: data.preferred_categories,
+            labEquipment: data.lab_equipment,
           };
         }
         // No settings in database yet, use localStorage (no need to log)
