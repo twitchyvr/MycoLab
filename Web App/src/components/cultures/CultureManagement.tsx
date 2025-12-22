@@ -12,6 +12,7 @@ import { NumericInput } from '../common/NumericInput';
 import { EntityDisposalModal, DisposalOutcome } from '../common/EntityDisposalModal';
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
 import { NotificationBellCompact } from '../common/NotificationBell';
+import { ObservationModal, type ObservationFormData } from '../forms/ObservationForm';
 import { calculateShelfLife, formatRemainingShelfLife, getStorageRecommendation, getExpectedShelfLifeDays, coldSensitiveSpecies } from '../../utils';
 import type { Culture, CultureType, CultureStatus, CultureObservation, PreparedSpawn, ContaminationType, SuspectedCause, AmendmentType } from '../../store/types';
 
@@ -241,11 +242,7 @@ export const CultureManagement: React.FC = () => {
   const [cultureToDispose, setCultureToDispose] = useState<Culture | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
-  const [newObservation, setNewObservation] = useState({
-    type: 'general' as CultureObservation['type'],
-    notes: '',
-    healthRating: undefined as number | undefined,
-  });
+  // newObservation state removed - using canonical ObservationModal
 
   const [newTransfer, setNewTransfer] = useState({
     toType: 'agar' as CultureType | 'grain_spawn' | 'bulk',
@@ -366,21 +363,19 @@ export const CultureManagement: React.FC = () => {
     [cultures]
   );
 
-  // Add observation handler
-  const handleAddObservation = () => {
+  // Add observation handler - uses canonical ObservationModal
+  const handleSaveObservation = async (data: ObservationFormData) => {
     if (!guardAction()) return; // Show auth modal if not authenticated
-    if (!selectedCulture || !newObservation.notes) return;
+    if (!selectedCulture) return;
 
-    addCultureObservation(selectedCulture.id, {
+    await addCultureObservation(selectedCulture.id, {
       date: new Date(),
-      type: newObservation.type,
-      notes: newObservation.notes,
-      healthRating: newObservation.healthRating,
+      type: data.type as CultureObservation['type'],
+      notes: data.notes,
+      healthRating: data.healthRating,
+      images: data.images,
     });
     // selectedCulture will be auto-updated by the sync useEffect when state.cultures changes
-
-    setShowObservationModal(false);
-    setNewObservation({ type: 'general', notes: '', healthRating: undefined });
   };
 
   // Volume threshold below which a culture is considered effectively empty
@@ -715,15 +710,15 @@ export const CultureManagement: React.FC = () => {
                       selectedCulture?.id === culture.id ? 'border-emerald-600' : 'border-zinc-800'
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{typeConfig.icon}</span>
-                        <div>
-                          <p className="font-semibold text-white">{culture.label}</p>
-                          <p className="text-xs text-zinc-500">{strain?.name || 'Unknown'}</p>
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-xl flex-shrink-0">{typeConfig.icon}</span>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-white truncate">{culture.label}</p>
+                          <p className="text-xs text-zinc-500 truncate">{strain?.name || 'Unknown'}</p>
                         </div>
                       </div>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusConfig.color}`}>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap flex-shrink-0 ${statusConfig.color}`}>
                         {statusConfig.label}
                       </span>
                     </div>
@@ -828,81 +823,15 @@ export const CultureManagement: React.FC = () => {
         />
       )}
 
-      {/* Observation Modal */}
-      {showObservationModal && selectedCulture && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Log Observation</h3>
-              <button onClick={() => setShowObservationModal(false)} className="text-zinc-400 hover:text-white">
-                <Icons.X />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Type</label>
-                <select
-                  value={newObservation.type}
-                  onChange={e => setNewObservation(prev => ({ ...prev, type: e.target.value as CultureObservation['type'] }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                >
-                  <option value="general">General</option>
-                  <option value="growth">Growth</option>
-                  <option value="contamination">Contamination</option>
-                  <option value="transfer">Transfer</option>
-                  <option value="harvest">Harvest</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Health Rating</label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map(rating => (
-                    <button
-                      key={rating}
-                      onClick={() => setNewObservation(prev => ({ ...prev, healthRating: rating }))}
-                      className={`w-10 h-10 rounded-lg font-medium transition-all ${
-                        newObservation.healthRating === rating
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                      }`}
-                    >
-                      {rating}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Notes *</label>
-                <textarea
-                  value={newObservation.notes}
-                  onChange={e => setNewObservation(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={4}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowObservationModal(false)}
-                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddObservation}
-                disabled={!newObservation.notes}
-                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Observation Modal - Canonical form with images support */}
+      <ObservationModal
+        isOpen={showObservationModal && !!selectedCulture}
+        onClose={() => setShowObservationModal(false)}
+        entityType="culture"
+        entity={selectedCulture || undefined}
+        onSave={handleSaveObservation}
+        imageFolder="culture-observations"
+      />
 
       {/* Transfer Modal */}
       {showTransferModal && selectedCulture && (() => {
