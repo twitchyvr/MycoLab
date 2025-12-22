@@ -90,8 +90,25 @@ export function useViabilityReminders(config: Partial<ViabilityConfig> = {}) {
       }
 
       const now = new Date();
-      const createdAt = new Date(culture.createdAt);
-      const daysSinceCreation = differenceInDays(now, createdAt);
+
+      // Use the most relevant acquisition date based on acquisition method
+      // For purchased items: use receivedDate or purchaseDate
+      // For homemade items: use prepDate or createdAt
+      let acquisitionDate: Date;
+      if (culture.acquisitionMethod === 'purchased') {
+        acquisitionDate = culture.receivedDate
+          ? new Date(culture.receivedDate)
+          : culture.purchaseDate
+            ? new Date(culture.purchaseDate)
+            : new Date(culture.createdAt);
+      } else {
+        // Made it myself - use prep date if available
+        acquisitionDate = culture.prepDate
+          ? new Date(culture.prepDate)
+          : new Date(culture.createdAt);
+      }
+
+      const daysSinceCreation = differenceInDays(now, acquisitionDate);
 
       // Calculate days since last transfer
       let daysSinceLastTransfer: number | null = null;

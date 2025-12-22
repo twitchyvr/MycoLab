@@ -112,19 +112,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .from('user_profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle(); // Use maybeSingle to avoid errors when no row exists
 
       if (error) {
         // Profile might not exist yet for new users - that's ok
+        // Also handle 406 "Not Acceptable" which can occur with RLS timing issues
         if (error.code !== 'PGRST116') {
-          console.error('Error fetching profile:', error);
+          // Only log in development to avoid console spam
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[Auth] Error fetching profile:', error.code, error.message);
+          }
         }
         return null;
       }
 
-      return data as UserProfile;
+      return data as UserProfile | null;
     } catch (err) {
-      console.error('Profile fetch error:', err);
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[Auth] Profile fetch error:', err);
+      }
       return null;
     }
   };

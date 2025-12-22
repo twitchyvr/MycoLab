@@ -5123,6 +5123,71 @@ When adding purchased cultures (like LC syringes from vendors), the wizard previ
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1311',
+    title: 'Fix Setup Wizard Showing Repeatedly on Login',
+    description: 'Fixed bug where the onboarding wizard would show every time users logged in, even after completing it. Issue was that DB settings with null hasCompletedSetupWizard were overwriting localStorage values.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `Setup wizard repeatedly appearing bug fix:
+
+**Problem:**
+- Users who completed the onboarding wizard would see it again on every login
+- The hasCompletedSetupWizard setting was not persisting properly
+- Console showed 406 errors on user_profiles table
+
+**Root Cause:**
+When loading settings from the database, if has_completed_setup_wizard was NULL in the DB, the code was returning false - ignoring the localStorage value where the setting was actually saved.
+
+**Solution:**
+1. Updated loadSettings() in DataContext to use localStorage as fallback for wizard-related settings when DB returns null
+2. Changed the merge logic: \`data.has_completed_setup_wizard ?? localSettings.hasCompletedSetupWizard ?? false\`
+3. Same fix applied to experienceLevel
+
+**Additional Improvements:**
+- Changed user_profiles fetch to use .maybeSingle() instead of .single()
+- Reduced console spam by only logging errors in development mode
+- Better error handling for 406 "Not Acceptable" errors
+
+**Files Changed:**
+- src/store/DataContext.tsx - loadSettings localStorage fallback
+- src/lib/AuthContext.tsx - user_profiles fetch error handling`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1312',
+    title: 'Viability Reminders Use Acquisition Dates',
+    description: 'Updated viability reminder calculations to use the actual acquisition date (received_date, purchase_date, or prep_date) instead of the database record creation date.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `Viability reminder age calculation fix:
+
+**Problem:**
+- Viability reminders were calculating culture age from createdAt (when record was added to database)
+- For purchased cultures with old dates, the system didn't know how old they actually were
+- Users couldn't test notification system by adding cultures with old dates
+
+**Solution - Client-Side (useViabilityReminders.ts):**
+- For purchased cultures: use receivedDate → purchaseDate → createdAt (in order of preference)
+- For homemade cultures: use prepDate → createdAt
+- Age is now calculated from the actual acquisition date
+
+**Solution - Server-Side (SQL check_lc_age function):**
+- Updated to use COALESCE(received_date, purchase_date, prep_date, created_at)
+- WHERE clause now filters based on actual acquisition date being > 90 days old
+- Notification metadata includes acquisition_date and acquisition_method
+
+**Files Changed:**
+- src/hooks/useViabilityReminders.ts - Use acquisition dates for age calculation
+- supabase-schema.sql - Updated check_lc_age() function`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

@@ -7598,19 +7598,34 @@ DECLARE
   v_culture RECORD;
   v_user_prefs RECORD;
   v_age_days INTEGER;
+  v_acquisition_date TIMESTAMPTZ;
 BEGIN
   -- Find LC cultures older than 90 days (3 months)
+  -- Use acquisition date (received_date, purchase_date, prep_date, or created_at)
   FOR v_culture IN
     SELECT c.id, c.user_id, c.label, c.type, c.created_at,
+           c.prep_date, c.purchase_date, c.received_date, c.acquisition_method,
            s.name as strain_name,
-           EXTRACT(DAY FROM (NOW() - c.created_at))::INTEGER as age_days
+           -- Use the most relevant acquisition date for age calculation
+           EXTRACT(DAY FROM (NOW() - COALESCE(
+             c.received_date::timestamptz,
+             c.purchase_date::timestamptz,
+             c.prep_date,
+             c.created_at
+           )))::INTEGER as age_days
     FROM cultures c
     LEFT JOIN strains s ON c.strain_id = s.id
     WHERE c.is_current = true
       AND c.is_archived = false
       AND c.type = 'liquid_culture'
       AND c.status IN ('active', 'ready')
-      AND c.created_at < NOW() - INTERVAL '90 days'
+      -- Check if acquisition date is older than 90 days
+      AND COALESCE(
+        c.received_date::timestamptz,
+        c.purchase_date::timestamptz,
+        c.prep_date,
+        c.created_at
+      ) < NOW() - INTERVAL '90 days'
       -- Respect per-item muting
       AND (c.notifications_muted IS NULL OR c.notifications_muted = false)
       -- Only users with active profiles
@@ -7621,7 +7636,14 @@ BEGIN
           AND up.subscription_status IN ('active', 'trial')
       )
   LOOP
-    v_age_days := EXTRACT(DAY FROM (NOW() - v_culture.created_at))::INTEGER;
+    -- Calculate age from acquisition date
+    v_acquisition_date := COALESCE(
+      v_culture.received_date::timestamptz,
+      v_culture.purchase_date::timestamptz,
+      v_culture.prep_date,
+      v_culture.created_at
+    );
+    v_age_days := EXTRACT(DAY FROM (NOW() - v_acquisition_date))::INTEGER;
 
     SELECT * INTO v_user_prefs
     FROM notification_event_preferences
@@ -7655,6 +7677,8 @@ BEGIN
             'culture_label', v_culture.label,
             'strain_name', v_culture.strain_name,
             'age_days', v_age_days,
+            'acquisition_date', v_acquisition_date,
+            'acquisition_method', v_culture.acquisition_method,
             'created_at', v_culture.created_at
           )
         );

@@ -3529,6 +3529,10 @@ const loadSettings = async (): Promise<AppSettings> => {
           if (process.env.NODE_ENV === 'development') {
             console.log('[Settings] Loaded from database');
           }
+          // CRITICAL: For hasCompletedSetupWizard, use localStorage as fallback if DB is null
+          // This prevents the wizard from showing repeatedly when DB hasn't been updated
+          const hasCompletedWizard = data.has_completed_setup_wizard ?? localSettings.hasCompletedSetupWizard ?? false;
+
           return {
             defaultUnits: data.default_units as 'metric' | 'imperial',
             defaultCurrency: data.default_currency,
@@ -3541,8 +3545,9 @@ const loadSettings = async (): Promise<AppSettings> => {
               contaminationAlerts: data.contamination_alerts,
             },
             // Onboarding wizard and user experience settings
-            hasCompletedSetupWizard: data.has_completed_setup_wizard ?? false,
-            experienceLevel: data.experience_level,
+            // Use merged value that respects localStorage fallback
+            hasCompletedSetupWizard: hasCompletedWizard,
+            experienceLevel: data.experience_level ?? localSettings.experienceLevel,
             growingPurpose: data.growing_purpose,
             showTooltips: data.show_tooltips ?? true,
             showGuidedWorkflows: data.show_guided_workflows ?? false,
