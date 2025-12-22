@@ -2,6 +2,25 @@
 // FORMS INDEX - Export all entity forms
 // ============================================================================
 
+// Schema-Driven Compound Factory (SDCF) - Core Components
+export { FormEngine, FormModal } from './FormEngine';
+export { FieldRegistry, getFieldComponent, FieldWrapper } from './fields';
+export * from './schema';
+
+// Canonical Observation Form (uses SDCF internally)
+export {
+  ObservationForm,
+  ObservationModal,
+  getDefaultObservationFormData,
+  type ObservationFormData,
+  type ObservationEntityType,
+} from './ObservationForm';
+
+// Harvest Entry Form
+export { HarvestEntryForm, getDefaultHarvestEntryData } from './HarvestEntryForm';
+export type { HarvestEntryData } from './HarvestEntryForm';
+
+// Entity Forms
 export { StrainForm } from './StrainForm';
 export type { StrainFormData } from './StrainForm';
 

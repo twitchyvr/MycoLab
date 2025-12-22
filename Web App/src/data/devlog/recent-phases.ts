@@ -5358,6 +5358,68 @@ When loading settings from the database, if has_completed_setup_wizard was NULL 
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1317',
+    title: 'Schema-Driven Compound Factory (SDCF) Pattern Implementation',
+    description: 'Implemented SDCF pattern for consistent, reusable form components across the app. Ensures canonical data entry regardless of entry point.',
+    category: 'core',
+    status: 'completed',
+    priority: 'critical',
+    phaseId: 30,
+    notes: `Major architectural improvement for consistent UX:
+
+**Problem:**
+- Multiple different forms for the same data entry tasks
+- Inconsistent health rating scales (1-5 vs 1-10)
+- No image support in observation forms
+- Different UIs depending on entry point
+
+**Solution - Three Pillars of SDCF:**
+
+**1. Schema Definition (schema/types.ts, observation.schema.ts):**
+- Canonical schema types that define form structures
+- Field types: text, textarea, select, rating, slider, images, weight, volume
+- Validation rules, conditional visibility, transformations
+- Entity-specific schemas (culture observation, grow observation)
+
+**2. Field Registry (fields/index.tsx):**
+- Reusable field components for each type
+- Consistent styling and behavior
+- FieldWrapper for uniform layout
+- Rating field with 1-5 scale and color coding
+- Image uploader integration
+
+**3. Form Controller Engine (FormEngine.tsx):**
+- Generates forms from schemas automatically
+- Handles validation, state management, submission
+- Supports sections, collapsible groups
+- FormModal wrapper for dialog usage
+
+**Canonical ObservationForm:**
+- Uses SDCF pattern internally
+- Works for both cultures and grows
+- Consistent 1-5 health rating scale
+- Full image support (up to 5 photos)
+- Used by CultureManagement (updated to use it)
+
+**UI Fix - Badge Overflow:**
+- Fixed 'Contaminated' badge overflow in culture cards
+- Added flex constraints and truncation
+
+**Files Created:**
+- src/components/forms/schema/types.ts - Schema type definitions
+- src/components/forms/schema/observation.schema.ts - Observation schemas
+- src/components/forms/schema/index.ts - Schema exports
+- src/components/forms/fields/index.tsx - Field Registry
+- src/components/forms/FormEngine.tsx - Form Controller Engine
+- src/components/forms/ObservationForm.tsx - Canonical observation form
+
+**Files Updated:**
+- src/components/forms/index.ts - Added SDCF exports
+- src/components/cultures/CultureManagement.tsx - Uses canonical ObservationModal`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
