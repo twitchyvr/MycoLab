@@ -5074,6 +5074,55 @@ Fix:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1310',
+    title: 'Context-Aware Culture Acquisition Tracking',
+    description: 'Culture wizard Step 3 now adapts based on whether culture is homemade or purchased. For purchased cultures, asks about supplier, purchase date, and received date instead of recipe and prep/sterilization dates.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 25,
+    notes: `Major UX improvement to Culture Wizard:
+
+**Problem Solved:**
+When adding purchased cultures (like LC syringes from vendors), the wizard previously asked irrelevant questions about recipe, prep date, and sterilization date - information that users wouldn't know.
+
+**Solution - Context-Aware Step 3:**
+- Toggle at top: "Made It Myself" vs "Purchased / Received"
+- Each mode shows relevant fields only
+
+**Made It Myself mode:**
+- Recipe / Media Formula selection
+- Preparation Date
+- Sterilization Date
+- Quick date buttons
+
+**Purchased / Received mode:**
+- Supplier / Vendor selection
+- Purchase / Order Date
+- Received Date (important for freshness tracking)
+- Lot Number
+
+**Step 4 also adapts:**
+- For purchased: Shows summary of supplier/lot from Step 3
+- For homemade: Shows supplier field (for source materials)
+- Cost field always shown
+- Parent culture selection always available
+
+**Database Changes:**
+- Added acquisition_method column (TEXT: 'made' | 'purchased')
+- Added purchase_date column (DATE)
+- Added received_date column (DATE)
+- All columns added via idempotent migrations
+
+**Files Changed:**
+- src/components/cultures/CultureWizard.tsx - Complete rewrite of Step 3 and updates to Step 4/5
+- src/store/types.ts - Added acquisition tracking fields to Culture interface
+- src/store/transformations.ts - Updated transformCultureFromDb and transformCultureToDb
+- supabase-schema.sql - Added acquisition tracking columns migration`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
