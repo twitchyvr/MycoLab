@@ -84,6 +84,7 @@ When assisting with this project, always operate with the following context in m
 6. **Offline-first** - Don't assume Supabase is connected
 7. **Idempotent schema** - SQL migrations are safe to re-run
 8. **No testing yet** - Be careful with refactoring without tests
+9. **⛔ NEVER EDIT WITHOUT READING FIRST** - ALWAYS use the Read tool on a file BEFORE attempting to Edit it. Editing a file you haven't read in the current context will fail and waste time. No exceptions.
 
 ### ⚠️ DRY PRINCIPLE - NO DUPLICATE INTERFACES ⚠️
 
