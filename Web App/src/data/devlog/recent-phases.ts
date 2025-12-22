@@ -5420,6 +5420,46 @@ When loading settings from the database, if has_completed_setup_wizard was NULL 
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1318',
+    title: 'Canonical Forms Migration - GrowManagement & Audit',
+    description: 'Migrated GrowManagement to use canonical ObservationModal and HarvestEntryForm. Audited remaining form entry points for consistency.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `Continued canonical forms migration from dev-1317:
+
+**GrowManagement Migrations:**
+- Observation modal → Uses canonical ObservationModal
+- Inline harvest form → Uses canonical HarvestEntryForm
+- Removed ~80 lines of inline form code
+- Consistent 1-5 health rating, grow-specific observation types
+- Images support for grow observations
+
+**Code Changes:**
+- Added imports for ObservationModal, HarvestEntryForm
+- Replaced newObservation state with handleSaveObservation handler
+- Replaced inline harvest form with HarvestEntryForm component
+- Updated harvestForm state to harvestData using HarvestEntryData type
+
+**Component Audit Results:**
+- EventLogger: Reviewed - general-purpose lab event logger (keeps separate form - different use case)
+- ColdStorageCheck: Reviewed - daily check workflow, not observation form
+- HarvestWorkflow: Reviewed - dedicated wizard page with elaborate BE gauge, consistent data fields
+- CommandCenter: Verified - already uses canonical HarvestEntryForm
+
+**Consistency Verification:**
+- All harvest forms use same quality values (excellent/good/fair/poor)
+- All harvest forms use WeightInput with unit conversion
+- All observation forms use 1-5 health rating scale
+- All observation forms support images
+
+**Files Updated:**
+- src/components/grows/GrowManagement.tsx - Uses canonical forms`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

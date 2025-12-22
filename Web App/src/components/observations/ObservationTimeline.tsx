@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../store';
+import { ObservationForm, getDefaultObservationFormData, type ObservationFormData } from '../forms/ObservationForm';
 import type { CultureObservation, GrowObservation, Culture, Grow } from '../../store/types';
 
 // ============================================================================
@@ -175,10 +176,14 @@ interface AddObservationModalProps {
   cultures: Culture[];
   grows: Grow[];
   strains: any[];
-  onAddCultureObservation: (cultureId: string, obs: Omit<CultureObservation, 'id'>) => void;
+  onAddCultureObservation: (cultureId: string, obs: Omit<CultureObservation, 'id'>) => Promise<void>;
   onAddGrowObservation: (growId: string, obs: Omit<GrowObservation, 'id'>) => void;
 }
 
+/**
+ * AddObservationModal - Uses canonical ObservationForm internally
+ * Adds entity selection (culture/grow) on top of the standard form
+ */
 const AddObservationModal: React.FC<AddObservationModalProps> = ({
   isOpen,
   onClose,
@@ -190,45 +195,65 @@ const AddObservationModal: React.FC<AddObservationModalProps> = ({
 }) => {
   const [entityType, setEntityType] = useState<'culture' | 'grow'>('culture');
   const [entityId, setEntityId] = useState('');
-  const [observationType, setObservationType] = useState<string>('general');
-  const [title, setTitle] = useState('');
-  const [notes, setNotes] = useState('');
-  const [healthRating, setHealthRating] = useState<number | undefined>(undefined);
-  const [colonizationPercent, setColonizationPercent] = useState<number | undefined>(undefined);
+  const [formData, setFormData] = useState<ObservationFormData>(getDefaultObservationFormData('culture'));
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const activeCultures = cultures.filter(c => c.status !== 'archived' && c.status !== 'depleted');
   const activeGrows = grows.filter(g => g.status === 'active');
 
-  const handleSubmit = () => {
-    if (!entityId || !notes) return;
+  // Get selected entity
+  const selectedEntity = entityType === 'culture'
+    ? activeCultures.find(c => c.id === entityId)
+    : activeGrows.find(g => g.id === entityId);
 
-    const timestamp = new Date();
+  // Reset form when entity type changes
+  const handleEntityTypeChange = (type: 'culture' | 'grow') => {
+    setEntityType(type);
+    setEntityId('');
+    setFormData(getDefaultObservationFormData(type));
+    setError(null);
+  };
 
-    if (entityType === 'culture') {
-      onAddCultureObservation(entityId, {
-        date: timestamp,
-        type: observationType as CultureObservation['type'],
-        notes,
-        healthRating,
-        images: [],
-      });
-    } else {
-      onAddGrowObservation(entityId, {
-        date: timestamp,
-        stage: grows.find(g => g.id === entityId)?.currentStage || 'spawning',
-        type: observationType as GrowObservation['type'],
-        title: title || observationType,
-        notes,
-        colonizationPercent,
-      });
+  const handleSubmit = async () => {
+    if (!entityId) {
+      setError('Please select a ' + entityType);
+      return;
     }
 
-    // Reset form
-    setTitle('');
-    setNotes('');
-    setHealthRating(undefined);
-    setColonizationPercent(undefined);
-    onClose();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (entityType === 'culture') {
+        await onAddCultureObservation(entityId, {
+          date: new Date(),
+          type: formData.type as CultureObservation['type'],
+          notes: formData.notes,
+          healthRating: formData.healthRating,
+          images: formData.images,
+        });
+      } else {
+        const grow = grows.find(g => g.id === entityId);
+        onAddGrowObservation(entityId, {
+          date: new Date(),
+          stage: grow?.currentStage || 'spawning',
+          type: formData.type as GrowObservation['type'],
+          title: formData.type,
+          notes: formData.notes,
+          colonizationPercent: formData.colonizationPercent,
+        });
+      }
+
+      // Reset and close
+      setFormData(getDefaultObservationFormData(entityType));
+      setEntityId('');
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Failed to save observation');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -237,10 +262,10 @@ const AddObservationModal: React.FC<AddObservationModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-lg bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl"
+        className="relative w-full max-w-lg bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+        <div className="sticky top-0 bg-zinc-900 flex items-center justify-between p-4 border-b border-zinc-800">
           <h3 className="text-lg font-semibold text-white">Log Observation</h3>
           <button onClick={onClose} className="text-zinc-400 hover:text-white">
             <Icons.X />
@@ -251,7 +276,7 @@ const AddObservationModal: React.FC<AddObservationModalProps> = ({
           {/* Entity Type Selection */}
           <div className="flex gap-2">
             <button
-              onClick={() => { setEntityType('culture'); setEntityId(''); }}
+              onClick={() => handleEntityTypeChange('culture')}
               className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                 entityType === 'culture'
                   ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
@@ -261,7 +286,7 @@ const AddObservationModal: React.FC<AddObservationModalProps> = ({
               <Icons.Culture /> Culture
             </button>
             <button
-              onClick={() => { setEntityType('grow'); setEntityId(''); }}
+              onClick={() => handleEntityTypeChange('grow')}
               className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                 entityType === 'grow'
                   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
@@ -303,115 +328,31 @@ const AddObservationModal: React.FC<AddObservationModalProps> = ({
             </select>
           </div>
 
-          {/* Observation Type */}
-          <div>
-            <label className="block text-sm text-zinc-400 mb-1">Observation Type</label>
-            <select
-              value={observationType}
-              onChange={e => setObservationType(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-            >
-              {entityType === 'culture' ? (
-                <>
-                  <option value="general">General</option>
-                  <option value="growth">Growth Progress</option>
-                  <option value="contamination">Contamination</option>
-                  <option value="transfer">Transfer</option>
-                </>
-              ) : (
-                <>
-                  <option value="general">General</option>
-                  <option value="growth">Growth Progress</option>
-                  <option value="contamination">Contamination</option>
-                  <option value="harvest">Harvest</option>
-                  <option value="check">Daily Check</option>
-                  <option value="milestone">Milestone</option>
-                </>
-              )}
-            </select>
-          </div>
-
-          {/* Title (for grows) */}
-          {entityType === 'grow' && (
-            <div>
-              <label className="block text-sm text-zinc-400 mb-1">Title</label>
-              <input
-                type="text"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Brief observation title..."
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+          {/* Canonical Observation Form - Only show when entity is selected */}
+          {entityId && (
+            <div className="pt-2 border-t border-zinc-800">
+              <ObservationForm
+                entityType={entityType}
+                entity={selectedEntity}
+                data={formData}
+                onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
+                onSubmit={handleSubmit}
+                onCancel={onClose}
+                isLoading={isLoading}
+                error={error}
+                showCancel={true}
+                submitLabel="Log Observation"
+                imageFolder={`${entityType}-observations`}
               />
             </div>
           )}
 
-          {/* Health Rating (for cultures) */}
-          {entityType === 'culture' && (
-            <div>
-              <label className="block text-sm text-zinc-400 mb-1">Health Rating</label>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => (
-                  <button
-                    key={rating}
-                    onClick={() => setHealthRating(healthRating === rating ? undefined : rating)}
-                    className={`w-8 h-8 rounded text-sm font-medium transition-colors ${
-                      healthRating === rating
-                        ? rating >= 7 ? 'bg-emerald-500 text-white' :
-                          rating >= 4 ? 'bg-amber-500 text-white' :
-                          'bg-red-500 text-white'
-                        : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                    }`}
-                  >
-                    {rating}
-                  </button>
-                ))}
-              </div>
+          {/* Show placeholder when no entity selected */}
+          {!entityId && (
+            <div className="py-8 text-center text-zinc-500">
+              <p>Select a {entityType} above to log an observation</p>
             </div>
           )}
-
-          {/* Colonization Percent (for grows) */}
-          {entityType === 'grow' && (
-            <div>
-              <label className="block text-sm text-zinc-400 mb-1">Colonization %</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={colonizationPercent || ''}
-                onChange={e => setColonizationPercent(parseInt(e.target.value) || undefined)}
-                placeholder="e.g., 75"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-          )}
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm text-zinc-400 mb-1">Notes *</label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Describe what you observed..."
-              rows={3}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 resize-none"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-2 p-4 border-t border-zinc-800">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!entityId || !notes}
-            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium transition-colors"
-          >
-            Log Observation
-          </button>
         </div>
       </div>
     </div>
