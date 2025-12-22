@@ -292,6 +292,9 @@ export interface Location {
   // Image support
   photos?: string[];           // Photos of the location
   currentPhoto?: string;       // Current state photo
+
+  // Notification control
+  notificationsMuted?: boolean; // Mute notifications for this location
 }
 
 // Container categories - unified from former 'vessels' and 'container_types'
@@ -415,6 +418,9 @@ export interface InventoryItem {
   depreciationYears?: number;     // For equipment - years to depreciate over
   currentValue?: number;          // Current book value (for equipment)
   includeInGrowCost?: boolean;    // Override to force include/exclude from grow cost calculations
+
+  // Notification control
+  notificationsMuted?: boolean;   // Mute low stock/expiring notifications for this item
 }
 
 // ============================================================================
@@ -616,6 +622,9 @@ export interface Culture {
   amendmentType?: AmendmentType;
   amendmentReason?: string;
   amendsRecordId?: string;
+
+  // Notification control
+  notificationsMuted?: boolean;   // Mute expiration/LC age/transfer notifications for this culture
 }
 
 // ============================================================================
@@ -681,6 +690,9 @@ export interface PreparedSpawn {
   amendmentType?: AmendmentType;
   amendmentReason?: string;
   amendsRecordId?: string;
+
+  // Notification control
+  notificationsMuted?: boolean;   // Mute spawn ready/expiring notifications
 }
 
 // ============================================================================
@@ -798,6 +810,9 @@ export interface Grow {
   amendmentReason?: string;
   amendsRecordId?: string;
   sourceCultureSnapshot?: Record<string, unknown>;  // Denormalized for historical accuracy
+
+  // Notification control
+  notificationsMuted?: boolean;   // Mute stage transition/harvest/slow growth notifications for this grow
 }
 
 // ============================================================================
@@ -856,15 +871,31 @@ export interface Recipe {
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'error';
 export type NotificationCategory =
-  | 'culture_expiring'      // Culture viability alerts
-  | 'stage_transition'      // Grow stage change reminders
-  | 'low_inventory'         // Inventory below reorder point
-  | 'harvest_ready'         // Ready to harvest
-  | 'contamination'         // Contamination detected
-  | 'lc_age'                // LC getting too old
-  | 'slow_growth'           // Item not progressing as expected
-  | 'system'                // System notifications
-  | 'user';                 // User-generated notes/reminders
+  // Culture notifications
+  | 'culture_expiring'      // Culture approaching expiration date
+  | 'lc_age'                // Liquid culture getting too old
+  | 'transfer_due'          // Culture at high generation, needs transfer
+  | 'culture_ready'         // Culture fully colonized, ready to use
+  // Grow notifications
+  | 'stage_transition'      // Grow ready for next stage
+  | 'harvest_ready'         // Grow ready for harvest
+  | 'colonization_complete' // Spawn run done, ready for fruiting
+  | 'slow_growth'           // Grow not progressing as expected
+  | 'contamination'         // Contamination detected/logged
+  // Inventory notifications
+  | 'low_inventory'         // Below reorder point
+  | 'item_expiring'         // Inventory item expiring soon
+  // Spawn notifications
+  | 'spawn_ready'           // Prepared spawn fully colonized
+  | 'spawn_expiring'        // Prepared spawn approaching expiration
+  // Maintenance notifications
+  | 'cold_storage_check'    // Time for cold storage inspection
+  | 'maintenance_due'       // Equipment maintenance reminder
+  // Engagement notifications
+  | 'photo_documentation'   // Reminder to document progress with photos
+  // System notifications
+  | 'system'                // System alerts
+  | 'user';                 // User-generated reminders
 
 export interface UserNotification {
   id: string;

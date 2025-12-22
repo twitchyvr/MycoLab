@@ -1039,6 +1039,17 @@ CREATE TABLE IF NOT EXISTS user_settings (
   harvest_reminders BOOLEAN DEFAULT true,
   low_stock_alerts BOOLEAN DEFAULT true,
   contamination_alerts BOOLEAN DEFAULT true,
+  -- Notification delivery preferences
+  notification_digest TEXT DEFAULT 'immediate' CHECK (notification_digest IN ('immediate', 'hourly', 'daily', 'weekly')),
+  digest_time TIME DEFAULT '09:00',           -- Preferred time for daily/weekly digests
+  digest_day INTEGER DEFAULT 1,               -- Day of week for weekly digest (1=Monday)
+  -- Photo documentation reminders (engagement)
+  photo_reminders_enabled BOOLEAN DEFAULT true,
+  photo_reminder_frequency TEXT DEFAULT 'weekly' CHECK (photo_reminder_frequency IN ('daily', 'every_3_days', 'weekly', 'biweekly', 'never')),
+  -- Rate limiting (anti-abuse)
+  max_notifications_per_day INTEGER DEFAULT 50,       -- Max queued notifications per day
+  last_notification_reset TIMESTAMPTZ DEFAULT NOW(),  -- When daily count was last reset
+  notifications_today INTEGER DEFAULT 0,              -- Counter for rate limiting
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -1134,9 +1145,33 @@ CREATE TABLE IF NOT EXISTS notification_event_preferences (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
 
   -- Event category (matches NotificationCategory from types.ts)
+  -- Comprehensive list for mycology lab management
   event_category TEXT NOT NULL CHECK (event_category IN (
-    'culture_expiring', 'stage_transition', 'low_inventory', 'harvest_ready',
-    'contamination', 'lc_age', 'slow_growth', 'system', 'user'
+    -- Culture notifications
+    'culture_expiring',       -- Culture approaching expiration date
+    'lc_age',                 -- Liquid culture getting too old
+    'transfer_due',           -- Culture at high generation, needs transfer
+    'culture_ready',          -- Culture fully colonized, ready to use
+    -- Grow notifications
+    'stage_transition',       -- Grow ready for next stage
+    'harvest_ready',          -- Grow ready for harvest
+    'colonization_complete',  -- Spawn run done, ready for fruiting
+    'slow_growth',            -- Grow not progressing as expected
+    'contamination',          -- Contamination detected/logged
+    -- Inventory notifications
+    'low_inventory',          -- Below reorder point
+    'item_expiring',          -- Inventory item expiring soon
+    -- Spawn notifications
+    'spawn_ready',            -- Prepared spawn fully colonized
+    'spawn_expiring',         -- Prepared spawn approaching expiration
+    -- Maintenance notifications
+    'cold_storage_check',     -- Time for cold storage inspection
+    'maintenance_due',        -- Equipment maintenance reminder
+    -- Engagement notifications
+    'photo_documentation',    -- Reminder to document progress with photos
+    -- System notifications
+    'system',                 -- System alerts
+    'user'                    -- User-generated reminders
   )),
 
   -- Which channels to use for this event type
@@ -1316,6 +1351,63 @@ BEGIN
     ALTER TABLE notification_event_preferences ADD COLUMN enabled BOOLEAN DEFAULT true;
     RAISE NOTICE 'Added enabled column to notification_event_preferences';
   END IF;
+END $$;
+
+-- Add notification digest and photo reminder columns to user_settings
+DO $$
+BEGIN
+  -- Digest preference
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'notification_digest') THEN
+    ALTER TABLE user_settings ADD COLUMN notification_digest TEXT DEFAULT 'immediate';
+    RAISE NOTICE 'Added notification_digest to user_settings';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'digest_time') THEN
+    ALTER TABLE user_settings ADD COLUMN digest_time TIME DEFAULT '09:00';
+    RAISE NOTICE 'Added digest_time to user_settings';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'digest_day') THEN
+    ALTER TABLE user_settings ADD COLUMN digest_day INTEGER DEFAULT 1;
+    RAISE NOTICE 'Added digest_day to user_settings';
+  END IF;
+
+  -- Photo documentation reminders (engagement feature)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'photo_reminders_enabled') THEN
+    ALTER TABLE user_settings ADD COLUMN photo_reminders_enabled BOOLEAN DEFAULT true;
+    RAISE NOTICE 'Added photo_reminders_enabled to user_settings';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'photo_reminder_frequency') THEN
+    ALTER TABLE user_settings ADD COLUMN photo_reminder_frequency TEXT DEFAULT 'weekly';
+    RAISE NOTICE 'Added photo_reminder_frequency to user_settings';
+  END IF;
+
+  -- Rate limiting columns
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'max_notifications_per_day') THEN
+    ALTER TABLE user_settings ADD COLUMN max_notifications_per_day INTEGER DEFAULT 50;
+    RAISE NOTICE 'Added max_notifications_per_day to user_settings';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'last_notification_reset') THEN
+    ALTER TABLE user_settings ADD COLUMN last_notification_reset TIMESTAMPTZ DEFAULT NOW();
+    RAISE NOTICE 'Added last_notification_reset to user_settings';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'notifications_today') THEN
+    ALTER TABLE user_settings ADD COLUMN notifications_today INTEGER DEFAULT 0;
+    RAISE NOTICE 'Added notifications_today to user_settings';
+  END IF;
+
+  RAISE NOTICE 'Notification digest and photo reminder columns migration complete';
 END $$;
 
 -- Indexes for notification tables
@@ -6964,6 +7056,50 @@ END $$;
 
 DO $$ BEGIN
   RAISE NOTICE 'Image columns added successfully!';
+END $$;
+
+-- ============================================================================
+-- PER-ITEM NOTIFICATION MUTING
+-- Allows users to mute notifications for specific items without affecting
+-- their global notification preferences. Mobile-first UX pattern.
+-- ============================================================================
+
+DO $$ BEGIN
+  RAISE NOTICE 'Adding notification muting columns to entity tables...';
+END $$;
+
+-- Cultures: Mute expiration, LC age, transfer due notifications for this culture
+DO $$ BEGIN
+  ALTER TABLE cultures ADD COLUMN IF NOT EXISTS notifications_muted BOOLEAN DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Grows: Mute stage transition, harvest ready, slow growth notifications for this grow
+DO $$ BEGIN
+  ALTER TABLE grows ADD COLUMN IF NOT EXISTS notifications_muted BOOLEAN DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Inventory items: Mute low stock, expiring item notifications for this item
+DO $$ BEGIN
+  ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS notifications_muted BOOLEAN DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Prepared spawn: Mute spawn ready, spawn expiring notifications
+DO $$ BEGIN
+  ALTER TABLE prepared_spawn ADD COLUMN IF NOT EXISTS notifications_muted BOOLEAN DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Locations: Mute cold storage check reminders for this location
+DO $$ BEGIN
+  ALTER TABLE locations ADD COLUMN IF NOT EXISTS notifications_muted BOOLEAN DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  RAISE NOTICE 'Notification muting columns added successfully!';
 END $$;
 
 -- ============================================================================
