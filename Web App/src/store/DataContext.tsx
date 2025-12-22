@@ -1424,8 +1424,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, [state.cultures]);
 
   const addCultureObservation = useCallback(async (cultureId: string, observation: Omit<CultureObservation, 'id'>) => {
-    const newObs: CultureObservation = { ...observation, id: generateId('obs') };
-
     // Determine cascade updates for the culture
     const cultureUpdates: Partial<Culture> = {
       updatedAt: new Date(),
@@ -1441,16 +1439,19 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       cultureUpdates.status = 'contaminated';
     }
 
+    // Variable to hold the final observation with ID
+    let newObs: CultureObservation;
+
     // Persist to Supabase if connected
     if (supabase) {
       try {
         const userId = await getCachedUserId();
 
         // Insert the observation to culture_observations table
-        const { error: obsError } = await supabase
+        // Let the database generate the UUID (don't pass id - it has DEFAULT uuid_generate_v4())
+        const { data, error: obsError } = await supabase
           .from('culture_observations')
           .insert({
-            id: newObs.id,
             culture_id: cultureId,
             date: observation.date instanceof Date ? observation.date.toISOString() : observation.date,
             type: observation.type,
@@ -1458,12 +1459,17 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
             health_rating: observation.healthRating,
             images: observation.images,
             user_id: userId,
-          });
+          })
+          .select('id')
+          .single();
 
         if (obsError) {
           console.error('Failed to save observation to database:', obsError);
           throw obsError;
         }
+
+        // Use the database-generated UUID
+        newObs = { ...observation, id: data.id };
 
         // Update the culture's health_rating and status if needed
         if (Object.keys(cultureUpdates).length > 1) { // More than just updatedAt
@@ -1481,6 +1487,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         console.error('Error persisting observation:', error);
         throw error;
       }
+    } else {
+      // Offline mode: generate a local ID
+      newObs = { ...observation, id: generateId('obs') };
     }
 
     // Update local state
