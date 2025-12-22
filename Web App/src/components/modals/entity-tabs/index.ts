@@ -7,3 +7,4 @@ export { CultureOverviewTab } from './CultureOverviewTab';
 export { GrowOverviewTab } from './GrowOverviewTab';
 export { TimelineTab } from './TimelineTab';
 export { HistoryTab } from './HistoryTab';
+export { LineageTab } from './LineageTab';

@@ -9,6 +9,7 @@ import { EntityDetailModal, type EntityDetailTab } from './EntityDetailModal';
 import { CultureOverviewTab } from './entity-tabs/CultureOverviewTab';
 import { TimelineTab } from './entity-tabs/TimelineTab';
 import { HistoryTab } from './entity-tabs/HistoryTab';
+import { LineageTab } from './entity-tabs/LineageTab';
 import { useData } from '../../store';
 import type { Culture, CultureStatus } from '../../store/types';
 
@@ -182,16 +183,10 @@ export const CultureDetailModal: React.FC<CultureDetailModalProps> = ({
 
       case 'lineage':
         return (
-          <div className="space-y-4">
-            {/* Full lineage view will go here */}
-            <div className="text-center py-8 text-zinc-500">
-              <TabIcons.Lineage />
-              <p className="mt-2">Full lineage visualization coming soon</p>
-              <p className="text-xs mt-1">
-                {lineage.ancestors.length} ancestors, {lineage.descendants.length} descendants
-              </p>
-            </div>
-          </div>
+          <LineageTab
+            culture={culture}
+            onNavigateToCulture={onNavigateToCulture}
+          />
         );
 
       case 'history':
@@ -206,7 +201,7 @@ export const CultureDetailModal: React.FC<CultureDetailModalProps> = ({
       default:
         return null;
     }
-  }, [activeTab, culture, lineage, onNavigateToCulture, onEdit]);
+  }, [activeTab, culture, onNavigateToCulture, onEdit]);
 
   // Status badge component
   const statusBadge = (

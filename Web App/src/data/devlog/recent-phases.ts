@@ -5600,6 +5600,7 @@ Created canonical RoomCheckForm.tsx:
 - src/components/modals/entity-tabs/GrowOverviewTab.tsx
 - src/components/modals/entity-tabs/TimelineTab.tsx
 - src/components/modals/entity-tabs/HistoryTab.tsx
+- src/components/modals/entity-tabs/LineageTab.tsx
 - src/components/cards/EntityCard.tsx
 - src/components/cards/SummaryPanel.tsx
 
