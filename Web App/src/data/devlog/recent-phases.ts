@@ -4959,6 +4959,32 @@ Fix:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1307',
+    title: 'Version Modal Repeated Popup Fix',
+    description: 'Fixed bug where the "Update Available" modal kept popping up every 15 seconds after clicking Refresh, making the app unusable.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    phaseId: 25,
+    notes: `Root Cause:
+- After user clicked "Refresh Now", sessionStorage retained OLD script hashes
+- New page loaded with NEW script hashes
+- Code only stored hashes if sessionStorage was EMPTY (bug at line 107)
+- Comparison always found a "difference" (old stored vs new server)
+- Modal kept showing every check interval
+
+Fix:
+- ALWAYS update sessionStorage with current page's script hashes on load
+- Add mycolab-version-detected flag to prevent repeated notifications
+- Clear flag on page load to allow detecting future updates
+- Check flag before showing modal to prevent loops
+
+**Files Changed:**
+- src/lib/VersionContext.tsx - Script hash storage, version detection flag`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
