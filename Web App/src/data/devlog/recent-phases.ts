@@ -5028,6 +5028,52 @@ Fix:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1309',
+    title: 'Feature-Complete RecipeForm with Ingredients',
+    description: 'Complete rewrite of RecipeForm to be the canonical, feature-complete recipe creation interface with ingredients from inventory, cost tracking, instructions, and tips.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 25,
+    notes: `Complete RecipeForm overhaul following canonical form architecture:
+
+**New Features:**
+- **Ingredients Section** (collapsible)
+  - Select from inventory items with auto-population of unit
+  - Manual ingredient entry for items not in inventory
+  - Real-time cost calculation based on inventory unit costs
+  - Running total of estimated recipe cost
+
+- **Instructions Section** (collapsible)
+  - Numbered step-by-step instructions
+  - Add/remove/reorder steps
+  - Handles empty steps gracefully
+
+- **Tips Section** (collapsible)
+  - Optional tips and notes for the recipe
+  - Starts collapsed if no existing tips
+
+- **Timing & Sterilization Section** (collapsible)
+  - Prep time in minutes
+  - Sterilization time and PSI
+  - Source URL for reference recipes
+
+- **Category-Specific Icons**
+  - Visual indicators for agar, LC, grain spawn, substrate, etc.
+  - Helpful descriptions for each category
+
+**Technical Details:**
+- Uses getInventoryCategory for proper category lookup
+- Filters inventory to likely recipe ingredients
+- Supports linked ingredients (with inventoryItemId) and manual ingredients
+- Calculates estimated cost from inventory unit costs
+
+**Files Changed:**
+- src/components/forms/RecipeForm.tsx - Complete rewrite`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
