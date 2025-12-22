@@ -266,6 +266,122 @@ export const GrowForm = ({ onSubmit, initialData }) => (
 <EntityFormModal entityType="grow" />
 ```
 
+### ⚠️⚠️⚠️ DATA INTEGRITY & CASCADING UPDATES - CRITICAL ⚠️⚠️⚠️
+
+**EVERY piece of data in this app connects to or relies on other pieces of data. NEVER implement a feature without considering ALL related data, views, and entities.**
+
+#### The Problem This Solves
+
+A past bug allowed observations to be logged without updating parent entity:
+- Logging contamination observation → Culture status stayed "Active" (WRONG)
+- Logging health rating → Culture health didn't update (WRONG)
+- User saw their observation but the culture looked unchanged
+
+This violates data integrity and confuses users.
+
+#### Mandatory Rules for ALL Data Operations
+
+**1. When adding child records (observations, transfers, flushes), ALWAYS cascade relevant changes to parent:**
+
+| Child Record | Parent Entity | Cascading Fields |
+|-------------|---------------|------------------|
+| CultureObservation with healthRating | Culture | `healthRating` |
+| CultureObservation type='contamination' | Culture | `status = 'contaminated'` |
+| GrowObservation type='contamination' | Grow | `currentStage = 'contaminated'`, `status = 'failed'` |
+| Flush (harvest) | Grow | `totalYield`, `flushes`, `currentStage` |
+| Transfer depleting source | Culture | `status = 'depleted'`, `fillVolumeMl` |
+
+**2. When modifying a field that affects other entities, check ALL relationships:**
+
+```typescript
+// WRONG - Incomplete implementation
+const addObservation = (observation) => {
+  setState(prev => ({
+    cultures: prev.cultures.map(c =>
+      c.id === id ? { ...c, observations: [...c.observations, obs] } : c
+    )
+  }));
+};
+
+// CORRECT - Cascades all relevant changes
+const addObservation = (observation) => {
+  setState(prev => ({
+    cultures: prev.cultures.map(c => {
+      if (c.id !== id) return c;
+
+      const updates = { observations: [...c.observations, obs] };
+
+      // CASCADE: Health rating from observation
+      if (observation.healthRating != null) {
+        updates.healthRating = observation.healthRating;
+      }
+
+      // CASCADE: Contamination status
+      if (observation.type === 'contamination') {
+        updates.status = 'contaminated';
+      }
+
+      return { ...c, ...updates };
+    })
+  }));
+};
+```
+
+**3. Before writing ANY CRUD function, answer these questions:**
+
+- [ ] Does this operation create a child record? → What fields on the parent should update?
+- [ ] Does this operation change a status/stage? → What related entities need to know?
+- [ ] Does this operation affect quantities/volumes? → What calculations need updating?
+- [ ] Does this operation mark something as contaminated/failed? → What parent records are affected?
+- [ ] Can this operation deplete/exhaust something? → What status changes should cascade?
+
+**4. Entity Relationship Map (Reference)**
+
+```
+Culture
+├── Observations[] ←─ Can update: healthRating, status
+├── Transfers[] ←─ Can update: fillVolumeMl, volumeUsed, status (depleted)
+├── Parent Culture ←─ Affects: lineage, generation
+└── Child Cultures ←─ Linked via parentCultureId
+
+Grow
+├── Observations[] ←─ Can update: currentStage, status
+├── Flushes[] ←─ Can update: totalYield, totalYieldDry, currentStage
+├── Source Culture ←─ References sourceCultureId
+└── Inventory Usage ←─ Affects cost calculations
+
+Recipe
+├── Ingredients[] ←─ Affects: totalCost, nutritional calculations
+└── Cultures using this recipe ←─ Referenced by Culture.recipeId
+
+Inventory Item
+├── Lots[] ←─ Affects: totalQuantity, averageCost
+└── Purchase Orders ←─ Updates stock levels on receive
+```
+
+**5. Testing Cascades**
+
+When implementing any data operation, mentally test:
+1. What does the UI show BEFORE the operation?
+2. What should change AFTER the operation?
+3. Are ALL relevant displays updated?
+4. Would a user be confused by any stale/unchanged data?
+
+#### Anti-Patterns to NEVER Do
+
+❌ **Adding observation without updating parent health/status**
+❌ **Recording transfer without updating source volume**
+❌ **Marking contamination without changing status/stage**
+❌ **Adding flush without updating totalYield**
+❌ **Depleting inventory without updating lot quantities**
+❌ **Assuming "the UI will handle it" - data layer must be consistent**
+
+#### Files to Check for Cascading Logic
+
+- `src/store/DataContext.tsx` - All CRUD operations with cascade logic
+- `src/store/types.ts` - Entity relationships and type definitions
+- `supabase-schema.sql` - Database triggers (if using server-side cascades)
+
 ### !!! MANDATORY PRE-COMMIT CHECKLIST - NO EXCEPTIONS !!!
 
 **⚠️ STOP! BEFORE RUNNING `git commit`, YOU MUST COMPLETE ALL THREE CHECKS BELOW. ⚠️**

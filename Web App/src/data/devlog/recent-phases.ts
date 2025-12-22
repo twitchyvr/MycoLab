@@ -5272,6 +5272,48 @@ When loading settings from the database, if has_completed_setup_wizard was NULL 
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1315',
+    title: 'Fix Observation Cascading Updates',
+    description: 'Fixed critical data integrity bug where observations did not cascade health ratings or contamination status to parent entities.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    phaseId: 30,
+    notes: `Critical data integrity fix:
+
+**Problem:**
+- Logging a culture observation with type='contamination' did NOT update culture.status
+- Logging a culture observation with healthRating did NOT update culture.healthRating
+- Same issue with grow observations - contamination didn't update grow stage/status
+- Users saw their observation recorded but parent entity looked unchanged
+
+**Root Cause:**
+- addCultureObservation() only added to observations array, no cascading
+- addGrowObservation() same issue
+
+**Solution - addCultureObservation:**
+- Now cascades healthRating to culture.healthRating
+- Now cascades type='contamination' to culture.status='contaminated'
+- Updates culture.updatedAt timestamp
+
+**Solution - addGrowObservation:**
+- Now cascades type='contamination' to grow.currentStage='contaminated', grow.status='failed'
+- Detects pin milestone observations and advances colonization→fruiting
+
+**CLAUDE.md Updated:**
+- Added "DATA INTEGRITY & CASCADING UPDATES" mandatory section
+- Documents all parent/child cascade relationships
+- Includes entity relationship map
+- Anti-patterns to avoid
+- Checklist for CRUD operations
+
+**Files Changed:**
+- src/store/DataContext.tsx - addCultureObservation, addGrowObservation with cascading
+- CLAUDE.md - New data integrity section with cascade rules`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

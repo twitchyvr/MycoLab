@@ -1404,13 +1404,30 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addCultureObservation = useCallback((cultureId: string, observation: Omit<CultureObservation, 'id'>) => {
     const newObs: CultureObservation = { ...observation, id: generateId('obs') };
+
     setState(prev => ({
       ...prev,
-      cultures: prev.cultures.map(c => 
-        c.id === cultureId 
-          ? { ...c, observations: [...c.observations, newObs], updatedAt: new Date() }
-          : c
-      )
+      cultures: prev.cultures.map(c => {
+        if (c.id !== cultureId) return c;
+
+        // Start with the observation being added
+        const updates: Partial<Culture> = {
+          observations: [...c.observations, newObs],
+          updatedAt: new Date(),
+        };
+
+        // CASCADE: If observation includes health rating, update the culture's health
+        if (observation.healthRating !== undefined && observation.healthRating !== null) {
+          updates.healthRating = observation.healthRating;
+        }
+
+        // CASCADE: If observation type indicates contamination, update culture status
+        if (observation.type === 'contamination') {
+          updates.status = 'contaminated';
+        }
+
+        return { ...c, ...updates };
+      })
     }));
   }, [generateId]);
 
@@ -2464,13 +2481,37 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addGrowObservation = useCallback((growId: string, observation: Omit<GrowObservation, 'id'>) => {
     const newObs: GrowObservation = { ...observation, id: generateId('gobs') };
+
     setState(prev => ({
       ...prev,
-      grows: prev.grows.map(g => 
-        g.id === growId 
-          ? { ...g, observations: [...g.observations, newObs] }
-          : g
-      )
+      grows: prev.grows.map(g => {
+        if (g.id !== growId) return g;
+
+        // Start with the observation being added
+        const updates: Partial<Grow> = {
+          observations: [...g.observations, newObs],
+        };
+
+        // CASCADE: If observation indicates contamination, update grow stage and status
+        if (observation.type === 'contamination') {
+          updates.currentStage = 'contaminated';
+          updates.status = 'failed';
+        }
+
+        // CASCADE: If milestone observation mentions pins/pinning and grow is in colonization, advance to fruiting
+        if (observation.type === 'milestone' && g.currentStage === 'colonization') {
+          const pinKeywords = ['pin', 'pins', 'pinning', 'primordia', 'knots'];
+          const hasPin = pinKeywords.some(kw =>
+            observation.title?.toLowerCase().includes(kw) ||
+            observation.notes?.toLowerCase().includes(kw)
+          );
+          if (hasPin) {
+            updates.currentStage = 'fruiting';
+          }
+        }
+
+        return { ...g, ...updates };
+      })
     }));
   }, [generateId]);
 
