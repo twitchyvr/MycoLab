@@ -13,6 +13,9 @@ import { WeightInput } from '../common/WeightInput';
 import { ExitSurveyModal, ExitSurveyData } from '../surveys';
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
 import { NotificationBellCompact } from '../common/NotificationBell';
+// Canonical forms
+import { ObservationModal, type ObservationFormData } from '../forms/ObservationForm';
+import { HarvestEntryForm, getDefaultHarvestEntryData, type HarvestEntryData } from '../forms/HarvestEntryForm';
 
 // Draft key for localStorage
 const GROW_DRAFT_KEY = 'mycolab-grow-draft';
@@ -89,7 +92,8 @@ const GrowCard: React.FC<GrowCardProps> = ({
   onToggleExpand, onAdvanceStage, onRecordHarvest, onMarkContaminated,
   onComplete, onEdit, onDelete, onLogObservation, onViewHistory, onToggleMute, compact
 }) => {
-  const [harvestForm, setHarvestForm] = useState({ wetWeight: 0, dryWeight: 0, quality: 'good' as Flush['quality'], notes: '', mushroomCount: undefined as number | undefined });
+  // Use canonical HarvestEntryForm state
+  const [harvestData, setHarvestData] = useState<HarvestEntryData>(getDefaultHarvestEntryData());
   const [showHarvestForm, setShowHarvestForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -101,18 +105,18 @@ const GrowCard: React.FC<GrowCardProps> = ({
   const nextStage = !isTerminal ? stageOrder[stageOrder.indexOf(grow.currentStage) + 1] : null;
 
   const handleSubmitHarvest = async () => {
-    if (!harvestForm.wetWeight) return;
+    if (!harvestData.wetWeight) return;
     setIsSaving(true);
     setSaveError(null);
     try {
       await onRecordHarvest(
-        harvestForm.wetWeight,
-        harvestForm.dryWeight || Math.round(harvestForm.wetWeight * 0.1),
-        harvestForm.quality,
-        harvestForm.notes,
-        harvestForm.mushroomCount
+        harvestData.wetWeight,
+        harvestData.dryWeight || Math.round(harvestData.wetWeight * 0.1),
+        harvestData.quality,
+        harvestData.notes || '',
+        harvestData.mushroomCount
       );
-      setHarvestForm({ wetWeight: 0, dryWeight: 0, quality: 'good', notes: '', mushroomCount: undefined });
+      setHarvestData(getDefaultHarvestEntryData());
       setShowHarvestForm(false);
     } catch (err: any) {
       console.error('Failed to save harvest:', err);
@@ -199,68 +203,25 @@ const GrowCard: React.FC<GrowCardProps> = ({
           </button>
         )}
 
-        {/* Inline Harvest Form */}
+        {/* Inline Harvest Form - Uses canonical HarvestEntryForm */}
         {showHarvestForm && (
-          <div className="mt-3 p-3 bg-zinc-900/50 rounded-lg space-y-3" onClick={e => e.stopPropagation()}>
+          <div className="mt-3 p-3 bg-zinc-900/50 rounded-lg" onClick={e => e.stopPropagation()}>
             <div className="text-center text-xs text-zinc-400 mb-2">
               Flush #{grow.flushes.length + 1}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <WeightInput
-                label="Wet Weight *"
-                value={harvestForm.wetWeight}
-                onChange={value => setHarvestForm(prev => ({ ...prev, wetWeight: value ?? 0 }))}
-                allowEmpty={false}
-                compact={true}
-                showConversionHint={false}
-              />
-              <WeightInput
-                label="Dry Weight"
-                value={harvestForm.dryWeight}
-                onChange={value => setHarvestForm(prev => ({ ...prev, dryWeight: value ?? 0 }))}
-                placeholder={harvestForm.wetWeight ? `~${Math.round(harvestForm.wetWeight * 0.1)}` : '0'}
-                compact={true}
-                showConversionHint={false}
-              />
-            </div>
-            <div className="grid grid-cols-4 gap-1">
-              {(['excellent', 'good', 'fair', 'poor'] as const).map(q => (
-                <button
-                  key={q}
-                  onClick={() => setHarvestForm(prev => ({ ...prev, quality: q }))}
-                  className={`py-1 rounded text-xs font-medium transition-all ${
-                    harvestForm.quality === q
-                      ? q === 'excellent' ? 'bg-emerald-500 text-white' :
-                        q === 'good' ? 'bg-blue-500 text-white' :
-                        q === 'fair' ? 'bg-amber-500 text-white' :
-                        'bg-red-500 text-white'
-                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                  }`}
-                >
-                  {q.charAt(0).toUpperCase()}
-                </button>
-              ))}
-            </div>
-            {saveError && (
-              <div className="p-2 bg-red-950/50 border border-red-800/50 rounded text-xs text-red-400">
-                {saveError}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setShowHarvestForm(false); setSaveError(null); }}
-                className="flex-1 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-xs font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitHarvest}
-                disabled={!harvestForm.wetWeight || isSaving}
-                className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded text-xs font-medium"
-              >
-                {isSaving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
+            <HarvestEntryForm
+              grow={grow}
+              strainName={strain?.name}
+              data={harvestData}
+              onChange={(updates) => setHarvestData(prev => ({ ...prev, ...updates }))}
+              onSubmit={handleSubmitHarvest}
+              onCancel={() => { setShowHarvestForm(false); setSaveError(null); setHarvestData(getDefaultHarvestEntryData()); }}
+              isLoading={isSaving}
+              error={saveError}
+              compact={true}
+              showCancel={true}
+              submitLabel="Save"
+            />
           </div>
         )}
       </div>
@@ -576,12 +537,7 @@ export const GrowManagement: React.FC = () => {
   const [newGrow, setNewGrow] = useState<GrowFormState>(getInitialFormState);
   const [editGrow, setEditGrow] = useState<GrowFormState & { id: string }>({ ...defaultFormState, id: '' });
 
-  const [newObservation, setNewObservation] = useState({
-    type: 'general' as GrowObservation['type'],
-    title: '',
-    notes: '',
-    colonizationPercent: undefined as number | undefined,
-  });
+  // Observation modal uses canonical ObservationModal - no local state needed
 
   // Check for draft on mount
   useEffect(() => {
@@ -912,21 +868,22 @@ export const GrowManagement: React.FC = () => {
     });
   };
 
-  const handleAddObservation = () => {
-    if (!guardAction()) return; // Show auth modal if not authenticated
-    if (!selectedGrow || !newObservation.title) return;
+  // Handler for canonical ObservationModal - receives ObservationFormData
+  const handleSaveObservation = async (data: ObservationFormData) => {
+    if (!guardAction()) throw new Error('Authentication required');
+    if (!selectedGrow) throw new Error('No grow selected');
 
-    addGrowObservation(selectedGrow.id, {
+    await addGrowObservation(selectedGrow.id, {
       date: new Date(),
       stage: selectedGrow.currentStage,
-      type: newObservation.type,
-      title: newObservation.title,
-      notes: newObservation.notes,
-      colonizationPercent: newObservation.colonizationPercent,
+      type: data.type as GrowObservation['type'],
+      title: data.notes.slice(0, 50), // First 50 chars as title for compatibility
+      notes: data.notes,
+      colonizationPercent: data.colonizationPercent,
+      images: data.images,
     });
 
     setShowObservationModal(false);
-    setNewObservation({ type: 'general', title: '', notes: '', colonizationPercent: undefined });
   };
 
   // Exit survey handlers
@@ -1636,86 +1593,16 @@ export const GrowManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Observation Modal */}
-      {showObservationModal && selectedGrow && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Log Observation</h3>
-              <button onClick={() => setShowObservationModal(false)} className="text-zinc-400 hover:text-white">
-                <Icons.X />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Type</label>
-                <select
-                  value={newObservation.type}
-                  onChange={e => setNewObservation(prev => ({ ...prev, type: e.target.value as GrowObservation['type'] }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                >
-                  <option value="general">General</option>
-                  <option value="misting">Misting</option>
-                  <option value="fae">Fresh Air Exchange</option>
-                  <option value="environmental">Environmental</option>
-                  <option value="contamination">Contamination</option>
-                  <option value="milestone">Milestone</option>
-                  <option value="photo">Photo</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Title *</label>
-                <input
-                  type="text"
-                  value={newObservation.title}
-                  onChange={e => setNewObservation(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-
-              {selectedGrow.currentStage === 'colonization' && (
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Colonization %</label>
-                  <NumericInput
-                    value={newObservation.colonizationPercent}
-                    onChange={value => setNewObservation(prev => ({ ...prev, colonizationPercent: value }))}
-                    min={0}
-                    max={100}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Notes</label>
-                <textarea
-                  value={newObservation.notes}
-                  onChange={e => setNewObservation(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={3}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowObservationModal(false)}
-                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddObservation}
-                disabled={!newObservation.title}
-                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Observation Modal - Uses canonical ObservationModal */}
+      {selectedGrow && (
+        <ObservationModal
+          isOpen={showObservationModal}
+          onClose={() => setShowObservationModal(false)}
+          entityType="grow"
+          entity={selectedGrow}
+          onSave={handleSaveObservation}
+          imageFolder="grow-observations"
+        />
       )}
 
       {/* Exit Survey Modal */}
