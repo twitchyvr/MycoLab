@@ -206,7 +206,7 @@ export interface LocalSettings {
   };
   // Onboarding wizard settings - persisted locally as fallback
   hasCompletedSetupWizard?: boolean;
-  experienceLevel?: 'beginner' | 'intermediate' | 'expert';
+  experienceLevel?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
 }
 
 const defaultSettings: LocalSettings = {

@@ -4937,7 +4937,7 @@ Complete 8-phase database reset that drops everything in correct dependency orde
     id: 'dev-1306',
     title: 'Welcome Wizard localStorage Persistence Fix',
     description: 'Fixed bug where the onboarding wizard showed on every login. Added hasCompletedSetupWizard to localStorage as fallback when database load fails or is slow.',
-    category: 'bug',
+    category: 'bug_fix',
     status: 'completed',
     priority: 'critical',
     phaseId: 25,

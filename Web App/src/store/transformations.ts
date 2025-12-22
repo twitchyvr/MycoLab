@@ -178,6 +178,7 @@ export const transformLocationFromDb = (row: any): Location => ({
   cost: row.cost ? parseFloat(row.cost) : undefined,
   procurementDate: row.procurement_date ? new Date(row.procurement_date) : undefined,
   notes: row.notes,
+  description: row.description,
   isActive: row.is_active ?? true,
   // Hierarchical location fields
   parentId: row.parent_id,
@@ -221,6 +222,7 @@ export const transformLocationToDb = (location: Partial<Location>, userId?: stri
   cost: location.cost,
   procurement_date: location.procurementDate?.toISOString(),
   notes: location.notes,
+  description: location.description,
   is_active: location.isActive,
   // Hierarchical location fields
   parent_id: toDbId(location.parentId),
