@@ -5562,6 +5562,31 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING 'Error adding cost columns to cultures: %', SQLERRM;
 END $$;
 
+-- Add acquisition tracking fields to cultures (v24)
+-- Tracks how cultures were obtained: made vs purchased
+DO $$
+BEGIN
+  -- Acquisition method (made by user vs purchased from vendor)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'acquisition_method') THEN
+    ALTER TABLE cultures ADD COLUMN acquisition_method TEXT CHECK (acquisition_method IN ('made', 'purchased'));
+    RAISE NOTICE 'Added acquisition_method column to cultures';
+  END IF;
+
+  -- Purchase date (when ordered/purchased for purchased cultures)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'purchase_date') THEN
+    ALTER TABLE cultures ADD COLUMN purchase_date DATE;
+    RAISE NOTICE 'Added purchase_date column to cultures';
+  END IF;
+
+  -- Received date (when received for purchased cultures)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cultures' AND column_name = 'received_date') THEN
+    ALTER TABLE cultures ADD COLUMN received_date DATE;
+    RAISE NOTICE 'Added received_date column to cultures';
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error adding acquisition tracking columns to cultures: %', SQLERRM;
+END $$;
+
 -- Add detailed cost and revenue tracking fields to grows
 DO $$
 BEGIN

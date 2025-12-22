@@ -599,6 +599,11 @@ export interface Culture {
   volumeUsed?: number;          // Total volume used from this culture (in ml)
   costPerMl?: number;           // Calculated: cost / fillVolumeMl
 
+  // Acquisition tracking
+  acquisitionMethod?: 'made' | 'purchased';  // How culture was obtained
+  purchaseDate?: string;       // When purchased/ordered (for purchased cultures)
+  receivedDate?: string;       // When received (for purchased cultures)
+
   supplierId?: string;
   lotNumber?: string;
   expiresAt?: Date;

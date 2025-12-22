@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { NumericInput } from '../common/NumericInput';
+import { VolumeInput } from '../common/VolumeInput';
 import type { ContainerCategory, ContainerUsageContext } from '../../store/types';
 
 export interface ContainerFormData {
@@ -182,16 +183,13 @@ export const ContainerForm: React.FC<ContainerFormProps> = ({
 
       {/* Volume */}
       <div>
-        <label className="block text-sm text-zinc-400 mb-2">Volume (ml)</label>
-        <NumericInput
+        <VolumeInput
+          label="Volume"
           value={data.volumeMl}
           onChange={value => onChange({ volumeMl: value })}
-          placeholder="e.g., 946 for quart jar, 62000 for 66qt tub"
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+          placeholder="e.g., 946, 1L, 1 qt"
+          showConversionHint={true}
         />
-        <p className="text-xs text-zinc-500 mt-1">
-          Total capacity in milliliters (1L = 1000ml)
-        </p>
       </div>
 
       {/* Reusable */}

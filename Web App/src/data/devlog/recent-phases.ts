@@ -4959,6 +4959,170 @@ Fix:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1307',
+    title: 'Version Modal Repeated Popup Fix',
+    description: 'Fixed bug where the "Update Available" modal kept popping up every 15 seconds after clicking Refresh, making the app unusable.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    phaseId: 25,
+    notes: `Root Cause:
+- After user clicked "Refresh Now", sessionStorage retained OLD script hashes
+- New page loaded with NEW script hashes
+- Code only stored hashes if sessionStorage was EMPTY (bug at line 107)
+- Comparison always found a "difference" (old stored vs new server)
+- Modal kept showing every check interval
+
+Fix:
+- ALWAYS update sessionStorage with current page's script hashes on load
+- Add mycolab-version-detected flag to prevent repeated notifications
+- Clear flag on page load to allow detecting future updates
+- Check flag before showing modal to prevent loops
+
+**Files Changed:**
+- src/lib/VersionContext.tsx - Script hash storage, version detection flag`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1308',
+    title: 'Modal Consolidation & Unit Input Components',
+    description: 'Multiple improvements to modal/form architecture: fixed Settings page auth buttons, added VolumeInput component with unit selection, created canonical HarvestEntryForm.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 25,
+    notes: `Key Changes:
+
+1. **Settings Page Auth Buttons Fix**
+   - AnonymousSettings.tsx buttons now use useAuth directly
+   - "Create Account" opens signup modal, "Sign In" opens login modal
+   - No longer relies on optional onSignUpClick prop
+
+2. **VolumeInput Component**
+   - New component at src/components/common/VolumeInput.tsx
+   - Supports ml, L, cc, fl oz, cup, qt, gal
+   - Auto-converts to/from ml for database storage
+   - Shows conversion hints between metric/imperial
+   - Used in ContainerForm for volume field
+
+3. **volume.ts Utility Module**
+   - New utility at src/utils/volume.ts
+   - parseVolume(), toMl(), fromMl(), formatVolume()
+   - Matches pattern from weight.ts for consistency
+
+4. **Canonical HarvestEntryForm (In Progress)**
+   - Created src/components/forms/HarvestEntryForm.tsx
+   - Features: WeightInput with unit conversion, quality selector, BE preview
+   - CommandCenter.tsx updated to use canonical form
+   - GrowManagement.tsx and HarvestWorkflow.tsx still need updating
+
+**Files Changed:**
+- src/components/settings/AnonymousSettings.tsx - Auth button fix
+- src/utils/volume.ts - New volume utility module
+- src/components/common/VolumeInput.tsx - New volume input component
+- src/components/forms/ContainerForm.tsx - Use VolumeInput
+- src/components/forms/HarvestEntryForm.tsx - New canonical form
+- src/components/command/CommandCenter.tsx - Use canonical HarvestEntryForm`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1309',
+    title: 'Feature-Complete RecipeForm with Ingredients',
+    description: 'Complete rewrite of RecipeForm to be the canonical, feature-complete recipe creation interface with ingredients from inventory, cost tracking, instructions, and tips.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 25,
+    notes: `Complete RecipeForm overhaul following canonical form architecture:
+
+**New Features:**
+- **Ingredients Section** (collapsible)
+  - Select from inventory items with auto-population of unit
+  - Manual ingredient entry for items not in inventory
+  - Real-time cost calculation based on inventory unit costs
+  - Running total of estimated recipe cost
+
+- **Instructions Section** (collapsible)
+  - Numbered step-by-step instructions
+  - Add/remove/reorder steps
+  - Handles empty steps gracefully
+
+- **Tips Section** (collapsible)
+  - Optional tips and notes for the recipe
+  - Starts collapsed if no existing tips
+
+- **Timing & Sterilization Section** (collapsible)
+  - Prep time in minutes
+  - Sterilization time and PSI
+  - Source URL for reference recipes
+
+- **Category-Specific Icons**
+  - Visual indicators for agar, LC, grain spawn, substrate, etc.
+  - Helpful descriptions for each category
+
+**Technical Details:**
+- Uses getInventoryCategory for proper category lookup
+- Filters inventory to likely recipe ingredients
+- Supports linked ingredients (with inventoryItemId) and manual ingredients
+- Calculates estimated cost from inventory unit costs
+
+**Files Changed:**
+- src/components/forms/RecipeForm.tsx - Complete rewrite`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1310',
+    title: 'Context-Aware Culture Acquisition Tracking',
+    description: 'Culture wizard Step 3 now adapts based on whether culture is homemade or purchased. For purchased cultures, asks about supplier, purchase date, and received date instead of recipe and prep/sterilization dates.',
+    category: 'core',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 25,
+    notes: `Major UX improvement to Culture Wizard:
+
+**Problem Solved:**
+When adding purchased cultures (like LC syringes from vendors), the wizard previously asked irrelevant questions about recipe, prep date, and sterilization date - information that users wouldn't know.
+
+**Solution - Context-Aware Step 3:**
+- Toggle at top: "Made It Myself" vs "Purchased / Received"
+- Each mode shows relevant fields only
+
+**Made It Myself mode:**
+- Recipe / Media Formula selection
+- Preparation Date
+- Sterilization Date
+- Quick date buttons
+
+**Purchased / Received mode:**
+- Supplier / Vendor selection
+- Purchase / Order Date
+- Received Date (important for freshness tracking)
+- Lot Number
+
+**Step 4 also adapts:**
+- For purchased: Shows summary of supplier/lot from Step 3
+- For homemade: Shows supplier field (for source materials)
+- Cost field always shown
+- Parent culture selection always available
+
+**Database Changes:**
+- Added acquisition_method column (TEXT: 'made' | 'purchased')
+- Added purchase_date column (DATE)
+- Added received_date column (DATE)
+- All columns added via idempotent migrations
+
+**Files Changed:**
+- src/components/cultures/CultureWizard.tsx - Complete rewrite of Step 3 and updates to Step 4/5
+- src/store/types.ts - Added acquisition tracking fields to Culture interface
+- src/store/transformations.ts - Updated transformCultureFromDb and transformCultureToDb
+- supabase-schema.sql - Added acquisition tracking columns migration`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

@@ -43,6 +43,8 @@ interface WizardStep {
   isRequired: boolean;
 }
 
+type AcquisitionMethod = 'made' | 'purchased';
+
 interface CultureFormData {
   // Step 1: Type & Strain
   type: CultureType;
@@ -55,10 +57,15 @@ interface CultureFormData {
   volumeMl?: number;
   fillVolumeMl?: number;
 
-  // Step 3: Recipe & Dates
+  // Step 3: Acquisition - adapts based on acquisitionMethod
+  acquisitionMethod: AcquisitionMethod;
+  // For homemade cultures:
   recipeId: string;
   prepDate: string;
   sterilizationDate: string;
+  // For purchased cultures:
+  purchaseDate: string;
+  receivedDate: string;
 
   // Step 4: Source & Cost
   parentId: string;
@@ -109,7 +116,7 @@ const STATUS_CONFIG: Record<CultureStatus, { label: string; color: string; descr
 const WIZARD_STEPS: WizardStep[] = [
   { id: 1, title: 'Type & Strain', shortTitle: 'Type', description: 'Choose culture type and strain', isRequired: true },
   { id: 2, title: 'Container & Location', shortTitle: 'Container', description: 'Where this culture lives', isRequired: true },
-  { id: 3, title: 'Recipe & Dates', shortTitle: 'Recipe', description: 'Media formula and preparation', isRequired: false },
+  { id: 3, title: 'Acquisition', shortTitle: 'Acquisition', description: 'How you got this culture', isRequired: false },
   { id: 4, title: 'Source & Cost', shortTitle: 'Source', description: 'Origin and tracking info', isRequired: false },
   { id: 5, title: 'Review & Submit', shortTitle: 'Review', description: 'Confirm and create', isRequired: true },
 ];
@@ -122,9 +129,12 @@ const INITIAL_FORM_DATA: CultureFormData = {
   locationId: '',
   volumeMl: undefined,
   fillVolumeMl: undefined,
+  acquisitionMethod: 'made',
   recipeId: '',
   prepDate: new Date().toISOString().split('T')[0],
   sterilizationDate: '',
+  purchaseDate: '',
+  receivedDate: new Date().toISOString().split('T')[0],
   parentId: '',
   supplierId: '',
   cost: 0,
@@ -165,6 +175,16 @@ const Icons = {
   AlertCircle: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
       <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+  ),
+  Beaker: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <path d="M4.5 3h15M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3M6 14h12"/>
+    </svg>
+  ),
+  Cart: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
     </svg>
   ),
 };
@@ -365,9 +385,9 @@ const Step2ContainerLocation: React.FC<StepProps> = ({ formData, onChange, error
   );
 };
 
-// Step 3: Recipe & Dates
-const Step3RecipeDates: React.FC<StepProps> = ({ formData, onChange }) => {
-  const { activeRecipes, getRecipe } = useData();
+// Step 3: Acquisition - adapts based on whether culture is homemade or purchased
+const Step3Acquisition: React.FC<StepProps> = ({ formData, onChange }) => {
+  const { activeRecipes, activeSuppliers, getRecipe } = useData();
 
   // Filter recipes by culture type
   const filteredRecipes = useMemo(() => {
@@ -380,93 +400,211 @@ const Step3RecipeDates: React.FC<StepProps> = ({ formData, onChange }) => {
   }, [activeRecipes, formData.type]);
 
   const selectedRecipe = formData.recipeId ? getRecipe(formData.recipeId) : undefined;
+  const isMade = formData.acquisitionMethod === 'made';
 
   return (
     <div className="space-y-6">
-      {/* Recipe Selection */}
+      {/* Acquisition Method Toggle */}
       <div>
-        <StandardDropdown
-          label="Recipe / Media Formula"
-          value={formData.recipeId}
-          onChange={value => onChange({ recipeId: value })}
-          options={filteredRecipes}
-          placeholder="Select media recipe..."
-          entityType="recipe"
-          fieldName="recipeId"
-          helpText="What nutrient media is in this container?"
-        />
+        <label className="block text-sm text-zinc-400 mb-3">
+          How did you get this culture?
+        </label>
+        <div className="flex rounded-lg overflow-hidden border border-zinc-700">
+          <button
+            type="button"
+            onClick={() => onChange({ acquisitionMethod: 'made' })}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              isMade
+                ? 'bg-emerald-600 text-white'
+                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+            }`}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Icons.Beaker />
+              Made It Myself
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ acquisitionMethod: 'purchased' })}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              !isMade
+                ? 'bg-emerald-600 text-white'
+                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+            }`}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Icons.Cart />
+              Purchased / Received
+            </span>
+          </button>
+        </div>
+      </div>
 
-        {/* Recipe Preview */}
-        {selectedRecipe && (
-          <div className="mt-3 bg-zinc-800/50 rounded-lg p-3">
-            <p className="text-sm text-emerald-400 font-medium">{selectedRecipe.name}</p>
-            {selectedRecipe.description && (
-              <p className="text-xs text-zinc-400 mt-1">{selectedRecipe.description}</p>
-            )}
-            {selectedRecipe.yield && (
-              <p className="text-xs text-zinc-500 mt-1">
-                Yield: {selectedRecipe.yield.amount} {selectedRecipe.yield.unit}
-              </p>
+      {/* MADE IT MYSELF - Recipe & Dates */}
+      {isMade && (
+        <>
+          {/* Recipe Selection */}
+          <div>
+            <StandardDropdown
+              label="Recipe / Media Formula"
+              value={formData.recipeId}
+              onChange={value => onChange({ recipeId: value })}
+              options={filteredRecipes}
+              placeholder="Select media recipe..."
+              entityType="recipe"
+              fieldName="recipeId"
+              helpText="What nutrient media is in this container?"
+            />
+
+            {/* Recipe Preview */}
+            {selectedRecipe && (
+              <div className="mt-3 bg-zinc-800/50 rounded-lg p-3">
+                <p className="text-sm text-emerald-400 font-medium">{selectedRecipe.name}</p>
+                {selectedRecipe.description && (
+                  <p className="text-xs text-zinc-400 mt-1">{selectedRecipe.description}</p>
+                )}
+                {selectedRecipe.yield && (
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Yield: {selectedRecipe.yield.amount} {selectedRecipe.yield.unit}
+                  </p>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
 
-      {/* Prep Date */}
-      <div>
-        <label className="block text-sm text-zinc-400 mb-2">
-          Preparation Date
-        </label>
-        <input
-          type="date"
-          value={formData.prepDate}
-          onChange={e => onChange({ prepDate: e.target.value })}
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-        />
-        <p className="text-xs text-zinc-500 mt-1">When was the media prepared?</p>
-      </div>
+          {/* Prep Date */}
+          <div>
+            <label className="block text-sm text-zinc-400 mb-2">
+              Preparation Date
+            </label>
+            <input
+              type="date"
+              value={formData.prepDate}
+              onChange={e => onChange({ prepDate: e.target.value })}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+            />
+            <p className="text-xs text-zinc-500 mt-1">When was the media prepared?</p>
+          </div>
 
-      {/* Sterilization Date */}
-      <div>
-        <label className="block text-sm text-zinc-400 mb-2">
-          Sterilization Date
-        </label>
-        <input
-          type="date"
-          value={formData.sterilizationDate}
-          onChange={e => onChange({ sterilizationDate: e.target.value })}
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-        />
-        <p className="text-xs text-zinc-500 mt-1">When was it sterilized (pressure cooked)?</p>
-      </div>
+          {/* Sterilization Date */}
+          <div>
+            <label className="block text-sm text-zinc-400 mb-2">
+              Sterilization Date
+            </label>
+            <input
+              type="date"
+              value={formData.sterilizationDate}
+              onChange={e => onChange({ sterilizationDate: e.target.value })}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+            />
+            <p className="text-xs text-zinc-500 mt-1">When was it sterilized (pressure cooked)?</p>
+          </div>
 
-      {/* Quick Date Buttons */}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            const today = new Date().toISOString().split('T')[0];
-            onChange({ prepDate: today, sterilizationDate: today });
-          }}
-          className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm transition-colors"
-        >
-          Set both to today
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange({ sterilizationDate: formData.prepDate })}
-          className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm transition-colors"
-        >
-          Same as prep date
-        </button>
-      </div>
+          {/* Quick Date Buttons */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                onChange({ prepDate: today, sterilizationDate: today });
+              }}
+              className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm transition-colors"
+            >
+              Set both to today
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange({ sterilizationDate: formData.prepDate })}
+              className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm transition-colors"
+            >
+              Same as prep date
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* PURCHASED / RECEIVED */}
+      {!isMade && (
+        <>
+          {/* Supplier Selection */}
+          <StandardDropdown
+            label="Supplier / Vendor"
+            value={formData.supplierId}
+            onChange={value => onChange({ supplierId: value })}
+            options={activeSuppliers}
+            placeholder="Select supplier..."
+            entityType="supplier"
+            fieldName="supplierId"
+            helpText="Where did you purchase this from?"
+          />
+
+          {/* Purchase Date */}
+          <div>
+            <label className="block text-sm text-zinc-400 mb-2">
+              Purchase / Order Date
+            </label>
+            <input
+              type="date"
+              value={formData.purchaseDate}
+              onChange={e => onChange({ purchaseDate: e.target.value })}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+            />
+            <p className="text-xs text-zinc-500 mt-1">When did you order or purchase it?</p>
+          </div>
+
+          {/* Received Date */}
+          <div>
+            <label className="block text-sm text-zinc-400 mb-2">
+              Received Date <span className="text-emerald-400">*</span>
+            </label>
+            <input
+              type="date"
+              value={formData.receivedDate}
+              onChange={e => onChange({ receivedDate: e.target.value })}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+            />
+            <p className="text-xs text-zinc-500 mt-1">When did you receive it? (Important for tracking freshness)</p>
+          </div>
+
+          {/* Quick Date Buttons */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                onChange({ receivedDate: today });
+              }}
+              className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm transition-colors"
+            >
+              Received today
+            </button>
+          </div>
+
+          {/* Lot Number */}
+          <div>
+            <label className="block text-sm text-zinc-400 mb-2">
+              Lot Number
+            </label>
+            <input
+              type="text"
+              value={formData.lotNumber}
+              onChange={e => onChange({ lotNumber: e.target.value })}
+              placeholder="e.g., LOT-2024-001"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+            />
+            <p className="text-xs text-zinc-500 mt-1">Manufacturer's lot/batch number (if provided)</p>
+          </div>
+        </>
+      )}
     </div>
   );
 };
 
-// Step 4: Source & Cost
+// Step 4: Source & Cost - adapts based on acquisition method
 const Step4SourceCost: React.FC<StepProps> = ({ formData, onChange }) => {
-  const { state, activeSuppliers, getStrain, getCulture } = useData();
+  const { state, activeSuppliers, getStrain, getCulture, getSupplier } = useData();
+  const isPurchased = formData.acquisitionMethod === 'purchased';
 
   // Get cultures of same strain for parent selection
   const potentialParents = useMemo(() => {
@@ -478,21 +616,38 @@ const Step4SourceCost: React.FC<StepProps> = ({ formData, onChange }) => {
   }, [state.cultures, formData.strainId]);
 
   const selectedParent = formData.parentId ? getCulture(formData.parentId) : undefined;
+  const supplier = formData.supplierId ? getSupplier(formData.supplierId) : undefined;
 
   return (
     <div className="space-y-6">
-      {/* Info Banner */}
+      {/* Info Banner - different based on acquisition method */}
       <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 flex gap-3">
         <Icons.Info />
         <div className="text-sm">
-          <p className="text-zinc-300 font-medium">Optional Tracking</p>
+          <p className="text-zinc-300 font-medium">
+            {isPurchased ? 'Lineage & Cost Tracking' : 'Optional Tracking'}
+          </p>
           <p className="text-zinc-500 mt-1">
-            This information helps track lineage and costs. Skip if not applicable.
+            {isPurchased
+              ? 'Track lineage if this came from another culture, and record your purchase cost.'
+              : 'This information helps track lineage and costs. Skip if not applicable.'
+            }
           </p>
         </div>
       </div>
 
-      {/* Source Culture (Parent) */}
+      {/* Show supplier info if purchased (captured in Step 3) */}
+      {isPurchased && supplier && (
+        <div className="bg-emerald-950/30 border border-emerald-800/50 rounded-lg p-3">
+          <p className="text-xs text-emerald-400 font-medium mb-1">Supplier (from Acquisition step)</p>
+          <p className="text-sm text-white">{supplier.name}</p>
+          {formData.lotNumber && (
+            <p className="text-xs text-zinc-400 mt-1">Lot #: {formData.lotNumber}</p>
+          )}
+        </div>
+      )}
+
+      {/* Source Culture (Parent) - always shown */}
       <div>
         <label className="block text-sm text-zinc-400 mb-2">
           Source Culture (Parent)
@@ -512,38 +667,47 @@ const Step4SourceCost: React.FC<StepProps> = ({ formData, onChange }) => {
         <p className="text-xs text-zinc-500 mt-1">
           {selectedParent
             ? `This will be generation G${selectedParent.generation + 1}`
-            : 'Select if this culture came from another culture in your library'
+            : isPurchased
+              ? 'Select if you derived this from another culture after receiving it'
+              : 'Select if this culture came from another culture in your library'
           }
         </p>
       </div>
 
-      {/* Supplier */}
-      <StandardDropdown
-        label="Supplier"
-        value={formData.supplierId}
-        onChange={value => onChange({ supplierId: value })}
-        options={activeSuppliers}
-        placeholder="Select supplier..."
-        entityType="supplier"
-        fieldName="supplierId"
-        helpText="Where did you get this? (if purchased)"
-      />
+      {/* Supplier - only show for homemade cultures (purchased already captured in Step 3) */}
+      {!isPurchased && (
+        <StandardDropdown
+          label="Supplier"
+          value={formData.supplierId}
+          onChange={value => onChange({ supplierId: value })}
+          options={activeSuppliers}
+          placeholder="Select supplier..."
+          entityType="supplier"
+          fieldName="supplierId"
+          helpText="Where did you get the source material? (optional)"
+        />
+      )}
 
-      {/* Cost & Lot Number */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm text-zinc-400 mb-2">
-            Cost ($)
-          </label>
-          <NumericInput
-            value={formData.cost}
-            onChange={value => onChange({ cost: value ?? 0 })}
-            placeholder="0.00"
-            step={0.01}
-            min={0}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-          />
-        </div>
+      {/* Cost - always shown */}
+      <div>
+        <label className="block text-sm text-zinc-400 mb-2">
+          Cost ($)
+        </label>
+        <NumericInput
+          value={formData.cost}
+          onChange={value => onChange({ cost: value ?? 0 })}
+          placeholder="0.00"
+          step={0.01}
+          min={0}
+          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+        />
+        <p className="text-xs text-zinc-500 mt-1">
+          {isPurchased ? 'How much did you pay for this?' : 'Cost of materials used (optional)'}
+        </p>
+      </div>
+
+      {/* Lot Number - only show for homemade (purchased already captured in Step 3) */}
+      {!isPurchased && (
         <div>
           <label className="block text-sm text-zinc-400 mb-2">
             Lot Number
@@ -555,8 +719,9 @@ const Step4SourceCost: React.FC<StepProps> = ({ formData, onChange }) => {
             placeholder="e.g., LOT-2024-001"
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
           />
+          <p className="text-xs text-zinc-500 mt-1">Your batch/lot identifier (optional)</p>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -613,12 +778,72 @@ const Step5Review: React.FC<StepProps & { onSubmit: () => void; isSubmitting: bo
             <p className="text-zinc-500 text-xs">Location</p>
             <p className="text-white">{location?.name || 'Not set'}</p>
           </div>
-          {recipe && (
-            <div className="bg-zinc-900/50 rounded-lg p-3 col-span-2">
-              <p className="text-zinc-500 text-xs">Recipe</p>
-              <p className="text-emerald-400">{recipe.name}</p>
-            </div>
+          {/* Acquisition method badge */}
+          <div className="bg-zinc-900/50 rounded-lg p-3 col-span-2">
+            <p className="text-zinc-500 text-xs">Acquisition</p>
+            <p className="text-white flex items-center gap-2">
+              {formData.acquisitionMethod === 'made' ? (
+                <><Icons.Beaker /> Made It Myself</>
+              ) : (
+                <><Icons.Cart /> Purchased / Received</>
+              )}
+            </p>
+          </div>
+
+          {/* For homemade: Show recipe and prep dates */}
+          {formData.acquisitionMethod === 'made' && (
+            <>
+              {recipe && (
+                <div className="bg-zinc-900/50 rounded-lg p-3 col-span-2">
+                  <p className="text-zinc-500 text-xs">Recipe</p>
+                  <p className="text-emerald-400">{recipe.name}</p>
+                </div>
+              )}
+              {formData.prepDate && (
+                <div className="bg-zinc-900/50 rounded-lg p-3">
+                  <p className="text-zinc-500 text-xs">Prep Date</p>
+                  <p className="text-white">{formData.prepDate}</p>
+                </div>
+              )}
+              {formData.sterilizationDate && (
+                <div className="bg-zinc-900/50 rounded-lg p-3">
+                  <p className="text-zinc-500 text-xs">Sterilization Date</p>
+                  <p className="text-white">{formData.sterilizationDate}</p>
+                </div>
+              )}
+            </>
           )}
+
+          {/* For purchased: Show supplier, received date, lot number */}
+          {formData.acquisitionMethod === 'purchased' && (
+            <>
+              {supplier && (
+                <div className="bg-zinc-900/50 rounded-lg p-3">
+                  <p className="text-zinc-500 text-xs">Supplier</p>
+                  <p className="text-white">{supplier.name}</p>
+                </div>
+              )}
+              {formData.receivedDate && (
+                <div className="bg-zinc-900/50 rounded-lg p-3">
+                  <p className="text-zinc-500 text-xs">Received Date</p>
+                  <p className="text-white">{formData.receivedDate}</p>
+                </div>
+              )}
+              {formData.purchaseDate && (
+                <div className="bg-zinc-900/50 rounded-lg p-3">
+                  <p className="text-zinc-500 text-xs">Purchase Date</p>
+                  <p className="text-white">{formData.purchaseDate}</p>
+                </div>
+              )}
+              {formData.lotNumber && (
+                <div className="bg-zinc-900/50 rounded-lg p-3">
+                  <p className="text-zinc-500 text-xs">Lot Number</p>
+                  <p className="text-white">{formData.lotNumber}</p>
+                </div>
+              )}
+            </>
+          )}
+
           {(formData.volumeMl || formData.fillVolumeMl) && (
             <div className="bg-zinc-900/50 rounded-lg p-3 col-span-2">
               <p className="text-zinc-500 text-xs">Volume</p>
@@ -634,12 +859,6 @@ const Step5Review: React.FC<StepProps & { onSubmit: () => void; isSubmitting: bo
             <div className="bg-zinc-900/50 rounded-lg p-3 col-span-2">
               <p className="text-zinc-500 text-xs">Parent Culture</p>
               <p className="text-white">{parent.label} (G{parent.generation})</p>
-            </div>
-          )}
-          {supplier && (
-            <div className="bg-zinc-900/50 rounded-lg p-3">
-              <p className="text-zinc-500 text-xs">Supplier</p>
-              <p className="text-white">{supplier.name}</p>
             </div>
           )}
           {formData.cost > 0 && (
@@ -880,11 +1099,17 @@ export const CultureWizard: React.FC<CultureWizardProps> = ({
         generation,
         locationId: formData.locationId,
         containerId: formData.containerId,
-        recipeId: formData.recipeId || undefined,
+        // For homemade cultures
+        recipeId: formData.acquisitionMethod === 'made' ? (formData.recipeId || undefined) : undefined,
+        prepDate: formData.acquisitionMethod === 'made' ? (formData.prepDate || undefined) : undefined,
+        sterilizationDate: formData.acquisitionMethod === 'made' ? (formData.sterilizationDate || undefined) : undefined,
+        // For purchased cultures
+        acquisitionMethod: formData.acquisitionMethod,
+        purchaseDate: formData.acquisitionMethod === 'purchased' ? (formData.purchaseDate || undefined) : undefined,
+        receivedDate: formData.acquisitionMethod === 'purchased' ? (formData.receivedDate || undefined) : undefined,
+        // Common fields
         volumeMl: formData.volumeMl,
         fillVolumeMl: formData.fillVolumeMl,
-        prepDate: formData.prepDate || undefined,
-        sterilizationDate: formData.sterilizationDate || undefined,
         parentId: formData.parentId || undefined,
         healthRating: 5,
         notes: formData.notes,
@@ -931,7 +1156,7 @@ export const CultureWizard: React.FC<CultureWizardProps> = ({
       case 2:
         return <Step2ContainerLocation {...stepProps} />;
       case 3:
-        return <Step3RecipeDates {...stepProps} />;
+        return <Step3Acquisition {...stepProps} />;
       case 4:
         return <Step4SourceCost {...stepProps} />;
       case 5:

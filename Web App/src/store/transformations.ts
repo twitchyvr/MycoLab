@@ -442,6 +442,10 @@ export const transformCultureFromDb = (row: any): Culture => ({
   healthRating: row.health_rating || 5,
   notes: row.notes,
   cost: row.cost || 0,
+  // Acquisition tracking
+  acquisitionMethod: row.acquisition_method,
+  purchaseDate: row.purchase_date,
+  receivedDate: row.received_date,
   supplierId: row.supplier_id,
   lotNumber: row.lot_number,
   expiresAt: row.expires_at ? new Date(row.expires_at) : undefined,
@@ -488,6 +492,10 @@ export const transformCultureToDb = (culture: Partial<Culture>) => {
   if (culture.healthRating !== undefined) result.health_rating = culture.healthRating;
   if (culture.notes !== undefined) result.notes = culture.notes;
   if (culture.cost !== undefined) result.cost = culture.cost;
+  // Acquisition tracking
+  if (culture.acquisitionMethod !== undefined) result.acquisition_method = culture.acquisitionMethod;
+  if (culture.purchaseDate !== undefined) result.purchase_date = culture.purchaseDate;
+  if (culture.receivedDate !== undefined) result.received_date = culture.receivedDate;
   if (culture.supplierId !== undefined) result.supplier_id = culture.supplierId;
   if (culture.lotNumber !== undefined) result.lot_number = culture.lotNumber;
   if (culture.expiresAt !== undefined) result.expires_at = culture.expiresAt instanceof Date ? culture.expiresAt.toISOString() : culture.expiresAt;

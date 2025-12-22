@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useData, useTheme, ThemeSelector } from '../../store';
+import { useAuth } from '../../lib/AuthContext';
 import { SettingsSection } from './common/SettingsSection';
 import type { AppSettings } from '../../store/types';
 
@@ -14,6 +15,27 @@ interface AnonymousSettingsProps {
 
 export const AnonymousSettings: React.FC<AnonymousSettingsProps> = ({ onSignUpClick }) => {
   const { state, updateSettings } = useData();
+  const { setShowAuthModal, setAuthModalMode } = useAuth();
+
+  // Handle opening the auth modal for signup
+  const handleSignUpClick = () => {
+    if (onSignUpClick) {
+      onSignUpClick();
+    } else {
+      setAuthModalMode('signup');
+      setShowAuthModal(true);
+    }
+  };
+
+  // Handle opening the auth modal for login
+  const handleSignInClick = () => {
+    if (onSignUpClick) {
+      onSignUpClick();
+    } else {
+      setAuthModalMode('login');
+      setShowAuthModal(true);
+    }
+  };
   const [localSettings, setLocalSettings] = useState<AppSettings>(state.settings);
   const [saved, setSaved] = useState(false);
 
@@ -48,13 +70,13 @@ export const AnonymousSettings: React.FC<AnonymousSettingsProps> = ({ onSignUpCl
             </p>
             <div className="flex flex-wrap gap-3 mt-4">
               <button
-                onClick={onSignUpClick}
+                onClick={handleSignUpClick}
                 className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors"
               >
                 Create Account
               </button>
               <button
-                onClick={onSignUpClick}
+                onClick={handleSignInClick}
                 className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700 transition-colors"
               >
                 Sign In

@@ -9,7 +9,7 @@ import { useData } from '../../store';
 import type { Grow, Culture, Location, Flush } from '../../store/types';
 import { format, differenceInDays, addDays } from 'date-fns';
 import { NumericInput } from '../common/NumericInput';
-import { WeightInput } from '../common/WeightInput';
+import { HarvestEntryForm, getDefaultHarvestEntryData, type HarvestEntryData } from '../forms/HarvestEntryForm';
 
 // ============================================================================
 // TYPES
@@ -41,13 +41,9 @@ interface RoomStatus {
   fruitingCount: number;
 }
 
-interface HarvestEntry {
+// HarvestEntry extends HarvestEntryData with growId for tracking which grow
+interface HarvestEntry extends HarvestEntryData {
   growId: string;
-  wetWeight: number;
-  dryWeight?: number;
-  mushroomCount?: number;
-  quality: 'poor' | 'fair' | 'good' | 'excellent';
-  notes?: string;
 }
 
 // ============================================================================
@@ -723,16 +719,17 @@ export const CommandCenter: React.FC = () => {
                 )}
               </>
             ) : (
-              /* Harvest Entry Form */
+              /* Harvest Entry Form - Uses canonical form */
               <HarvestEntryForm
                 grow={selectedGrowForHarvest}
-                strain={getStrain(selectedGrowForHarvest.strainId)}
-                entry={harvestEntry}
-                setEntry={setHarvestEntry}
+                strainName={getStrain(selectedGrowForHarvest.strainId)?.name}
+                data={harvestEntry}
+                onChange={(updates) => setHarvestEntry(prev => ({ ...prev, ...updates }))}
                 onSubmit={handleHarvestSubmit}
                 onCancel={() => { setSelectedGrowForHarvest(null); setHarvestError(null); }}
                 isLoading={isSubmittingHarvest}
                 error={harvestError}
+                showHeader={true}
               />
             )}
           </div>
@@ -866,136 +863,6 @@ const RoomDetailView: React.FC<RoomDetailViewProps> = ({
   );
 };
 
-interface HarvestEntryFormProps {
-  grow: Grow;
-  strain: any;
-  entry: HarvestEntry;
-  setEntry: React.Dispatch<React.SetStateAction<HarvestEntry>>;
-  onSubmit: () => void;
-  onCancel: () => void;
-  isLoading?: boolean;
-  error?: string | null;
-}
-
-const HarvestEntryForm: React.FC<HarvestEntryFormProps> = ({
-  grow, strain, entry, setEntry, onSubmit, onCancel, isLoading, error
-}) => {
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onCancel}
-          className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white"
-        >
-          ←
-        </button>
-        <div>
-          <h2 className="text-lg font-semibold text-white">{grow.name}</h2>
-          <p className="text-sm text-zinc-400">
-            {strain?.name} • Flush #{grow.flushes.length + 1}
-          </p>
-        </div>
-      </div>
-
-      {/* Weight Entry */}
-      <div className="space-y-3">
-        <WeightInput
-          label="Wet Weight *"
-          value={entry.wetWeight}
-          onChange={(value) => setEntry(prev => ({ ...prev, wetWeight: value ?? 0 }))}
-          allowEmpty={false}
-          showConversionHint={true}
-        />
-
-        <div className="grid grid-cols-2 gap-3">
-          <WeightInput
-            label="Dry Weight"
-            value={entry.dryWeight ?? 0}
-            onChange={(value) => setEntry(prev => ({ ...prev, dryWeight: value }))}
-            placeholder="Optional"
-            compact={true}
-            showConversionHint={false}
-          />
-          <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
-            <label className="block text-sm text-zinc-400 mb-2">Count</label>
-            <NumericInput
-              value={entry.mushroomCount}
-              onChange={(value) => setEntry(prev => ({ ...prev, mushroomCount: value }))}
-              placeholder="Optional"
-              className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Quality */}
-      <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
-        <label className="block text-sm text-zinc-400 mb-2">Quality</label>
-        <div className="flex gap-2">
-          {(['poor', 'fair', 'good', 'excellent'] as const).map(q => (
-            <button
-              key={q}
-              onClick={() => setEntry(prev => ({ ...prev, quality: q }))}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
-                entry.quality === q
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
-                  : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700'
-              }`}
-            >
-              {q}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Notes */}
-      <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
-        <label className="block text-sm text-zinc-400 mb-2">Notes</label>
-        <textarea
-          value={entry.notes || ''}
-          onChange={(e) => setEntry(prev => ({ ...prev, notes: e.target.value }))}
-          placeholder="Appearance, size, etc."
-          rows={2}
-          className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500"
-        />
-      </div>
-
-      {/* BE Preview */}
-      {entry.wetWeight > 0 && grow.substrateWeight && (
-        <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-800 text-center">
-          <p className="text-sm text-emerald-400">
-            Biological Efficiency: {((entry.wetWeight / grow.substrateWeight) * 100).toFixed(1)}%
-          </p>
-        </div>
-      )}
-
-      {/* Error Display */}
-      {error && (
-        <div className="p-3 rounded-lg bg-red-950/50 border border-red-800 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Submit */}
-      <div className="flex gap-3">
-        <button
-          onClick={onCancel}
-          disabled={isLoading}
-          className="flex-1 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white font-medium"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={onSubmit}
-          disabled={!entry.wetWeight || isLoading}
-          className="flex-1 py-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-medium"
-        >
-          {isLoading ? 'Saving...' : 'Record Harvest'}
-        </button>
-      </div>
-    </div>
-  );
-};
+// HarvestEntryForm is now imported from '../forms/HarvestEntryForm' (canonical form)
 
 export default CommandCenter;
