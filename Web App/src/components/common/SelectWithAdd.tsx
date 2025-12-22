@@ -1,5 +1,34 @@
 // ============================================================================
-// SELECT WITH ADD - Dropdown with inline "Add New" option
+// SELECT WITH ADD - DEPRECATED
+// ============================================================================
+//
+// ⚠️ DEPRECATED: Use StandardDropdown instead
+//
+// This component uses inline forms for "Add New" functionality which violates
+// the canonical form architecture (see CLAUDE.md). StandardDropdown integrates
+// with CreationContext to open proper entity forms via EntityFormModal.
+//
+// Migration:
+// - Replace <SelectWithAdd> with <StandardDropdown>
+// - StandardDropdown props are similar but use entityType instead of onAdd
+//
+// Example migration:
+// BEFORE:
+//   <SelectWithAdd
+//     value={value}
+//     options={options}
+//     onAdd={name => addEntity({ name })}
+//   />
+//
+// AFTER:
+//   <StandardDropdown
+//     value={value}
+//     options={options}
+//     entityType="supplier"  // Triggers proper form via EntityFormModal
+//     fieldName="supplierId"
+//   />
+//
+// This file is kept for reference but should not be used in new code.
 // ============================================================================
 
 import React, { useState } from 'react';
@@ -39,6 +68,10 @@ const Icons = {
   Check: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="20 6 9 17 4 12"/></svg>,
 };
 
+/**
+ * @deprecated Use StandardDropdown instead. This component has inline forms
+ * which violate the canonical form architecture.
+ */
 export const SelectWithAdd: React.FC<SelectWithAddProps> = ({
   value,
   onChange,

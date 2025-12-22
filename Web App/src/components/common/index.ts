@@ -7,6 +7,7 @@ export { Portal } from './Portal';
 export { AmbientBackground } from './AmbientBackground';
 
 // Form Components
+/** @deprecated Use StandardDropdown instead */
 export { SelectWithAdd } from './SelectWithAdd';
 export { NumericInput } from './NumericInput';
 export { WeightInput } from './WeightInput';

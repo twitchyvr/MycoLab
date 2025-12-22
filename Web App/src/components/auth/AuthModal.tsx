@@ -8,6 +8,7 @@ import { useAuth, SignUpResult } from '../../lib/AuthContext';
 import { isSupabaseConfigured, checkEmailAccount } from '../../lib/supabase';
 import { TurnstileCaptcha } from './TurnstileCaptcha';
 import { AccountLinkingModal } from './AccountLinkingModal';
+import { EmailToGoogleLinkingModal, EmailToGoogleLinkingState } from './EmailToGoogleLinkingModal';
 
 // ============================================================================
 // ICONS
@@ -158,11 +159,7 @@ export const AuthModal: React.FC = () => {
   } | null>(null);
 
   // State for showing account linking from email signup flow
-  const [showEmailAccountLinking, setShowEmailAccountLinking] = useState<{
-    show: boolean;
-    email: string;
-    existingAccount: any;
-  } | null>(null);
+  const [showEmailAccountLinking, setShowEmailAccountLinking] = useState<EmailToGoogleLinkingState | null>(null);
 
   // Track if we're in the middle of an auth attempt
   const authInProgressRef = useRef(false);
@@ -291,10 +288,10 @@ export const AuthModal: React.FC = () => {
         const existingAccount = await checkEmailAccount(email);
         if (existingAccount?.exists_in_system && existingAccount.has_google && !existingAccount.has_password) {
           // There's an existing Google account - show linking option
+          console.log('[Auth] Email has existing Google account, showing linking modal');
           setShowEmailAccountLinking({
             show: true,
             email,
-            existingAccount,
           });
           setIsLoading(false);
           authInProgressRef.current = false;
@@ -886,52 +883,14 @@ export const AuthModal: React.FC = () => {
       </div>
 
       {/* Email Account Linking Modal - shown when email signup detects existing Google account */}
-      {showEmailAccountLinking?.show && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80" onClick={() => setShowEmailAccountLinking(null)} />
-          <div className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                <Icons.AlertCircle />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-white">Account Already Exists</h3>
-                <p className="text-sm text-zinc-400">{showEmailAccountLinking.email}</p>
-              </div>
-            </div>
-
-            <p className="text-sm text-zinc-300">
-              You already have an account with this email using <strong className="text-white">Google Sign-In</strong>.
-              Would you like to sign in with Google to access your existing data?
-            </p>
-
-            <div className="space-y-3">
-              <button
-                onClick={async () => {
-                  setShowEmailAccountLinking(null);
-                  setShowAuthModal(false);
-                  await signInWithGoogle();
-                }}
-                className="w-full py-3 px-4 bg-white hover:bg-zinc-100 text-zinc-800 font-medium rounded-xl transition-colors flex items-center justify-center gap-3"
-              >
-                <Icons.Google />
-                <span>Sign in with Google</span>
-              </button>
-
-              <p className="text-xs text-zinc-500 text-center">
-                After signing in with Google, you can add email/password as an additional sign-in method from your account settings.
-              </p>
-
-              <button
-                onClick={() => setShowEmailAccountLinking(null)}
-                className="w-full py-2 px-4 text-zinc-400 hover:text-zinc-300 text-sm transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EmailToGoogleLinkingModal
+        state={showEmailAccountLinking}
+        onClose={() => setShowEmailAccountLinking(null)}
+        onSignInWithGoogle={async () => {
+          setShowAuthModal(false);
+          await signInWithGoogle();
+        }}
+      />
 
       {/* Global Account Linking Modal - shown when Google OAuth detects existing email account */}
       <AccountLinkingModal
