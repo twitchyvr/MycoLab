@@ -91,7 +91,7 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
     let consecutiveFailures = 0;
     const MAX_FAILURES = 3;
 
-    // Extract script hashes from the current page on first load
+    // Extract script hashes from the current page
     const getCurrentScriptHashes = (): string => {
       const scripts = document.querySelectorAll('script[src]');
       const hashes = Array.from(scripts)
@@ -102,14 +102,26 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
       return hashes;
     };
 
-    // Store initial script hashes
+    // Clear the version-detected flag on page load
+    // This allows detecting new versions after user has refreshed
+    sessionStorage.removeItem('mycolab-version-detected');
+
+    // ALWAYS update sessionStorage with current page's script hashes
+    // This is crucial: after a refresh, we need to store the NEW hashes
+    // so we're comparing server scripts against what's actually running NOW
     const initialScriptHashes = getCurrentScriptHashes();
-    if (initialScriptHashes && !sessionStorage.getItem('mycolab-script-hashes')) {
+    if (initialScriptHashes) {
       sessionStorage.setItem('mycolab-script-hashes', initialScriptHashes);
     }
 
     const checkForUpdates = async () => {
       if (!isActive) return;
+
+      // Don't check if we've already detected a new version in this session
+      // User must refresh to clear this flag
+      if (sessionStorage.getItem('mycolab-version-detected')) {
+        return;
+      }
 
       try {
         // Strategy 1: Fetch index.html and compare script tags (most reliable)
@@ -140,6 +152,9 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
           console.log('[MycoLab] Current:', storedHashes.substring(0, 100));
           console.log('[MycoLab] Server:', serverScripts.substring(0, 100));
 
+          // Mark that we've detected a version to prevent repeated notifications
+          sessionStorage.setItem('mycolab-version-detected', 'true');
+
           setVersionInfo(prev => ({
             ...prev,
             isNewVersion: true,
@@ -156,9 +171,13 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
         if (serverTimestamp && isActive) {
           const storedTimestamp = sessionStorage.getItem('mycolab-server-timestamp');
 
+          // Always update timestamp on first check after page load
           if (!storedTimestamp) {
             sessionStorage.setItem('mycolab-server-timestamp', serverTimestamp);
           } else if (storedTimestamp !== serverTimestamp) {
+            // Update the stored timestamp so we don't keep showing the modal
+            sessionStorage.setItem('mycolab-server-timestamp', serverTimestamp);
+            sessionStorage.setItem('mycolab-version-detected', 'true');
             console.log('[MycoLab] New version detected via headers');
             setVersionInfo(prev => ({
               ...prev,
