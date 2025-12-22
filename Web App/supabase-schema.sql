@@ -8239,6 +8239,69 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to check pg_cron status (callable via RPC from application)
+CREATE OR REPLACE FUNCTION get_cron_job_status()
+RETURNS JSONB
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result JSONB;
+  v_pg_cron_enabled BOOLEAN := FALSE;
+  v_jobs JSONB := '[]'::JSONB;
+  v_pending_count INTEGER := 0;
+  v_last_sent TIMESTAMPTZ;
+BEGIN
+  -- Check if pg_cron extension is available
+  SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
+  INTO v_pg_cron_enabled;
+
+  -- Get pending notification count
+  SELECT COUNT(*)
+  INTO v_pending_count
+  FROM notification_queue
+  WHERE status = 'pending' AND expires_at > NOW();
+
+  -- Get last sent notification time
+  SELECT MAX(sent_at)
+  INTO v_last_sent
+  FROM notification_queue
+  WHERE status = 'sent';
+
+  IF v_pg_cron_enabled THEN
+    -- Query cron.job for MycoLab jobs
+    BEGIN
+      SELECT COALESCE(jsonb_agg(job_info), '[]'::JSONB)
+      INTO v_jobs
+      FROM (
+        SELECT jsonb_build_object(
+          'jobid', jobid,
+          'jobname', jobname,
+          'schedule', schedule,
+          'active', active
+        ) as job_info
+        FROM cron.job
+        WHERE jobname LIKE 'mycolab-%'
+      ) jobs;
+    EXCEPTION WHEN OTHERS THEN
+      -- cron schema might not be accessible, that's okay
+      v_jobs := '[]'::JSONB;
+    END;
+  END IF;
+
+  v_result := jsonb_build_object(
+    'pgCronEnabled', v_pg_cron_enabled,
+    'cronJobsConfigured', jsonb_array_length(v_jobs) > 0,
+    'cronJobs', v_jobs,
+    'pendingNotifications', v_pending_count,
+    'lastNotificationSent', v_last_sent,
+    'supabaseConfigured', TRUE
+  );
+
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql;
+
 DO $$ BEGIN
   RAISE NOTICE 'pg_cron notification system added. Run SELECT setup_notification_cron_jobs() after enabling pg_cron extension.';
 END $$;

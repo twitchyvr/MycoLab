@@ -5188,6 +5188,38 @@ When loading settings from the database, if has_completed_setup_wizard was NULL 
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1313',
+    title: 'pg_cron Status Check Function',
+    description: 'Created SQL function to properly check pg_cron job status, fixing the admin panel showing "Cron Jobs Active: X" even after successful setup.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `pg_cron status check fix:
+
+**Problem:**
+- Admin panel showed "Cron Jobs Active: X" even after running setup
+- The Netlify function (pg-cron-status.ts) tried to query cron.job directly
+- Supabase service role can't access cron schema from JavaScript client
+- Status check was using non-existent supabase.rpc("sql", {...}) function
+
+**Solution - New SQL Function (get_cron_job_status):**
+- Created SECURITY DEFINER function that can query cron schema from within PostgreSQL
+- Returns JSONB with: pgCronEnabled, cronJobsConfigured, cronJobs array, pendingNotifications, lastNotificationSent
+- Handles permission errors gracefully when cron schema is not accessible
+
+**Solution - Updated Netlify Function:**
+- Simplified getStatus() to call get_cron_job_status() via RPC
+- Removed fragile direct queries and fallback logic
+- Clean mapping of SQL response to API response
+
+**Files Changed:**
+- supabase-schema.sql - Added get_cron_job_status() function
+- netlify/functions/pg-cron-status.ts - Use new SQL function for status checks`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
