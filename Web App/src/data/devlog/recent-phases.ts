@@ -2776,8 +2776,35 @@ Created comprehensive weight utilities (utils/weight.ts):
 - ✅ pg_cron is available on Supabase Free tier (just enable extension)
 - ✅ Admin UI added for pg_cron status detection and management
 - ✅ Netlify function (pg-cron-status.ts) for checking/managing cron jobs
+- ✅ Column reference bugs fixed in all check functions
+- ✅ User profile filtering (only users with active profiles get notifications)
 
-**Admin Panel Features (Added):**
+**Expanded Notification Categories (17 total):**
+- Culture: culture_expiring, lc_age, transfer_due, culture_ready
+- Grow: stage_transition, harvest_ready, colonization_complete, slow_growth, contamination
+- Inventory: low_inventory, item_expiring
+- Spawn: spawn_ready, spawn_expiring
+- Maintenance: cold_storage_check, maintenance_due
+- Engagement: photo_documentation
+- System: system, user
+
+**Per-Item Notification Control:**
+- notifications_muted column on cultures, grows, inventory_items, prepared_spawn, locations
+- NotificationBell component for mobile-first mute toggle on any item
+- Users can silence specific items without affecting global preferences
+
+**Notification Delivery Preferences:**
+- Digest mode: immediate, hourly, daily, weekly
+- Customizable digest time and day
+- Photo documentation reminders (engagement feature)
+- Configurable photo reminder frequency
+
+**Rate Limiting (Anti-Abuse):**
+- max_notifications_per_day per user (default 50)
+- Daily reset counter
+- Prevents system overload from any single user
+
+**Admin Panel Features:**
 - pg-cron-status.ts Netlify function with actions: status, setup, trigger, pending
 - AdminNotificationConfig shows pg_cron status with visual indicators
 - "Setup Cron Jobs" button when pg_cron enabled but jobs not configured

@@ -1039,6 +1039,17 @@ CREATE TABLE IF NOT EXISTS user_settings (
   harvest_reminders BOOLEAN DEFAULT true,
   low_stock_alerts BOOLEAN DEFAULT true,
   contamination_alerts BOOLEAN DEFAULT true,
+  -- Notification delivery preferences
+  notification_digest TEXT DEFAULT 'immediate' CHECK (notification_digest IN ('immediate', 'hourly', 'daily', 'weekly')),
+  digest_time TIME DEFAULT '09:00',           -- Preferred time for daily/weekly digests
+  digest_day INTEGER DEFAULT 1,               -- Day of week for weekly digest (1=Monday)
+  -- Photo documentation reminders (engagement)
+  photo_reminders_enabled BOOLEAN DEFAULT true,
+  photo_reminder_frequency TEXT DEFAULT 'weekly' CHECK (photo_reminder_frequency IN ('daily', 'every_3_days', 'weekly', 'biweekly', 'never')),
+  -- Rate limiting (anti-abuse)
+  max_notifications_per_day INTEGER DEFAULT 50,       -- Max queued notifications per day
+  last_notification_reset TIMESTAMPTZ DEFAULT NOW(),  -- When daily count was last reset
+  notifications_today INTEGER DEFAULT 0,              -- Counter for rate limiting
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -1134,9 +1145,33 @@ CREATE TABLE IF NOT EXISTS notification_event_preferences (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
 
   -- Event category (matches NotificationCategory from types.ts)
+  -- Comprehensive list for mycology lab management
   event_category TEXT NOT NULL CHECK (event_category IN (
-    'culture_expiring', 'stage_transition', 'low_inventory', 'harvest_ready',
-    'contamination', 'lc_age', 'slow_growth', 'system', 'user'
+    -- Culture notifications
+    'culture_expiring',       -- Culture approaching expiration date
+    'lc_age',                 -- Liquid culture getting too old
+    'transfer_due',           -- Culture at high generation, needs transfer
+    'culture_ready',          -- Culture fully colonized, ready to use
+    -- Grow notifications
+    'stage_transition',       -- Grow ready for next stage
+    'harvest_ready',          -- Grow ready for harvest
+    'colonization_complete',  -- Spawn run done, ready for fruiting
+    'slow_growth',            -- Grow not progressing as expected
+    'contamination',          -- Contamination detected/logged
+    -- Inventory notifications
+    'low_inventory',          -- Below reorder point
+    'item_expiring',          -- Inventory item expiring soon
+    -- Spawn notifications
+    'spawn_ready',            -- Prepared spawn fully colonized
+    'spawn_expiring',         -- Prepared spawn approaching expiration
+    -- Maintenance notifications
+    'cold_storage_check',     -- Time for cold storage inspection
+    'maintenance_due',        -- Equipment maintenance reminder
+    -- Engagement notifications
+    'photo_documentation',    -- Reminder to document progress with photos
+    -- System notifications
+    'system',                 -- System alerts
+    'user'                    -- User-generated reminders
   )),
 
   -- Which channels to use for this event type
@@ -1316,6 +1351,63 @@ BEGIN
     ALTER TABLE notification_event_preferences ADD COLUMN enabled BOOLEAN DEFAULT true;
     RAISE NOTICE 'Added enabled column to notification_event_preferences';
   END IF;
+END $$;
+
+-- Add notification digest and photo reminder columns to user_settings
+DO $$
+BEGIN
+  -- Digest preference
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'notification_digest') THEN
+    ALTER TABLE user_settings ADD COLUMN notification_digest TEXT DEFAULT 'immediate';
+    RAISE NOTICE 'Added notification_digest to user_settings';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'digest_time') THEN
+    ALTER TABLE user_settings ADD COLUMN digest_time TIME DEFAULT '09:00';
+    RAISE NOTICE 'Added digest_time to user_settings';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'digest_day') THEN
+    ALTER TABLE user_settings ADD COLUMN digest_day INTEGER DEFAULT 1;
+    RAISE NOTICE 'Added digest_day to user_settings';
+  END IF;
+
+  -- Photo documentation reminders (engagement feature)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'photo_reminders_enabled') THEN
+    ALTER TABLE user_settings ADD COLUMN photo_reminders_enabled BOOLEAN DEFAULT true;
+    RAISE NOTICE 'Added photo_reminders_enabled to user_settings';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'photo_reminder_frequency') THEN
+    ALTER TABLE user_settings ADD COLUMN photo_reminder_frequency TEXT DEFAULT 'weekly';
+    RAISE NOTICE 'Added photo_reminder_frequency to user_settings';
+  END IF;
+
+  -- Rate limiting columns
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'max_notifications_per_day') THEN
+    ALTER TABLE user_settings ADD COLUMN max_notifications_per_day INTEGER DEFAULT 50;
+    RAISE NOTICE 'Added max_notifications_per_day to user_settings';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'last_notification_reset') THEN
+    ALTER TABLE user_settings ADD COLUMN last_notification_reset TIMESTAMPTZ DEFAULT NOW();
+    RAISE NOTICE 'Added last_notification_reset to user_settings';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'notifications_today') THEN
+    ALTER TABLE user_settings ADD COLUMN notifications_today INTEGER DEFAULT 0;
+    RAISE NOTICE 'Added notifications_today to user_settings';
+  END IF;
+
+  RAISE NOTICE 'Notification digest and photo reminder columns migration complete';
 END $$;
 
 -- Indexes for notification tables
@@ -6967,6 +7059,50 @@ DO $$ BEGIN
 END $$;
 
 -- ============================================================================
+-- PER-ITEM NOTIFICATION MUTING
+-- Allows users to mute notifications for specific items without affecting
+-- their global notification preferences. Mobile-first UX pattern.
+-- ============================================================================
+
+DO $$ BEGIN
+  RAISE NOTICE 'Adding notification muting columns to entity tables...';
+END $$;
+
+-- Cultures: Mute expiration, LC age, transfer due notifications for this culture
+DO $$ BEGIN
+  ALTER TABLE cultures ADD COLUMN IF NOT EXISTS notifications_muted BOOLEAN DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Grows: Mute stage transition, harvest ready, slow growth notifications for this grow
+DO $$ BEGIN
+  ALTER TABLE grows ADD COLUMN IF NOT EXISTS notifications_muted BOOLEAN DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Inventory items: Mute low stock, expiring item notifications for this item
+DO $$ BEGIN
+  ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS notifications_muted BOOLEAN DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Prepared spawn: Mute spawn ready, spawn expiring notifications
+DO $$ BEGIN
+  ALTER TABLE prepared_spawn ADD COLUMN IF NOT EXISTS notifications_muted BOOLEAN DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Locations: Mute cold storage check reminders for this location
+DO $$ BEGIN
+  ALTER TABLE locations ADD COLUMN IF NOT EXISTS notifications_muted BOOLEAN DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  RAISE NOTICE 'Notification muting columns added successfully!';
+END $$;
+
+-- ============================================================================
 -- PG_CRON SCHEDULED NOTIFICATIONS
 -- ============================================================================
 -- pg_cron must be enabled in Supabase Dashboard:
@@ -7058,6 +7194,7 @@ DECLARE
   v_user_prefs RECORD;
 BEGIN
   -- Find cultures expiring within their configured warning period
+  -- Only for users with active profiles (for future tier-based filtering)
   FOR v_culture IN
     SELECT c.id, c.user_id, c.label, c.type, c.expires_at,
            s.name as strain_name,
@@ -7070,6 +7207,15 @@ BEGIN
       AND c.expires_at IS NOT NULL
       AND c.expires_at > NOW()
       AND c.expires_at <= NOW() + INTERVAL '7 days'
+      -- Respect per-item muting
+      AND (c.notifications_muted IS NULL OR c.notifications_muted = false)
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = c.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
   LOOP
     -- Check if user has this notification type enabled
     SELECT * INTO v_user_prefs
@@ -7131,6 +7277,7 @@ DECLARE
   v_days_in_stage INTEGER;
   v_stage_start TIMESTAMPTZ;
 BEGIN
+  -- Only for users with active profiles
   FOR v_grow IN
     SELECT g.id, g.user_id, g.name, g.current_stage,
            g.spawned_at, g.colonization_started_at, g.fruiting_started_at,
@@ -7141,6 +7288,15 @@ BEGIN
       AND g.is_archived = false
       AND g.status = 'active'
       AND g.current_stage NOT IN ('completed', 'contaminated', 'aborted')
+      -- Respect per-item muting
+      AND (g.notifications_muted IS NULL OR g.notifications_muted = false)
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = g.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
   LOOP
     -- Determine stage start time based on current stage
     v_stage_start := CASE v_grow.current_stage
@@ -7221,6 +7377,7 @@ DECLARE
   v_item RECORD;
   v_user_prefs RECORD;
 BEGIN
+  -- Only for users with active profiles
   FOR v_item IN
     SELECT i.id, i.user_id, i.name, i.quantity, i.reorder_point, i.unit,
            c.name as category_name
@@ -7231,6 +7388,15 @@ BEGIN
       AND i.reorder_point > 0
       AND i.quantity <= i.reorder_point
       AND i.quantity >= 0
+      -- Respect per-item muting
+      AND (i.notifications_muted IS NULL OR i.notifications_muted = false)
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = i.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
   LOOP
     SELECT * INTO v_user_prefs
     FROM notification_event_preferences
@@ -7291,6 +7457,7 @@ DECLARE
   v_days_in_harvesting INTEGER;
   v_harvest_start TIMESTAMPTZ;
 BEGIN
+  -- Only for users with active profiles
   FOR v_grow IN
     SELECT g.id, g.user_id, g.name, g.current_stage,
            g.first_harvest_at, g.fruiting_started_at,
@@ -7301,6 +7468,15 @@ BEGIN
       AND g.is_archived = false
       AND g.status = 'active'
       AND g.current_stage = 'harvesting'
+      -- Respect per-item muting
+      AND (g.notifications_muted IS NULL OR g.notifications_muted = false)
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = g.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
   LOOP
     -- Use first_harvest_at if available, otherwise fall back to fruiting_started_at
     v_harvest_start := COALESCE(v_grow.first_harvest_at, v_grow.fruiting_started_at);
@@ -7355,6 +7531,457 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ============================================================================
+-- ADDITIONAL NOTIFICATION CHECK FUNCTIONS
+-- ============================================================================
+
+-- Check for liquid cultures getting too old (viability concern)
+CREATE OR REPLACE FUNCTION check_lc_age()
+RETURNS INTEGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_culture RECORD;
+  v_user_prefs RECORD;
+  v_age_days INTEGER;
+BEGIN
+  -- Find LC cultures older than 90 days (3 months)
+  FOR v_culture IN
+    SELECT c.id, c.user_id, c.label, c.type, c.created_at,
+           s.name as strain_name,
+           EXTRACT(DAY FROM (NOW() - c.created_at))::INTEGER as age_days
+    FROM cultures c
+    LEFT JOIN strains s ON c.strain_id = s.id
+    WHERE c.is_current = true
+      AND c.is_archived = false
+      AND c.type = 'liquid_culture'
+      AND c.status IN ('active', 'ready')
+      AND c.created_at < NOW() - INTERVAL '90 days'
+      -- Respect per-item muting
+      AND (c.notifications_muted IS NULL OR c.notifications_muted = false)
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = c.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
+  LOOP
+    v_age_days := EXTRACT(DAY FROM (NOW() - v_culture.created_at))::INTEGER;
+
+    SELECT * INTO v_user_prefs
+    FROM notification_event_preferences
+    WHERE user_id = v_culture.user_id AND event_category = 'lc_age';
+
+    IF v_user_prefs IS NOT NULL AND v_user_prefs.enabled = true THEN
+      IF NOT EXISTS (
+        SELECT 1 FROM notification_queue
+        WHERE user_id = v_culture.user_id
+          AND event_category = 'lc_age'
+          AND related_table = 'cultures'
+          AND related_id = v_culture.id
+          AND status = 'pending'
+          AND created_at > NOW() - INTERVAL '7 days'  -- Weekly reminder
+      ) THEN
+        INSERT INTO notification_queue (
+          user_id, event_category, title, body,
+          related_table, related_id, priority, metadata
+        ) VALUES (
+          v_culture.user_id,
+          'lc_age',
+          'Liquid Culture Age Warning',
+          format('%s (%s) is %s days old - consider refreshing or using soon',
+            v_culture.label,
+            COALESCE(v_culture.strain_name, 'Unknown strain'),
+            v_age_days),
+          'cultures',
+          v_culture.id,
+          CASE WHEN v_age_days > 120 THEN 3 ELSE 5 END,  -- Higher priority if older
+          jsonb_build_object(
+            'culture_label', v_culture.label,
+            'strain_name', v_culture.strain_name,
+            'age_days', v_age_days,
+            'created_at', v_culture.created_at
+          )
+        );
+        v_count := v_count + 1;
+      END IF;
+    END IF;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Check for slow-growing items (grows stuck in a stage)
+CREATE OR REPLACE FUNCTION check_slow_growth()
+RETURNS INTEGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_grow RECORD;
+  v_user_prefs RECORD;
+  v_days_in_stage INTEGER;
+  v_stage_start TIMESTAMPTZ;
+  v_expected_days INTEGER;
+BEGIN
+  FOR v_grow IN
+    SELECT g.id, g.user_id, g.name, g.current_stage,
+           g.spawned_at, g.colonization_started_at, g.fruiting_started_at,
+           s.name as strain_name,
+           s.colonization_days_max, s.fruiting_days_max
+    FROM grows g
+    LEFT JOIN strains s ON g.strain_id = s.id
+    WHERE g.is_current = true
+      AND g.is_archived = false
+      AND g.status = 'active'
+      AND g.current_stage IN ('colonization', 'fruiting')
+      -- Respect per-item muting
+      AND (g.notifications_muted IS NULL OR g.notifications_muted = false)
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = g.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
+  LOOP
+    -- Determine stage start time
+    v_stage_start := CASE g.current_stage
+      WHEN 'colonization' THEN v_grow.colonization_started_at
+      WHEN 'fruiting' THEN v_grow.fruiting_started_at
+      ELSE NULL
+    END;
+
+    IF v_stage_start IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    v_days_in_stage := EXTRACT(DAY FROM (NOW() - v_stage_start))::INTEGER;
+
+    -- Get expected max days from strain or use defaults
+    v_expected_days := CASE v_grow.current_stage
+      WHEN 'colonization' THEN COALESCE(v_grow.colonization_days_max, 28)
+      WHEN 'fruiting' THEN COALESCE(v_grow.fruiting_days_max, 21)
+      ELSE 30
+    END;
+
+    -- Only alert if significantly over expected time (1.5x)
+    IF v_days_in_stage > (v_expected_days * 1.5) THEN
+      SELECT * INTO v_user_prefs
+      FROM notification_event_preferences
+      WHERE user_id = v_grow.user_id AND event_category = 'slow_growth';
+
+      IF v_user_prefs IS NOT NULL AND v_user_prefs.enabled = true THEN
+        IF NOT EXISTS (
+          SELECT 1 FROM notification_queue
+          WHERE user_id = v_grow.user_id
+            AND event_category = 'slow_growth'
+            AND related_table = 'grows'
+            AND related_id = v_grow.id
+            AND status = 'pending'
+            AND created_at > NOW() - INTERVAL '3 days'
+        ) THEN
+          INSERT INTO notification_queue (
+            user_id, event_category, title, body,
+            related_table, related_id, priority, metadata
+          ) VALUES (
+            v_grow.user_id,
+            'slow_growth',
+            'Slow Growth Alert',
+            format('%s (%s) has been in %s for %s days (expected ~%s) - may need attention',
+              v_grow.name,
+              COALESCE(v_grow.strain_name, 'Unknown strain'),
+              v_grow.current_stage,
+              v_days_in_stage,
+              v_expected_days),
+            'grows',
+            v_grow.id,
+            4,
+            jsonb_build_object(
+              'grow_name', v_grow.name,
+              'strain_name', v_grow.strain_name,
+              'current_stage', v_grow.current_stage,
+              'days_in_stage', v_days_in_stage,
+              'expected_days', v_expected_days
+            )
+          );
+          v_count := v_count + 1;
+        END IF;
+      END IF;
+    END IF;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Check for inventory items expiring soon
+CREATE OR REPLACE FUNCTION check_item_expiring()
+RETURNS INTEGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_item RECORD;
+  v_user_prefs RECORD;
+  v_days_until_expiry INTEGER;
+BEGIN
+  FOR v_item IN
+    SELECT i.id, i.user_id, i.name, i.expires_at, i.quantity, i.unit,
+           c.name as category_name,
+           EXTRACT(DAY FROM (i.expires_at - NOW()))::INTEGER as days_until_expiry
+    FROM inventory_items i
+    LEFT JOIN inventory_categories c ON i.category_id = c.id
+    WHERE i.is_active = true
+      AND i.expires_at IS NOT NULL
+      AND i.expires_at > NOW()
+      AND i.expires_at <= NOW() + INTERVAL '14 days'
+      AND i.quantity > 0
+      -- Respect per-item muting
+      AND (i.notifications_muted IS NULL OR i.notifications_muted = false)
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = i.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
+  LOOP
+    v_days_until_expiry := EXTRACT(DAY FROM (v_item.expires_at - NOW()))::INTEGER;
+
+    SELECT * INTO v_user_prefs
+    FROM notification_event_preferences
+    WHERE user_id = v_item.user_id AND event_category = 'item_expiring';
+
+    IF v_user_prefs IS NOT NULL AND v_user_prefs.enabled = true THEN
+      IF NOT EXISTS (
+        SELECT 1 FROM notification_queue
+        WHERE user_id = v_item.user_id
+          AND event_category = 'item_expiring'
+          AND related_table = 'inventory_items'
+          AND related_id = v_item.id
+          AND status = 'pending'
+          AND created_at > NOW() - INTERVAL '3 days'
+      ) THEN
+        INSERT INTO notification_queue (
+          user_id, event_category, title, body,
+          related_table, related_id, priority, metadata
+        ) VALUES (
+          v_item.user_id,
+          'item_expiring',
+          'Inventory Item Expiring',
+          format('%s expires in %s days - %s %s remaining',
+            v_item.name,
+            v_days_until_expiry,
+            v_item.quantity,
+            COALESCE(v_item.unit, 'units')),
+          'inventory_items',
+          v_item.id,
+          CASE WHEN v_days_until_expiry <= 3 THEN 2 ELSE 5 END,
+          jsonb_build_object(
+            'item_name', v_item.name,
+            'category', v_item.category_name,
+            'expires_at', v_item.expires_at,
+            'days_until_expiry', v_days_until_expiry,
+            'quantity', v_item.quantity,
+            'unit', v_item.unit
+          )
+        );
+        v_count := v_count + 1;
+      END IF;
+    END IF;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Check for prepared spawn expiring soon
+CREATE OR REPLACE FUNCTION check_spawn_expiring()
+RETURNS INTEGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_spawn RECORD;
+  v_user_prefs RECORD;
+  v_days_until_expiry INTEGER;
+BEGIN
+  FOR v_spawn IN
+    SELECT ps.id, ps.user_id, ps.label, ps.type, ps.expires_at, ps.container_count,
+           EXTRACT(DAY FROM (ps.expires_at - NOW()))::INTEGER as days_until_expiry
+    FROM prepared_spawn ps
+    WHERE (ps.is_current IS NULL OR ps.is_current = true)
+      AND (ps.is_archived IS NULL OR ps.is_archived = false)
+      AND ps.status IN ('available', 'reserved')
+      AND ps.expires_at IS NOT NULL
+      AND ps.expires_at > NOW()
+      AND ps.expires_at <= NOW() + INTERVAL '14 days'
+      -- Respect per-item muting
+      AND (ps.notifications_muted IS NULL OR ps.notifications_muted = false)
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = ps.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
+  LOOP
+    v_days_until_expiry := EXTRACT(DAY FROM (v_spawn.expires_at - NOW()))::INTEGER;
+
+    SELECT * INTO v_user_prefs
+    FROM notification_event_preferences
+    WHERE user_id = v_spawn.user_id AND event_category = 'spawn_expiring';
+
+    IF v_user_prefs IS NOT NULL AND v_user_prefs.enabled = true THEN
+      IF NOT EXISTS (
+        SELECT 1 FROM notification_queue
+        WHERE user_id = v_spawn.user_id
+          AND event_category = 'spawn_expiring'
+          AND related_table = 'prepared_spawn'
+          AND related_id = v_spawn.id
+          AND status = 'pending'
+          AND created_at > NOW() - INTERVAL '3 days'
+      ) THEN
+        INSERT INTO notification_queue (
+          user_id, event_category, title, body,
+          related_table, related_id, priority, metadata
+        ) VALUES (
+          v_spawn.user_id,
+          'spawn_expiring',
+          'Prepared Spawn Expiring',
+          format('%s expires in %s days - use or refresh soon',
+            COALESCE(v_spawn.label, v_spawn.type),
+            v_days_until_expiry),
+          'prepared_spawn',
+          v_spawn.id,
+          CASE WHEN v_days_until_expiry <= 3 THEN 2 ELSE 5 END,
+          jsonb_build_object(
+            'spawn_label', v_spawn.label,
+            'spawn_type', v_spawn.type,
+            'expires_at', v_spawn.expires_at,
+            'days_until_expiry', v_days_until_expiry,
+            'container_count', v_spawn.container_count
+          )
+        );
+        v_count := v_count + 1;
+      END IF;
+    END IF;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Check for photo documentation opportunities (engagement)
+CREATE OR REPLACE FUNCTION check_photo_documentation()
+RETURNS INTEGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_grow RECORD;
+  v_user_settings RECORD;
+  v_user_prefs RECORD;
+  v_last_photo_date DATE;
+  v_days_since_photo INTEGER;
+  v_reminder_days INTEGER;
+BEGIN
+  -- Find active grows that might need photo documentation
+  FOR v_grow IN
+    SELECT g.id, g.user_id, g.name, g.current_stage, g.images,
+           s.name as strain_name
+    FROM grows g
+    LEFT JOIN strains s ON g.strain_id = s.id
+    WHERE g.is_current = true
+      AND g.is_archived = false
+      AND g.status = 'active'
+      AND g.current_stage IN ('colonization', 'fruiting', 'harvesting')
+      -- Respect per-item muting
+      AND (g.notifications_muted IS NULL OR g.notifications_muted = false)
+      -- Only users with active profiles
+      AND EXISTS (
+        SELECT 1 FROM user_profiles up
+        WHERE up.user_id = g.user_id
+          AND up.is_active = true
+          AND up.subscription_status IN ('active', 'trial')
+      )
+  LOOP
+    -- Check user's photo reminder settings
+    SELECT * INTO v_user_settings
+    FROM user_settings us
+    WHERE us.user_id = v_grow.user_id;
+
+    -- Skip if photo reminders are disabled
+    IF v_user_settings IS NULL OR v_user_settings.photo_reminders_enabled = false THEN
+      CONTINUE;
+    END IF;
+
+    -- Determine reminder frequency in days
+    v_reminder_days := CASE v_user_settings.photo_reminder_frequency
+      WHEN 'daily' THEN 1
+      WHEN 'every_3_days' THEN 3
+      WHEN 'weekly' THEN 7
+      WHEN 'biweekly' THEN 14
+      ELSE 7  -- Default to weekly
+    END;
+
+    -- Check if user has this notification enabled
+    SELECT * INTO v_user_prefs
+    FROM notification_event_preferences
+    WHERE user_id = v_grow.user_id AND event_category = 'photo_documentation';
+
+    IF v_user_prefs IS NULL OR v_user_prefs.enabled = false THEN
+      CONTINUE;
+    END IF;
+
+    -- Check if we should send a reminder
+    IF NOT EXISTS (
+      SELECT 1 FROM notification_queue
+      WHERE user_id = v_grow.user_id
+        AND event_category = 'photo_documentation'
+        AND related_table = 'grows'
+        AND related_id = v_grow.id
+        AND status = 'pending'
+        AND created_at > NOW() - (v_reminder_days || ' days')::INTERVAL
+    ) THEN
+      INSERT INTO notification_queue (
+        user_id, event_category, title, body,
+        related_table, related_id, priority, metadata
+      ) VALUES (
+        v_grow.user_id,
+        'photo_documentation',
+        'Document Your Progress',
+        format('Time to capture progress on %s (%s) - document your %s stage!',
+          v_grow.name,
+          COALESCE(v_grow.strain_name, 'Unknown strain'),
+          v_grow.current_stage),
+        'grows',
+        v_grow.id,
+        8,  -- Low priority (engagement, not critical)
+        jsonb_build_object(
+          'grow_name', v_grow.name,
+          'strain_name', v_grow.strain_name,
+          'current_stage', v_grow.current_stage,
+          'reminder_type', 'photo_documentation'
+        )
+      );
+      v_count := v_count + 1;
+    END IF;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Master function to run all notification checks
 CREATE OR REPLACE FUNCTION process_scheduled_notifications()
 RETURNS TABLE (
@@ -7365,33 +7992,72 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_culture_count INTEGER;
-  v_stage_count INTEGER;
-  v_inventory_count INTEGER;
-  v_harvest_count INTEGER;
+  -- Core checks
+  v_culture_expiring INTEGER;
+  v_stage_transitions INTEGER;
+  v_low_inventory INTEGER;
+  v_harvest_ready INTEGER;
+  -- Extended checks (v0.5+)
+  v_lc_age INTEGER;
+  v_slow_growth INTEGER;
+  v_item_expiring INTEGER;
+  v_spawn_expiring INTEGER;
+  v_photo_docs INTEGER;
 BEGIN
-  -- Run all checks
-  v_culture_count := check_culture_expirations();
-  v_stage_count := check_grow_stage_transitions();
-  v_inventory_count := check_low_inventory();
-  v_harvest_count := check_harvest_ready();
+  -- ========================================
+  -- Core notification checks
+  -- ========================================
+  v_culture_expiring := check_culture_expirations();
+  v_stage_transitions := check_grow_stage_transitions();
+  v_low_inventory := check_low_inventory();
+  v_harvest_ready := check_harvest_ready();
 
-  -- Return results
-  check_name := 'culture_expirations'; notifications_queued := v_culture_count;
+  -- ========================================
+  -- Extended notification checks (v0.5+)
+  -- ========================================
+  v_lc_age := check_lc_age();
+  v_slow_growth := check_slow_growth();
+  v_item_expiring := check_item_expiring();
+  v_spawn_expiring := check_spawn_expiring();
+  v_photo_docs := check_photo_documentation();
+
+  -- ========================================
+  -- Return results for all checks
+  -- ========================================
+
+  -- Core checks
+  check_name := 'culture_expirations'; notifications_queued := v_culture_expiring;
   RETURN NEXT;
 
-  check_name := 'stage_transitions'; notifications_queued := v_stage_count;
+  check_name := 'stage_transitions'; notifications_queued := v_stage_transitions;
   RETURN NEXT;
 
-  check_name := 'low_inventory'; notifications_queued := v_inventory_count;
+  check_name := 'low_inventory'; notifications_queued := v_low_inventory;
   RETURN NEXT;
 
-  check_name := 'harvest_ready'; notifications_queued := v_harvest_count;
+  check_name := 'harvest_ready'; notifications_queued := v_harvest_ready;
+  RETURN NEXT;
+
+  -- Extended checks
+  check_name := 'lc_age_warnings'; notifications_queued := v_lc_age;
+  RETURN NEXT;
+
+  check_name := 'slow_growth'; notifications_queued := v_slow_growth;
+  RETURN NEXT;
+
+  check_name := 'item_expiring'; notifications_queued := v_item_expiring;
+  RETURN NEXT;
+
+  check_name := 'spawn_expiring'; notifications_queued := v_spawn_expiring;
+  RETURN NEXT;
+
+  check_name := 'photo_documentation'; notifications_queued := v_photo_docs;
   RETURN NEXT;
 
   -- Log the run
-  RAISE NOTICE 'Scheduled notification check complete: cultures=%, stages=%, inventory=%, harvest=%',
-    v_culture_count, v_stage_count, v_inventory_count, v_harvest_count;
+  RAISE NOTICE 'Scheduled notification check complete: culture_exp=%, stages=%, inventory=%, harvest=%, lc_age=%, slow_growth=%, item_exp=%, spawn_exp=%, photos=%',
+    v_culture_expiring, v_stage_transitions, v_low_inventory, v_harvest_ready,
+    v_lc_age, v_slow_growth, v_item_expiring, v_spawn_expiring, v_photo_docs;
 
   RETURN;
 END;

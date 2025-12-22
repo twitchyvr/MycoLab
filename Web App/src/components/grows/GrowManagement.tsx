@@ -12,6 +12,7 @@ import { NumericInput } from '../common/NumericInput';
 import { WeightInput } from '../common/WeightInput';
 import { ExitSurveyModal, ExitSurveyData } from '../surveys';
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
+import { NotificationBellCompact } from '../common/NotificationBell';
 
 // Draft key for localStorage
 const GROW_DRAFT_KEY = 'mycolab-grow-draft';
@@ -79,13 +80,14 @@ interface GrowCardProps {
   onDelete: () => void;
   onLogObservation: () => void;
   onViewHistory: () => void;
+  onToggleMute: (muted: boolean) => void;
   compact?: boolean;
 }
 
 const GrowCard: React.FC<GrowCardProps> = ({
   grow, strain, container, location, isExpanded, isHarvesting,
   onToggleExpand, onAdvanceStage, onRecordHarvest, onMarkContaminated,
-  onComplete, onEdit, onDelete, onLogObservation, onViewHistory, compact
+  onComplete, onEdit, onDelete, onLogObservation, onViewHistory, onToggleMute, compact
 }) => {
   const [harvestForm, setHarvestForm] = useState({ wetWeight: 0, dryWeight: 0, quality: 'good' as Flush['quality'], notes: '', mushroomCount: undefined as number | undefined });
   const [showHarvestForm, setShowHarvestForm] = useState(false);
@@ -137,25 +139,34 @@ const GrowCard: React.FC<GrowCardProps> = ({
             <p className="text-xs text-zinc-400 truncate">{strain?.name || 'Unknown strain'}</p>
           </div>
 
-          {/* Quick action for advancing */}
-          {!isTerminal && grow.currentStage !== 'harvesting' && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onAdvanceStage(); }}
-              className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 rounded-lg transition-colors flex-shrink-0"
-              title={`Advance to ${nextStage ? stageConfig[nextStage].label : 'next stage'}`}
-            >
-              <Icons.ArrowRight />
-            </button>
-          )}
-          {grow.currentStage === 'harvesting' && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onComplete(); }}
-              className="p-1.5 bg-green-500/20 hover:bg-green-500/40 text-green-400 rounded-lg transition-colors flex-shrink-0"
-              title="Complete Grow"
-            >
-              <Icons.Check />
-            </button>
-          )}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Notification mute toggle */}
+            <NotificationBellCompact
+              muted={grow.notificationsMuted ?? false}
+              onToggle={onToggleMute}
+              itemLabel={`grow ${grow.name}`}
+            />
+
+            {/* Quick action for advancing */}
+            {!isTerminal && grow.currentStage !== 'harvesting' && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onAdvanceStage(); }}
+                className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 rounded-lg transition-colors"
+                title={`Advance to ${nextStage ? stageConfig[nextStage].label : 'next stage'}`}
+              >
+                <Icons.ArrowRight />
+              </button>
+            )}
+            {grow.currentStage === 'harvesting' && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onComplete(); }}
+                className="p-1.5 bg-green-500/20 hover:bg-green-500/40 text-green-400 rounded-lg transition-colors"
+                title="Complete Grow"
+              >
+                <Icons.Check />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Stats Row */}
@@ -1203,6 +1214,7 @@ export const GrowManagement: React.FC = () => {
                           setHistoryGrow(grow);
                           setShowHistoryModal(true);
                         }}
+                        onToggleMute={(muted) => updateGrow(grow.id, { notificationsMuted: muted })}
                       />
                     ))}
                     {stageGrows.length === 0 && (
@@ -1243,6 +1255,7 @@ export const GrowManagement: React.FC = () => {
                 setHistoryGrow(grow);
                 setShowHistoryModal(true);
               }}
+              onToggleMute={(muted) => updateGrow(grow.id, { notificationsMuted: muted })}
             />
           ))}
         </div>
