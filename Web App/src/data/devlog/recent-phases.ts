@@ -4900,6 +4900,65 @@ Complete 8-phase database reset that drops everything in correct dependency orde
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1305',
+    title: 'Canonical Form Architecture - Modal Consolidation',
+    description: 'Established single source of truth for entity forms. All location creation/editing now uses canonical LocationForm component regardless of entry point (EntityFormModal, LabSpaces, LabMapping).',
+    category: 'ux',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 25,
+    notes: `Implemented DRY principle for entity forms:
+
+**Architecture:**
+- Single canonical LocationForm component with full features
+- Environment presets (Incubator, Fruiting Chamber, Cold Storage, etc.)
+- Hierarchical parent location support
+- Multi-purpose checkboxes for room types
+- Code and capacity fields
+- Experience level conditional UI
+
+**Consolidation:**
+- Updated EntityFormModal to use canonical LocationForm
+- Updated LabSpaces.tsx LocationFormModal to use canonical form
+- Updated LabMapping.tsx LocationFormModal to use canonical form
+- Added CLAUDE.md directive for canonical form architecture
+
+**Files Changed:**
+- CLAUDE.md - Added "Canonical Form Architecture" section
+- src/components/forms/LocationForm.tsx - New comprehensive canonical form
+- src/components/forms/EntityFormModal.tsx - Uses LocationForm
+- src/components/locations/LabSpaces.tsx - Uses LocationForm
+- src/components/locations/LabMapping.tsx - Uses LocationForm`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1306',
+    title: 'Welcome Wizard localStorage Persistence Fix',
+    description: 'Fixed bug where the onboarding wizard showed on every login. Added hasCompletedSetupWizard to localStorage as fallback when database load fails or is slow.',
+    category: 'bug',
+    status: 'completed',
+    priority: 'critical',
+    phaseId: 25,
+    notes: `Root Cause:
+- hasCompletedSetupWizard was not included in LocalSettings interface
+- defaultAppSettings did not include the flag when DB load failed
+- App.tsx checked undefined which evaluated as false, showing wizard
+
+Fix:
+- Added hasCompletedSetupWizard to LocalSettings interface
+- Added to defaultSettings with false default
+- Added to defaultAppSettings in loadSettings()
+- Added to localUpdates in updateSettings() for localStorage persistence
+- Now persists to both database AND localStorage for redundancy
+
+**Files Changed:**
+- src/lib/supabase.ts - LocalSettings interface, defaultSettings
+- src/store/DataContext.tsx - loadSettings(), updateSettings()`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

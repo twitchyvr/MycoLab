@@ -109,6 +109,163 @@ This app has a history of creating multiple different interfaces for the same ta
 - Can I reuse an existing component instead of creating a new one?
 - If I must create new, can it be shared across the app?
 
+### 🏗️ CANONICAL FORM ARCHITECTURE - SINGLE SOURCE OF TRUTH
+
+**MANDATORY: Every entity type has ONE canonical form/modal used EVERYWHERE in the app.**
+
+This is a core architectural principle. When a user adds a Location, Culture, Grow, Inventory Item, or ANY entity - they MUST see the exact same form regardless of WHERE they trigger it from. This follows the **Single Source of Truth** pattern used in enterprise software development.
+
+#### Why This Matters
+
+| Bad (Multiple Forms) | Good (Canonical Form) |
+|---------------------|----------------------|
+| User learns different UIs for same task | Consistent experience everywhere |
+| Bug in one form doesn't fix others | Fix once, fixed everywhere |
+| Different validation rules | Uniform data quality |
+| Code duplication | DRY, maintainable code |
+| Confusing for users | Predictable, learnable |
+
+#### Architecture Pattern
+
+```
+components/
+├── forms/                    # CANONICAL FORMS - Single source of truth
+│   ├── LocationForm.tsx      # THE Location form (used everywhere)
+│   ├── CultureForm.tsx       # THE Culture form (or CultureWizard.tsx)
+│   ├── GrowForm.tsx          # THE Grow form
+│   ├── InventoryItemForm.tsx # THE Inventory form
+│   ├── RecipeForm.tsx        # THE Recipe form
+│   ├── HarvestEntryForm.tsx  # THE Harvest entry form
+│   └── EntityFormModal.tsx   # Generic modal wrapper that loads any form
+│
+├── cultures/                 # Page-specific components
+│   └── CultureManagement.tsx # Uses CultureWizard via import
+│
+├── grows/
+│   └── GrowManagement.tsx    # Uses GrowForm via EntityFormModal
+│
+└── locations/
+    └── LabSpaces.tsx         # Uses LocationForm via EntityFormModal
+```
+
+#### Rules for Canonical Forms
+
+1. **ONE FORM PER ENTITY TYPE**
+   - Every entity (Location, Culture, Grow, etc.) has exactly ONE form component
+   - That form lives in `components/forms/` (or is clearly designated as canonical)
+   - ALL entry points (buttons, menus, workflows) use this ONE form
+
+2. **FORMS ARE COMPREHENSIVE**
+   - The canonical form includes ALL fields and options
+   - Use conditional rendering or tabs for beginner/expert modes
+   - Never create a "simplified" duplicate - add modes to the canonical form instead
+
+3. **ENTRY POINTS TRIGGER, DON'T DUPLICATE**
+   - A "+Add Location" button on Lab Spaces page → opens LocationForm
+   - A "+Add Location" button in Culture wizard → opens THE SAME LocationForm
+   - The triggering code just provides: `<EntityFormModal entityType="location" />`
+
+4. **CONTEXT-AWARE BUT SAME FORM**
+   - Forms may receive context (e.g., `parentLocationId` for nested locations)
+   - Forms may pre-fill fields based on context
+   - BUT the form UI, fields, and validation are IDENTICAL
+
+5. **QUALITY STANDARD**
+   - The canonical form should be the BEST version
+   - If one page has a better form than another, the better one becomes canonical
+   - Example: Lab Spaces has better Location form → that becomes the canonical LocationForm
+
+#### Implementation Checklist
+
+When adding/modifying entity creation:
+
+- [ ] Check if canonical form exists in `components/forms/`
+- [ ] If yes: Import and use it via EntityFormModal
+- [ ] If no: Create it in `components/forms/` and use it everywhere
+- [ ] NEVER create inline forms for entities that have canonical forms
+- [ ] NEVER create "quick add" simplified versions - add quick mode to canonical form
+
+#### Experience Level Integration
+
+Canonical forms MUST respect user experience level:
+
+```typescript
+const { state } = useData();
+const isExpert = state.settings.experienceLevel === 'expert' || state.settings.advancedMode;
+
+// In the canonical form:
+{isExpert && (
+  <AdvancedOptionsSection>
+    {/* Expert-only fields */}
+  </AdvancedOptionsSection>
+)}
+```
+
+Beginners see simplified UI. Experts see full UI. SAME form component.
+
+#### Current Canonical Forms (as of v0.5)
+
+| Entity | Canonical Component | Location |
+|--------|-------------------|----------|
+| Location | `LocationForm.tsx` | `components/forms/` - NEEDS UPDATE to match Lab Spaces quality |
+| Culture | `CultureWizard.tsx` | `components/cultures/` |
+| Grow | *inline in GrowManagement* | NEEDS: Extract to `GrowForm.tsx` |
+| Recipe | *inline in RecipeBuilder* | NEEDS: Extract to `RecipeForm.tsx` |
+| Inventory Item | `InventoryItemForm.tsx` | `components/forms/` |
+| Harvest | *3 different implementations* | NEEDS: Create `HarvestEntryForm.tsx` |
+| Strain | `StrainForm.tsx` | `components/forms/` |
+| Container | `ContainerForm.tsx` | `components/forms/` |
+
+#### Anti-Patterns to Avoid
+
+❌ **DON'T**: Create simplified inline forms
+```tsx
+// BAD - Creates duplicate interface
+const QuickAddLocation = () => (
+  <div>
+    <input placeholder="Name" />
+    <button>Add</button>
+  </div>
+);
+```
+
+✅ **DO**: Use the canonical form
+```tsx
+// GOOD - Uses single source of truth
+<EntityFormModal
+  entityType="location"
+  onComplete={handleLocationCreated}
+  context={{ parentId: currentLocation.id }}
+/>
+```
+
+❌ **DON'T**: Duplicate form fields across pages
+```tsx
+// BAD - Same fields defined in multiple places
+// In GrowManagement.tsx:
+<input value={newGrow.name} />
+<select>{strains.map(...)}</select>
+
+// In CommandCenter.tsx:
+<input value={growName} />
+<select>{strains.map(...)}</select>
+```
+
+✅ **DO**: Extract to canonical form
+```tsx
+// GOOD - One definition, used everywhere
+// In GrowForm.tsx:
+export const GrowForm = ({ onSubmit, initialData }) => (
+  <FormFields>...</FormFields>
+);
+
+// In GrowManagement.tsx:
+<EntityFormModal entityType="grow" />
+
+// In CommandCenter.tsx:
+<EntityFormModal entityType="grow" />
+```
+
 ### !!! MANDATORY PRE-COMMIT CHECKLIST - NO EXCEPTIONS !!!
 
 **⚠️ STOP! BEFORE RUNNING `git commit`, YOU MUST COMPLETE ALL THREE CHECKS BELOW. ⚠️**
