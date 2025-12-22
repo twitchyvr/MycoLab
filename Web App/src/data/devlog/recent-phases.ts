@@ -2077,7 +2077,19 @@ All are categorized as 'neutral' to not affect failure/success analytics.`,
     priority: 'medium',
     estimatedHours: 10,
     dependencies: ['dev-1058'],
-    notes: 'Foundation complete (dev-1058). Needs UI components for manual labor/overhead entry and cost display.',
+    notes: `Foundation and display complete (dev-1058).
+
+**Implemented (v0.5 Beta Ready):**
+- ✅ Database schema: cost fields on grows table (source_culture_cost, inventory_cost, labor_cost, overhead_cost, total_cost, cost_per_gram_wet, cost_per_gram_dry, profit, revenue)
+- ✅ Cost calculation functions: calculateCultureCostPerMl, calculateSourceCultureCost, calculateGrowInventoryCost, recalculateGrowCosts, calculateRecipeCost, getLabValuation
+- ✅ FinancialDashboard component: Lab valuation, cost breakdown by category, cost per grow by strain, profitability analysis, CSV/JSON export
+- ✅ Cost per gram wet/dry shown in financial dashboard
+- ✅ Automatic cost recalculation on harvest
+
+**Remaining Enhancement (Post-v0.5):**
+- 🔮 UI for manual labor cost entry on individual grows
+- 🔮 UI for manual overhead cost allocation
+- 🔮 Dedicated "Cost Calculator" standalone tool`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
@@ -2693,10 +2705,22 @@ Created comprehensive weight utilities (utils/weight.ts):
 **Database Schema:**
 - Added verification_codes table with RLS policies
 
-**Next Steps:**
-- Configure environment variables in Netlify dashboard
-- Integrate notification triggers in DataContext operations
-- Add notification history view in Settings`,
+**In-App Notification System (Completed):**
+- NotificationContext.tsx - Full notification state management
+- NotificationBell component - Header dropdown with unread count
+- Toast component - Auto-dismissing toast notifications
+- useNotifications hook - Convenience methods (toast.success, toast.error, etc.)
+- Notification rules and preferences stored in localStorage
+- Used across: LabelDesigner, QuickActionsWidget, QRScanner, LabSpaces, PhotoUpload, etc.
+
+**Current Status (v0.5 Beta Ready):**
+- ✅ Email notifications via Resend: WORKING (environment configured)
+- ✅ In-app toast notifications: WORKING
+- ✅ Notification bell with unread count: WORKING
+- ✅ All Netlify functions deployed and functional
+- ⏸️ SMS via Twilio: Deferred (phone number not ready for use)
+- 🔮 Notification triggers on DataContext events: Future enhancement
+- 🔮 Notification history view in Settings: Future enhancement`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
@@ -2746,7 +2770,20 @@ Created comprehensive weight utilities (utils/weight.ts):
 **Integration Points:**
 - Respects notification_event_preferences per user
 - Uses notification_channels for delivery routing
-- Logs to notification_delivery_log for audit trail`,
+- Logs to notification_delivery_log for audit trail
+
+**v0.5 Beta Status:**
+- ✅ pg_cron is available on Supabase Free tier (just enable extension)
+- ✅ Admin UI added for pg_cron status detection and management
+- ✅ Netlify function (pg-cron-status.ts) for checking/managing cron jobs
+
+**Admin Panel Features (Added):**
+- pg-cron-status.ts Netlify function with actions: status, setup, trigger, pending
+- AdminNotificationConfig shows pg_cron status with visual indicators
+- "Setup Cron Jobs" button when pg_cron enabled but jobs not configured
+- "Run Check Now" button to manually trigger notification processing
+- Displays pending notification count and last notification sent time
+- Clear instructions for enabling pg_cron in Supabase Dashboard`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
@@ -3687,8 +3724,16 @@ All grower settings PLUS Admin Console:
 - [x] DataContext: getRecordHistory, getAmendmentLog helpers
 - [x] History modal integrated into CultureManagement
 - [x] History modal integrated into GrowManagement
-- [ ] Integration with existing CRUD operations (wire up to SQL stored procedures)
-- [ ] Prepared spawn amend/archive operations
+- [x] Integration with existing CRUD operations (amendCulture, archiveCulture, amendGrow, archiveGrow work via DataContext)
+- [ ] Prepared spawn amend/archive operations (schema ready, DataContext operations missing)
+
+**Current Status (v0.5 Beta Ready):**
+- ✅ Cultures: Full amendment/archive support with UI
+- ✅ Grows: Full amendment/archive support with UI
+- ✅ History modal in CultureManagement and GrowManagement
+- ✅ RecordHistoryTab with amend/archive actions
+- ⏸️ PreparedSpawn: Schema ready, operations pending (post-v0.5)
+- 🔮 Other entity types (inventory, recipes): Future phases
 
 **Phase 1 Complete - Schema and Core Types:**
 
