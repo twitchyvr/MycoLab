@@ -16,6 +16,7 @@ import { NotificationBellCompact } from '../common/NotificationBell';
 // Canonical forms
 import { ObservationModal, type ObservationFormData } from '../forms/ObservationForm';
 import { HarvestEntryForm, getDefaultHarvestEntryData, type HarvestEntryData } from '../forms/HarvestEntryForm';
+import { GrowForm, getDefaultGrowFormData, validateGrowFormData, type GrowFormData } from '../forms/GrowForm';
 
 // Draft key for localStorage
 const GROW_DRAFT_KEY = 'mycolab-grow-draft';
@@ -482,60 +483,22 @@ export const GrowManagement: React.FC = () => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyGrow, setHistoryGrow] = useState<Grow | null>(null);
 
-  // Form type
-  interface GrowFormState {
-    name: string;
-    strainId: string;
-    sourceCultureId: string;
-    grainTypeId: string;
-    spawnWeight: number;
-    substrateTypeId: string;
-    substrateWeight: number;
-    containerId: string;
-    containerCount: number;
-    locationId: string;
-    inoculationDate: string;
-    targetTempColonization: number;
-    targetTempFruiting: number;
-    targetHumidity: number;
-    estimatedCost: number;
-    notes: string;
-  }
-
-  const getTodayString = () => new Date().toISOString().split('T')[0];
-
-  const defaultFormState: GrowFormState = {
-    name: '',
-    strainId: '',
-    sourceCultureId: '',
-    grainTypeId: '',
-    spawnWeight: 500,
-    substrateTypeId: '',
-    substrateWeight: 2000,
-    containerId: '',
-    containerCount: 1,
-    locationId: '',
-    inoculationDate: getTodayString(),
-    targetTempColonization: 24,
-    targetTempFruiting: 22,
-    targetHumidity: 90,
-    estimatedCost: 0,
-    notes: '',
-  };
-
-  const getInitialFormState = (): GrowFormState => {
+  // Form state uses canonical GrowFormData type
+  const getInitialFormState = (): GrowFormData => {
     const saved = localStorage.getItem(GROW_DRAFT_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return { ...defaultFormState, ...parsed, inoculationDate: parsed.inoculationDate || getTodayString() };
+        const defaultData = getDefaultGrowFormData();
+        return { ...defaultData, ...parsed, inoculationDate: parsed.inoculationDate || defaultData.inoculationDate };
       } catch (e) {}
     }
-    return defaultFormState;
+    return getDefaultGrowFormData();
   };
 
-  const [newGrow, setNewGrow] = useState<GrowFormState>(getInitialFormState);
-  const [editGrow, setEditGrow] = useState<GrowFormState & { id: string }>({ ...defaultFormState, id: '' });
+  const [newGrow, setNewGrow] = useState<GrowFormData>(getInitialFormState);
+  const [editGrow, setEditGrow] = useState<GrowFormData & { id: string }>({ ...getDefaultGrowFormData(), id: '' });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Observation modal uses canonical ObservationModal - no local state needed
 
@@ -755,7 +718,14 @@ export const GrowManagement: React.FC = () => {
 
   const handleCreateGrow = () => {
     if (!guardAction()) return; // Show auth modal if not authenticated
-    if (!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerId || !newGrow.locationId) return;
+
+    // Validate using canonical form validation
+    const errors = validateGrowFormData(newGrow);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
 
     const strain = getStrain(newGrow.strainId);
     const container = getContainer(newGrow.containerId);
@@ -791,7 +761,7 @@ export const GrowManagement: React.FC = () => {
 
     setShowCreateModal(false);
     clearDraft();
-    setNewGrow(defaultFormState);
+    setNewGrow(getDefaultGrowFormData());
   };
 
   const openEditModal = (grow: Grow) => {
@@ -1311,7 +1281,7 @@ export const GrowManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Create Modal */}
+      {/* Create Modal - Uses canonical GrowForm */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -1322,159 +1292,27 @@ export const GrowManagement: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Name (optional)</label>
-                <input
-                  type="text"
-                  value={newGrow.name}
-                  onChange={e => setNewGrow(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Auto-generated if blank"
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <StandardDropdown
-                  label="Strain"
-                  required
-                  value={newGrow.strainId}
-                  onChange={value => setNewGrow(prev => ({ ...prev, strainId: value }))}
-                  options={activeStrains}
-                  placeholder="Select..."
-                  entityType="strain"
-                  fieldName="strainId"
-                />
-                <StandardDropdown
-                  label="Source Culture"
-                  value={newGrow.sourceCultureId}
-                  onChange={value => setNewGrow(prev => ({ ...prev, sourceCultureId: value }))}
-                  options={readyCultureOptions}
-                  placeholder="None"
-                  fieldName="sourceCultureId"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <StandardDropdown
-                  label="Spawn Type"
-                  value={newGrow.grainTypeId}
-                  onChange={value => setNewGrow(prev => ({ ...prev, grainTypeId: value }))}
-                  options={activeGrainTypes}
-                  placeholder="Select..."
-                  entityType="grainType"
-                  fieldName="grainTypeId"
-                />
-                <WeightInput
-                  label="Spawn Weight"
-                  value={newGrow.spawnWeight}
-                  onChange={value => setNewGrow(prev => ({ ...prev, spawnWeight: value ?? 0 }))}
-                  allowEmpty={false}
-                  showConversionHint={true}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <StandardDropdown
-                  label="Substrate"
-                  required
-                  value={newGrow.substrateTypeId}
-                  onChange={value => setNewGrow(prev => ({ ...prev, substrateTypeId: value }))}
-                  options={activeSubstrateTypes}
-                  filterFn={s => s.category === 'bulk'}
-                  placeholder="Select..."
-                  entityType="substrateType"
-                  fieldName="substrateTypeId"
-                />
-                <WeightInput
-                  label="Substrate Weight"
-                  value={newGrow.substrateWeight}
-                  onChange={value => setNewGrow(prev => ({ ...prev, substrateWeight: value ?? 0 }))}
-                  allowEmpty={false}
-                  showConversionHint={true}
-                />
-              </div>
-
-              {calculatedSpawnRate > 0 && (
-                <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-zinc-500">Calculated Spawn Rate</p>
-                  <p className="text-xl font-bold text-emerald-400">{calculatedSpawnRate}%</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <StandardDropdown
-                  label="Container"
-                  required
-                  value={newGrow.containerId}
-                  onChange={value => setNewGrow(prev => ({ ...prev, containerId: value }))}
-                  options={activeContainers.filter(c => c.usageContext.includes('grow'))}
-                  placeholder="Select..."
-                  entityType="container"
-                  fieldName="containerId"
-                />
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Count</label>
-                  <NumericInput
-                    value={newGrow.containerCount}
-                    onChange={value => setNewGrow(prev => ({ ...prev, containerCount: value ?? 1 }))}
-                    min={1}
-                    allowEmpty={false}
-                    defaultValue={1}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <StandardDropdown
-                  label="Location"
-                  required
-                  value={newGrow.locationId}
-                  onChange={value => setNewGrow(prev => ({ ...prev, locationId: value }))}
-                  options={activeLocations}
-                  placeholder="Select..."
-                  entityType="location"
-                  fieldName="locationId"
-                />
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Inoculation Date</label>
-                  <input
-                    type="date"
-                    value={newGrow.inoculationDate}
-                    onChange={e => setNewGrow(prev => ({ ...prev, inoculationDate: e.target.value }))}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white [color-scheme:dark]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Estimated Cost ($)</label>
-                <NumericInput
-                  value={newGrow.estimatedCost}
-                  onChange={value => setNewGrow(prev => ({ ...prev, estimatedCost: value ?? 0 }))}
-                  step={0.01}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Notes</label>
-                <textarea
-                  value={newGrow.notes}
-                  onChange={e => setNewGrow(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={3}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-            </div>
+            {/* Canonical GrowForm */}
+            <GrowForm
+              data={newGrow}
+              onChange={(updates) => setNewGrow(prev => ({ ...prev, ...updates }))}
+              errors={formErrors}
+              strains={activeStrains}
+              containers={activeContainers}
+              locations={activeLocations}
+              substrateTypes={activeSubstrateTypes}
+              grainTypes={activeGrainTypes}
+              sourceCultures={readyCultureOptions}
+              showAdvanced={state.settings?.experienceLevel !== 'beginner'}
+            />
 
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => {
                   setShowCreateModal(false);
                   clearDraft();
-                  setNewGrow(defaultFormState);
+                  setNewGrow(getDefaultGrowFormData());
+                  setFormErrors({});
                 }}
                 className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
               >
@@ -1488,7 +1326,6 @@ export const GrowManagement: React.FC = () => {
               </button>
               <button
                 onClick={handleCreateGrow}
-                disabled={!newGrow.strainId || !newGrow.substrateTypeId || !newGrow.containerId || !newGrow.locationId}
                 className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
               >
                 Create Grow
@@ -1498,7 +1335,7 @@ export const GrowManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal - Uses canonical GrowForm */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -1509,71 +1346,19 @@ export const GrowManagement: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Name</label>
-                <input
-                  type="text"
-                  value={editGrow.name}
-                  onChange={e => setEditGrow(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <StandardDropdown
-                  label="Strain"
-                  required
-                  value={editGrow.strainId}
-                  onChange={value => setEditGrow(prev => ({ ...prev, strainId: value }))}
-                  options={activeStrains}
-                  placeholder="Select..."
-                  entityType="strain"
-                  fieldName="strainId"
-                />
-                <StandardDropdown
-                  label="Location"
-                  required
-                  value={editGrow.locationId}
-                  onChange={value => setEditGrow(prev => ({ ...prev, locationId: value }))}
-                  options={activeLocations}
-                  placeholder="Select..."
-                  entityType="location"
-                  fieldName="locationId"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Inoculation Date</label>
-                  <input
-                    type="date"
-                    value={editGrow.inoculationDate}
-                    onChange={e => setEditGrow(prev => ({ ...prev, inoculationDate: e.target.value }))}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white [color-scheme:dark]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Estimated Cost ($)</label>
-                  <NumericInput
-                    value={editGrow.estimatedCost}
-                    onChange={value => setEditGrow(prev => ({ ...prev, estimatedCost: value ?? 0 }))}
-                    step={0.01}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Notes</label>
-                <textarea
-                  value={editGrow.notes}
-                  onChange={e => setEditGrow(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={3}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-            </div>
+            {/* Canonical GrowForm in edit mode */}
+            <GrowForm
+              data={editGrow}
+              onChange={(updates) => setEditGrow(prev => ({ ...prev, ...updates }))}
+              isEditMode={true}
+              strains={activeStrains}
+              containers={activeContainers}
+              locations={activeLocations}
+              substrateTypes={activeSubstrateTypes}
+              grainTypes={activeGrainTypes}
+              sourceCultures={readyCultureOptions}
+              showAdvanced={true}
+            />
 
             <div className="flex gap-3 mt-6">
               <button
