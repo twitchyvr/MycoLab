@@ -7207,6 +7207,8 @@ BEGIN
       AND c.expires_at IS NOT NULL
       AND c.expires_at > NOW()
       AND c.expires_at <= NOW() + INTERVAL '7 days'
+      -- Respect per-item muting
+      AND (c.notifications_muted IS NULL OR c.notifications_muted = false)
       -- Only users with active profiles
       AND EXISTS (
         SELECT 1 FROM user_profiles up
@@ -7286,6 +7288,8 @@ BEGIN
       AND g.is_archived = false
       AND g.status = 'active'
       AND g.current_stage NOT IN ('completed', 'contaminated', 'aborted')
+      -- Respect per-item muting
+      AND (g.notifications_muted IS NULL OR g.notifications_muted = false)
       -- Only users with active profiles
       AND EXISTS (
         SELECT 1 FROM user_profiles up
@@ -7384,6 +7388,8 @@ BEGIN
       AND i.reorder_point > 0
       AND i.quantity <= i.reorder_point
       AND i.quantity >= 0
+      -- Respect per-item muting
+      AND (i.notifications_muted IS NULL OR i.notifications_muted = false)
       -- Only users with active profiles
       AND EXISTS (
         SELECT 1 FROM user_profiles up
@@ -7462,6 +7468,8 @@ BEGIN
       AND g.is_archived = false
       AND g.status = 'active'
       AND g.current_stage = 'harvesting'
+      -- Respect per-item muting
+      AND (g.notifications_muted IS NULL OR g.notifications_muted = false)
       -- Only users with active profiles
       AND EXISTS (
         SELECT 1 FROM user_profiles up
