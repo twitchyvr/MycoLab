@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../store';
-import { format, differenceInDays, addDays } from 'date-fns';
+import { format, differenceInDays, formatDistanceToNow, addDays } from 'date-fns';
 import type { Culture, Location } from '../../store/types';
 import { formatTemperatureRange, type TemperatureUnit } from '../../utils/temperature';
 import { coldSensitiveSpecies, getStorageRecommendation } from '../../utils/shelf-life';
@@ -37,6 +37,15 @@ interface StorageItem {
   notes?: string;
   daysStored?: number;
   daysUntilExpiry?: number;
+  // Acquisition tracking
+  acquisitionMethod?: 'made' | 'purchased';
+  acquisitionDate?: Date;      // The most relevant date (receivedDate for purchased, prepDate for made)
+  acquisitionLabel?: string;   // "Received" or "Prepared" etc.
+  // Milestone dates
+  milestones?: {
+    label: string;
+    date: Date;
+  }[];
 }
 
 interface CheckResult {
@@ -184,25 +193,38 @@ const StorageItemCard: React.FC<{
             }`}>
               {item.type}
             </span>
+            {/* Age badge - shows how old the item is */}
+            {item.acquisitionDate && (
+              <span className="px-2 py-0.5 text-xs rounded-full bg-zinc-700 text-zinc-300 flex items-center gap-1">
+                <Icons.Clock />
+                {formatDistanceToNow(item.acquisitionDate, { addSuffix: true })}
+              </span>
+            )}
             {expiryStatus && (
               <span className={`px-2 py-0.5 text-xs rounded-full ${expiryStatus.color}`}>
                 {expiryStatus.text}
               </span>
             )}
           </div>
-          {item.strain && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {item.strain && (
               <p className="text-sm text-zinc-400 truncate">{item.strain}</p>
-              {isColdSensitiveStrain(item.strain) && (
-                <span
-                  className="px-1.5 py-0.5 text-[10px] rounded bg-amber-500/20 text-amber-400 font-medium flex-shrink-0"
-                  title="Cold-sensitive species - requires 10°C/50°F minimum storage"
-                >
-                  10°C min
-                </span>
-              )}
-            </div>
-          )}
+            )}
+            {isColdSensitiveStrain(item.strain) && (
+              <span
+                className="px-1.5 py-0.5 text-[10px] rounded bg-amber-500/20 text-amber-400 font-medium flex-shrink-0"
+                title="Cold-sensitive species - requires 10°C/50°F minimum storage"
+              >
+                10°C min
+              </span>
+            )}
+            {/* Show acquisition label */}
+            {item.acquisitionLabel && item.acquisitionDate && (
+              <span className="text-xs text-zinc-500">
+                {item.acquisitionLabel}: {format(item.acquisitionDate, 'MMM d, yyyy')}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Expand Icon */}
@@ -214,30 +236,67 @@ const StorageItemCard: React.FC<{
       {/* Expanded Content */}
       {isExpanded && (
         <div className="px-4 pb-4 border-t border-zinc-800/50 pt-4 space-y-4">
-          {/* Details */}
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            {item.daysStored !== undefined && (
-              <div className="flex items-center gap-2 text-zinc-400">
-                <Icons.Clock />
-                <span>Stored: {item.daysStored} days</span>
-              </div>
-            )}
+          {/* Age & Health Summary */}
+          <div className="flex items-center justify-between bg-zinc-800/50 rounded-lg p-3">
+            <div className="flex items-center gap-4">
+              {/* Big age display */}
+              {item.daysStored !== undefined && (
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-white">{item.daysStored}</p>
+                  <p className="text-xs text-zinc-500">days old</p>
+                </div>
+              )}
+              {/* Expiry countdown if applicable */}
+              {item.daysUntilExpiry !== undefined && (
+                <div className="text-center border-l border-zinc-700 pl-4">
+                  <p className={`text-2xl font-bold ${
+                    item.daysUntilExpiry < 0 ? 'text-red-400' :
+                    item.daysUntilExpiry <= 7 ? 'text-amber-400' :
+                    'text-emerald-400'
+                  }`}>
+                    {item.daysUntilExpiry < 0 ? 'Expired' : item.daysUntilExpiry}
+                  </p>
+                  <p className="text-xs text-zinc-500">{item.daysUntilExpiry < 0 ? `${Math.abs(item.daysUntilExpiry)}d ago` : 'days left'}</p>
+                </div>
+              )}
+            </div>
+            {/* Health rating */}
             {item.healthRating !== undefined && (
-              <div>
-                <HealthIndicator rating={item.healthRating} />
-              </div>
-            )}
-            {item.storedAt && (
-              <div className="text-xs text-zinc-500">
-                Added: {format(item.storedAt, 'MMM d, yyyy')}
-              </div>
-            )}
-            {item.expiresAt && (
-              <div className="text-xs text-zinc-500">
-                Expires: {format(item.expiresAt, 'MMM d, yyyy')}
-              </div>
+              <HealthIndicator rating={item.healthRating} />
             )}
           </div>
+
+          {/* Milestone Timeline */}
+          {item.milestones && item.milestones.length > 0 && (
+            <div className="bg-zinc-800/30 rounded-lg p-3">
+              <p className="text-xs text-zinc-500 uppercase tracking-wide mb-2">Timeline</p>
+              <div className="space-y-2">
+                {item.milestones.map((milestone, idx) => (
+                  <div key={idx} className="flex items-center gap-3 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                    <span className="text-zinc-400 flex-1">{milestone.label}</span>
+                    <span className="text-zinc-500 text-xs">
+                      {format(milestone.date, 'MMM d, yyyy')}
+                    </span>
+                    <span className="text-zinc-600 text-xs">
+                      ({formatDistanceToNow(milestone.date, { addSuffix: true })})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Expiry date if set */}
+          {item.expiresAt && (
+            <div className="flex items-center gap-2 text-sm text-zinc-400">
+              <span>Expires:</span>
+              <span className="text-white">{format(item.expiresAt, 'MMM d, yyyy')}</span>
+              <span className="text-zinc-500">
+                ({formatDistanceToNow(item.expiresAt, { addSuffix: true })})
+              </span>
+            </div>
+          )}
 
           {item.notes && (
             <p className="text-sm text-zinc-400 bg-zinc-800/30 rounded-lg p-2">
@@ -441,8 +500,49 @@ export const ColdStorageCheck: React.FC = () => {
     state.cultures.forEach(culture => {
       if (culture.locationId && coldStorageLocations.some(loc => loc.id === culture.locationId)) {
         const strain = culture.strainId ? getStrain(culture.strainId) : undefined;
-        const storedAt = culture.createdAt ? new Date(culture.createdAt) : undefined;
+        const createdAt = culture.createdAt ? new Date(culture.createdAt) : undefined;
         const expiresAt = culture.expiresAt ? new Date(culture.expiresAt) : undefined;
+
+        // Determine the most relevant acquisition date and label
+        const isPurchased = culture.acquisitionMethod === 'purchased';
+        let acquisitionDate: Date | undefined;
+        let acquisitionLabel: string;
+
+        if (isPurchased) {
+          // For purchased: prefer receivedDate, fall back to purchaseDate, then createdAt
+          if (culture.receivedDate) {
+            acquisitionDate = new Date(culture.receivedDate);
+            acquisitionLabel = 'Received';
+          } else if (culture.purchaseDate) {
+            acquisitionDate = new Date(culture.purchaseDate);
+            acquisitionLabel = 'Purchased';
+          } else {
+            acquisitionDate = createdAt;
+            acquisitionLabel = 'Added';
+          }
+        } else {
+          // For homemade: prefer prepDate, fall back to sterilizationDate, then createdAt
+          if (culture.prepDate) {
+            acquisitionDate = new Date(culture.prepDate);
+            acquisitionLabel = 'Prepared';
+          } else if (culture.sterilizationDate) {
+            acquisitionDate = new Date(culture.sterilizationDate);
+            acquisitionLabel = 'Sterilized';
+          } else {
+            acquisitionDate = createdAt;
+            acquisitionLabel = 'Added';
+          }
+        }
+
+        // Build milestone dates array
+        const milestones: { label: string; date: Date }[] = [];
+        if (culture.prepDate) milestones.push({ label: 'Prepared', date: new Date(culture.prepDate) });
+        if (culture.sterilizationDate) milestones.push({ label: 'Sterilized', date: new Date(culture.sterilizationDate) });
+        if (culture.purchaseDate) milestones.push({ label: 'Purchased', date: new Date(culture.purchaseDate) });
+        if (culture.receivedDate) milestones.push({ label: 'Received', date: new Date(culture.receivedDate) });
+        if (createdAt) milestones.push({ label: 'Record Created', date: createdAt });
+        // Sort milestones by date (oldest first)
+        milestones.sort((a, b) => a.date.getTime() - b.date.getTime());
 
         items.push({
           id: culture.id,
@@ -450,13 +550,17 @@ export const ColdStorageCheck: React.FC = () => {
           label: culture.label,
           strain: strain?.name,
           locationId: culture.locationId,
-          storedAt,
+          storedAt: acquisitionDate,
           expiresAt,
           status: culture.status,
           healthRating: culture.healthRating,
           notes: culture.notes,
-          daysStored: storedAt ? differenceInDays(now, storedAt) : undefined,
+          daysStored: acquisitionDate ? differenceInDays(now, acquisitionDate) : undefined,
           daysUntilExpiry: expiresAt ? differenceInDays(expiresAt, now) : undefined,
+          acquisitionMethod: culture.acquisitionMethod,
+          acquisitionDate,
+          acquisitionLabel,
+          milestones: milestones.length > 0 ? milestones : undefined,
         });
       }
     });
