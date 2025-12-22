@@ -267,52 +267,143 @@ export const GrowForm = ({ onSubmit, initialData }) => (
 <EntityFormModal entityType="grow" />
 ```
 
-### ⚠️⚠️⚠️ DATA INTEGRITY & CASCADING UPDATES - CRITICAL ⚠️⚠️⚠️
+### ⛔⛔⛔ STOP - CHECK - VERIFY - BEFORE ANY CHANGE ⛔⛔⛔
 
-**EVERY piece of data in this app connects to or relies on other pieces of data. NEVER implement a feature without considering ALL related data, views, and entities.**
+**THIS IS THE MOST IMPORTANT SECTION IN THIS DOCUMENT.**
 
-#### The Problem This Solves
+This app has suffered from:
+- 3 different modals to edit the same culture information (consolidated after pain)
+- Observations logged without updating parent entities
+- New components created when existing ones should have been updated
+- Disconnected, messy code requiring extensive rework
 
-A past bug allowed observations to be logged without updating parent entity:
-- Logging contamination observation → Culture status stayed "Active" (WRONG)
-- Logging health rating → Culture health didn't update (WRONG)
-- User saw their observation but the culture looked unchanged
+**THE FUNDAMENTAL RULE: CHECK, DOUBLE-CHECK, TRIPLE-CHECK BEFORE ANY CHANGE.**
 
-This violates data integrity and confuses users.
+---
 
-#### Mandatory Rules for ALL Data Operations
+#### 🔴 MANDATORY PRE-IMPLEMENTATION CHECKLIST
 
-**1. When adding child records (observations, transfers, flushes), ALWAYS cascade relevant changes to parent:**
+**BEFORE writing ANY code, you MUST complete ALL of these steps:**
 
-| Child Record | Parent Entity | Cascading Fields |
-|-------------|---------------|------------------|
+**Step 1: SEARCH for existing implementations**
+```bash
+# Before creating ANY new component, modal, or form:
+grep -r "CultureModal\|CultureForm\|EditCulture" src/
+grep -r "GrowModal\|GrowForm\|EditGrow" src/
+grep -r "[Yy]our[Ff]eature" src/
+
+# Before creating ANY new function:
+grep -r "functionName\|similarFunction" src/
+```
+
+**Step 2: READ existing code that touches the same entity**
+- If editing cultures → READ all files in `components/cultures/`
+- If editing grows → READ all files in `components/grows/`
+- If editing data layer → READ the ENTIRE relevant section of `DataContext.tsx`
+
+**Step 3: MAP all places this entity appears**
+- Which pages display this data?
+- Which modals edit this data?
+- Which other entities reference this data?
+- Which calculations depend on this data?
+
+**Step 4: VERIFY your approach with these questions:**
+- [ ] Does a component/modal for this already exist? → **UPDATE IT, don't create new**
+- [ ] Is there similar code elsewhere? → **REUSE IT, don't duplicate**
+- [ ] What will break if I change this? → **FIX ALL BREAKING CHANGES**
+- [ ] What displays this data? → **UPDATE ALL DISPLAYS**
+- [ ] What calculates from this data? → **UPDATE ALL CALCULATIONS**
+
+---
+
+#### 🔴 DATA INTEGRITY & CASCADING UPDATES
+
+**EVERY piece of data connects to other data. A change to one entity MUST cascade to all related entities.**
+
+**Cascade Rules:**
+
+| Child Record | Parent Entity | MUST Update |
+|-------------|---------------|-------------|
 | CultureObservation with healthRating | Culture | `healthRating` |
 | CultureObservation type='contamination' | Culture | `status = 'contaminated'` |
 | GrowObservation type='contamination' | Grow | `currentStage = 'contaminated'`, `status = 'failed'` |
 | Flush (harvest) | Grow | `totalYield`, `flushes`, `currentStage` |
 | Transfer depleting source | Culture | `status = 'depleted'`, `fillVolumeMl` |
+| Inventory lot change | Inventory Item | `totalQuantity`, `averageCost` |
 
-**2. When modifying a field that affects other entities, check ALL relationships:**
+**Entity Relationship Map:**
+
+```
+Culture
+├── Observations[] ←─ MUST update: healthRating, status
+├── Transfers[] ←─ MUST update: fillVolumeMl, volumeUsed, status
+├── Parent Culture ←─ Affects: lineage, generation
+├── Child Cultures ←─ Linked via parentCultureId
+├── Recipe ←─ Referenced by recipeId
+├── Location ←─ Referenced by locationId
+├── Container ←─ Referenced by containerId
+└── Supplier ←─ Referenced by supplierId
+
+Grow
+├── Observations[] ←─ MUST update: currentStage, status
+├── Flushes[] ←─ MUST update: totalYield, totalYieldDry, currentStage
+├── Source Culture ←─ References sourceCultureId
+├── Strain ←─ References strainId
+├── Substrate Type ←─ References substrateTypeId
+├── Container ←─ References containerId
+└── Inventory Usage ←─ Affects cost calculations
+```
+
+---
+
+#### 🔴 ANTI-PATTERNS - THINGS THAT HAVE CAUSED PROBLEMS
+
+❌ **Creating a new modal when one already exists**
+   - Past issue: 3 different culture edit modals
+   - Solution: ONE canonical form per entity type
+
+❌ **Adding observation without updating parent**
+   - Past issue: Contamination logged but status stayed "Active"
+   - Solution: All child record operations MUST cascade to parent
+
+❌ **Creating new component instead of updating existing**
+   - Past issue: Multiple versions of same functionality
+   - Solution: SEARCH FIRST, update existing code
+
+❌ **Editing one place when data appears in many places**
+   - Past issue: Change in one view, stale data in others
+   - Solution: Map ALL places data appears, update ALL of them
+
+❌ **Assuming you know what exists without checking**
+   - Past issue: Duplicate implementations
+   - Solution: ALWAYS grep/search before implementing
+
+❌ **Making partial changes**
+   - Past issue: Feature half-implemented, other parts broken
+   - Solution: Follow EVERY connected pathway to completion
+
+---
+
+#### 🔴 CORRECT IMPLEMENTATION PATTERN
 
 ```typescript
-// WRONG - Incomplete implementation
-const addObservation = (observation) => {
-  setState(prev => ({
-    cultures: prev.cultures.map(c =>
-      c.id === id ? { ...c, observations: [...c.observations, obs] } : c
-    )
-  }));
-};
+// BEFORE implementing addCultureObservation:
+// 1. Search: grep -r "addCultureObservation\|addObservation" src/
+// 2. Read: DataContext.tsx to see existing implementation
+// 3. Map: Culture entity, what fields are affected
+// 4. Implement with ALL cascades:
 
-// CORRECT - Cascades all relevant changes
-const addObservation = (observation) => {
+const addCultureObservation = (cultureId, observation) => {
   setState(prev => ({
     cultures: prev.cultures.map(c => {
-      if (c.id !== id) return c;
+      if (c.id !== cultureId) return c;
 
-      const updates = { observations: [...c.observations, obs] };
+      const updates = {
+        observations: [...c.observations, newObs],
+        updatedAt: new Date(),
+      };
 
-      // CASCADE: Health rating from observation
+      // CASCADE: Health rating
       if (observation.healthRating != null) {
         updates.healthRating = observation.healthRating;
       }
@@ -328,60 +419,30 @@ const addObservation = (observation) => {
 };
 ```
 
-**3. Before writing ANY CRUD function, answer these questions:**
+---
 
-- [ ] Does this operation create a child record? → What fields on the parent should update?
-- [ ] Does this operation change a status/stage? → What related entities need to know?
-- [ ] Does this operation affect quantities/volumes? → What calculations need updating?
-- [ ] Does this operation mark something as contaminated/failed? → What parent records are affected?
-- [ ] Can this operation deplete/exhaust something? → What status changes should cascade?
+#### 🔴 FILES TO CHECK FOR ANY ENTITY CHANGE
 
-**4. Entity Relationship Map (Reference)**
+| Entity | Files to Read Before Changing |
+|--------|------------------------------|
+| Culture | `DataContext.tsx`, `CultureManagement.tsx`, `CultureDetailView.tsx`, `CultureWizard.tsx`, `LineageVisualization.tsx` |
+| Grow | `DataContext.tsx`, `GrowManagement.tsx`, all grow-related components |
+| Recipe | `DataContext.tsx`, `RecipeBuilder.tsx`, all recipe components |
+| Inventory | `DataContext.tsx`, `UnifiedItemView.tsx`, `InventoryManagement.tsx` |
+| Location | `DataContext.tsx`, `LabSpaces.tsx`, `LocationForm.tsx` |
 
-```
-Culture
-├── Observations[] ←─ Can update: healthRating, status
-├── Transfers[] ←─ Can update: fillVolumeMl, volumeUsed, status (depleted)
-├── Parent Culture ←─ Affects: lineage, generation
-└── Child Cultures ←─ Linked via parentCultureId
+---
 
-Grow
-├── Observations[] ←─ Can update: currentStage, status
-├── Flushes[] ←─ Can update: totalYield, totalYieldDry, currentStage
-├── Source Culture ←─ References sourceCultureId
-└── Inventory Usage ←─ Affects cost calculations
+#### 🔴 FINAL VERIFICATION BEFORE COMMITTING
 
-Recipe
-├── Ingredients[] ←─ Affects: totalCost, nutritional calculations
-└── Cultures using this recipe ←─ Referenced by Culture.recipeId
+Before ANY commit, verify:
+1. **No duplicate components** - Did you create something that already exists?
+2. **All cascades implemented** - Does every data change update ALL related entities?
+3. **All views updated** - Does every display of this data show the new state?
+4. **No loose ends** - Is every connected pathway followed to completion?
+5. **No stale references** - Are all imports, exports, and references updated?
 
-Inventory Item
-├── Lots[] ←─ Affects: totalQuantity, averageCost
-└── Purchase Orders ←─ Updates stock levels on receive
-```
-
-**5. Testing Cascades**
-
-When implementing any data operation, mentally test:
-1. What does the UI show BEFORE the operation?
-2. What should change AFTER the operation?
-3. Are ALL relevant displays updated?
-4. Would a user be confused by any stale/unchanged data?
-
-#### Anti-Patterns to NEVER Do
-
-❌ **Adding observation without updating parent health/status**
-❌ **Recording transfer without updating source volume**
-❌ **Marking contamination without changing status/stage**
-❌ **Adding flush without updating totalYield**
-❌ **Depleting inventory without updating lot quantities**
-❌ **Assuming "the UI will handle it" - data layer must be consistent**
-
-#### Files to Check for Cascading Logic
-
-- `src/store/DataContext.tsx` - All CRUD operations with cascade logic
-- `src/store/types.ts` - Entity relationships and type definitions
-- `supabase-schema.sql` - Database triggers (if using server-side cascades)
+**If you cannot answer YES to all five, DO NOT COMMIT. Go back and complete the work.**
 
 ### !!! MANDATORY PRE-COMMIT CHECKLIST - NO EXCEPTIONS !!!
 
