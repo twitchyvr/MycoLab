@@ -394,6 +394,66 @@ Grow
    - Past issue: Feature half-implemented, other parts broken
    - Solution: Follow EVERY connected pathway to completion
 
+❌ **Silent cascade failures**
+   - Past issue: Contamination observation saved but culture status update failed silently, data disappeared after refresh
+   - Solution: CASCADE UPDATES MUST THROW ON ERROR - never catch and continue
+   - If cascade fails, user MUST see error message explaining what happened
+
+❌ **Local state updated without database verification**
+   - Past issue: UI showed correct data, but refresh loaded stale data from database
+   - Solution: ALWAYS verify database update succeeded before updating local state
+   - Use `.select()` after update to confirm the change was applied
+
+❌ **Using transformation functions for partial updates**
+   - Past issue: `transformCultureToDb({ updatedAt, status })` dropped `updatedAt` because it wasn't in the transformation map
+   - Solution: For cascade updates, build the database update object manually with explicit column names
+   - Example: `{ updated_at: new Date().toISOString(), status: 'contaminated' }`
+
+---
+
+#### 🔴 CASCADE UPDATE REQUIREMENTS
+
+**ALL cascade updates in Supabase MUST:**
+
+1. **Throw on failure** - NEVER catch cascade errors silently
+2. **Use `.select()` after update** - Verify the update was applied
+3. **Build DB objects manually** - Don't rely on transformation functions for partial updates
+4. **Include `updated_at`** - Always update the timestamp
+5. **Log in development** - Console log successful cascades for debugging
+
+**Example of CORRECT cascade pattern:**
+```typescript
+// GOOD - Throws on failure, verifies update, logs success
+const { data: updated, error } = await supabase
+  .from('cultures')
+  .update({
+    status: 'contaminated',
+    updated_at: new Date().toISOString(),
+  })
+  .eq('id', cultureId)
+  .select('id, status')
+  .single();
+
+if (error) {
+  throw new Error(`Cascade failed: ${error.message}`);
+}
+console.log('[CASCADE] Culture updated:', updated);
+```
+
+**WRONG cascade pattern:**
+```typescript
+// BAD - Silently continues on failure
+const { error } = await supabase
+  .from('cultures')
+  .update(transformCultureToDb(updates)) // May drop fields!
+  .eq('id', cultureId);
+
+if (error) {
+  console.error('Failed:', error);
+  // NO THROW - User never knows it failed!
+}
+```
+
 ---
 
 #### 🔴 CORRECT IMPLEMENTATION PATTERN
