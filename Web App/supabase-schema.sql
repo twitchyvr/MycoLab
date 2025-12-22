@@ -6013,6 +6013,27 @@ BEGIN
     RAISE NOTICE 'Added show_guided_workflows to user_settings';
   END IF;
 
+  -- Growing purpose (hobby, commercial, research, etc.)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'growing_purpose') THEN
+    ALTER TABLE user_settings ADD COLUMN growing_purpose TEXT;
+    RAISE NOTICE 'Added growing_purpose to user_settings';
+  END IF;
+
+  -- Preferred species/strain categories from onboarding
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'preferred_categories') THEN
+    ALTER TABLE user_settings ADD COLUMN preferred_categories TEXT[];
+    RAISE NOTICE 'Added preferred_categories to user_settings';
+  END IF;
+
+  -- Lab equipment inventory from onboarding
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_settings' AND column_name = 'lab_equipment') THEN
+    ALTER TABLE user_settings ADD COLUMN lab_equipment JSONB DEFAULT '{}';
+    RAISE NOTICE 'Added lab_equipment to user_settings';
+  END IF;
+
   RAISE NOTICE 'Experience level and setup wizard columns migration complete';
 END $$;
 
