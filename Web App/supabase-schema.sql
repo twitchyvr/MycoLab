@@ -1144,6 +1144,9 @@ CREATE TABLE IF NOT EXISTS notification_event_preferences (
   sms_enabled BOOLEAN DEFAULT false,
   push_enabled BOOLEAN DEFAULT true,  -- in-app always on by default
 
+  -- Master enable/disable toggle for this notification type
+  enabled BOOLEAN DEFAULT true,
+
   -- Priority/urgency settings
   priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
 
@@ -1303,6 +1306,16 @@ BEGIN
   END IF;
 
   RAISE NOTICE 'Email/SMS notification columns migration complete';
+END $$;
+
+-- Add enabled column to notification_event_preferences if missing
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'notification_event_preferences' AND column_name = 'enabled') THEN
+    ALTER TABLE notification_event_preferences ADD COLUMN enabled BOOLEAN DEFAULT true;
+    RAISE NOTICE 'Added enabled column to notification_event_preferences';
+  END IF;
 END $$;
 
 -- Indexes for notification tables
@@ -7209,15 +7222,15 @@ DECLARE
   v_user_prefs RECORD;
 BEGIN
   FOR v_item IN
-    SELECT i.id, i.user_id, i.name, i.current_stock, i.reorder_point, i.unit,
+    SELECT i.id, i.user_id, i.name, i.quantity, i.reorder_point, i.unit,
            c.name as category_name
     FROM inventory_items i
     LEFT JOIN inventory_categories c ON i.category_id = c.id
-    WHERE i.is_current = true
-      AND i.is_archived = false
+    WHERE i.is_active = true
       AND i.reorder_point IS NOT NULL
-      AND i.current_stock <= i.reorder_point
-      AND i.current_stock >= 0
+      AND i.reorder_point > 0
+      AND i.quantity <= i.reorder_point
+      AND i.quantity >= 0
   LOOP
     SELECT * INTO v_user_prefs
     FROM notification_event_preferences
@@ -7242,16 +7255,16 @@ BEGIN
           'Low Inventory Alert',
           format('%s is running low: %s %s remaining (reorder point: %s)',
             v_item.name,
-            v_item.current_stock,
+            v_item.quantity,
             COALESCE(v_item.unit, 'units'),
             v_item.reorder_point),
           'inventory_items',
           v_item.id,
-          CASE WHEN v_item.current_stock = 0 THEN 1 ELSE 6 END,
+          CASE WHEN v_item.quantity = 0 THEN 1 ELSE 6 END,
           jsonb_build_object(
             'item_name', v_item.name,
             'category', v_item.category_name,
-            'current_stock', v_item.current_stock,
+            'quantity', v_item.quantity,
             'reorder_point', v_item.reorder_point,
             'unit', v_item.unit
           )
