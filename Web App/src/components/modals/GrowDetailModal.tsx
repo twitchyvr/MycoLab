@@ -8,9 +8,10 @@ import { EntityDetailModal, EntityDetailTab } from './EntityDetailModal';
 import { GrowOverviewTab } from './entity-tabs/GrowOverviewTab';
 import { TimelineTab } from './entity-tabs/TimelineTab';
 import { HistoryTab } from './entity-tabs/HistoryTab';
+import { RelatedTab } from './entity-tabs/RelatedTab';
 import { useEntityTimeline } from './useEntityTimeline';
 import { useData } from '../../store';
-import type { Grow, GrowStage } from '../../store/types';
+import type { Grow, GrowStage, Culture } from '../../store/types';
 
 // ============================================================================
 // TYPES
@@ -27,6 +28,7 @@ interface GrowDetailModalProps {
   onComplete?: () => void;
   onEdit?: () => void;
   onDispose?: () => void;
+  onNavigateToCulture?: (culture: Culture) => void;
 }
 
 // ============================================================================
@@ -68,6 +70,13 @@ const TabIcons = {
       <path d="M3 16v-5h5"/>
     </svg>
   ),
+  Related: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+      <polyline points="2 17 12 22 22 17"/>
+      <polyline points="2 12 12 17 22 12"/>
+    </svg>
+  ),
 };
 
 // ============================================================================
@@ -85,6 +94,7 @@ export const GrowDetailModal: React.FC<GrowDetailModalProps> = ({
   onComplete,
   onEdit,
   onDispose,
+  onNavigateToCulture,
 }) => {
   const { getStrain } = useData();
   const [activeTab, setActiveTab] = useState('overview');
@@ -110,6 +120,11 @@ export const GrowDetailModal: React.FC<GrowDetailModalProps> = ({
       label: 'Timeline',
       icon: <TabIcons.Timeline />,
       badge: timeline.length > 0 ? timeline.length : undefined,
+    },
+    {
+      id: 'related',
+      label: 'Related',
+      icon: <TabIcons.Related />,
     },
     {
       id: 'history',
@@ -148,6 +163,15 @@ export const GrowDetailModal: React.FC<GrowDetailModalProps> = ({
           />
         );
 
+      case 'related':
+        return (
+          <RelatedTab
+            entityType="grow"
+            entity={grow}
+            onNavigateToCulture={onNavigateToCulture}
+          />
+        );
+
       case 'history':
         return (
           <HistoryTab
@@ -159,7 +183,7 @@ export const GrowDetailModal: React.FC<GrowDetailModalProps> = ({
       default:
         return null;
     }
-  }, [activeTab, grow, onLogObservation, onRecordHarvest, onAdvanceStage, onMarkContaminated, canHarvest, isTerminal]);
+  }, [activeTab, grow, onLogObservation, onRecordHarvest, onAdvanceStage, onMarkContaminated, onNavigateToCulture, canHarvest, isTerminal]);
 
   // Footer actions
   const actions = (

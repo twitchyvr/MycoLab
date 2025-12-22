@@ -10,8 +10,9 @@ import { CultureOverviewTab } from './entity-tabs/CultureOverviewTab';
 import { TimelineTab } from './entity-tabs/TimelineTab';
 import { HistoryTab } from './entity-tabs/HistoryTab';
 import { LineageTab } from './entity-tabs/LineageTab';
+import { RelatedTab } from './entity-tabs/RelatedTab';
 import { useData } from '../../store';
-import type { Culture, CultureStatus } from '../../store/types';
+import type { Culture, CultureStatus, Grow } from '../../store/types';
 
 // ============================================================================
 // TYPES
@@ -28,6 +29,7 @@ interface CultureDetailModalProps {
   onEdit?: () => void;
   onDispose?: () => void;
   onNavigateToCulture?: (culture: Culture) => void;
+  onNavigateToGrow?: (grow: Grow) => void;
 }
 
 // ============================================================================
@@ -60,6 +62,13 @@ const TabIcons = {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
       <path d="M12 20h9"/>
       <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+    </svg>
+  ),
+  Related: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+      <polyline points="2 17 12 22 22 17"/>
+      <polyline points="2 12 12 17 22 12"/>
     </svg>
   ),
   Clipboard: () => (
@@ -126,6 +135,7 @@ export const CultureDetailModal: React.FC<CultureDetailModalProps> = ({
   onEdit,
   onDispose,
   onNavigateToCulture,
+  onNavigateToGrow,
 }) => {
   const { getStrain, getCultureLineage } = useData();
   const [activeTab, setActiveTab] = useState('overview');
@@ -154,6 +164,11 @@ export const CultureDetailModal: React.FC<CultureDetailModalProps> = ({
       label: 'Lineage',
       icon: <TabIcons.Lineage />,
       badge: lineage.ancestors.length + lineage.descendants.length || undefined,
+    },
+    {
+      id: 'related',
+      label: 'Related',
+      icon: <TabIcons.Related />,
     },
     {
       id: 'history',
@@ -189,6 +204,16 @@ export const CultureDetailModal: React.FC<CultureDetailModalProps> = ({
           />
         );
 
+      case 'related':
+        return (
+          <RelatedTab
+            entityType="culture"
+            entity={culture}
+            onNavigateToCulture={onNavigateToCulture}
+            onNavigateToGrow={onNavigateToGrow}
+          />
+        );
+
       case 'history':
         return (
           <HistoryTab
@@ -201,7 +226,7 @@ export const CultureDetailModal: React.FC<CultureDetailModalProps> = ({
       default:
         return null;
     }
-  }, [activeTab, culture, onNavigateToCulture, onEdit]);
+  }, [activeTab, culture, onNavigateToCulture, onNavigateToGrow, onEdit]);
 
   // Status badge component
   const statusBadge = (
