@@ -18,7 +18,7 @@ const VERSION_STORAGE_KEY = 'mycolab-build-version';
 const DISMISSED_KEY = 'mycolab-version-dismissed';
 
 // How often to check for new versions (in milliseconds)
-const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const VERSION_CHECK_INTERVAL = 60 * 1000; // 1 minute (more responsive like Supabase)
 
 interface VersionInfo {
   buildTime: string;
@@ -81,36 +81,85 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
 
   /**
    * Proactive version checking - polls the server to detect new deployments
-   * while the user has the app open
+   * while the user has the app open. Uses multiple detection strategies for reliability.
    */
   useEffect(() => {
     // Skip polling in development mode
     if (import.meta.env.DEV) return;
 
     let isActive = true;
+    let consecutiveFailures = 0;
+    const MAX_FAILURES = 3;
+
+    // Extract script hashes from the current page on first load
+    const getCurrentScriptHashes = (): string => {
+      const scripts = document.querySelectorAll('script[src]');
+      const hashes = Array.from(scripts)
+        .map(s => s.getAttribute('src'))
+        .filter(src => src && src.includes('/assets/'))
+        .sort()
+        .join('|');
+      return hashes;
+    };
+
+    // Store initial script hashes
+    const initialScriptHashes = getCurrentScriptHashes();
+    if (initialScriptHashes && !sessionStorage.getItem('mycolab-script-hashes')) {
+      sessionStorage.setItem('mycolab-script-hashes', initialScriptHashes);
+    }
 
     const checkForUpdates = async () => {
+      if (!isActive) return;
+
       try {
-        // Fetch the index.html with cache-busting to get fresh content
-        const response = await fetch(`/?_v=${Date.now()}`, {
-          method: 'HEAD',
+        // Strategy 1: Fetch index.html and compare script tags (most reliable)
+        const response = await fetch(`/?_t=${Date.now()}`, {
           cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+          },
         });
 
-        // Check ETag or Last-Modified headers for changes
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const html = await response.text();
+
+        // Extract script tags from the fetched HTML
+        const scriptMatches = html.match(/src="([^"]*\/assets\/[^"]+)"/g);
+        const serverScripts = scriptMatches
+          ? scriptMatches.map(m => m.replace(/src="|"/g, '')).sort().join('|')
+          : '';
+
+        const storedHashes = sessionStorage.getItem('mycolab-script-hashes');
+
+        if (serverScripts && storedHashes && serverScripts !== storedHashes && isActive) {
+          console.log('[MycoLab] New version detected - script hashes changed');
+          console.log('[MycoLab] Current:', storedHashes.substring(0, 100));
+          console.log('[MycoLab] Server:', serverScripts.substring(0, 100));
+
+          setVersionInfo(prev => ({
+            ...prev,
+            isNewVersion: true,
+            isDismissed: false,
+          }));
+          return; // New version found, stop checking
+        }
+
+        // Strategy 2: Also check headers as backup
         const serverEtag = response.headers.get('etag');
         const lastModified = response.headers.get('last-modified');
         const serverTimestamp = serverEtag || lastModified;
 
         if (serverTimestamp && isActive) {
-          const storedServerTimestamp = sessionStorage.getItem('mycolab-server-timestamp');
+          const storedTimestamp = sessionStorage.getItem('mycolab-server-timestamp');
 
-          if (!storedServerTimestamp) {
-            // First check - store the timestamp
+          if (!storedTimestamp) {
             sessionStorage.setItem('mycolab-server-timestamp', serverTimestamp);
-          } else if (storedServerTimestamp !== serverTimestamp) {
-            // Server has changed since we loaded - a new version is available
-            console.log('[MycoLab] New version detected via server headers');
+          } else if (storedTimestamp !== serverTimestamp) {
+            console.log('[MycoLab] New version detected via headers');
             setVersionInfo(prev => ({
               ...prev,
               isNewVersion: true,
@@ -118,31 +167,47 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
             }));
           }
         }
+
+        // Reset failure counter on success
+        consecutiveFailures = 0;
+
       } catch (error) {
-        // Silently fail - network errors shouldn't affect the user
-        console.debug('[MycoLab] Version check failed:', error);
+        consecutiveFailures++;
+        if (consecutiveFailures <= MAX_FAILURES) {
+          console.debug('[MycoLab] Version check failed:', error);
+        }
+        // After too many failures, reduce logging
       }
     };
 
     // Initial check after a short delay (let the app settle)
-    const initialTimeout = setTimeout(checkForUpdates, 10000);
+    const initialTimeout = setTimeout(checkForUpdates, 5000);
 
     // Set up periodic polling
     const intervalId = setInterval(checkForUpdates, VERSION_CHECK_INTERVAL);
 
-    // Also check when the window gains focus (user returns to tab)
+    // Check when the window gains focus (user returns to tab)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        checkForUpdates();
+        // Small delay to avoid race conditions
+        setTimeout(checkForUpdates, 500);
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Also check on online event (in case user was offline)
+    const handleOnline = () => {
+      console.log('[MycoLab] Network restored, checking for updates...');
+      setTimeout(checkForUpdates, 1000);
+    };
+    window.addEventListener('online', handleOnline);
 
     return () => {
       isActive = false;
       clearTimeout(initialTimeout);
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
     };
   }, []);
 
