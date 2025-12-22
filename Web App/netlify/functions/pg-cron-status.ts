@@ -100,105 +100,52 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   }
 };
 
-// Check pg_cron extension and jobs status
+// Check pg_cron extension and jobs status via SQL function
 async function getStatus(supabase: SupabaseClient, headers: Record<string, string>) {
   try {
-    // Check if pg_cron extension is enabled
-    const { data: extensions, error: extError } = await supabase.rpc("sql", {
-      query: "SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'"
-    }).single();
+    // Call the SQL function that handles all status checks
+    const { data, error } = await supabase.rpc("get_cron_job_status");
 
-    // If rpc sql doesn't work, try direct query
-    let pgCronEnabled = false;
-    let cronJobs: CronJob[] = [];
-    let lastRun: string | null = null;
-    let pendingCount = 0;
-
-    // Try checking extension via a safer method
-    const { data: extCheck, error: extCheckError } = await supabase
-      .from("pg_extension")
-      .select("extname")
-      .eq("extname", "pg_cron")
-      .maybeSingle();
-
-    // This might fail due to permissions, try alternative
-    if (extCheckError) {
-      // Try calling setup function which returns status
-      const { data: setupCheck, error: setupError } = await supabase.rpc(
-        "setup_notification_cron_jobs"
-      );
-
-      if (setupError) {
-        // Could be permission error or pg_cron not enabled
-        if (setupError.message.includes("pg_cron extension not enabled")) {
-          pgCronEnabled = false;
-        } else {
-          // Function exists but something else went wrong
-          pgCronEnabled = true; // Assume extension is there
-        }
-      } else {
-        pgCronEnabled = true;
-        // Check if jobs were created
-        if (setupCheck && typeof setupCheck === "string") {
-          pgCronEnabled = !setupCheck.includes("not enabled");
-        }
-      }
-    } else {
-      pgCronEnabled = !!extCheck;
+    if (error) {
+      console.error("get_cron_job_status error:", error);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          pgCronEnabled: false,
+          cronJobsConfigured: false,
+          cronJobs: [],
+          pendingNotifications: 0,
+          lastNotificationSent: null,
+          supabaseConfigured: true,
+          error: error.message,
+        }),
+      };
     }
 
-    // If pg_cron is enabled, try to get job information
-    if (pgCronEnabled) {
-      try {
-        // Try to query cron.job directly (requires proper permissions)
-        const { data: jobs, error: jobsError } = await supabase.rpc("sql", {
-          query: "SELECT jobid, jobname, schedule, active FROM cron.job WHERE jobname LIKE 'mycolab-%'"
-        });
-
-        if (!jobsError && jobs) {
-          cronJobs = jobs as CronJob[];
-        }
-      } catch {
-        // cron.job might not be accessible, that's okay
-      }
-
-      // Get pending notifications count
-      const { count, error: countError } = await supabase
-        .from("notification_queue")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "pending");
-
-      if (!countError && count !== null) {
-        pendingCount = count;
-      }
-
-      // Try to get last notification check time from any sent notification
-      const { data: lastSent, error: lastError } = await supabase
-        .from("notification_queue")
-        .select("sent_at")
-        .eq("status", "sent")
-        .order("sent_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!lastError && lastSent) {
-        lastRun = lastSent.sent_at;
-      }
-    }
+    // The SQL function returns JSONB with the exact structure we need
+    const status = data as {
+      pgCronEnabled: boolean;
+      cronJobsConfigured: boolean;
+      cronJobs: Array<{ jobid: number; jobname: string; schedule: string; active: boolean }>;
+      pendingNotifications: number;
+      lastNotificationSent: string | null;
+      supabaseConfigured: boolean;
+    };
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        pgCronEnabled,
-        cronJobsConfigured: cronJobs.length > 0,
-        cronJobs: cronJobs.map((j) => ({
+        pgCronEnabled: status.pgCronEnabled,
+        cronJobsConfigured: status.cronJobsConfigured,
+        cronJobs: (status.cronJobs || []).map((j) => ({
           name: j.jobname,
           schedule: j.schedule,
           active: j.active,
         })),
-        pendingNotifications: pendingCount,
-        lastNotificationSent: lastRun,
+        pendingNotifications: status.pendingNotifications,
+        lastNotificationSent: status.lastNotificationSent,
         supabaseConfigured: true,
       }),
     };
