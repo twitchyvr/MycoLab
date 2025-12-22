@@ -7046,17 +7046,17 @@ DECLARE
 BEGIN
   -- Find cultures expiring within their configured warning period
   FOR v_culture IN
-    SELECT c.id, c.user_id, c.label, c.type, c.expiry_date,
+    SELECT c.id, c.user_id, c.label, c.type, c.expires_at,
            s.name as strain_name,
-           EXTRACT(DAY FROM (c.expiry_date - NOW()))::INTEGER as days_until_expiry
+           EXTRACT(DAY FROM (c.expires_at - NOW()))::INTEGER as days_until_expiry
     FROM cultures c
     LEFT JOIN strains s ON c.strain_id = s.id
     WHERE c.is_current = true
       AND c.is_archived = false
       AND c.status NOT IN ('depleted', 'contaminated', 'archived')
-      AND c.expiry_date IS NOT NULL
-      AND c.expiry_date > NOW()
-      AND c.expiry_date <= NOW() + INTERVAL '7 days'
+      AND c.expires_at IS NOT NULL
+      AND c.expires_at > NOW()
+      AND c.expires_at <= NOW() + INTERVAL '7 days'
   LOOP
     -- Check if user has this notification type enabled
     SELECT * INTO v_user_prefs
@@ -7092,7 +7092,7 @@ BEGIN
             'culture_label', v_culture.label,
             'culture_type', v_culture.type,
             'strain_name', v_culture.strain_name,
-            'expiry_date', v_culture.expiry_date,
+            'expires_at', v_culture.expires_at,
             'days_until_expiry', v_culture.days_until_expiry
           )
         );
@@ -7116,9 +7116,11 @@ DECLARE
   v_grow RECORD;
   v_user_prefs RECORD;
   v_days_in_stage INTEGER;
+  v_stage_start TIMESTAMPTZ;
 BEGIN
   FOR v_grow IN
-    SELECT g.id, g.user_id, g.name, g.current_stage, g.stage_started_at,
+    SELECT g.id, g.user_id, g.name, g.current_stage,
+           g.spawned_at, g.colonization_started_at, g.fruiting_started_at,
            s.name as strain_name
     FROM grows g
     LEFT JOIN strains s ON g.strain_id = s.id
@@ -7126,9 +7128,22 @@ BEGIN
       AND g.is_archived = false
       AND g.status = 'active'
       AND g.current_stage NOT IN ('completed', 'contaminated', 'aborted')
-      AND g.stage_started_at IS NOT NULL
   LOOP
-    v_days_in_stage := EXTRACT(DAY FROM (NOW() - v_grow.stage_started_at))::INTEGER;
+    -- Determine stage start time based on current stage
+    v_stage_start := CASE v_grow.current_stage
+      WHEN 'spawning' THEN v_grow.spawned_at
+      WHEN 'colonization' THEN v_grow.colonization_started_at
+      WHEN 'fruiting' THEN v_grow.fruiting_started_at
+      WHEN 'harvesting' THEN v_grow.fruiting_started_at  -- Use fruiting start for harvesting
+      ELSE NULL
+    END;
+
+    -- Skip if no stage start time
+    IF v_stage_start IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    v_days_in_stage := EXTRACT(DAY FROM (NOW() - v_stage_start))::INTEGER;
 
     -- Check if stage has been going on too long (likely ready for transition)
     -- These thresholds can be refined based on species-specific data
@@ -7261,9 +7276,11 @@ DECLARE
   v_grow RECORD;
   v_user_prefs RECORD;
   v_days_in_harvesting INTEGER;
+  v_harvest_start TIMESTAMPTZ;
 BEGIN
   FOR v_grow IN
-    SELECT g.id, g.user_id, g.name, g.current_stage, g.stage_started_at,
+    SELECT g.id, g.user_id, g.name, g.current_stage,
+           g.first_harvest_at, g.fruiting_started_at,
            s.name as strain_name
     FROM grows g
     LEFT JOIN strains s ON g.strain_id = s.id
@@ -7271,9 +7288,16 @@ BEGIN
       AND g.is_archived = false
       AND g.status = 'active'
       AND g.current_stage = 'harvesting'
-      AND g.stage_started_at IS NOT NULL
   LOOP
-    v_days_in_harvesting := EXTRACT(DAY FROM (NOW() - v_grow.stage_started_at))::INTEGER;
+    -- Use first_harvest_at if available, otherwise fall back to fruiting_started_at
+    v_harvest_start := COALESCE(v_grow.first_harvest_at, v_grow.fruiting_started_at);
+
+    -- Skip if no timestamp available
+    IF v_harvest_start IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    v_days_in_harvesting := EXTRACT(DAY FROM (NOW() - v_harvest_start))::INTEGER;
 
     -- Remind to harvest daily during harvesting stage
     SELECT * INTO v_user_prefs
