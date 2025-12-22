@@ -3378,12 +3378,16 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }));
 
   // Always save to localStorage as a fallback
+  // IMPORTANT: Include hasCompletedSetupWizard to prevent wizard from showing on every login
   const localUpdates: Partial<LocalSettings> = {};
   if (updates.defaultUnits !== undefined) localUpdates.defaultUnits = updates.defaultUnits;
   if (updates.defaultCurrency !== undefined) localUpdates.defaultCurrency = updates.defaultCurrency;
   if (updates.altitude !== undefined) localUpdates.altitude = updates.altitude;
   if (updates.timezone !== undefined) localUpdates.timezone = updates.timezone;
   if (updates.notifications) localUpdates.notifications = updates.notifications;
+  // Onboarding wizard settings - critical to persist locally
+  if (updates.hasCompletedSetupWizard !== undefined) localUpdates.hasCompletedSetupWizard = updates.hasCompletedSetupWizard;
+  if (updates.experienceLevel !== undefined) localUpdates.experienceLevel = updates.experienceLevel;
   saveLocalSettings(localUpdates);
 
   if (process.env.NODE_ENV === 'development') {
@@ -3484,12 +3488,17 @@ const loadSettings = async (): Promise<AppSettings> => {
   // Start with localStorage settings as default
   const localSettings = getLocalSettings();
 
+  // IMPORTANT: Include hasCompletedSetupWizard in defaults to prevent wizard from
+  // showing on every load. This ensures the setting persists even if DB load fails.
   const defaultAppSettings: AppSettings = {
     defaultUnits: localSettings.defaultUnits,
     defaultCurrency: localSettings.defaultCurrency,
     altitude: localSettings.altitude,
     timezone: localSettings.timezone,
     notifications: localSettings.notifications,
+    // Onboarding wizard settings - use localStorage as fallback
+    hasCompletedSetupWizard: localSettings.hasCompletedSetupWizard ?? false,
+    experienceLevel: localSettings.experienceLevel,
   };
 
   // Try to load from database if Supabase is configured

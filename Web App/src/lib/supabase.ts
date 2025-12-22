@@ -204,6 +204,9 @@ export interface LocalSettings {
     lowStockAlerts: boolean;
     contaminationAlerts: boolean;
   };
+  // Onboarding wizard settings - persisted locally as fallback
+  hasCompletedSetupWizard?: boolean;
+  experienceLevel?: 'beginner' | 'intermediate' | 'expert';
 }
 
 const defaultSettings: LocalSettings = {
@@ -217,6 +220,8 @@ const defaultSettings: LocalSettings = {
     lowStockAlerts: true,
     contaminationAlerts: true,
   },
+  // Default to false so wizard shows for new users
+  hasCompletedSetupWizard: false,
 };
 
 /**

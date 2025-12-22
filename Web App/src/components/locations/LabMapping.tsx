@@ -3,11 +3,12 @@
 // Hierarchical location management for farm/lab operations
 // ============================================================================
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../store';
 import { useNotifications } from '../../store/NotificationContext';
 import type { Location, LocationLevel, RoomPurpose } from '../../store/types';
 import { formatTemperatureRange, getTemperatureUnit, type TemperatureUnit } from '../../utils/temperature';
+import { LocationForm, getDefaultLocationFormData, type LocationFormData } from '../forms/LocationForm';
 
 // ============================================================================
 // TYPES
@@ -25,17 +26,8 @@ interface LocationTreeNode extends Location {
   depth: number;
 }
 
-interface LocationFormData {
-  name: string;
-  level: LocationLevel;
-  parentId: string | null;
-  roomPurposes?: RoomPurpose[];
-  capacity?: number;
-  code?: string;
-  notes?: string;
-  tempRange?: { min: number; max: number };
-  humidityRange?: { min: number; max: number };
-}
+// NOTE: LocationFormData is imported from '../forms/LocationForm'
+// This ensures consistency across the app for location creation/editing
 
 // ============================================================================
 // ICONS
@@ -392,7 +384,8 @@ const TreeItem: React.FC<TreeItemProps> = ({
 };
 
 // ============================================================================
-// LOCATION FORM MODAL
+// LOCATION FORM MODAL - Uses canonical LocationForm for consistency
+// This is a thin wrapper around the canonical LocationForm component
 // ============================================================================
 
 interface LocationFormModalProps {
@@ -401,8 +394,6 @@ interface LocationFormModalProps {
   onSave: (data: LocationFormData) => void;
   initialData?: Partial<LocationFormData>;
   parentLocation?: Location;
-  locations: Location[];
-  temperatureUnit: TemperatureUnit;
 }
 
 const LocationFormModal: React.FC<LocationFormModalProps> = ({
@@ -411,260 +402,78 @@ const LocationFormModal: React.FC<LocationFormModalProps> = ({
   onSave,
   initialData,
   parentLocation,
-  locations,
-  temperatureUnit,
 }) => {
-  function getNextLevel(parentLevel?: LocationLevel): LocationLevel {
+  const getNextLevel = (parentLevel?: LocationLevel): LocationLevel => {
     const levelOrder: LocationLevel[] = ['facility', 'room', 'zone', 'rack', 'shelf', 'slot'];
     if (!parentLevel) return 'facility';
     const idx = levelOrder.indexOf(parentLevel);
     return levelOrder[Math.min(idx + 1, levelOrder.length - 1)];
-  }
+  };
 
-  // Helper to create fresh form data from props
-  const createFormData = useCallback((): LocationFormData => ({
-    name: initialData?.name || '',
-    level: initialData?.level || (parentLocation ? getNextLevel(parentLocation.level) : 'facility'),
-    parentId: initialData?.parentId ?? parentLocation?.id ?? null,
-    roomPurposes: initialData?.roomPurposes || [],
-    capacity: initialData?.capacity,
-    code: initialData?.code || '',
-    notes: initialData?.notes || '',
-    tempRange: initialData?.tempRange,
-    humidityRange: initialData?.humidityRange,
-  }), [initialData, parentLocation]);
+  const createFormData = useCallback((): LocationFormData => {
+    const defaultData = getDefaultLocationFormData({ parentId: parentLocation?.id });
+    return {
+      ...defaultData,
+      name: initialData?.name || '',
+      level: initialData?.level || (parentLocation ? getNextLevel(parentLocation.level) : 'facility'),
+      parentId: initialData?.parentId ?? parentLocation?.id ?? null,
+      environmentType: initialData?.environmentType,
+      roomPurposes: initialData?.roomPurposes || [],
+      capacity: initialData?.capacity,
+      code: initialData?.code || '',
+      notes: initialData?.notes || '',
+      description: initialData?.description || '',
+      tempRange: initialData?.tempRange,
+      humidityRange: initialData?.humidityRange,
+    };
+  }, [initialData, parentLocation]);
 
   const [formData, setFormData] = useState<LocationFormData>(createFormData);
 
-  const [showEnvironmental, setShowEnvironmental] = useState(
-    !!(initialData?.tempRange || initialData?.humidityRange)
-  );
-
-  // Reset form data when modal opens or when initialData/parentLocation changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       setFormData(createFormData());
-      setShowEnvironmental(!!(initialData?.tempRange || initialData?.humidityRange));
     }
-  }, [isOpen, createFormData, initialData?.tempRange, initialData?.humidityRange]);
+  }, [isOpen, createFormData]);
+
+  const handleFormChange = useCallback((updates: Partial<LocationFormData>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+  }, []);
 
   if (!isOpen) return null;
 
+  const isEditMode = !!initialData?.name;
+
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 sm:p-4">
+      <div className="bg-zinc-900 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-xl w-full sm:max-w-lg max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col safe-area-bottom">
+        {/* Header */}
+        <div className="p-4 border-b border-zinc-800 flex items-center justify-between flex-shrink-0">
           <h3 className="text-lg font-semibold text-white">
-            {initialData?.name ? 'Edit Location' : 'Add Location'}
+            {isEditMode ? 'Edit Location' : 'Add Location'}
           </h3>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-lg transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2.5 min-w-[44px] min-h-[44px] hover:bg-zinc-800 rounded-lg transition-colors flex items-center justify-center"
+          >
             <Icons.X />
           </button>
         </div>
 
-        <div className="p-4 space-y-4">
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-1">Name *</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData(d => ({ ...d, name: e.target.value }))}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-              placeholder="e.g., Main Grow Room"
-            />
-          </div>
-
-          {/* Level */}
-          <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-1">Level *</label>
-            <select
-              value={formData.level}
-              onChange={(e) => setFormData(d => ({ ...d, level: e.target.value as LocationLevel }))}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-            >
-              <option value="facility">Facility (Building)</option>
-              <option value="room">Room</option>
-              <option value="zone">Zone (Area)</option>
-              <option value="rack">Rack</option>
-              <option value="shelf">Shelf</option>
-              <option value="slot">Slot (Position)</option>
-            </select>
-          </div>
-
-          {/* Parent Location */}
-          <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-1">Parent Location</label>
-            <select
-              value={formData.parentId || ''}
-              onChange={(e) => setFormData(d => ({ ...d, parentId: e.target.value || null }))}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-            >
-              <option value="">(No parent - top level)</option>
-              {locations
-                .filter(l => l.isActive)
-                .map(l => (
-                  <option key={l.id} value={l.id}>
-                    {getLocationPath(l.id, locations)}
-                  </option>
-                ))}
-            </select>
-          </div>
-
-          {/* Room Purpose Multi-Select (for room and zone levels) */}
-          {(formData.level === 'room' || formData.level === 'zone') && (
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-2">
-                Purposes <span className="text-zinc-500 text-xs">(select all that apply)</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2 p-3 bg-zinc-800/50 border border-zinc-700 rounded-lg">
-                {Object.entries(roomPurposeConfig).map(([key, { label, color }]) => {
-                  const purpose = key as RoomPurpose;
-                  const isSelected = formData.roomPurposes?.includes(purpose) || false;
-                  return (
-                    <label
-                      key={key}
-                      className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
-                        isSelected
-                          ? 'bg-zinc-700/50 border border-zinc-600'
-                          : 'hover:bg-zinc-700/30'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={(e) => {
-                          setFormData(d => ({
-                            ...d,
-                            roomPurposes: e.target.checked
-                              ? [...(d.roomPurposes || []), purpose]
-                              : (d.roomPurposes || []).filter(p => p !== purpose)
-                          }));
-                        }}
-                        className="w-4 h-4 rounded border-zinc-600 bg-zinc-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-zinc-900"
-                      />
-                      <span className={`text-sm ${isSelected ? color : 'text-zinc-400'}`}>
-                        {label}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-              <p className="mt-1 text-xs text-zinc-500">
-                Rooms with Fruiting, Colonization, or Inoculation will appear in Daily Room Check
-              </p>
-            </div>
-          )}
-
-          {/* Code and Capacity */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">Code</label>
-              <input
-                type="text"
-                value={formData.code}
-                onChange={(e) => setFormData(d => ({ ...d, code: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                placeholder="e.g., GR-1"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">Capacity</label>
-              <input
-                type="number"
-                value={formData.capacity || ''}
-                onChange={(e) => setFormData(d => ({ ...d, capacity: parseInt(e.target.value) || undefined }))}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                placeholder="Max items"
-              />
-            </div>
-          </div>
-
-          {/* Environmental Toggle */}
-          <button
-            type="button"
-            onClick={() => setShowEnvironmental(!showEnvironmental)}
-            className="text-sm text-emerald-400 hover:text-emerald-300"
-          >
-            {showEnvironmental ? '- Hide' : '+ Add'} Environmental Targets
-          </button>
-
-          {/* Environmental Ranges */}
-          {showEnvironmental && (
-            <div className="space-y-3 p-3 bg-zinc-800/50 rounded-lg">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-zinc-500 mb-1">Temp Min ({getTemperatureUnit(temperatureUnit)})</label>
-                  <input
-                    type="number"
-                    value={formData.tempRange?.min || ''}
-                    onChange={(e) => setFormData(d => ({
-                      ...d,
-                      tempRange: { ...d.tempRange, min: parseInt(e.target.value) || 0, max: d.tempRange?.max || 0 }
-                    }))}
-                    className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-zinc-500 mb-1">Temp Max ({getTemperatureUnit(temperatureUnit)})</label>
-                  <input
-                    type="number"
-                    value={formData.tempRange?.max || ''}
-                    onChange={(e) => setFormData(d => ({
-                      ...d,
-                      tempRange: { ...d.tempRange, min: d.tempRange?.min || 0, max: parseInt(e.target.value) || 0 }
-                    }))}
-                    className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-zinc-500 mb-1">Humidity Min (%)</label>
-                  <input
-                    type="number"
-                    value={formData.humidityRange?.min || ''}
-                    onChange={(e) => setFormData(d => ({
-                      ...d,
-                      humidityRange: { ...d.humidityRange, min: parseInt(e.target.value) || 0, max: d.humidityRange?.max || 0 }
-                    }))}
-                    className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-zinc-500 mb-1">Humidity Max (%)</label>
-                  <input
-                    type="number"
-                    value={formData.humidityRange?.max || ''}
-                    onChange={(e) => setFormData(d => ({
-                      ...d,
-                      humidityRange: { ...d.humidityRange, min: d.humidityRange?.min || 0, max: parseInt(e.target.value) || 0 }
-                    }))}
-                    className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-1">Notes</label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData(d => ({ ...d, notes: e.target.value }))}
-              rows={2}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-              placeholder="Additional notes..."
-            />
-          </div>
+        {/* Form Content - Uses canonical LocationForm */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <LocationForm
+            data={formData}
+            onChange={handleFormChange}
+            errors={{}}
+          />
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-zinc-800 flex justify-end gap-3">
+        <div className="p-4 border-t border-zinc-800 flex flex-col sm:flex-row justify-end gap-3 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
+            className="px-4 py-2.5 min-h-[48px] text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors sm:order-1"
           >
             Cancel
           </button>
@@ -675,9 +484,9 @@ const LocationFormModal: React.FC<LocationFormModalProps> = ({
               }
             }}
             disabled={!formData.name.trim()}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg transition-colors"
+            className="px-5 py-2.5 min-h-[48px] bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium transition-colors sm:order-2"
           >
-            Save Location
+            {isEditMode ? 'Save Changes' : 'Create Location'}
           </button>
         </div>
       </div>
@@ -1195,7 +1004,7 @@ export const LabMapping: React.FC<LabMappingProps> = ({
         </div>
       </div>
 
-      {/* Form Modal */}
+      {/* Form Modal - Uses canonical LocationForm for consistency */}
       <LocationFormModal
         isOpen={showForm}
         onClose={() => {
@@ -1212,12 +1021,11 @@ export const LabMapping: React.FC<LabMappingProps> = ({
           capacity: editingLocation.capacity,
           code: editingLocation.code,
           notes: editingLocation.notes,
+          description: editingLocation.description,
           tempRange: editingLocation.tempRange,
           humidityRange: editingLocation.humidityRange,
         } : undefined}
         parentLocation={parentForNew ? state.locations.find(l => l.id === parentForNew) : undefined}
-        locations={state.locations}
-        temperatureUnit={temperatureUnit}
       />
     </div>
   );

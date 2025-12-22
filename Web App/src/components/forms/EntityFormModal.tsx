@@ -105,12 +105,23 @@ export const EntityFormModal: React.FC<EntityFormModalProps> = ({
         }
 
         case 'location': {
+          // Comprehensive location creation with all fields from canonical LocationForm
           const newEntity = await data.addLocation({
             name: formData.name,
-            type: formData.type || 'storage',
+            level: formData.level || 'zone',
+            parentId: formData.parentId || undefined,
+            roomPurposes: formData.roomPurposes || [],
+            roomPurpose: formData.roomPurposes?.[0], // Legacy single purpose
+            capacity: formData.capacity,
+            code: formData.code,
             tempRange: formData.tempRange,
             humidityRange: formData.humidityRange,
-            notes: formData.description ? `${formData.description}\n${formData.notes || ''}`.trim() : formData.notes,
+            description: formData.description,
+            notes: formData.notes,
+            path: formData.parentId
+              ? `${data.state.locations.find(l => l.id === formData.parentId)?.name || ''} > ${formData.name}`
+              : formData.name,
+            sortOrder: data.state.locations.length + 1,
             isActive: true,
           });
           result = { id: newEntity.id, name: newEntity.name, entityType: 'location' };
