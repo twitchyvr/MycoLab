@@ -7119,8 +7119,14 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
 
+-- Locations: Description field for extended location details
 DO $$ BEGIN
-  RAISE NOTICE 'Notification muting columns added successfully!';
+  ALTER TABLE locations ADD COLUMN IF NOT EXISTS description TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  RAISE NOTICE 'Notification muting and description columns added successfully!';
 END $$;
 
 -- ============================================================================

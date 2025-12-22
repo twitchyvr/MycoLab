@@ -270,6 +270,7 @@ export interface Location {
   cost?: number;
   procurementDate?: Date;
   notes?: string;
+  description?: string;  // Extended description for the location
   isActive: boolean;
 
   // Hierarchical location support for farm/lab mapping
