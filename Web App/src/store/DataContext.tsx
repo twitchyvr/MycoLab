@@ -1472,15 +1472,34 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         newObs = { ...observation, id: data.id };
 
         // Update the culture's health_rating and status if needed
+        // CRITICAL: This cascade MUST succeed - if contamination observation is logged,
+        // the culture status MUST be updated or the data will be inconsistent
         if (Object.keys(cultureUpdates).length > 1) { // More than just updatedAt
-          const { error: cultureError } = await supabase
+          // Build update object manually to ensure updated_at is included
+          const dbUpdate: Record<string, any> = {
+            updated_at: new Date().toISOString(),
+          };
+          if (cultureUpdates.status) dbUpdate.status = cultureUpdates.status;
+          if (cultureUpdates.healthRating !== undefined) dbUpdate.health_rating = cultureUpdates.healthRating;
+
+          const { data: updatedCulture, error: cultureError } = await supabase
             .from('cultures')
-            .update(transformCultureToDb(cultureUpdates))
-            .eq('id', cultureId);
+            .update(dbUpdate)
+            .eq('id', cultureId)
+            .select('id, status')
+            .single();
 
           if (cultureError) {
-            console.error('Failed to update culture cascade:', cultureError);
-            // Don't throw - observation was saved, just log the cascade failure
+            console.error('CRITICAL: Failed to update culture cascade:', cultureError);
+            console.error('Observation was saved but culture status was NOT updated!');
+            console.error('Culture ID:', cultureId, 'Updates:', dbUpdate);
+            // THROW the error so the user knows the cascade failed
+            throw new Error(`Culture status update failed: ${cultureError.message}. The observation was saved but the culture status was not updated. Please manually update the culture status.`);
+          }
+
+          // Log successful cascade for debugging
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[CASCADE] Culture updated:', updatedCulture);
           }
         }
       } catch (error) {
