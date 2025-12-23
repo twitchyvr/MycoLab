@@ -5745,6 +5745,75 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1324',
+    title: 'Enhanced Onboarding - Location Setup First',
+    description: 'Completely redesigned the new user onboarding experience to prioritize location setup as the first step. Added LocationSetupGuide with templates, LabSetupProgress indicator, and enhanced GettingStartedGuide with step completion tracking.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `Comprehensive onboarding redesign focused on guiding new users:
+
+**Problem:**
+- Original welcome showed: Culture → Spawn → Grow
+- But users need locations FIRST to know where things go
+- No guidance on location hierarchy (Building → Room → Incubator)
+- New users confused about workflow and relationships
+
+**Solution - Location-First Onboarding:**
+
+**1. LocationSetupGuide (new component):**
+- Explains why locations matter before anything else
+- Provides 5 location templates:
+  - Single Space (minimal "My Lab")
+  - Desktop Setup (with Still Air Box)
+  - Closet Grow (incubation + fruiting zones)
+  - Basement Lab (full setup with rooms)
+  - Professional Farm (commercial scale)
+- Custom location entry option
+- Creates all template locations automatically
+- Explains hierarchy (Facility → Room → Zone → Rack)
+
+**2. GettingStartedGuide Redesign:**
+- Reordered steps: Locations → Cultures → Grows
+- Shows completion status for each step (checkmark when done)
+- Progress bar with X/3 complete indicator
+- "Do this first" badge on priority step
+- Different button states for complete vs pending steps
+- Why locations first explanation when no locations
+
+**3. LabSetupProgress (new component):**
+- Compact or expanded view modes
+- Shows setup completion percentage ring
+- Next step suggestion with action button
+- Dismissable but persistent until complete
+- Can be added to sidebar or any page
+
+**4. OnboardingWizard Enhancement:**
+- Location step now has 4 quick-start templates
+- Templates auto-fill location name on click
+- Better hierarchy explanation with example
+- Cleaner divider between templates and custom input
+
+**5. HelpTooltip (new component):**
+- Reusable contextual help system
+- InlineHelp for form field hints
+- StepIndicator for workflow progress
+- WhatsNext for suggesting actions
+- Experience-level aware (more help for beginners)
+
+**Files Created:**
+- components/setup/LocationSetupGuide.tsx
+- components/setup/LabSetupProgress.tsx
+- components/common/HelpTooltip.tsx
+
+**Files Updated:**
+- components/dashboard/LabCommandCenter.tsx (GettingStartedGuide redesign)
+- components/setup/OnboardingWizard.tsx (enhanced location step)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
