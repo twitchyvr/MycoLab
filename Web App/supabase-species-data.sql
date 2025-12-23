@@ -15,7 +15,7 @@
 INSERT INTO species (id, name, scientific_name, common_names, category, notes, user_id)
 VALUES
   -- ========== GOURMET SPECIES ==========
-  ('00000000-0000-0000-0000-000000000001', 'Oyster', 'Pleurotus ostreatus', ARRAY['Pearl Oyster', 'Tree Oyster'], 'gourmet', 'Fast-growing, beginner-friendly. Many color varieties available.', NULL),
+  ('00000000-0000-0000-0000-000000000001', 'Pearl Oyster', 'Pleurotus ostreatus', ARRAY['Oyster', 'Tree Oyster'], 'gourmet', 'Fast-growing, beginner-friendly. Many color varieties available.', NULL),
   ('00000000-0000-0000-0000-000000000002', 'King Oyster', 'Pleurotus eryngii', ARRAY['King Trumpet', 'French Horn', 'Trumpet Royale'], 'gourmet', 'Meaty texture, excellent culinary mushroom. Slower than regular oyster.', NULL),
   ('00000000-0000-0000-0000-000000000003', 'Pink Oyster', 'Pleurotus djamor', ARRAY['Flamingo Oyster', 'Salmon Oyster'], 'gourmet', 'Tropical species, needs warmth (75-85°F). Vibrant pink color, delicate flavor.', NULL),
   ('00000000-0000-0000-0000-000000000004', 'Blue Oyster', 'Pleurotus columbinus', ARRAY['Blue Pearl', 'Blue King'], 'gourmet', 'Cold-tolerant variety. Deep blue caps when young, fading to gray.', NULL),
@@ -35,7 +35,7 @@ VALUES
   ('00000000-0000-0000-0000-000000000023', 'Black Morel', 'Morchella elata', ARRAY['True Morel', 'Sponge Mushroom'], 'gourmet', 'Highly prized gourmet. Extremely challenging indoor cultivation.', NULL),
   ('00000000-0000-0000-0000-000000000024', 'Tiger Sawgill', 'Lentinus tigrinus', ARRAY['Tiger Lentinus', 'Panther Cap'], 'gourmet', 'Striking tiger-striped cap. Firm texture, good for stir-fry.', NULL),
   ('00000000-0000-0000-0000-000000000025', 'Aspen Oyster', 'Pleurotus populinus', ARRAY['Cottonwood Oyster'], 'gourmet', 'Native to North American aspens. Similar to pearl oyster.', NULL),
-  ('00000000-0000-0000-0000-000000000026', 'Shimeji', 'Hypsizygus tessellatus', ARRAY['Beech Mushroom', 'Buna Shimeji'], 'gourmet', 'Japanese staple mushroom. Bitter raw, sweet when cooked.', NULL),
+  ('00000000-0000-0000-0000-000000000026', 'Beech Mushroom', 'Hypsizygus tessellatus', ARRAY['Shimeji', 'Buna Shimeji'], 'gourmet', 'Japanese staple mushroom. Bitter raw, sweet when cooked.', NULL),
   ('00000000-0000-0000-0000-000000000027', 'Phoenix Oyster', 'Pleurotus pulmonarius', ARRAY['Indian Oyster', 'Lung Oyster'], 'gourmet', 'Warm weather oyster variety. Faster than P. ostreatus.', NULL),
   ('00000000-0000-0000-0000-000000000028', 'Nebrodini Bianco', 'Pleurotus nebrodensis', ARRAY['White Ferula', 'Sicilian King'], 'gourmet', 'Rare Italian species. Dense flesh, excellent flavor.', NULL),
   ('00000000-0000-0000-0000-000000000029', 'Abalone Oyster', 'Pleurotus cystidiosus', ARRAY['Maple Oyster', 'Abalone Mushroom'], 'gourmet', 'Dense texture similar to abalone. Slower growing than regular oyster.', NULL),
