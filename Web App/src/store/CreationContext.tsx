@@ -203,6 +203,7 @@ export const ENTITY_CONFIGS: Record<CreatableEntityType, EntityTypeConfig> = {
     defaultValues: {
       category: 'jar',
       isReusable: true,
+      isSterilizable: true,
       usageContext: ['culture', 'grow'],
       notes: '',
       isActive: true,

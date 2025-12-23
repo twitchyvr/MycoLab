@@ -608,7 +608,7 @@ export const SettingsPage: React.FC = () => {
       case 'locationClassifications':
         return { name: '', code: '', description: '', notes: '' };
       case 'containers':
-        return { name: '', category: 'jar', volumeMl: '', isReusable: true, usageContext: ['culture', 'grow'], notes: '' };
+        return { name: '', category: 'jar', volumeMl: '', isReusable: true, isSterilizable: true, usageContext: ['culture', 'grow'], notes: '' };
       case 'substrates':
         return { name: '', code: '', category: 'bulk', spawnRateMin: 10, spawnRateOptimal: 20, spawnRateMax: 30, fieldCapacity: 65, notes: '' };
       case 'suppliers':
@@ -658,7 +658,7 @@ export const SettingsPage: React.FC = () => {
       case 'locationClassifications':
         return { name: item.name || '', code: item.code || '', description: item.description || '', notes: item.notes || '' };
       case 'containers':
-        return { name: item.name || '', category: item.category || 'jar', volumeMl: item.volumeMl || '', isReusable: item.isReusable ?? true, usageContext: item.usageContext || ['culture', 'grow'], notes: item.notes || '' };
+        return { name: item.name || '', category: item.category || 'jar', volumeMl: item.volumeMl || '', isReusable: item.isReusable ?? true, isSterilizable: item.isSterilizable ?? true, usageContext: item.usageContext || ['culture', 'grow'], notes: item.notes || '' };
       case 'substrates':
         return { name: item.name || '', code: item.code || '', category: item.category || 'bulk', spawnRateMin: item.spawnRateRange?.min || 10, spawnRateOptimal: item.spawnRateRange?.optimal || 20, spawnRateMax: item.spawnRateRange?.max || 30, fieldCapacity: item.fieldCapacity || 65, notes: item.notes || '' };
       case 'suppliers':
@@ -2313,9 +2313,15 @@ export const SettingsPage: React.FC = () => {
                 showConversionHint
                 compact
               />
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="isReusable" checked={formData.isReusable ?? true} onChange={e => setFormData({ ...formData, isReusable: e.target.checked })} className="w-4 h-4 rounded" />
-                <label htmlFor="isReusable" className="text-sm text-zinc-400">Reusable</label>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="isReusable" checked={formData.isReusable ?? true} onChange={e => setFormData({ ...formData, isReusable: e.target.checked })} className="w-4 h-4 rounded" />
+                  <label htmlFor="isReusable" className="text-sm text-zinc-400">Reusable</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="isSterilizable" checked={formData.isSterilizable ?? true} onChange={e => setFormData({ ...formData, isSterilizable: e.target.checked })} className="w-4 h-4 rounded" />
+                  <label htmlFor="isSterilizable" className="text-sm text-zinc-400">Sterilizable</label>
+                </div>
               </div>
               <div>
                 <label className="block text-sm text-zinc-400 mb-1">Usage Context</label>

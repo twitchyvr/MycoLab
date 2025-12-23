@@ -19,6 +19,7 @@ export interface ContainerFormData {
     unit?: 'cm' | 'in';
   };
   isReusable: boolean;
+  isSterilizable: boolean;
   usageContext: ContainerUsageContext[];
   notes?: string;
   isActive: boolean;
@@ -204,7 +205,25 @@ export const ContainerForm: React.FC<ContainerFormProps> = ({
           <div>
             <span className="text-white font-medium">Reusable</span>
             <p className="text-xs text-zinc-500">
-              Can be sterilized and used multiple times (e.g., glass jars, plastic tubs)
+              Can be cleaned and used multiple times (e.g., glass jars, plastic tubs)
+            </p>
+          </div>
+        </label>
+      </div>
+
+      {/* Sterilizable */}
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={data.isSterilizable ?? true}
+            onChange={e => onChange({ isSterilizable: e.target.checked })}
+            className="w-5 h-5 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-zinc-900"
+          />
+          <div>
+            <span className="text-white font-medium">Sterilizable</span>
+            <p className="text-xs text-zinc-500">
+              Can withstand pressure cooker or autoclave (e.g., glass jars). Uncheck for plastic syringes, bags.
             </p>
           </div>
         </label>
