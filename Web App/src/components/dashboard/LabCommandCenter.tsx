@@ -7,6 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../../store';
 import type { Culture, Grow, GrowStage } from '../../store/types';
 import { WrappedWidget } from '../analytics/AnnualWrapped';
+import { LocationSetupGuide } from '../setup/LocationSetupGuide';
 
 // ============================================================================
 // TYPES
@@ -411,33 +412,51 @@ const QuickActionButton: React.FC<{
 // MAIN COMPONENT
 // ============================================================================
 
-// Getting Started Guide for Beginners
+// Getting Started Guide for Beginners - Now prioritizes location setup
 const GettingStartedGuide: React.FC<{
   onNavigate: (page: Page, itemId?: string) => void;
   experienceLevel?: string;
   purpose?: string;
-}> = ({ onNavigate, experienceLevel, purpose }) => {
+  hasLocations?: boolean;
+  hasCultures?: boolean;
+  hasGrows?: boolean;
+  onSetupLocations?: () => void;
+}> = ({ onNavigate, experienceLevel, purpose, hasLocations = false, hasCultures = false, hasGrows = false, onSetupLocations }) => {
+  // Dynamic steps based on completion status
   const steps = [
     {
+      id: 'locations',
+      icon: <Icons.Container />,
+      title: 'Set Up Your Lab Spaces',
+      description: 'Define where you\'ll grow - incubators, fruiting chambers, storage areas.',
+      action: () => {
+        if (onSetupLocations) {
+          onSetupLocations();
+        } else {
+          onNavigate('labmapping');
+        }
+      },
+      buttonText: hasLocations ? 'Add More Spaces' : 'Set Up Spaces',
+      completed: hasLocations,
+      priority: !hasLocations,
+    },
+    {
+      id: 'cultures',
       icon: <Icons.Flask />,
       title: 'Create Your First Culture',
-      description: 'Start by adding a spore syringe, liquid culture, or agar plate to your lab.',
+      description: 'Add a spore syringe, liquid culture, or agar plate to your lab.',
       action: () => {
         onNavigate('cultures');
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'cultures' } }));
         }, 100);
       },
-      buttonText: 'Add Culture',
+      buttonText: hasCultures ? 'View Cultures' : 'Add Culture',
+      completed: hasCultures,
+      priority: hasLocations && !hasCultures,
     },
     {
-      icon: <Icons.Container />,
-      title: 'Prepare Your Spawn',
-      description: 'Set up grain jars or bags for sterilization and inoculation.',
-      action: () => onNavigate('stock'),
-      buttonText: 'View Supplies',
-    },
-    {
+      id: 'grows',
       icon: <Icons.Grow />,
       title: 'Start Your First Grow',
       description: 'Once you have colonized spawn, start tracking your first grow project.',
@@ -447,7 +466,9 @@ const GettingStartedGuide: React.FC<{
           window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'grows' } }));
         }, 100);
       },
-      buttonText: 'Start Grow',
+      buttonText: hasGrows ? 'View Grows' : 'Start Grow',
+      completed: hasGrows,
+      priority: hasLocations && hasCultures && !hasGrows,
     },
   ];
 
@@ -458,13 +479,17 @@ const GettingStartedGuide: React.FC<{
     mixed: 'Get the best of all worlds with comprehensive tracking features.',
   };
 
+  // Calculate overall progress
+  const completedSteps = steps.filter(s => s.completed).length;
+  const progressPercent = (completedSteps / steps.length) * 100;
+
   return (
     <div className="bg-gradient-to-br from-emerald-950/30 to-zinc-900/50 border border-emerald-800/30 rounded-xl p-6 mb-6">
       <div className="flex items-start gap-4 mb-6">
         <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
           🌱
         </div>
-        <div>
+        <div className="flex-1">
           <h2 className="text-xl font-bold text-white mb-1">Welcome to MycoLab!</h2>
           <p className="text-zinc-400 text-sm">
             {purpose && purposeMessages[purpose]
@@ -472,26 +497,68 @@ const GettingStartedGuide: React.FC<{
               : "Let's get your mycology journey started."}
           </p>
         </div>
+        {completedSteps > 0 && (
+          <div className="text-right">
+            <div className="text-xs text-zinc-500 mb-1">{completedSteps}/{steps.length} complete</div>
+            <div className="w-20 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 transition-all"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <h3 className="text-sm font-medium text-zinc-300 mb-4">Getting Started</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {steps.map((step, index) => (
           <div
-            key={index}
-            className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex flex-col"
+            key={step.id}
+            className={`bg-zinc-900/50 border rounded-lg p-4 flex flex-col transition-all ${
+              step.completed
+                ? 'border-emerald-800/50 bg-emerald-950/20'
+                : step.priority
+                  ? 'border-emerald-600/50 ring-1 ring-emerald-600/30'
+                  : 'border-zinc-800'
+            }`}
           >
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-emerald-400">
-                {step.icon}
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                step.completed
+                  ? 'bg-emerald-500/20 text-emerald-400'
+                  : step.priority
+                    ? 'bg-emerald-600/30 text-emerald-400'
+                    : 'bg-zinc-800 text-zinc-400'
+              }`}>
+                {step.completed ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                ) : step.icon}
               </div>
-              <span className="text-xs text-zinc-500">Step {index + 1}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500">Step {index + 1}</span>
+                {step.priority && !step.completed && (
+                  <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded">
+                    Do this first
+                  </span>
+                )}
+              </div>
             </div>
-            <h4 className="font-medium text-white mb-1">{step.title}</h4>
+            <h4 className={`font-medium mb-1 ${step.completed ? 'text-zinc-400' : 'text-white'}`}>
+              {step.title}
+            </h4>
             <p className="text-xs text-zinc-500 mb-4 flex-1">{step.description}</p>
             <button
               onClick={step.action}
-              className="w-full px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/50 text-emerald-400 rounded-lg text-sm font-medium transition-colors"
+              className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                step.completed
+                  ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400'
+                  : step.priority
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    : 'bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/50 text-emerald-400'
+              }`}
             >
               {step.buttonText}
             </button>
@@ -499,7 +566,17 @@ const GettingStartedGuide: React.FC<{
         ))}
       </div>
 
-      {experienceLevel === 'beginner' && (
+      {/* Why locations first - only show if no locations yet */}
+      {!hasLocations && (
+        <div className="mt-4 p-3 bg-blue-950/30 border border-blue-800/30 rounded-lg">
+          <p className="text-xs text-blue-300">
+            <span className="font-medium">Why set up spaces first?</span> Defining your lab locations lets you track where
+            each culture is stored, monitor environmental conditions, and trace contamination patterns by area.
+          </p>
+        </div>
+      )}
+
+      {experienceLevel === 'beginner' && hasLocations && (
         <div className="mt-4 p-3 bg-blue-950/30 border border-blue-800/30 rounded-lg">
           <p className="text-xs text-blue-300">
             <span className="font-medium">Tip:</span> As a beginner, we'll show you helpful tooltips and guidance throughout the app.
@@ -514,12 +591,22 @@ const GettingStartedGuide: React.FC<{
 export const LabCommandCenter: React.FC<LabCommandCenterProps> = ({ onNavigate }) => {
   const { state, activeStrains } = useData();
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+  const [showLocationSetupModal, setShowLocationSetupModal] = useState(false);
+  const [dismissedGettingStarted, setDismissedGettingStarted] = useState(false);
 
   // Get user settings for personalized experience
   const experienceLevel = state.settings.experienceLevel;
   const growingPurpose = state.settings.growingPurpose;
-  const isNewUser = state.cultures.length === 0 && state.grows.length === 0;
-  const showGettingStarted = isNewUser && (experienceLevel === 'beginner' || experienceLevel === 'intermediate' || !experienceLevel);
+
+  // Track setup progress
+  const hasLocations = state.locations.length > 0;
+  const hasCultures = state.cultures.length > 0;
+  const hasGrows = state.grows.length > 0;
+  const isSetupComplete = hasLocations && hasCultures && hasGrows;
+
+  // Show getting started for new users or those still completing setup
+  // Also show for all experience levels, not just beginners
+  const showGettingStarted = !dismissedGettingStarted && !isSetupComplete;
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -681,7 +768,23 @@ export const LabCommandCenter: React.FC<LabCommandCenterProps> = ({ onNavigate }
           onNavigate={onNavigate}
           experienceLevel={experienceLevel}
           purpose={growingPurpose}
+          hasLocations={hasLocations}
+          hasCultures={hasCultures}
+          hasGrows={hasGrows}
+          onSetupLocations={() => setShowLocationSetupModal(true)}
         />
+      )}
+
+      {/* Location Setup Modal */}
+      {showLocationSetupModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <LocationSetupGuide
+              onComplete={() => setShowLocationSetupModal(false)}
+              onSkip={() => setShowLocationSetupModal(false)}
+            />
+          </div>
+        </div>
       )}
 
       {/* Status Cards Grid */}

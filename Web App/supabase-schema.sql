@@ -274,6 +274,42 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
 
+-- Add cost tracking columns to containers (idempotent migration)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'containers' AND column_name = 'unit_cost') THEN
+    ALTER TABLE containers ADD COLUMN unit_cost DECIMAL(10,2);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'containers' AND column_name = 'purchase_price') THEN
+    ALTER TABLE containers ADD COLUMN purchase_price DECIMAL(10,2);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'containers' AND column_name = 'quantity_owned') THEN
+    ALTER TABLE containers ADD COLUMN quantity_owned INTEGER;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'containers' AND column_name = 'supplier_id') THEN
+    ALTER TABLE containers ADD COLUMN supplier_id UUID REFERENCES suppliers(id) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'containers' AND column_name = 'purchase_date') THEN
+    ALTER TABLE containers ADD COLUMN purchase_date DATE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'containers' AND column_name = 'order_date') THEN
+    ALTER TABLE containers ADD COLUMN order_date DATE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'containers' AND column_name = 'received_date') THEN
+    ALTER TABLE containers ADD COLUMN received_date DATE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'containers' AND column_name = 'lot_number') THEN
+    ALTER TABLE containers ADD COLUMN lot_number TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'containers' AND column_name = 'sku') THEN
+    ALTER TABLE containers ADD COLUMN sku TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'containers' AND column_name = 'reorder_url') THEN
+    ALTER TABLE containers ADD COLUMN reorder_url TEXT;
+  END IF;
+  RAISE NOTICE 'Container cost tracking columns added/verified';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
 -- ============================================================================
 -- COLUMN RENAME MIGRATIONS
 -- Migrate old column names to new unified names

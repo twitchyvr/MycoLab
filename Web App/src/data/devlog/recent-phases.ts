@@ -5745,6 +5745,135 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1324',
+    title: 'Enhanced Onboarding - Location Setup First',
+    description: 'Completely redesigned the new user onboarding experience to prioritize location setup as the first step. Added LocationSetupGuide with templates, LabSetupProgress indicator, and enhanced GettingStartedGuide with step completion tracking.',
+    category: 'ui',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `Comprehensive onboarding redesign focused on guiding new users:
+
+**Problem:**
+- Original welcome showed: Culture → Spawn → Grow
+- But users need locations FIRST to know where things go
+- No guidance on location hierarchy (Building → Room → Incubator)
+- New users confused about workflow and relationships
+
+**Solution - Location-First Onboarding:**
+
+**1. LocationSetupGuide (new component):**
+- Explains why locations matter before anything else
+- Provides 5 location templates:
+  - Single Space (minimal "My Lab")
+  - Desktop Setup (with Still Air Box)
+  - Closet Grow (incubation + fruiting zones)
+  - Basement Lab (full setup with rooms)
+  - Professional Farm (commercial scale)
+- Custom location entry option
+- Creates all template locations automatically
+- Explains hierarchy (Facility → Room → Zone → Rack)
+
+**2. GettingStartedGuide Redesign:**
+- Reordered steps: Locations → Cultures → Grows
+- Shows completion status for each step (checkmark when done)
+- Progress bar with X/3 complete indicator
+- "Do this first" badge on priority step
+- Different button states for complete vs pending steps
+- Why locations first explanation when no locations
+
+**3. LabSetupProgress (new component):**
+- Compact or expanded view modes
+- Shows setup completion percentage ring
+- Next step suggestion with action button
+- Dismissable but persistent until complete
+- Can be added to sidebar or any page
+
+**4. OnboardingWizard Enhancement:**
+- Location step now has 4 quick-start templates
+- Templates auto-fill location name on click
+- Better hierarchy explanation with example
+- Cleaner divider between templates and custom input
+
+**5. HelpTooltip (new component):**
+- Reusable contextual help system
+- InlineHelp for form field hints
+- StepIndicator for workflow progress
+- WhatsNext for suggesting actions
+- Experience-level aware (more help for beginners)
+
+**Files Created:**
+- components/setup/LocationSetupGuide.tsx
+- components/setup/LabSetupProgress.tsx
+- components/common/HelpTooltip.tsx
+
+**Files Updated:**
+- components/dashboard/LabCommandCenter.tsx (GettingStartedGuide redesign)
+- components/setup/OnboardingWizard.tsx (enhanced location step)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1325',
+    title: 'Cost Tracking Overhaul & UI Polish',
+    description: 'Comprehensive cost tracking improvements: GrowForm shows calculated costs from tracked items, containers have full procurement tracking, standardized dropdowns across forms, modal backdrop fixes, and responsive layout improvements.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `Multi-faceted improvement to cost tracking and UI consistency:
+
+**1. Grow Cost Calculation Overhaul:**
+- Replaced single estimatedCost with: budgetCost, laborCost, overheadCost
+- Added read-only calculated fields: sourceCultureCost, inventoryCost
+- GrowForm displays cost breakdown with Total Cost calculation
+- Exit survey uses totalCost when available
+
+**2. Container Cost & Procurement Tracking:**
+- Added to Container interface: unitCost, purchasePrice, quantityOwned
+- Added procurement fields: supplierId, purchaseDate, orderDate, receivedDate
+- Added inventory fields: lotNumber, sku, reorderUrl
+- ContainerForm has new "Cost & Procurement" section
+- Database schema migration for new columns
+
+**3. LocationForm Dropdown Standardization:**
+- Replaced native <select> elements with StandardDropdown
+- Type/Level dropdown now consistent with app UI
+- Parent Location dropdown uses StandardDropdown
+- Consistent hover, focus, and add-new behavior
+
+**4. Modal Backdrop Fix:**
+- GrowManagement modals now use Portal component
+- Backdrop extends full viewport (fixed inset-0 issue)
+- Added backdrop-blur-sm effect
+- Increased modal max-width to max-w-xl
+
+**5. StandardDropdown Overflow Fix:**
+- Added min-w-0 for proper flex shrinking
+- Added truncate class for text overflow
+- Adjusted padding: py-2.5 pr-10 for spacing
+- Added flex-shrink-0 to Add button
+- Added focus ring styling
+
+**6. GrowForm Responsive Layout:**
+- Changed grid-cols-2 to grid-cols-1 sm:grid-cols-2
+- Forms stack on mobile, side-by-side on larger screens
+- Increased spacing from space-y-4 to space-y-5 in non-compact mode
+- More descriptive placeholder text
+
+**Files Changed:**
+- src/components/forms/GrowForm.tsx - Cost tracking, responsive layout
+- src/components/grows/GrowManagement.tsx - Portal modals, cost field mapping
+- src/store/types.ts - Container cost tracking fields
+- src/components/forms/ContainerForm.tsx - Cost & Procurement section
+- src/store/transformations.ts - Container transformation functions
+- supabase-schema.sql - Container cost columns migration
+- src/components/forms/LocationForm.tsx - StandardDropdown replacement
+- src/components/common/StandardDropdown.tsx - Overflow and width fixes`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

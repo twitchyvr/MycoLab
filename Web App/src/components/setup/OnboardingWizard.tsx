@@ -409,18 +409,31 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
         );
 
       case 'location':
+        // Quick-start templates for location names
+        const quickTemplates = [
+          { name: 'My Lab', icon: '🏠', description: 'Simple single location' },
+          { name: 'Incubation Area', icon: '🌡️', description: 'Warm, dark colonization space' },
+          { name: 'Fruiting Chamber', icon: '🍄', description: 'High humidity fruiting area' },
+          { name: 'Grow Closet', icon: '🚪', description: 'Dedicated grow space' },
+        ];
+
         return (
           <div className="py-4">
             <h2 className="text-xl font-bold text-white mb-2">Set up your first space</h2>
             <p className="text-zinc-400 text-sm mb-4">
-              Create your first grow room or lab space. You can add more later.
+              Create your first grow room or lab space. You can add more detailed locations later.
             </p>
 
-            {/* Info box explaining locations */}
+            {/* Info box explaining locations and hierarchy */}
             <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg mb-4">
-              <p className="text-xs text-blue-300">
-                <span className="font-medium">Why locations matter:</span> Track where your cultures and grows are stored.
-                This helps organize your lab and monitor environmental conditions per space.
+              <p className="text-xs text-blue-300 mb-2">
+                <span className="font-medium">Why locations matter:</span> Track where your cultures and grows are stored,
+                monitor environmental conditions, and trace contamination patterns by area.
+              </p>
+              <p className="text-xs text-zinc-400">
+                <span className="font-medium">Hierarchy example:</span> Building → Room → Incubator → Shelf
+                <br/>
+                Start simple now and add detail later from Lab Spaces.
               </p>
             </div>
 
@@ -431,57 +444,84 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                 </div>
                 <p className="text-emerald-400 font-medium">Location created!</p>
                 <p className="text-sm text-zinc-400 mt-1">"{locationName}" is ready to use</p>
+                <p className="text-xs text-zinc-500 mt-2">
+                  You can add more locations and create hierarchies from Lab Spaces.
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
+                {/* Quick-start template buttons */}
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                    Quick Start - Click to use
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {quickTemplates.map(template => (
+                      <button
+                        key={template.name}
+                        type="button"
+                        onClick={() => setLocationName(template.name)}
+                        className={`p-2 rounded-lg border text-left transition-all ${
+                          locationName === template.name
+                            ? 'bg-emerald-500/20 border-emerald-500 text-white'
+                            : 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-600 text-zinc-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{template.icon}</span>
+                          <div>
+                            <p className="text-sm font-medium">{template.name}</p>
+                            <p className="text-xs text-zinc-500">{template.description}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Or custom name */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-zinc-700"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-zinc-900 px-2 text-zinc-500">or enter custom</span>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                    Space Name *
+                    Custom Space Name
                   </label>
                   <input
                     type="text"
                     value={locationName}
                     onChange={e => setLocationName(e.target.value)}
-                    placeholder="e.g., Fruiting Chamber, Incubation Closet"
+                    placeholder="e.g., Basement Lab, Desktop Setup"
                     className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
                   />
-                  <p className="text-xs text-zinc-500 mt-1">Give it a memorable name you'll recognize</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                    Type
+                    Type (optional)
                   </label>
                   <select
                     value={locationType}
                     onChange={e => setLocationType(e.target.value)}
                     className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="">Select type...</option>
+                    <option value="">General Purpose</option>
                     {activeLocationTypes.map(lt => (
                       <option key={lt.id} value={lt.id}>{lt.name}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-zinc-500 mt-1">Helps filter and organize your spaces</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                    Description (optional)
-                  </label>
-                  <textarea
-                    value={locationDescription}
-                    onChange={e => setLocationDescription(e.target.value)}
-                    placeholder="Notes about this space..."
-                    rows={2}
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
-                  />
                 </div>
               </div>
             )}
 
             <p className="text-xs text-zinc-500 mt-4 text-center">
-              This step is optional. You can skip and add locations later.
+              This step is optional. You can skip and set up locations later from Lab Spaces.
             </p>
           </div>
         );

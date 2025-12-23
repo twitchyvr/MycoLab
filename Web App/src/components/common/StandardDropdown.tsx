@@ -146,17 +146,17 @@ export const StandardDropdown: React.FC<StandardDropdownProps> = ({
       )}
 
       {/* Select with Add New button */}
-      <div className="flex gap-2">
-        {/* Select wrapper */}
-        <div className="relative flex-1">
+      <div className="flex gap-2 items-start">
+        {/* Select wrapper - flex-1 with min-w-0 to allow proper shrinking */}
+        <div className="relative flex-1 min-w-0">
           <select
             value={value}
             onChange={e => onChange(e.target.value)}
             disabled={disabled}
             className={`
-              w-full bg-zinc-800 border rounded-lg px-3 py-2 text-white
-              appearance-none cursor-pointer
-              focus:outline-none focus:border-emerald-500
+              w-full bg-zinc-800 border rounded-lg px-3 py-2.5 pr-10 text-white text-sm
+              appearance-none cursor-pointer truncate
+              focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30
               disabled:cursor-not-allowed disabled:opacity-50
               ${error ? 'border-red-500' : 'border-zinc-700'}
             `}
@@ -177,16 +177,16 @@ export const StandardDropdown: React.FC<StandardDropdownProps> = ({
           </div>
         </div>
 
-        {/* Add New button - visible beside the dropdown */}
+        {/* Add New button - flex-shrink-0 to prevent squishing */}
         {canAddNew && (
           <button
             type="button"
             onClick={handleAddNew}
-            className="px-3 py-2 bg-zinc-800 border border-zinc-700 hover:border-emerald-500 hover:bg-zinc-700 text-emerald-400 rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap"
+            className="flex-shrink-0 px-3 py-2.5 bg-zinc-800 border border-zinc-700 hover:border-emerald-500 hover:bg-zinc-700 text-emerald-400 rounded-lg transition-colors flex items-center gap-1.5"
             title={addButtonLabel}
           >
             <Icons.Plus />
-            <span className="hidden sm:inline text-sm">Add</span>
+            <span className="hidden sm:inline text-sm font-medium">Add</span>
           </button>
         )}
       </div>
