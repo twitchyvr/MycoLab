@@ -3,6 +3,7 @@
 // ============================================================================
 
 import React from 'react';
+import { VolumeInput } from '../common/VolumeInput';
 
 export interface ContainerTypeFormData {
   name: string;
@@ -120,17 +121,13 @@ export const ContainerTypeForm: React.FC<ContainerTypeFormProps> = ({
       </div>
 
       {/* Volume */}
-      <div>
-        <label className="block text-sm text-zinc-400 mb-2">Volume (Liters)</label>
-        <input
-          type="number"
-          value={data.volumeL || ''}
-          onChange={e => onChange({ volumeL: parseFloat(e.target.value) || undefined })}
-          placeholder="e.g., 30.3 for 32qt tub"
-          step="0.1"
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-        />
-      </div>
+      <VolumeInput
+        label="Volume"
+        value={data.volumeL ? data.volumeL * 1000 : undefined}
+        onChange={ml => onChange({ volumeL: ml ? ml / 1000 : undefined })}
+        placeholder="e.g., 30L for 32qt tub"
+        showConversionHint
+      />
 
       {/* Dimensions */}
       <div>
