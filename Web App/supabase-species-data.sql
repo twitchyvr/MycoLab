@@ -79,7 +79,13 @@ VALUES
   ('00000000-0000-0000-0000-000000000117', 'Panaeolus cambodginiensis', 'Panaeolus cambodginiensis', ARRAY['Cambodian Panaeolus'], 'research', 'Southeast Asian species. Dung-loving.', NULL),
   ('00000000-0000-0000-0000-000000000118', 'Gymnopilus luteofolius', 'Gymnopilus luteofolius', ARRAY['Yellow-gilled Gymnopilus'], 'research', 'Wood-rotting species with psilocybin. Bitter taste.', NULL),
   ('00000000-0000-0000-0000-000000000119', 'Gymnopilus junonius', 'Gymnopilus junonius', ARRAY['Spectacular Rustgill', 'Big Laughing Gym'], 'research', 'Large wood-rotting species. Variable psilocybin content.', NULL),
-  ('00000000-0000-0000-0000-000000000120', 'Pluteus salicinus', 'Pluteus salicinus', ARRAY['Knackers Crumpet'], 'research', 'Wood-rotting species. Low psilocybin content.', NULL)
+  ('00000000-0000-0000-0000-000000000120', 'Pluteus salicinus', 'Pluteus salicinus', ARRAY['Knackers Crumpet'], 'research', 'Wood-rotting species. Low psilocybin content.', NULL),
+  -- Note: Psilocybe ochraceocentrata is a real species (Guzmán, from Central African Republic) but extremely rare.
+  -- Most "Ochraceocentrata" sold commercially are cubensis strains - see strains section below.
+  ('00000000-0000-0000-0000-000000000122', 'Psilocybe galindoi', 'Psilocybe galindoi', ARRAY['Galindoi', 'Atlantis Truffle'], 'research', 'Mexican species closely related to P. mexicana. Excellent sclerotia (truffle) producer. Forms dense, brownish truffles underground. Easier than mexicana for truffle production.', NULL),
+  ('00000000-0000-0000-0000-000000000123', 'Psilocybe weraroa', 'Psilocybe weraroa', ARRAY['Weraroa'], 'research', 'New Zealand native that produces only sclerotia/sequestrate fruiting bodies. Does not form typical mushroom caps. Unique pouch-like structure.', NULL),
+  ('00000000-0000-0000-0000-000000000124', 'Psilocybe serbica', 'Psilocybe serbica', ARRAY['Serbian Psilocybe'], 'research', 'European wood-loving species found in Serbia and surrounding regions. Cold tolerant. Similar to P. cyanescens but smaller.', NULL),
+  ('00000000-0000-0000-0000-000000000125', 'Psilocybe caerulipes', 'Psilocybe caerulipes', ARRAY['Blue Foot', 'Blue-footed Psilocybe'], 'research', 'Eastern North American species. Distinctive blue staining at stem base. Found on hardwood debris. Cold tolerant, fruits in late summer/fall.', NULL)
 
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -155,8 +161,8 @@ VALUES
 
   -- ========== PSILOCYBE CUBENSIS STRAINS ==========
   -- Classic/Foundation Strains
-  ('00000000-0000-0000-0001-000000000100', 'B+', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 10, 14, 7, 14, 26, 24, 'Most popular strain. Very forgiving, large fruits, great for beginners.', NULL),
-  ('00000000-0000-0000-0001-000000000101', 'Golden Teacher', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 10, 14, 7, 14, 26, 24, 'Classic strain with golden caps. Reliable and moderate potency.', NULL),
+  ('00000000-0000-0000-0001-000000000100', 'B+', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 10, 14, 7, 14, 26, 24, 'The most popular and forgiving cubensis strain worldwide. Origin: Developed by Mr. G in Florida, possibly P. cubensis x P. azurescens hybrid (unconfirmed). APPEARANCE: Large caramel to golden-brown caps (5-15cm), thick white stems bruising blue, dark purple-brown spore print. POTENCY: Moderate (0.5-0.9% psilocybin). YIELDS: Excellent, 3-4 flushes typical, individual fruits can exceed 100g fresh. CHARACTERISTICS: Extremely contamination resistant, tolerates temperature fluctuations (18-28°C fruiting), adapts to suboptimal conditions. Colonization is aggressive and rhizomorphic. Fruits are meaty with good shelf life. Perfect first strain for beginners. Works well on all common substrates (BRF, grain, manure, coir).', NULL),
+  ('00000000-0000-0000-0001-000000000101', 'Golden Teacher', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 10, 14, 7, 14, 26, 24, 'One of the most iconic and widely cultivated cubensis strains. Origin: First appeared in late 1980s, exact origin unknown but believed to be from Georgia/Florida region. APPEARANCE: Distinctive golden-yellow to light orange caps with lighter edges, elegant appearance, medium-sized fruits (5-8cm caps typical), stems white to cream with slight blue bruising. Caps flatten with maturity showing slight umbo. POTENCY: Moderate (0.5-0.8% psilocybin), known for balanced, insightful effects - hence the "Teacher" name. YIELDS: Good to excellent, reliable 3-4 flushes, medium-sized but consistent fruits. CHARACTERISTICS: Very consistent genetics, rarely produces mutations. Colonization is steady and rhizomorphic. More spiritual/introspective reputation than other strains. Slightly slower to fruit than B+ but very reliable. Excellent spore producer. Works on all substrates. Second-most recommended beginner strain after B+.', NULL),
   ('00000000-0000-0000-0001-000000000102', 'Cambodian', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 7, 12, 5, 10, 28, 26, 'Fast colonizer from Southeast Asia. Smaller but prolific fruits.', NULL),
   ('00000000-0000-0000-0001-000000000103', 'Ecuador', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 10, 14, 7, 14, 26, 24, 'Highland origin strain. Large dense fruits.', NULL),
   ('00000000-0000-0000-0001-000000000104', 'Mazatapec', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 12, 18, 7, 14, 24, 22, 'Mexican ceremonial strain. Spiritual heritage.', NULL),
@@ -187,7 +193,7 @@ VALUES
   ('00000000-0000-0000-0001-000000000140', 'Albino A+', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 14, 7, 14, 26, 24, 'Leucistic variant. Creamy white caps, moderate potency.', NULL),
   ('00000000-0000-0000-0001-000000000141', 'AA+', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 14, 7, 14, 26, 24, 'Albino A+ variant. White to cream colored.', NULL),
   ('00000000-0000-0000-0001-000000000142', 'Moby Dick', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 12, 16, 7, 14, 26, 24, 'Albino A+ x Golden Teacher. Large white fruits.', NULL),
-  ('00000000-0000-0000-0001-000000000143', 'Jack Frost', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 14, 7, 14, 26, 24, 'TAT x APE hybrid. Frosted appearance. Popular new variety.', NULL),
+  ('00000000-0000-0000-0001-000000000143', 'Jack Frost', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 12, 18, 7, 14, 24, 22, 'A stunning leucistic hybrid that has become extremely popular since 2020. Origin: Created by a cultivator who crossed True Albino Teacher (TAT) with Albino Penis Envy (APE). APPEARANCE: Striking ghostly-white to pale blue coloration, caps often curl upward at edges resembling snowflakes or frost crystals (hence the name). Dense, thick stems. Caps display beautiful waviness and often have a frosted/sparkling appearance. Heavy blue bruising when handled. POTENCY: Above average to high (0.8-1.2% psilocybin estimated), stronger than Golden Teacher but generally less intense than pure APE. YIELDS: Good, fruits are dense and meaty. Multiple flushes possible. Fruits tend to be medium-sized but heavy. CHARACTERISTICS: More forgiving than APE parent while retaining higher potency. Prefers slightly cooler fruiting temps (20-24°C). Benefits from good FAE to develop characteristic curled caps. Colonization is moderate speed, healthy white mycelium. Spore production can be lighter due to leucistic genetics. Overlay can occur if conditions too humid. One of the most visually striking strains available. Clone-friendly for preserving best phenotypes.', NULL),
   ('00000000-0000-0000-0001-000000000144', 'Yeti', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'advanced', 14, 21, 10, 18, 26, 24, 'TAT x APE hybrid. White, thick stemmed.', NULL),
   ('00000000-0000-0000-0001-000000000145', 'Ghost', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'advanced', 14, 21, 10, 18, 26, 24, 'TAT x Ghost hybrid. White ethereal appearance.', NULL),
   ('00000000-0000-0000-0001-000000000146', 'Avery Albino', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 14, 7, 14, 26, 24, 'Cambodian albino variant. Fast colonization.', NULL),
@@ -219,7 +225,7 @@ VALUES
   ('00000000-0000-0000-0001-000000000173', 'Golden Mammoth', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 14, 7, 14, 26, 24, 'Selectively bred for size and consistency.', NULL),
   ('00000000-0000-0000-0001-000000000174', 'Hanoi', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 7, 12, 5, 10, 28, 26, 'Vietnamese city strain. Fast colonizing.', NULL),
   ('00000000-0000-0000-0001-000000000175', 'Huautla', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 12, 18, 7, 14, 24, 22, 'Oaxacan strain, Maria Sabina lineage claim.', NULL),
-  ('00000000-0000-0000-0001-000000000176', 'Jedi Mind Fuck', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 14, 7, 14, 26, 24, 'Z-strain mutation. Higher than average potency.', NULL),
+  ('00000000-0000-0000-0001-000000000176', 'Jedi Mind Fuck', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 16, 7, 14, 26, 24, 'A popular higher-potency cubensis strain with disputed origins. Origin: Some claim it derives from a Z-Strain mutation, others suggest it came from a wild Georgia collection. The name references Star Wars. APPEARANCE: Medium to large fruits with golden-brown to caramel caps that often develop wavy edges at maturity. Thick, sturdy white stems with pronounced blue bruising. Caps can reach 5-10cm, often with a pronounced nipple/umbo. Dense, meaty fruits. POTENCY: Above average (0.7-1.0% psilocybin estimated), consistently reported as stronger than typical cubensis strains like Golden Teacher. Known for intense visual and introspective experiences. YIELDS: Good to excellent, reliable producer with 3-4+ flushes. Individual fruits can be large. CHARACTERISTICS: Aggressive colonizer like its Z-Strain parent (if lineage is accurate). Contaminant resistant. Handles temperature variation reasonably well (22-26°C fruiting optimal). Consistent genetics with minimal mutations. Works well on grain spawn to coir/verm or manure substrates. Good choice for intermediate growers seeking higher potency without PE difficulty. Spore prints are reliable and dark purple-brown.', NULL),
   ('00000000-0000-0000-0001-000000000177', 'Lizard King', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 10, 14, 7, 14, 26, 24, 'Northern Mexican origin. Good all-around strain.', NULL),
   ('00000000-0000-0000-0001-000000000178', 'McKennaii', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 14, 7, 14, 26, 24, 'Dutch bred strain. Higher potency, slower growth.', NULL),
   ('00000000-0000-0000-0001-000000000179', 'Orissa India', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 10, 14, 7, 14, 28, 26, 'Tall fruits from Indian state. Elephant dung origin.', NULL),
@@ -233,6 +239,16 @@ VALUES
   ('00000000-0000-0000-0001-000000000187', 'Trinity', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'advanced', 14, 21, 10, 18, 26, 24, 'PE x Aztec God hybrid. Three-strain lineage.', NULL),
   ('00000000-0000-0000-0001-000000000188', 'Aztec God', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 14, 7, 14, 26, 24, 'Mexican origin with higher potency claims.', NULL),
   ('00000000-0000-0000-0001-000000000189', 'Albino Goldies', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 14, 7, 14, 26, 24, 'Leucistic Golden Teacher variant.', NULL),
+  ('00000000-0000-0000-0001-000000000190', 'Ochraceocentrata', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 16, 7, 14, 26, 24, 'A less common but intriguing cubensis strain. Origin: Named after the rare African species P. ochraceocentrata (Guzmán), but this cultivated strain is P. cubensis - likely collected from Africa or bred to resemble the wild species. The name means "ochraceous (yellow-brown) center". APPEARANCE: Medium-sized fruits with distinctive coloration - caps show golden-brown to ochre coloring, especially prominent at center (hence the name), fading to lighter tan at margins. Caps 4-8cm typical, convex becoming broadly convex with age. Stems white to cream, moderate thickness, bruising blue. POTENCY: Moderate to above average (0.6-0.9% psilocybin estimated). Reports suggest smooth, warm experience. YIELDS: Moderate, not the heaviest producer but consistent. 2-3 good flushes typical. CHARACTERISTICS: Colonization speed is average to slightly slow. Benefits from higher humidity. More sensitive to contamination than beginner strains - clean technique important. Interesting genetics for collectors and those seeking less common varieties. Substrate flexible but does well on manure-based mixes. African genetic heritage makes it unique among commonly cultivated strains.', NULL),
+  ('00000000-0000-0000-0001-000000000191', 'A-Strain', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 10, 14, 7, 14, 26, 24, 'Also known as A+. Fast colonizer, consistent producer. Origin unknown but longtime favorite.', NULL),
+  ('00000000-0000-0000-0001-000000000192', 'Alacabenzi', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 10, 14, 7, 14, 26, 24, 'Alabama x Mexican hybrid. Large fruits with thick stems. Very forgiving, good for beginners.', NULL),
+  ('00000000-0000-0000-0001-000000000193', 'Malabar', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 10, 14, 7, 14, 28, 26, 'Indian coast origin. Large dense fruits, very meaty. Prolific producer.', NULL),
+  ('00000000-0000-0000-0001-000000000194', 'Malabar Coast', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'beginner', 10, 14, 7, 14, 28, 26, 'Variant of Malabar from Indian coast. Excellent yields.', NULL),
+  ('00000000-0000-0000-0001-000000000195', 'PE7', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'advanced', 14, 21, 10, 18, 26, 24, 'Penis Envy variant. Similar potency to classic PE. Thick stems.', NULL),
+  ('00000000-0000-0000-0001-000000000196', 'Tidal Wave 2', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 16, 7, 14, 26, 24, 'Second generation Tidal Wave. PE x B+ hybrid. Higher potency than original.', NULL),
+  ('00000000-0000-0000-0001-000000000197', 'Leucistic Burma', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 7, 14, 5, 10, 28, 26, 'White/cream Burma variant. Fast colonization, attractive appearance.', NULL),
+  ('00000000-0000-0000-0001-000000000198', 'Leucistic Golden Teacher', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 16, 7, 14, 26, 24, 'Leucistic variant of Golden Teacher. Pale cream caps.', NULL),
+  ('00000000-0000-0000-0001-000000000199', 'Leucistic Treasure Coast', '00000000-0000-0000-0000-000000000100', 'Psilocybe cubensis', 'intermediate', 10, 16, 7, 14, 26, 24, 'White variant of Treasure Coast. Florida origin.', NULL),
 
   -- ========== OTHER PSILOCYBE SPECIES STRAINS ==========
   ('00000000-0000-0000-0001-000000000200', 'Psilocybe azurescens', '00000000-0000-0000-0000-000000000101', 'Psilocybe azurescens', 'expert', 60, 90, 21, 42, 18, 14, 'One of most potent species. Wood-loving, outdoor beds required.', NULL),
@@ -271,18 +287,27 @@ ON CONFLICT (id) DO UPDATE SET
 -- If you see this, the species/strains data was applied successfully!
 --
 -- Summary:
--- - 41 Species total:
---   - 19 Gourmet species
---   - 10 Medicinal species
---   - 12 Research species (Psilocybe, Panaeolus, Gymnopilus)
--- - 115+ Strains total:
---   - Oyster family (9 strains)
---   - Lions Mane/Hericium (3 strains)
---   - Shiitake (5 strains)
---   - Reishi/Ganoderma (4 strains)
---   - Other gourmet (10+ strains)
---   - Medicinal (4 strains)
---   - Psilocybe cubensis (90+ strains including PE, TAT, Albino variants)
---   - Other Psilocybe species (8 strains)
---   - Panaeolus (5 strains)
+-- - 45+ Species total:
+--   - 19 Gourmet species (oysters, shiitake, lions mane, etc.)
+--   - 15 Medicinal species (reishi varieties, turkey tail, cordyceps, etc.)
+--   - 25+ Research species (Psilocybe, Panaeolus, Gymnopilus, Pluteus)
+-- - 125+ Strains total:
+--   - Gourmet strains (oysters, shiitake, reishi, lions mane, etc.)
+--   - Medicinal strains (turkey tail, birch polypore, meshima)
+--   - Psilocybe cubensis (100+ strains with detailed cultivation info):
+--     * Classic strains: B+, Golden Teacher, Ecuador, Cambodian, Z-Strain
+--     * Penis Envy variants: PE, APE, PE6, Melmac, Enigma
+--     * Albino/Leucistic: Jack Frost, Yeti, Ghost, TAT, White Rabbit
+--     * Regional origins: Transkei, Hillbilly, Thai, Hawaiian, etc.
+--     * Specialty: JMF, McKennaii, Blue Magnolia, Ochraceocentrata
+--   - Other Psilocybe species (azurescens, cyanescens, mexicana, natalensis)
+--   - Panaeolus species (Blue Meanies, tropicalis, cambodginiensis)
+--
+-- Key strains include detailed notes with:
+--   - Origin/lineage information
+--   - Appearance descriptions
+--   - Potency estimates
+--   - Yield expectations
+--   - Cultivation characteristics
+--   - Substrate preferences
 -- ============================================================================
