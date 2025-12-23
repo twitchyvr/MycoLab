@@ -93,6 +93,18 @@ export const convertTemperature = (value: number, from: TemperatureUnit, to: Tem
   return value;
 };
 
+// Convert to Celsius (storage format)
+export const toCelsius = (value: number, unit: TemperatureUnit): number => {
+  if (unit === 'C') return value;
+  return (value - 32) * 5/9; // Fahrenheit to Celsius
+};
+
+// Convert from Celsius (display format)
+export const fromCelsius = (celsius: number, unit: TemperatureUnit): number => {
+  if (unit === 'C') return celsius;
+  return (celsius * 9/5) + 32; // Celsius to Fahrenheit
+};
+
 // Format temperature with unit
 export const formatTemperature = (value: number, unit: TemperatureUnit, decimals: number = 0): string => {
   return `${value.toFixed(decimals)}${TEMPERATURE_UNITS[unit].label}`;
@@ -107,6 +119,40 @@ export const getDecimalPlaces = (unit: WeightUnit | VolumeUnit): number => {
   if (unit === 'kg' || unit === 'lb' || unit === 'L' || unit === 'gal') return 2;
   if (unit === 'oz' || unit === 'cup') return 1;
   return 1;
+};
+
+// ============================================================================
+// ALTITUDE UNITS
+// ============================================================================
+
+export const ALTITUDE_UNITS = {
+  ft: { label: 'ft', fullLabel: 'feet', factor: 1 },
+  m: { label: 'm', fullLabel: 'meters', factor: 3.28084 }, // 1m = 3.28084ft
+} as const;
+
+export type AltitudeUnit = keyof typeof ALTITUDE_UNITS;
+
+// Convert between altitude units
+export const convertAltitude = (value: number, from: AltitudeUnit, to: AltitudeUnit): number => {
+  const inFeet = value * ALTITUDE_UNITS[from].factor;
+  return inFeet / ALTITUDE_UNITS[to].factor;
+};
+
+// Convert to feet
+export const toFeet = (value: number, unit: AltitudeUnit): number => {
+  if (unit === 'ft') return value;
+  return value * 3.28084; // meters to feet
+};
+
+// Convert from feet
+export const fromFeet = (feet: number, unit: AltitudeUnit): number => {
+  if (unit === 'ft') return feet;
+  return feet / 3.28084; // feet to meters
+};
+
+// Format altitude with unit
+export const formatAltitude = (value: number, unit: AltitudeUnit, decimals: number = 0): string => {
+  return `${value.toFixed(decimals)} ${ALTITUDE_UNITS[unit].label}`;
 };
 
 // ============================================================================
@@ -127,6 +173,12 @@ export const VOLUME_UNIT_OPTIONS = Object.entries(VOLUME_UNITS).map(([key, value
 
 export const TEMPERATURE_UNIT_OPTIONS = Object.entries(TEMPERATURE_UNITS).map(([key, value]) => ({
   value: key as TemperatureUnit,
+  label: value.label,
+  fullLabel: value.fullLabel,
+}));
+
+export const ALTITUDE_UNIT_OPTIONS = Object.entries(ALTITUDE_UNITS).map(([key, value]) => ({
+  value: key as AltitudeUnit,
   label: value.label,
   fullLabel: value.fullLabel,
 }));

@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../store';
+import { WeightInput } from '../common/WeightInput';
 
 interface HarvestRecord {
   id: string;
@@ -51,11 +52,11 @@ const Icons = {
 export const BiologicalEfficiencyCalculator: React.FC = () => {
   const { state, getStrain, getSubstrateType } = useData();
   const [activeTab, setActiveTab] = useState<'calculator' | 'history' | 'compare'>('calculator');
-  
-  // Calculator inputs
-  const [freshWeight, setFreshWeight] = useState<string>('');
-  const [dryWeight, setDryWeight] = useState<string>('');
-  const [substrateWeight, setSubstrateWeight] = useState<string>('');
+
+  // Calculator inputs (stored in grams)
+  const [freshWeight, setFreshWeight] = useState<number | undefined>(undefined);
+  const [dryWeight, setDryWeight] = useState<number | undefined>(undefined);
+  const [substrateWeight, setSubstrateWeight] = useState<number | undefined>(undefined);
   const [calculatedBE, setCalculatedBE] = useState<BEResult | null>(null);
 
   // Derive harvest records from real grow data with flushes
@@ -90,17 +91,14 @@ export const BiologicalEfficiencyCalculator: React.FC = () => {
 
   // Calculate BE
   const calculateBE = () => {
-    const fresh = parseFloat(freshWeight);
-    const substrate = parseFloat(substrateWeight);
-    const dry = parseFloat(dryWeight);
-
-    if (isNaN(fresh) || isNaN(substrate) || fresh <= 0 || substrate <= 0) {
+    // Values are already in grams from WeightInput
+    if (!freshWeight || !substrateWeight || freshWeight <= 0 || substrateWeight <= 0) {
       setCalculatedBE(null);
       return;
     }
 
-    const freshBE = (fresh / substrate) * 100;
-    const dryBE = !isNaN(dry) && dry > 0 ? (dry / substrate) * 100 : undefined;
+    const freshBE = (freshWeight / substrateWeight) * 100;
+    const dryBE = dryWeight && dryWeight > 0 ? (dryWeight / substrateWeight) * 100 : undefined;
     const rating = getBERating(freshBE);
 
     setCalculatedBE({
@@ -113,9 +111,9 @@ export const BiologicalEfficiencyCalculator: React.FC = () => {
 
   // Reset calculator
   const resetCalculator = () => {
-    setFreshWeight('');
-    setDryWeight('');
-    setSubstrateWeight('');
+    setFreshWeight(undefined);
+    setDryWeight(undefined);
+    setSubstrateWeight(undefined);
     setCalculatedBE(null);
   };
 
@@ -298,43 +296,34 @@ export const BiologicalEfficiencyCalculator: React.FC = () => {
             </h3>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">
-                  Fresh Mushroom Weight (g) <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={freshWeight}
-                  onChange={e => setFreshWeight(e.target.value)}
-                  placeholder="e.g., 285"
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-lg font-mono focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+              <WeightInput
+                label="Fresh Mushroom Weight"
+                value={freshWeight}
+                onChange={setFreshWeight}
+                placeholder="e.g., 285"
+                required
+                showConversionHint
+              />
 
               <div>
-                <label className="block text-sm text-zinc-400 mb-2">
-                  Dry Mushroom Weight (g) <span className="text-zinc-600">(optional)</span>
-                </label>
-                <input
-                  type="number"
+                <WeightInput
+                  label="Dry Mushroom Weight"
                   value={dryWeight}
-                  onChange={e => setDryWeight(e.target.value)}
+                  onChange={setDryWeight}
                   placeholder="e.g., 28"
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-lg font-mono focus:outline-none focus:border-emerald-500"
+                  showConversionHint
                 />
                 <p className="text-xs text-zinc-600 mt-1">~10% of fresh weight typically</p>
               </div>
 
               <div>
-                <label className="block text-sm text-zinc-400 mb-2">
-                  Dry Substrate Weight (g) <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="number"
+                <WeightInput
+                  label="Dry Substrate Weight"
                   value={substrateWeight}
-                  onChange={e => setSubstrateWeight(e.target.value)}
+                  onChange={setSubstrateWeight}
                   placeholder="e.g., 450"
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-lg font-mono focus:outline-none focus:border-emerald-500"
+                  required
+                  showConversionHint
                 />
                 <p className="text-xs text-zinc-600 mt-1">Weight of substrate before hydration</p>
               </div>

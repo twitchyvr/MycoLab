@@ -8,6 +8,7 @@ import { useData, useTheme, ThemeSelector } from '../../store';
 import { useAuth } from '../../lib/AuthContext';
 import { SettingsSection } from './common/SettingsSection';
 import { notificationService } from '../../store/NotificationService';
+import { AltitudeInput } from '../common';
 import type { AppSettings, ExperienceLevel, NotificationCategory } from '../../store/types';
 
 type GrowerTab = 'profile' | 'preferences' | 'notifications' | 'library' | 'data';
@@ -316,17 +317,13 @@ export const GrowerSettings: React.FC = () => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm text-zinc-400 mb-2">Altitude (ft)</label>
-            <input
-              type="number"
-              value={localSettings.altitude}
-              onChange={e => setLocalSettings(prev => ({ ...prev, altitude: parseInt(e.target.value) || 0 }))}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2.5 text-white"
-              placeholder="0"
-            />
-            <p className="text-xs text-zinc-500 mt-1">Used for pressure cooking calculations</p>
-          </div>
+          <AltitudeInput
+            label="Altitude"
+            value={localSettings.altitude}
+            onChange={(value) => setLocalSettings(prev => ({ ...prev, altitude: value ?? 0 }))}
+            showConversionHint
+            helperText="Used for pressure cooking calculations"
+          />
         </div>
 
         <button

@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { NumericInput } from '../common/NumericInput';
+import { WeightInput } from '../common/WeightInput';
 
 // ============================================================================
 // TYPES
@@ -115,12 +116,12 @@ export const RoomCheckForm: React.FC<RoomCheckFormProps> = ({
 
       {/* Harvest Estimate */}
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-zinc-400 mb-3">7-Day Harvest Estimate (grams)</h3>
-        <NumericInput
+        <WeightInput
+          label="7-Day Harvest Estimate"
           value={data.harvestEstimate}
           onChange={(value) => onChange({ harvestEstimate: value ?? 0 })}
           placeholder="0"
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-2xl font-bold text-emerald-400 text-center focus:outline-none focus:border-emerald-500"
+          showConversionHint
         />
       </div>
 

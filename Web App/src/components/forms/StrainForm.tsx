@@ -10,6 +10,7 @@
 
 import React, { useState } from 'react';
 import { NumericInput } from '../common/NumericInput';
+import { TemperatureInput } from '../common/TemperatureInput';
 import type { Strain, Species } from '../../store/types';
 import { formatSpeciesDisplay } from '../../utils/taxonomy';
 
@@ -563,80 +564,68 @@ export const StrainForm: React.FC<StrainFormProps> = ({
         {/* Colonization Temperature */}
         <div className="mb-4">
           <label className="flex items-center text-sm text-zinc-400 mb-2">
-            Colonization Temperature (°C)
+            Colonization Temperature
             <HelpTooltip text="Temperature range during colonization. Most strains like 24-27°C (75-80°F). Too hot = contamination risk, too cold = slow growth." />
           </label>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1">Minimum</label>
-              <input
-                type="number"
-                value={data.optimalTempColonization?.min || ''}
-                onChange={e => onChange({
-                  optimalTempColonization: {
-                    ...data.optimalTempColonization,
-                    min: parseInt(e.target.value) || 0,
-                  },
-                })}
-                placeholder="e.g., 24"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1">Maximum</label>
-              <input
-                type="number"
-                value={data.optimalTempColonization?.max || ''}
-                onChange={e => onChange({
-                  optimalTempColonization: {
-                    ...data.optimalTempColonization,
-                    max: parseInt(e.target.value) || 0,
-                  },
-                })}
-                placeholder="e.g., 27"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
+            <TemperatureInput
+              label="Minimum"
+              value={data.optimalTempColonization?.min}
+              onChange={value => onChange({
+                optimalTempColonization: {
+                  ...data.optimalTempColonization,
+                  min: value ?? 0,
+                },
+              })}
+              compact
+              showConversionHint
+            />
+            <TemperatureInput
+              label="Maximum"
+              value={data.optimalTempColonization?.max}
+              onChange={value => onChange({
+                optimalTempColonization: {
+                  ...data.optimalTempColonization,
+                  max: value ?? 0,
+                },
+              })}
+              compact
+              showConversionHint
+            />
           </div>
         </div>
 
         {/* Fruiting Temperature */}
         <div>
           <label className="flex items-center text-sm text-zinc-400 mb-2">
-            Fruiting Temperature (°C)
+            Fruiting Temperature
             <HelpTooltip text="Temperature during fruiting. Usually cooler than colonization. A 5-10°C drop often triggers pinning." />
           </label>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1">Minimum</label>
-              <input
-                type="number"
-                value={data.optimalTempFruiting?.min || ''}
-                onChange={e => onChange({
-                  optimalTempFruiting: {
-                    ...data.optimalTempFruiting,
-                    min: parseInt(e.target.value) || 0,
-                  },
-                })}
-                placeholder="e.g., 18"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1">Maximum</label>
-              <input
-                type="number"
-                value={data.optimalTempFruiting?.max || ''}
-                onChange={e => onChange({
-                  optimalTempFruiting: {
-                    ...data.optimalTempFruiting,
-                    max: parseInt(e.target.value) || 0,
-                  },
-                })}
-                placeholder="e.g., 24"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
+            <TemperatureInput
+              label="Minimum"
+              value={data.optimalTempFruiting?.min}
+              onChange={value => onChange({
+                optimalTempFruiting: {
+                  ...data.optimalTempFruiting,
+                  min: value ?? 0,
+                },
+              })}
+              compact
+              showConversionHint
+            />
+            <TemperatureInput
+              label="Maximum"
+              value={data.optimalTempFruiting?.max}
+              onChange={value => onChange({
+                optimalTempFruiting: {
+                  ...data.optimalTempFruiting,
+                  max: value ?? 0,
+                },
+              })}
+              compact
+              showConversionHint
+            />
           </div>
         </div>
       </CollapsibleSection>

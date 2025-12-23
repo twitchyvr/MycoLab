@@ -4,6 +4,8 @@
 // ============================================================================
 
 import React, { useState, useMemo } from 'react';
+import { WeightInput } from '../common/WeightInput';
+import { fromGrams } from '../../utils/weight';
 
 interface SpawnRatePreset {
   name: string;
@@ -164,39 +166,23 @@ const Icons = {
   ),
 };
 
-// Weight unit conversion factors (to grams)
-const weightUnits = {
-  g: { label: 'g', factor: 1 },
-  kg: { label: 'kg', factor: 1000 },
-  oz: { label: 'oz', factor: 28.3495 },
-  lb: { label: 'lb', factor: 453.592 },
-};
-
-type WeightUnit = keyof typeof weightUnits;
-
 export const SpawnRateCalculator: React.FC = () => {
   // Calculator mode
   const [mode, setMode] = useState<'calculate' | 'plan'>('calculate');
 
-  // Calculate mode inputs
-  const [spawnWeight, setSpawnWeight] = useState<string>('');
-  const [substrateWeight, setSubstrateWeight] = useState<string>('');
+  // Calculate mode inputs (stored in grams)
+  const [spawnWeight, setSpawnWeight] = useState<number | undefined>(undefined);
+  const [substrateWeight, setSubstrateWeight] = useState<number | undefined>(undefined);
   const [selectedPreset, setSelectedPreset] = useState<string>(presets[0].name);
-
-  // Unit selection
-  const [spawnUnit, setSpawnUnit] = useState<WeightUnit>('g');
-  const [substrateUnit, setSubstrateUnit] = useState<WeightUnit>('g');
 
   // Which field was last edited (for bidirectional calculation)
   const [lastEdited, setLastEdited] = useState<'spawn' | 'substrate' | null>(null);
-  const [autoCalculate, setAutoCalculate] = useState<boolean>(true);
 
-  // Plan mode inputs
+  // Plan mode inputs (stored in grams)
   const [targetRate, setTargetRate] = useState<string>('20');
-  const [availableSpawn, setAvailableSpawn] = useState<string>('');
-  const [targetSubstrate, setTargetSubstrate] = useState<string>('');
+  const [availableSpawn, setAvailableSpawn] = useState<number | undefined>(undefined);
+  const [targetSubstrate, setTargetSubstrate] = useState<number | undefined>(undefined);
   const [planMode, setPlanMode] = useState<'fromSpawn' | 'fromSubstrate'>('fromSpawn');
-  const [planUnit, setPlanUnit] = useState<WeightUnit>('g');
 
   // Saved calculations
   const [savedCalculations, setSavedCalculations] = useState<SavedCalculation[]>([]);
@@ -204,25 +190,15 @@ export const SpawnRateCalculator: React.FC = () => {
   // Get current preset
   const currentPreset = presets.find(p => p.name === selectedPreset) || presets[0];
 
-  // Convert to grams for calculation
-  const toGrams = (value: number, unit: WeightUnit): number => value * weightUnits[unit].factor;
-  const fromGrams = (grams: number, unit: WeightUnit): number => grams / weightUnits[unit].factor;
-
   // Calculate spawn rate and get result
   const calculationResult = useMemo((): CalculationResult | null => {
-    const spawnValue = parseFloat(spawnWeight);
-    const substrateValue = parseFloat(substrateWeight);
-
-    if (isNaN(spawnValue) || isNaN(substrateValue) || spawnValue <= 0 || substrateValue <= 0) {
+    // Values are already in grams from WeightInput
+    if (!spawnWeight || !substrateWeight || spawnWeight <= 0 || substrateWeight <= 0) {
       return null;
     }
 
-    // Convert to grams for consistent calculation
-    const spawnGrams = toGrams(spawnValue, spawnUnit);
-    const substrateGrams = toGrams(substrateValue, substrateUnit);
-
-    const totalWeight = spawnGrams + substrateGrams;
-    const spawnRate = (spawnGrams / totalWeight) * 100;
+    const totalWeight = spawnWeight + substrateWeight;
+    const spawnRate = (spawnWeight / totalWeight) * 100;
     
     // Determine rating based on preset
     let rating: CalculationResult['rating'];
@@ -264,54 +240,47 @@ export const SpawnRateCalculator: React.FC = () => {
     }
     
     return { spawnRate, rating, colonizationEstimate, contaminationRisk, recommendation };
-  }, [spawnWeight, substrateWeight, spawnUnit, substrateUnit, currentPreset]);
+  }, [spawnWeight, substrateWeight, currentPreset]);
 
   // Suggested values for optimal rate (helps bidirectional calculation)
   const suggestedValues = useMemo(() => {
     const optimalRate = currentPreset.optimalRate;
     if (optimalRate <= 0) return null;
 
-    const spawnValue = parseFloat(spawnWeight);
-    const substrateValue = parseFloat(substrateWeight);
-
     // If spawn is entered, calculate optimal substrate
-    if (!isNaN(spawnValue) && spawnValue > 0 && (isNaN(substrateValue) || substrateValue <= 0)) {
-      const spawnGrams = toGrams(spawnValue, spawnUnit);
+    if (spawnWeight && spawnWeight > 0 && (!substrateWeight || substrateWeight <= 0)) {
       // spawn / (spawn + substrate) = rate/100
       // substrate = spawn * (100 - rate) / rate
-      const substrateGrams = spawnGrams * (100 - optimalRate) / optimalRate;
+      const substrateGrams = spawnWeight * (100 - optimalRate) / optimalRate;
       return {
         type: 'substrate' as const,
-        value: fromGrams(substrateGrams, substrateUnit).toFixed(1),
-        unit: substrateUnit,
+        valueGrams: substrateGrams,
         rate: optimalRate,
       };
     }
 
     // If substrate is entered, calculate optimal spawn
-    if (!isNaN(substrateValue) && substrateValue > 0 && (isNaN(spawnValue) || spawnValue <= 0)) {
-      const substrateGrams = toGrams(substrateValue, substrateUnit);
+    if (substrateWeight && substrateWeight > 0 && (!spawnWeight || spawnWeight <= 0)) {
       // spawn = (rate * substrate) / (100 - rate)
-      const spawnGrams = (optimalRate * substrateGrams) / (100 - optimalRate);
+      const spawnGrams = (optimalRate * substrateWeight) / (100 - optimalRate);
       return {
         type: 'spawn' as const,
-        value: fromGrams(spawnGrams, spawnUnit).toFixed(1),
-        unit: spawnUnit,
+        valueGrams: spawnGrams,
         rate: optimalRate,
       };
     }
 
     return null;
-  }, [spawnWeight, substrateWeight, spawnUnit, substrateUnit, currentPreset]);
+  }, [spawnWeight, substrateWeight, currentPreset]);
 
   // Apply suggested value
   const applySuggestion = () => {
     if (!suggestedValues) return;
     if (suggestedValues.type === 'spawn') {
-      setSpawnWeight(suggestedValues.value);
+      setSpawnWeight(suggestedValues.valueGrams);
       setLastEdited('spawn');
     } else {
-      setSubstrateWeight(suggestedValues.value);
+      setSubstrateWeight(suggestedValues.valueGrams);
       setLastEdited('substrate');
     }
   };
@@ -320,43 +289,34 @@ export const SpawnRateCalculator: React.FC = () => {
   const planResult = useMemo(() => {
     const rate = parseFloat(targetRate);
     if (isNaN(rate) || rate <= 0 || rate >= 100) return null;
-    
+
     if (planMode === 'fromSpawn') {
-      const spawn = parseFloat(availableSpawn);
-      if (isNaN(spawn) || spawn <= 0) return null;
-      
+      // Values are already in grams from WeightInput
+      if (!availableSpawn || availableSpawn <= 0) return null;
+
       // spawn / (spawn + substrate) = rate/100
-      // spawn = (rate/100) * (spawn + substrate)
-      // spawn = (rate/100) * spawn + (rate/100) * substrate
-      // spawn - (rate/100) * spawn = (rate/100) * substrate
-      // spawn * (1 - rate/100) = (rate/100) * substrate
-      // substrate = spawn * (1 - rate/100) / (rate/100)
       // substrate = spawn * (100 - rate) / rate
-      const substrateNeeded = spawn * (100 - rate) / rate;
-      const totalWeight = spawn + substrateNeeded;
-      
+      const substrateNeeded = availableSpawn * (100 - rate) / rate;
+      const totalWeight = availableSpawn + substrateNeeded;
+
       return {
-        spawnWeight: spawn,
-        substrateWeight: Math.round(substrateNeeded),
-        totalWeight: Math.round(totalWeight),
+        spawnWeightGrams: availableSpawn,
+        substrateWeightGrams: Math.round(substrateNeeded),
+        totalWeightGrams: Math.round(totalWeight),
         actualRate: rate,
       };
     } else {
-      const substrate = parseFloat(targetSubstrate);
-      if (isNaN(substrate) || substrate <= 0) return null;
-      
-      // spawn / (spawn + substrate) = rate/100
-      // spawn = (rate/100) * (spawn + substrate)
-      // spawn - (rate/100) * spawn = (rate/100) * substrate
-      // spawn * (100 - rate) / 100 = (rate/100) * substrate
+      // Values are already in grams from WeightInput
+      if (!targetSubstrate || targetSubstrate <= 0) return null;
+
       // spawn = (rate * substrate) / (100 - rate)
-      const spawnNeeded = (rate * substrate) / (100 - rate);
-      const totalWeight = spawnNeeded + substrate;
-      
+      const spawnNeeded = (rate * targetSubstrate) / (100 - rate);
+      const totalWeight = spawnNeeded + targetSubstrate;
+
       return {
-        spawnWeight: Math.round(spawnNeeded),
-        substrateWeight: substrate,
-        totalWeight: Math.round(totalWeight),
+        spawnWeightGrams: Math.round(spawnNeeded),
+        substrateWeightGrams: targetSubstrate,
+        totalWeightGrams: Math.round(totalWeight),
         actualRate: rate,
       };
     }
@@ -364,26 +324,26 @@ export const SpawnRateCalculator: React.FC = () => {
 
   // Save current calculation
   const saveCalculation = () => {
-    if (!calculationResult) return;
-    
+    if (!calculationResult || !spawnWeight || !substrateWeight) return;
+
     const newCalc: SavedCalculation = {
       id: Date.now().toString(),
       timestamp: new Date(),
-      spawnWeight: parseFloat(spawnWeight),
-      substrateWeight: parseFloat(substrateWeight),
+      spawnWeight: spawnWeight, // Already in grams
+      substrateWeight: substrateWeight, // Already in grams
       spawnRate: calculationResult.spawnRate,
       preset: selectedPreset,
     };
-    
+
     setSavedCalculations(prev => [newCalc, ...prev].slice(0, 10));
   };
 
   // Clear inputs
   const clearInputs = () => {
-    setSpawnWeight('');
-    setSubstrateWeight('');
-    setAvailableSpawn('');
-    setTargetSubstrate('');
+    setSpawnWeight(undefined);
+    setSubstrateWeight(undefined);
+    setAvailableSpawn(undefined);
+    setTargetSubstrate(undefined);
   };
 
   // Rating color helper
@@ -487,58 +447,30 @@ export const SpawnRateCalculator: React.FC = () => {
 
               <div className="grid sm:grid-cols-2 gap-4 mb-4">
                 {/* Spawn Weight Input */}
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Spawn Weight</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={spawnWeight}
-                      onChange={e => {
-                        setSpawnWeight(e.target.value);
-                        setLastEdited('spawn');
-                      }}
-                      placeholder="e.g., 500"
-                      className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-emerald-500"
-                    />
-                    <select
-                      value={spawnUnit}
-                      onChange={e => setSpawnUnit(e.target.value as WeightUnit)}
-                      className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 text-white focus:outline-none focus:border-emerald-500"
-                    >
-                      {Object.entries(weightUnits).map(([key, { label }]) => (
-                        <option key={key} value={key}>{label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <p className="text-xs text-zinc-500 mt-1">Colonized grain spawn</p>
-                </div>
+                <WeightInput
+                  label="Spawn Weight"
+                  value={spawnWeight}
+                  onChange={(g) => {
+                    setSpawnWeight(g);
+                    setLastEdited('spawn');
+                  }}
+                  placeholder="e.g., 500"
+                  showConversionHint
+                />
+                <p className="text-xs text-zinc-500 -mt-1 ml-1">Colonized grain spawn</p>
 
                 {/* Substrate Weight Input */}
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Substrate Weight</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={substrateWeight}
-                      onChange={e => {
-                        setSubstrateWeight(e.target.value);
-                        setLastEdited('substrate');
-                      }}
-                      placeholder="e.g., 2000"
-                      className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-emerald-500"
-                    />
-                    <select
-                      value={substrateUnit}
-                      onChange={e => setSubstrateUnit(e.target.value as WeightUnit)}
-                      className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 text-white focus:outline-none focus:border-emerald-500"
-                    >
-                      {Object.entries(weightUnits).map(([key, { label }]) => (
-                        <option key={key} value={key}>{label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <p className="text-xs text-zinc-500 mt-1">Hydrated bulk substrate</p>
-                </div>
+                <WeightInput
+                  label="Substrate Weight"
+                  value={substrateWeight}
+                  onChange={(g) => {
+                    setSubstrateWeight(g);
+                    setLastEdited('substrate');
+                  }}
+                  placeholder="e.g., 2000"
+                  showConversionHint
+                />
+                <p className="text-xs text-zinc-500 -mt-1 ml-1">Hydrated bulk substrate</p>
               </div>
 
               {/* Suggestion Banner - shows when one field is filled */}
@@ -547,7 +479,7 @@ export const SpawnRateCalculator: React.FC = () => {
                   <div>
                     <p className="text-sm text-emerald-400">
                       For optimal {suggestedValues.rate}% spawn rate, add{' '}
-                      <span className="font-bold">{suggestedValues.value} {weightUnits[suggestedValues.unit].label}</span>{' '}
+                      <span className="font-bold">{Math.round(suggestedValues.valueGrams).toLocaleString()}g</span>{' '}
                       of {suggestedValues.type}
                     </p>
                     <p className="text-xs text-zinc-500 mt-1">
@@ -604,7 +536,7 @@ export const SpawnRateCalculator: React.FC = () => {
                         Total Weight
                       </div>
                       <p className="text-white font-medium">
-                        {(parseFloat(spawnWeight) + parseFloat(substrateWeight)).toLocaleString()}g
+                        {((spawnWeight || 0) + (substrateWeight || 0)).toLocaleString()}g
                       </p>
                     </div>
                   </div>
@@ -634,8 +566,8 @@ export const SpawnRateCalculator: React.FC = () => {
                 </div>
               )}
 
-              {!calculationResult && spawnWeight && substrateWeight && (
-                <p className="text-zinc-500 text-center py-4">Enter valid weights to calculate</p>
+              {!calculationResult && (spawnWeight || substrateWeight) && (
+                <p className="text-zinc-500 text-center py-4">Enter both weights to calculate</p>
               )}
             </div>
           ) : (
@@ -683,29 +615,23 @@ export const SpawnRateCalculator: React.FC = () => {
                     Optimal for {currentPreset.name}: {currentPreset.optimalRate}%
                   </p>
                 </div>
-                
+
                 {planMode === 'fromSpawn' ? (
-                  <div>
-                    <label className="block text-sm text-zinc-400 mb-2">Available Spawn (g)</label>
-                    <input
-                      type="number"
-                      value={availableSpawn}
-                      onChange={e => setAvailableSpawn(e.target.value)}
-                      placeholder="e.g., 500"
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
+                  <WeightInput
+                    label="Available Spawn"
+                    value={availableSpawn}
+                    onChange={setAvailableSpawn}
+                    placeholder="e.g., 500"
+                    showConversionHint
+                  />
                 ) : (
-                  <div>
-                    <label className="block text-sm text-zinc-400 mb-2">Target Substrate (g)</label>
-                    <input
-                      type="number"
-                      value={targetSubstrate}
-                      onChange={e => setTargetSubstrate(e.target.value)}
-                      placeholder="e.g., 2000"
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
+                  <WeightInput
+                    label="Target Substrate"
+                    value={targetSubstrate}
+                    onChange={setTargetSubstrate}
+                    placeholder="e.g., 2000"
+                    showConversionHint
+                  />
                 )}
               </div>
 
@@ -715,19 +641,19 @@ export const SpawnRateCalculator: React.FC = () => {
                   <h4 className="text-sm font-medium text-zinc-400 mb-3">Batch Plan</h4>
                   <div className="flex items-center justify-center gap-4 text-center">
                     <div>
-                      <p className="text-2xl font-bold text-white">{planResult.spawnWeight.toLocaleString()}g</p>
+                      <p className="text-2xl font-bold text-white">{planResult.spawnWeightGrams.toLocaleString()}g</p>
                       <p className="text-xs text-zinc-500">Spawn</p>
                     </div>
                     <div className="text-zinc-600">
                       <Icons.ArrowRight />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-white">{planResult.substrateWeight.toLocaleString()}g</p>
+                      <p className="text-2xl font-bold text-white">{planResult.substrateWeightGrams.toLocaleString()}g</p>
                       <p className="text-xs text-zinc-500">Substrate</p>
                     </div>
                     <div className="text-zinc-600">=</div>
                     <div>
-                      <p className="text-2xl font-bold text-emerald-400">{planResult.totalWeight.toLocaleString()}g</p>
+                      <p className="text-2xl font-bold text-emerald-400">{planResult.totalWeightGrams.toLocaleString()}g</p>
                       <p className="text-xs text-zinc-500">Total</p>
                     </div>
                   </div>
@@ -827,8 +753,8 @@ export const SpawnRateCalculator: React.FC = () => {
                     key={calc.id}
                     className="p-2 bg-zinc-800/50 rounded-lg text-sm cursor-pointer hover:bg-zinc-800"
                     onClick={() => {
-                      setSpawnWeight(calc.spawnWeight.toString());
-                      setSubstrateWeight(calc.substrateWeight.toString());
+                      setSpawnWeight(calc.spawnWeight);
+                      setSubstrateWeight(calc.substrateWeight);
                       setSelectedPreset(calc.preset);
                       setMode('calculate');
                     }}
@@ -840,7 +766,7 @@ export const SpawnRateCalculator: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-xs text-zinc-500">
-                      {calc.spawnWeight}g + {calc.substrateWeight}g
+                      {calc.spawnWeight.toLocaleString()}g + {calc.substrateWeight.toLocaleString()}g
                     </p>
                   </div>
                 ))}

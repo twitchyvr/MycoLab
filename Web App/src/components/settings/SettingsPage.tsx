@@ -9,6 +9,7 @@ import { useAuth } from '../../lib/AuthContext';
 import type { Species, Strain, Location, LocationType, LocationClassification, Container, SubstrateType, Supplier, InventoryCategory, AppSettings } from '../../store/types';
 import { createClient } from '@supabase/supabase-js';
 import { StandardDropdown } from '../common/StandardDropdown';
+import { VolumeInput } from '../common/VolumeInput';
 import { AdminMasterData } from './AdminMasterData';
 import { AdminNotifications } from './AdminNotifications';
 import { AdminNotificationConfig } from './AdminNotificationConfig';
@@ -2304,10 +2305,14 @@ export const SettingsPage: React.FC = () => {
                   </optgroup>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm text-zinc-400 mb-1">Volume (ml)</label>
-                <input type="number" value={formData.volumeMl || ''} onChange={e => setFormData({ ...formData, volumeMl: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white" placeholder="e.g., 946 for quart jar" />
-              </div>
+              <VolumeInput
+                label="Volume"
+                value={formData.volumeMl ? parseFloat(formData.volumeMl) : undefined}
+                onChange={ml => setFormData({ ...formData, volumeMl: ml?.toString() || '' })}
+                placeholder="e.g., 946 for quart jar"
+                showConversionHint
+                compact
+              />
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="isReusable" checked={formData.isReusable ?? true} onChange={e => setFormData({ ...formData, isReusable: e.target.checked })} className="w-4 h-4 rounded" />
                 <label htmlFor="isReusable" className="text-sm text-zinc-400">Reusable</label>

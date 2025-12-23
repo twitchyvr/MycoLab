@@ -8,6 +8,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useData } from '../../store';
 import type { TimerSoundType, PreparedSpawn } from '../../store/types';
 import { playTimerSound, previewSound, timerSoundOptions } from '../../utils/timerSounds';
+import { AltitudeInput } from '../common/AltitudeInput';
 
 // Item being sterilized
 interface SterilizationItem {
@@ -355,7 +356,7 @@ export const PressureCookingCalculator: React.FC = () => {
 
   // Calculator state
   const [selectedPreset, setSelectedPreset] = useState<string>(pcPresets[0].id);
-  const [altitude, setAltitude] = useState<string>('0');
+  const [altitude, setAltitude] = useState<number | undefined>(0);
   const [quantity, setQuantity] = useState<string>('1');
   const [customMinutes, setCustomMinutes] = useState<string>('');
   const [useCustomTime, setUseCustomTime] = useState(false);
@@ -551,7 +552,7 @@ export const PressureCookingCalculator: React.FC = () => {
   
   // Calculate adjusted values
   const calculation = useMemo(() => {
-    const alt = parseInt(altitude) || 0;
+    const alt = altitude || 0;
     const qty = parseInt(quantity) || 1;
     
     // Find altitude adjustment
@@ -820,22 +821,13 @@ export const PressureCookingCalculator: React.FC = () => {
             
             <div className="grid sm:grid-cols-2 gap-4">
               {/* Altitude */}
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2 flex items-center gap-2">
-                  <Icons.Mountain />
-                  Altitude (feet)
-                </label>
-                <input
-                  type="number"
-                  value={altitude}
-                  onChange={e => setAltitude(e.target.value)}
-                  placeholder="0"
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500"
-                />
-                <p className="text-xs text-zinc-500 mt-1">
-                  Chicago: ~600 ft • Denver: ~5,280 ft
-                </p>
-              </div>
+              <AltitudeInput
+                label="Altitude"
+                value={altitude}
+                onChange={setAltitude}
+                showConversionHint
+                helperText="Chicago: ~600 ft • Denver: ~5,280 ft"
+              />
 
               {/* Quantity */}
               <div>
@@ -1342,7 +1334,7 @@ export const PressureCookingCalculator: React.FC = () => {
                 <div
                   key={adj.label}
                   className={`flex justify-between py-1.5 px-2 rounded ${
-                    parseInt(altitude) >= adj.minFeet && parseInt(altitude) <= adj.maxFeet
+                    (altitude || 0) >= adj.minFeet && (altitude || 0) <= adj.maxFeet
                       ? 'bg-emerald-950/30 text-emerald-400'
                       : 'text-zinc-400'
                   }`}

@@ -23,6 +23,7 @@ import { useCreation, ENTITY_CONFIGS } from '../../store/CreationContext';
 import { Portal } from '../common';
 import { StandardDropdown } from '../common/StandardDropdown';
 import { NumericInput } from '../common/NumericInput';
+import { VolumeInput } from '../common/VolumeInput';
 import type { Culture, CultureType, CultureStatus } from '../../store/types';
 
 // ============================================================================
@@ -336,30 +337,20 @@ const Step2ContainerLocation: React.FC<StepProps> = ({ formData, onChange, error
       {/* Volume Fields - Show for LC and Spore Syringes */}
       {showVolumeFields && (
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm text-zinc-400 mb-2">
-              Container Capacity (ml)
-              <span className="text-xs text-zinc-600 ml-1">(total volume)</span>
-            </label>
-            <NumericInput
-              value={formData.volumeMl}
-              onChange={value => onChange({ volumeMl: value })}
-              placeholder="e.g., 1000"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-zinc-400 mb-2">
-              Fill Amount (ml)
-              <span className="text-xs text-zinc-600 ml-1">(actual media)</span>
-            </label>
-            <NumericInput
-              value={formData.fillVolumeMl}
-              onChange={value => onChange({ fillVolumeMl: value })}
-              placeholder="e.g., 600"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-            />
-          </div>
+          <VolumeInput
+            label="Container Capacity"
+            value={formData.volumeMl}
+            onChange={value => onChange({ volumeMl: value })}
+            placeholder="e.g., 1000"
+            showConversionHint
+          />
+          <VolumeInput
+            label="Fill Amount"
+            value={formData.fillVolumeMl}
+            onChange={value => onChange({ fillVolumeMl: value })}
+            placeholder="e.g., 600"
+            showConversionHint
+          />
         </div>
       )}
 

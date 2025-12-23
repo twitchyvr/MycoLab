@@ -8,6 +8,8 @@ import React, { useMemo } from 'react';
 import { StandardDropdown } from '../common/StandardDropdown';
 import { NumericInput } from '../common/NumericInput';
 import { WeightInput } from '../common/WeightInput';
+import { TemperatureInput } from '../common/TemperatureInput';
+import { HumidityInput } from '../common/HumidityInput';
 import type { Strain, Container, Location, SubstrateType, GrainType } from '../../store/types';
 
 // ============================================================================
@@ -272,36 +274,32 @@ export const GrowForm: React.FC<GrowFormProps> = ({
             </div>
 
             <div className={`grid grid-cols-3 ${gridGap}`}>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Colonization °C</label>
-                <NumericInput
-                  value={data.targetTempColonization}
-                  onChange={(value) => onChange({ targetTempColonization: value ?? 24 })}
-                  min={15}
-                  max={35}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Fruiting °C</label>
-                <NumericInput
-                  value={data.targetTempFruiting}
-                  onChange={(value) => onChange({ targetTempFruiting: value ?? 22 })}
-                  min={10}
-                  max={30}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Humidity %</label>
-                <NumericInput
-                  value={data.targetHumidity}
-                  onChange={(value) => onChange({ targetHumidity: value ?? 90 })}
-                  min={50}
-                  max={100}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+              <TemperatureInput
+                label="Colonization"
+                value={data.targetTempColonization}
+                onChange={(value) => onChange({ targetTempColonization: value ?? 24 })}
+                min={15}
+                max={35}
+                compact
+                showConversionHint
+              />
+              <TemperatureInput
+                label="Fruiting"
+                value={data.targetTempFruiting}
+                onChange={(value) => onChange({ targetTempFruiting: value ?? 22 })}
+                min={10}
+                max={30}
+                compact
+                showConversionHint
+              />
+              <HumidityInput
+                label="Humidity"
+                value={data.targetHumidity}
+                onChange={(value) => onChange({ targetHumidity: value ?? 90 })}
+                min={50}
+                max={100}
+                compact
+              />
             </div>
           </div>
 

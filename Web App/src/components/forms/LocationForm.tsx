@@ -6,6 +6,8 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../store';
+import { TemperatureInput } from '../common/TemperatureInput';
+import { HumidityInput } from '../common/HumidityInput';
 import type { Location, LocationLevel, RoomPurpose } from '../../store/types';
 
 // ============================================================================
@@ -539,71 +541,53 @@ export const LocationForm: React.FC<LocationFormProps> = ({
 
       {/* Environmental Ranges */}
       {showEnvironmental && (
-        <div className="space-y-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
-          <div className="flex items-center gap-2 text-sm text-zinc-400 mb-2">
+        <div className="space-y-4 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
+          <div className="flex items-center gap-2 text-sm text-zinc-400">
             <Icons.Thermometer />
-            <span>Temperature (°F)</span>
+            <span>Temperature Range</span>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1">Min</label>
-              <input
-                type="number"
-                value={data.tempRange?.min || ''}
-                onChange={e => onChange({
-                  tempRange: { min: parseInt(e.target.value) || 0, max: data.tempRange?.max || 0 }
-                })}
-                placeholder="e.g., 70"
-                className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1">Max</label>
-              <input
-                type="number"
-                value={data.tempRange?.max || ''}
-                onChange={e => onChange({
-                  tempRange: { min: data.tempRange?.min || 0, max: parseInt(e.target.value) || 0 }
-                })}
-                placeholder="e.g., 80"
-                className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm"
-              />
-            </div>
+            <TemperatureInput
+              label="Min"
+              value={data.tempRange?.min}
+              onChange={value => onChange({
+                tempRange: { min: value ?? 0, max: data.tempRange?.max || 0 }
+              })}
+              compact
+              showConversionHint
+            />
+            <TemperatureInput
+              label="Max"
+              value={data.tempRange?.max}
+              onChange={value => onChange({
+                tempRange: { min: data.tempRange?.min || 0, max: value ?? 0 }
+              })}
+              compact
+              showConversionHint
+            />
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-zinc-400 mt-4 mb-2">
+          <div className="flex items-center gap-2 text-sm text-zinc-400 mt-2">
             <Icons.Droplet />
-            <span>Humidity (%)</span>
+            <span>Humidity Range</span>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1">Min</label>
-              <input
-                type="number"
-                value={data.humidityRange?.min || ''}
-                onChange={e => onChange({
-                  humidityRange: { min: parseInt(e.target.value) || 0, max: data.humidityRange?.max || 0 }
-                })}
-                placeholder="e.g., 80"
-                min="0"
-                max="100"
-                className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1">Max</label>
-              <input
-                type="number"
-                value={data.humidityRange?.max || ''}
-                onChange={e => onChange({
-                  humidityRange: { min: data.humidityRange?.min || 0, max: parseInt(e.target.value) || 0 }
-                })}
-                placeholder="e.g., 95"
-                min="0"
-                max="100"
-                className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm"
-              />
-            </div>
+            <HumidityInput
+              label="Min"
+              value={data.humidityRange?.min}
+              onChange={value => onChange({
+                humidityRange: { min: value ?? 0, max: data.humidityRange?.max || 0 }
+              })}
+              compact
+            />
+            <HumidityInput
+              label="Max"
+              value={data.humidityRange?.max}
+              onChange={value => onChange({
+                humidityRange: { min: data.humidityRange?.min || 0, max: value ?? 0 }
+              })}
+              compact
+            />
           </div>
         </div>
       )}

@@ -4,8 +4,9 @@
 // Based on commercial mycology standards (1:10 expansion ratio)
 // ============================================================================
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { getExpectedShelfLifeDays, senescenceSigns, expansionRatios } from '../../utils/shelf-life';
+import { WeightInput, VolumeInput, NumericInput } from '../common';
 
 // Types
 interface ExpansionStep {
@@ -266,9 +267,16 @@ export const CultureMultiplicationCalculator: React.FC = () => {
   // Custom mode state
   const [startingPValue, setStartingPValue] = useState<number>(1);
   const [startingMediaType, setStartingMediaType] = useState<MediaType>('liquid_culture');
-  const [startingVolume, setStartingVolume] = useState<string>('10');
-  const [startingCost, setStartingCost] = useState<string>('60');
+  const [startingVolume, setStartingVolume] = useState<number | undefined>(10); // ml for LC, grams for grain
+  const [startingCost, setStartingCost] = useState<number | undefined>(60);
   const [customRatio, setCustomRatio] = useState<string>('10');
+
+  // Determine input type based on media type
+  const getInputType = useCallback((mediaType: MediaType): 'volume' | 'weight' | 'count' => {
+    if (mediaType === 'liquid_culture') return 'volume';
+    if (mediaType === 'agar') return 'count';
+    return 'weight'; // grain_master, grain_spawn, substrate
+  }, []);
 
   // Expansion chain for custom mode
   const [expansionSteps, setExpansionSteps] = useState<Array<{
@@ -286,8 +294,8 @@ export const CultureMultiplicationCalculator: React.FC = () => {
   // Calculate custom expansion chain
   const customExpansionResult = useMemo(() => {
     const ratio = parseFloat(customRatio) || 10;
-    const startVol = parseFloat(startingVolume) || 10;
-    const startCost = parseFloat(startingCost) || 60;
+    const startVol = startingVolume ?? 10;
+    const startCost = startingCost ?? 60;
 
     let currentPValue = startingPValue;
     let currentVolume = startVol;
@@ -570,25 +578,44 @@ export const CultureMultiplicationCalculator: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm text-zinc-400 mb-2">Volume/Quantity</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
+                    {getInputType(startingMediaType) === 'volume' ? (
+                      <VolumeInput
+                        label="Volume"
                         value={startingVolume}
-                        onChange={e => setStartingVolume(e.target.value)}
-                        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500"
+                        onChange={setStartingVolume}
+                        showConversionHint
                       />
-                      <span className="flex items-center px-4 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400">
-                        {MEDIA_CONFIGS[startingMediaType].defaultUnit}
-                      </span>
-                    </div>
+                    ) : getInputType(startingMediaType) === 'weight' ? (
+                      <WeightInput
+                        label="Weight"
+                        value={startingVolume}
+                        onChange={setStartingVolume}
+                        showConversionHint
+                      />
+                    ) : (
+                      <div>
+                        <label className="block text-sm text-zinc-400 mb-2">Quantity</label>
+                        <div className="flex gap-2">
+                          <NumericInput
+                            value={startingVolume}
+                            onChange={setStartingVolume}
+                            min={1}
+                            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500"
+                          />
+                          <span className="flex items-center px-4 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400">
+                            {MEDIA_CONFIGS[startingMediaType].defaultUnit}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm text-zinc-400 mb-2">Purchase Cost ($)</label>
-                    <input
-                      type="number"
+                    <NumericInput
                       value={startingCost}
-                      onChange={e => setStartingCost(e.target.value)}
+                      onChange={setStartingCost}
+                      min={0}
+                      step={0.01}
                       className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500"
                     />
                   </div>
