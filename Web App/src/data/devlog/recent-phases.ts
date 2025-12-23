@@ -5611,6 +5611,51 @@ Created canonical RoomCheckForm.tsx:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1320',
+    title: 'Searchable Strain Dropdown with Rich Info Display',
+    description: 'Created a searchable dropdown component for strain selection that allows inline filtering and displays additional information (species, phenotype, difficulty) alongside strain names.',
+    category: 'ux',
+    status: 'completed',
+    priority: 'high',
+    phaseId: 30,
+    notes: `UX improvement for large strain lists:
+
+**Problem:**
+- Native dropdown lists become unwieldy with many strains
+- Users couldn't search/filter to find specific strains
+- Only strain name was displayed - no species or phenotype info
+
+**Solution - SearchableDropdown (Base Component):**
+- Text input for instant filtering of options
+- Keyboard navigation (arrows, enter, escape)
+- Portal-based dropdown to avoid overflow clipping
+- Custom option rendering support
+- Integration with "Add New" via CreationContext
+- Shows filtered count and keyboard hints
+
+**Solution - StrainSearchDropdown (Specialized):**
+- Searches across: strain name, species, phenotype, variety, notes
+- Displays species (abbreviated scientific name, e.g., "P. ostreatus")
+- Shows phenotype/variety as secondary info
+- Difficulty level badges (beginner/intermediate/advanced)
+- Optional species and difficulty filters
+
+**Forms Updated:**
+- CultureWizard.tsx - Strain selection in Step 1
+- GrowForm.tsx - Strain selection (canonical form for grows)
+
+**Files Created:**
+- src/components/common/SearchableDropdown.tsx - Base searchable dropdown
+- src/components/common/StrainSearchDropdown.tsx - Strain-specific variant
+
+**Files Updated:**
+- src/components/common/index.ts - Export new components
+- src/components/cultures/CultureWizard.tsx - Use StrainSearchDropdown
+- src/components/forms/GrowForm.tsx - Use StrainSearchDropdown`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

@@ -6,6 +6,7 @@
 
 import React, { useMemo } from 'react';
 import { StandardDropdown } from '../common/StandardDropdown';
+import { StrainSearchDropdown } from '../common/StrainSearchDropdown';
 import { NumericInput } from '../common/NumericInput';
 import { WeightInput } from '../common/WeightInput';
 import { TemperatureInput } from '../common/TemperatureInput';
@@ -137,15 +138,14 @@ export const GrowForm: React.FC<GrowFormProps> = ({
 
       {/* Strain & Source Culture */}
       <div className={`grid grid-cols-2 ${gridGap}`}>
-        <StandardDropdown
+        <StrainSearchDropdown
           label="Strain"
           required
           value={data.strainId}
           onChange={(value) => onChange({ strainId: value })}
-          options={strains}
-          placeholder="Select..."
-          entityType="strain"
+          placeholder="Search strains..."
           fieldName="strainId"
+          error={errors.strainId}
         />
         <StandardDropdown
           label="Source Culture"
@@ -156,7 +156,6 @@ export const GrowForm: React.FC<GrowFormProps> = ({
           fieldName="sourceCultureId"
         />
       </div>
-      {errors.strainId && <p className="text-red-400 text-xs -mt-2">{errors.strainId}</p>}
 
       {/* Spawn Type & Weight */}
       <div className={`grid grid-cols-2 ${gridGap}`}>
