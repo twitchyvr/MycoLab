@@ -1228,7 +1228,16 @@ export const GrowManagement: React.FC = () => {
                 const isTerminal = ['completed', 'contaminated', 'aborted'].includes(grow.currentStage);
 
                 return (
-                  <tr key={grow.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                  <tr
+                    key={grow.id}
+                    onClick={() => {
+                      setSelectedGrow(grow);
+                      setShowDetailPanel(true);
+                    }}
+                    className={`border-b border-zinc-800/50 cursor-pointer hover:bg-zinc-800/30 ${
+                      selectedGrow?.id === grow.id ? 'bg-emerald-950/20' : ''
+                    }`}
+                  >
                     <td className="p-3">
                       <p className="font-medium text-white">{grow.name}</p>
                       <p className="text-xs text-zinc-500">{strain?.name}</p>
@@ -1242,7 +1251,7 @@ export const GrowManagement: React.FC = () => {
                     <td className="p-3 text-sm text-zinc-400">{days}</td>
                     <td className="p-3 text-sm text-zinc-400">{grow.flushes.length}</td>
                     <td className="p-3 text-sm font-medium text-emerald-400">{grow.totalYield}g</td>
-                    <td className="p-3">
+                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
                         {!isTerminal && grow.currentStage !== 'harvesting' && (
                           <button

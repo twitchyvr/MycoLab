@@ -7,7 +7,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useData, EntityOutcomeData } from '../../store';
 import { useAuthGuard } from '../../lib/useAuthGuard';
 import { CultureWizard } from './CultureWizard';
-import { CultureDetailView } from './CultureDetailView';
 import { CultureDetailModal } from '../modals/CultureDetailModal';
 import { EntityCard, type EntityCardStatus, type EntityCardMetric } from '../cards';
 import { SummaryPanel, type SummaryPanelStat, type SummaryPanelAction, type SummaryPanelActivity } from '../cards';
