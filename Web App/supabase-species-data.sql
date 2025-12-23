@@ -42,7 +42,7 @@ VALUES
   ('00000000-0000-0000-0000-000000000030', 'Ghost Fungus', 'Omphalotus nidiformis', ARRAY['Australian Ghost Fungus'], 'other', 'Bioluminescent Australian species. Not edible - for display/research only.', NULL),
 
   -- ========== MEDICINAL SPECIES ==========
-  ('00000000-0000-0000-0000-000000000011', 'Lions Mane', 'Hericium erinaceus', ARRAY['Bearded Tooth', 'Pom Pom', 'Hedgehog Mushroom'], 'medicinal', 'Brain-boosting medicinal. Needs high humidity, no caps - just teeth.', NULL),
+  ('00000000-0000-0000-0000-000000000011', 'Lion''s Mane', 'Hericium erinaceus', ARRAY['Bearded Tooth', 'Pom Pom', 'Hedgehog Mushroom'], 'medicinal', 'Brain-boosting medicinal. Needs high humidity, no caps - just teeth.', NULL),
   ('00000000-0000-0000-0000-000000000012', 'Reishi', 'Ganoderma lucidum', ARRAY['Lingzhi', 'Mushroom of Immortality', 'Varnished Conk'], 'medicinal', 'Classic red reishi. Woody polypore, primarily for tea/tinctures. Long grow cycle.', NULL),
   ('00000000-0000-0000-0000-000000000013', 'Turkey Tail', 'Trametes versicolor', ARRAY['Yun Zhi', 'Kawaratake', 'Cloud Mushroom'], 'medicinal', 'Thin shelf fungus, powerful immune support. Easy outdoor cultivation.', NULL),
   ('00000000-0000-0000-0000-000000000014', 'Cordyceps', 'Cordyceps militaris', ARRAY['Caterpillar Fungus', 'Dong Chong Xia Cao'], 'medicinal', 'Orange club-shaped fruiting bodies. Requires specialized substrate and light.', NULL),
