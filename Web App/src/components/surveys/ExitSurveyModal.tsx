@@ -507,6 +507,12 @@ export const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
   };
 
   const handleComplete = () => {
+    // Validate outcomeCode is set before completing
+    if (!surveyData.outcomeCode) {
+      console.error('[ExitSurvey] outcomeCode is empty in handleComplete');
+      alert('Please select an outcome before completing.');
+      return;
+    }
     onComplete(surveyData);
   };
 

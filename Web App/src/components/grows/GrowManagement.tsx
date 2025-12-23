@@ -883,7 +883,12 @@ export const GrowManagement: React.FC = () => {
   // Exit survey completion - records outcome and archives grow (soft delete)
   // Using archive instead of delete to preserve data integrity and FK relationships
   const handleExitSurveyComplete = async (surveyData: ExitSurveyData) => {
-    if (!exitSurveyGrow) return;
+    if (!exitSurveyGrow) {
+      console.error('[ExitSurvey] exitSurveyGrow is null - possible stale closure');
+      alert('Unable to save outcome - please close the modal and try again.');
+      setShowExitSurveyModal(false);
+      return;
+    }
 
     try {
       const strain = getStrain(exitSurveyGrow.strainId);
