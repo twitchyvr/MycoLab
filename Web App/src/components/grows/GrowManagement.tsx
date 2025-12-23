@@ -13,6 +13,8 @@ import { WeightInput } from '../common/WeightInput';
 import { ExitSurveyModal, ExitSurveyData } from '../surveys';
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
 import { NotificationBellCompact } from '../common/NotificationBell';
+import { GrowDetailModal } from '../modals/GrowDetailModal';
+import { SummaryPanel, type SummaryPanelStat, type SummaryPanelAction, type SummaryPanelActivity } from '../cards';
 // Canonical forms
 import { ObservationModal, type ObservationFormData } from '../forms/ObservationForm';
 import { HarvestEntryForm, getDefaultHarvestEntryData, type HarvestEntryData } from '../forms/HarvestEntryForm';
@@ -75,7 +77,9 @@ interface GrowCardProps {
   location: { name: string } | undefined;
   isExpanded: boolean;
   isHarvesting: boolean;
+  isSelected?: boolean;
   onToggleExpand: () => void;
+  onSelect?: () => void;
   onAdvanceStage: () => void;
   onRecordHarvest: (wetWeight: number, dryWeight: number, quality: Flush['quality'], notes: string, mushroomCount?: number) => void;
   onMarkContaminated: () => void;
@@ -89,8 +93,8 @@ interface GrowCardProps {
 }
 
 const GrowCard: React.FC<GrowCardProps> = ({
-  grow, strain, container, location, isExpanded, isHarvesting,
-  onToggleExpand, onAdvanceStage, onRecordHarvest, onMarkContaminated,
+  grow, strain, container, location, isExpanded, isHarvesting, isSelected,
+  onToggleExpand, onSelect, onAdvanceStage, onRecordHarvest, onMarkContaminated,
   onComplete, onEdit, onDelete, onLogObservation, onViewHistory, onToggleMute, compact
 }) => {
   // Use canonical HarvestEntryForm state
@@ -134,7 +138,10 @@ const GrowCard: React.FC<GrowCardProps> = ({
     : 0;
 
   return (
-    <div className={`${config.bgColor} border ${config.borderColor} rounded-xl overflow-hidden transition-all duration-200 hover:border-opacity-100`}>
+    <div
+      className={`${config.bgColor} border ${config.borderColor} rounded-xl overflow-hidden transition-all duration-200 hover:border-opacity-100 ${isSelected ? 'ring-2 ring-emerald-500/50' : ''}`}
+      onClick={onSelect}
+    >
       {/* Card Header - Always Visible */}
       <div className="p-3">
         {/* Top row: Name + Quick Actions */}
@@ -482,6 +489,7 @@ export const GrowManagement: React.FC = () => {
   const [hasDraft, setHasDraft] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyGrow, setHistoryGrow] = useState<Grow | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   // Form state uses canonical GrowFormData type
   const getInitialFormState = (): GrowFormData => {
@@ -1094,6 +1102,8 @@ export const GrowManagement: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
+      <div className="flex gap-6">
+        <div className="flex-1 min-w-0">
       {viewMode === 'kanban' ? (
         // Kanban View - horizontal scroll on desktop for better readability
         <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
@@ -1126,7 +1136,12 @@ export const GrowManagement: React.FC = () => {
                         location={getLocation(grow.locationId)}
                         isExpanded={expandedCards.has(grow.id)}
                         isHarvesting={harvestingCard === grow.id}
+                        isSelected={selectedGrow?.id === grow.id}
                         onToggleExpand={() => toggleCardExpand(grow.id)}
+                        onSelect={() => {
+                          setSelectedGrow(grow);
+                          setShowDetailPanel(true);
+                        }}
                         onAdvanceStage={() => handleAdvanceStage(grow.id)}
                         onRecordHarvest={(wet, dry, quality, notes, count) => handleRecordHarvest(grow.id, wet, dry, quality, notes, count)}
                         onMarkContaminated={() => handleMarkContaminatedWithSurvey(grow)}
@@ -1138,8 +1153,8 @@ export const GrowManagement: React.FC = () => {
                           setShowObservationModal(true);
                         }}
                         onViewHistory={() => {
-                          setHistoryGrow(grow);
-                          setShowHistoryModal(true);
+                          setSelectedGrow(grow);
+                          setShowDetailModal(true);
                         }}
                         onToggleMute={(muted) => updateGrow(grow.id, { notificationsMuted: muted })}
                       />
@@ -1167,7 +1182,12 @@ export const GrowManagement: React.FC = () => {
               location={getLocation(grow.locationId)}
               isExpanded={expandedCards.has(grow.id)}
               isHarvesting={harvestingCard === grow.id}
+              isSelected={selectedGrow?.id === grow.id}
               onToggleExpand={() => toggleCardExpand(grow.id)}
+              onSelect={() => {
+                setSelectedGrow(grow);
+                setShowDetailPanel(true);
+              }}
               onAdvanceStage={() => handleAdvanceStage(grow.id)}
               onRecordHarvest={(wet, dry, quality, notes, count) => handleRecordHarvest(grow.id, wet, dry, quality, notes, count)}
               onMarkContaminated={() => handleMarkContaminatedWithSurvey(grow)}
@@ -1179,8 +1199,8 @@ export const GrowManagement: React.FC = () => {
                 setShowObservationModal(true);
               }}
               onViewHistory={() => {
-                setHistoryGrow(grow);
-                setShowHistoryModal(true);
+                setSelectedGrow(grow);
+                setShowDetailModal(true);
               }}
               onToggleMute={(muted) => updateGrow(grow.id, { notificationsMuted: muted })}
             />
@@ -1208,7 +1228,16 @@ export const GrowManagement: React.FC = () => {
                 const isTerminal = ['completed', 'contaminated', 'aborted'].includes(grow.currentStage);
 
                 return (
-                  <tr key={grow.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                  <tr
+                    key={grow.id}
+                    onClick={() => {
+                      setSelectedGrow(grow);
+                      setShowDetailPanel(true);
+                    }}
+                    className={`border-b border-zinc-800/50 cursor-pointer hover:bg-zinc-800/30 ${
+                      selectedGrow?.id === grow.id ? 'bg-emerald-950/20' : ''
+                    }`}
+                  >
                     <td className="p-3">
                       <p className="font-medium text-white">{grow.name}</p>
                       <p className="text-xs text-zinc-500">{strain?.name}</p>
@@ -1222,7 +1251,7 @@ export const GrowManagement: React.FC = () => {
                     <td className="p-3 text-sm text-zinc-400">{days}</td>
                     <td className="p-3 text-sm text-zinc-400">{grow.flushes.length}</td>
                     <td className="p-3 text-sm font-medium text-emerald-400">{grow.totalYield}g</td>
-                    <td className="p-3">
+                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
                         {!isTerminal && grow.currentStage !== 'harvesting' && (
                           <button
@@ -1268,6 +1297,115 @@ export const GrowManagement: React.FC = () => {
           </table>
         </div>
       )}
+        </div>
+
+        {/* Summary Panel - Quick view when grow is selected */}
+        {showDetailPanel && selectedGrow && (() => {
+          const strain = getStrain(selectedGrow.strainId);
+          const container = getContainer(selectedGrow.containerId);
+          const location = getLocation(selectedGrow.locationId);
+          const config = stageConfig[selectedGrow.currentStage];
+          const days = daysActive(selectedGrow.spawnedAt, selectedGrow.completedAt);
+          const isTerminal = ['completed', 'contaminated', 'aborted'].includes(selectedGrow.currentStage);
+          const canHarvest = ['fruiting', 'harvesting'].includes(selectedGrow.currentStage);
+
+          // BE% calculation
+          const bePercent = selectedGrow.substrateWeight > 0
+            ? Math.round((selectedGrow.totalYield / (selectedGrow.substrateWeight / 1000)) * 10) / 10
+            : 0;
+
+          // Build stats
+          const panelStats: SummaryPanelStat[] = [
+            { label: 'Days Active', value: `${days} days` },
+            { label: 'Flushes', value: selectedGrow.flushes.length },
+            { label: 'Total Yield', value: `${selectedGrow.totalYield}g`, color: selectedGrow.totalYield > 0 ? 'text-emerald-400' : undefined },
+          ];
+          if (bePercent > 0) {
+            panelStats.push({ label: 'BE%', value: `${bePercent}%`, color: 'text-blue-400' });
+          }
+          if (container) {
+            panelStats.push({ label: 'Container', value: container.name });
+          }
+          if (location) {
+            panelStats.push({ label: 'Location', value: location.name });
+          }
+
+          // Build actions
+          const panelActions: SummaryPanelAction[] = [];
+          if (!isTerminal) {
+            panelActions.push({ label: 'Log Observation', onClick: () => setShowObservationModal(true), variant: 'secondary' });
+          }
+          if (canHarvest) {
+            panelActions.push({ label: 'Record Harvest', onClick: () => setExpandedCards(new Set([selectedGrow.id])), variant: 'primary' });
+          }
+          if (!isTerminal && selectedGrow.currentStage !== 'harvesting') {
+            panelActions.push({ label: 'Advance Stage', onClick: () => handleAdvanceStage(selectedGrow.id), variant: 'primary' });
+          }
+          if (selectedGrow.currentStage === 'harvesting') {
+            panelActions.push({ label: 'Complete Grow', onClick: () => handleCompleteGrow(selectedGrow), variant: 'primary' });
+          }
+          if (!isTerminal) {
+            panelActions.push({ label: 'Mark Contaminated', onClick: () => handleMarkContaminatedWithSurvey(selectedGrow), variant: 'danger' });
+          }
+
+          // Build recent activity
+          const recentActivity: SummaryPanelActivity[] = [];
+          // Add recent flushes
+          if (selectedGrow.flushes?.length) {
+            const recentFlushes = [...selectedGrow.flushes]
+              .sort((a, b) => new Date(b.harvestDate).getTime() - new Date(a.harvestDate).getTime())
+              .slice(0, 2);
+            recentFlushes.forEach((flush, idx) => {
+              recentActivity.push({
+                label: `Flush ${selectedGrow.flushes.length - idx}: ${flush.wetWeight}g wet`,
+                timestamp: new Date(flush.harvestDate),
+                icon: '🍄',
+              });
+            });
+          }
+          // Add recent observations
+          if (selectedGrow.observations?.length) {
+            const recentObs = [...selectedGrow.observations]
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .slice(0, 2);
+            recentObs.forEach(obs => {
+              recentActivity.push({
+                label: obs.notes?.substring(0, 40) || `${obs.type} observation`,
+                timestamp: new Date(obs.date),
+                icon: '📝',
+              });
+            });
+          }
+          recentActivity.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+          // Status badge
+          const statusBadge = (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${config.bgColor} ${config.color}`}>
+              <span>{config.icon}</span>
+              <span>{config.label}</span>
+            </span>
+          );
+
+          return (
+            <div className="w-full max-w-sm sticky top-6 h-fit hidden lg:block" data-detail-panel="grow">
+              <SummaryPanel
+                title={selectedGrow.name}
+                subtitle={strain?.name || 'Unknown strain'}
+                icon="🍄"
+                statusBadge={statusBadge}
+                stats={panelStats}
+                actions={panelActions}
+                recentActivity={recentActivity.slice(0, 4)}
+                onViewDetails={() => setShowDetailModal(true)}
+                onClose={() => {
+                  setSelectedGrow(null);
+                  setShowDetailPanel(false);
+                }}
+              />
+            </div>
+          );
+        })()}
+      </div>
 
       {filteredGrows.length === 0 && (
         <div className="text-center py-12">
@@ -1446,6 +1584,34 @@ export const GrowManagement: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Grow Detail Modal */}
+      {selectedGrow && (
+        <GrowDetailModal
+          isOpen={showDetailModal}
+          onClose={() => setShowDetailModal(false)}
+          grow={selectedGrow}
+          onLogObservation={() => {
+            setShowDetailModal(false);
+            setShowObservationModal(true);
+          }}
+          onRecordHarvest={() => {
+            setShowDetailModal(false);
+            setExpandedCards(new Set([selectedGrow.id]));
+          }}
+          onAdvanceStage={() => handleAdvanceStage(selectedGrow.id)}
+          onMarkContaminated={() => handleMarkContaminatedWithSurvey(selectedGrow)}
+          onComplete={() => handleCompleteGrow(selectedGrow)}
+          onEdit={() => {
+            setShowDetailModal(false);
+            openEditModal(selectedGrow);
+          }}
+          onDispose={() => {
+            setShowDetailModal(false);
+            openExitSurvey(selectedGrow);
+          }}
+        />
       )}
     </div>
   );

@@ -7,7 +7,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useData, EntityOutcomeData } from '../../store';
 import { useAuthGuard } from '../../lib/useAuthGuard';
 import { CultureWizard } from './CultureWizard';
-import { CultureDetailView } from './CultureDetailView';
+import { CultureDetailModal } from '../modals/CultureDetailModal';
+import { EntityCard, type EntityCardStatus, type EntityCardMetric } from '../cards';
+import { SummaryPanel, type SummaryPanelStat, type SummaryPanelAction, type SummaryPanelActivity } from '../cards';
 import { NumericInput } from '../common/NumericInput';
 import { EntityDisposalModal, DisposalOutcome } from '../common/EntityDisposalModal';
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
@@ -31,6 +33,16 @@ const cultureStatusConfig: Record<CultureStatus, { label: string; color: string 
   contaminated: { label: 'Contaminated', color: 'text-red-400 bg-red-950/50' },
   archived: { label: 'Archived', color: 'text-zinc-400 bg-zinc-800' },
   depleted: { label: 'Depleted', color: 'text-amber-400 bg-amber-950/50' },
+};
+
+// Map culture status to EntityCard color
+const statusToCardColor: Record<CultureStatus, EntityCardStatus['color']> = {
+  active: 'emerald',
+  colonizing: 'blue',
+  ready: 'green',
+  contaminated: 'red',
+  archived: 'zinc',
+  depleted: 'amber',
 };
 
 // Icons
@@ -241,6 +253,7 @@ export const CultureManagement: React.FC = () => {
   const [showDisposalModal, setShowDisposalModal] = useState(false);
   const [cultureToDispose, setCultureToDispose] = useState<Culture | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   // newObservation state removed - using canonical ObservationModal
 
@@ -701,43 +714,33 @@ export const CultureManagement: React.FC = () => {
                 const strain = getStrain(culture.strainId);
                 const typeConfig = cultureTypeConfig[culture.type];
                 const statusConfig = cultureStatusConfig[culture.status];
-                
+
+                // Build metrics for EntityCard
+                const metrics: EntityCardMetric[] = [
+                  { label: 'Gen', value: `P${culture.generation}`, color: culture.generation >= 4 ? 'text-amber-400' : 'text-zinc-300' },
+                  { label: 'Health', value: `${culture.healthRating}/5`, color: culture.healthRating >= 4 ? 'text-emerald-400' : culture.healthRating >= 2 ? 'text-amber-400' : 'text-red-400' },
+                ];
+                if (culture.volumeMl) {
+                  metrics.push({ label: 'Vol', value: `${culture.volumeMl}ml` });
+                }
+
                 return (
-                  <div
+                  <EntityCard
                     key={culture.id}
+                    title={culture.label}
+                    subtitle={strain?.name || 'Unknown strain'}
+                    icon={typeConfig.icon}
+                    status={{ label: statusConfig.label, color: statusToCardColor[culture.status] }}
+                    metrics={metrics}
+                    lastActivity={culture.updatedAt || culture.createdAt}
                     onClick={() => setSelectedCulture(culture)}
-                    className={`bg-zinc-900/50 border rounded-xl p-4 cursor-pointer transition-all hover:border-zinc-600 ${
-                      selectedCulture?.id === culture.id ? 'border-emerald-600' : 'border-zinc-800'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="text-xl flex-shrink-0">{typeConfig.icon}</span>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-white truncate">{culture.label}</p>
-                          <p className="text-xs text-zinc-500 truncate">{strain?.name || 'Unknown'}</p>
-                        </div>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap flex-shrink-0 ${statusConfig.color}`}>
-                        {statusConfig.label}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <PValueBadge generation={culture.generation} strainName={strain?.name} compact />
-                        <HealthBar rating={culture.healthRating} />
-                      </div>
-                      {culture.volumeMl && (
-                        <span className="text-zinc-400">{culture.volumeMl}ml</span>
-                      )}
-                    </div>
-
-                    <div className="mt-3 pt-3 border-t border-zinc-800 flex items-center justify-between">
-                      <span className="text-xs text-zinc-500">{daysAgo(culture.createdAt)}</span>
-                      <ShelfLifeBadge culture={culture} compact />
-                    </div>
-                  </div>
+                    onViewDetails={() => {
+                      setSelectedCulture(culture);
+                      setShowDetailModal(true);
+                    }}
+                    viewDetailsLabel="View Details"
+                    isSelected={selectedCulture?.id === culture.id}
+                  />
                 );
               })}
             </div>
@@ -794,22 +797,88 @@ export const CultureManagement: React.FC = () => {
           )}
         </div>
 
-        {/* Detail Panel - New Reimagined Component */}
-        {selectedCulture && (
-          <div className="w-full max-w-md sticky top-6 h-fit" data-detail-panel="culture">
-            <CultureDetailView
-              culture={selectedCulture}
-              onClose={() => setSelectedCulture(null)}
-              onNavigateToCulture={setSelectedCulture}
-              onStatusChange={handleStatusChange}
-              onLogObservation={() => setShowObservationModal(true)}
-              onTransfer={() => setShowTransferModal(true)}
-              onViewHistory={() => setShowHistoryModal(true)}
-              onDispose={() => handleDelete(selectedCulture)}
-              variant="panel"
-            />
-          </div>
-        )}
+        {/* Detail Panel - Quick context view with link to full modal */}
+        {selectedCulture && (() => {
+          const strain = getStrain(selectedCulture.strainId);
+          const typeConfig = cultureTypeConfig[selectedCulture.type];
+          const statusConfig = cultureStatusConfig[selectedCulture.status];
+
+          // Build stats for SummaryPanel
+          const panelStats: SummaryPanelStat[] = [
+            { label: 'Generation', value: `P${selectedCulture.generation}`, color: selectedCulture.generation >= 4 ? 'text-amber-400' : 'text-white' },
+            { label: 'Health Rating', value: `${selectedCulture.healthRating}/5`, color: selectedCulture.healthRating >= 4 ? 'text-emerald-400' : selectedCulture.healthRating >= 2 ? 'text-amber-400' : 'text-red-400' },
+            { label: 'Type', value: typeConfig.label },
+          ];
+          if (selectedCulture.volumeMl) {
+            panelStats.push({ label: 'Volume', value: `${selectedCulture.volumeMl}ml` });
+          }
+          if (lineage.ancestors.length > 0 || lineage.descendants.length > 0) {
+            panelStats.push({ label: 'Lineage', value: `${lineage.ancestors.length} ancestors, ${lineage.descendants.length} descendants` });
+          }
+
+          // Build actions for SummaryPanel
+          const panelActions: SummaryPanelAction[] = [
+            { label: 'Log Observation', onClick: () => setShowObservationModal(true), variant: 'secondary' },
+            { label: 'Transfer', onClick: () => setShowTransferModal(true), variant: 'primary' },
+          ];
+          if (!['archived', 'depleted', 'contaminated'].includes(selectedCulture.status)) {
+            panelActions.push({ label: 'Dispose', onClick: () => handleDelete(selectedCulture), variant: 'danger' });
+          }
+
+          // Build recent activity
+          const recentActivity: SummaryPanelActivity[] = [];
+          // Add recent observations
+          if (selectedCulture.observations?.length) {
+            const recentObs = [...selectedCulture.observations]
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .slice(0, 2);
+            recentObs.forEach(obs => {
+              recentActivity.push({
+                label: obs.notes?.substring(0, 50) || `${obs.type} observation`,
+                timestamp: new Date(obs.date),
+                icon: '📝',
+              });
+            });
+          }
+          // Add recent transfers
+          if (selectedCulture.transfers?.length) {
+            const recentTransfers = [...selectedCulture.transfers]
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .slice(0, 2);
+            recentTransfers.forEach(t => {
+              recentActivity.push({
+                label: `Transferred ${t.quantity} ${t.unit} to ${t.toType}`,
+                timestamp: new Date(t.date),
+                icon: '➡️',
+              });
+            });
+          }
+          // Sort by date
+          recentActivity.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+          // Status badge
+          const statusBadge = (
+            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig.color}`}>
+              {statusConfig.label}
+            </span>
+          );
+
+          return (
+            <div className="w-full max-w-md sticky top-6 h-fit" data-detail-panel="culture">
+              <SummaryPanel
+                title={selectedCulture.label}
+                subtitle={`${strain?.name || 'Unknown Strain'} • ${typeConfig.label}`}
+                icon={typeConfig.icon}
+                statusBadge={statusBadge}
+                stats={panelStats}
+                actions={panelActions}
+                recentActivity={recentActivity.slice(0, 3)}
+                onViewDetails={() => setShowDetailModal(true)}
+                onClose={() => setSelectedCulture(null)}
+              />
+            </div>
+          );
+        })()}
       </div>
 
       {/* Culture Creation Wizard */}
@@ -1223,6 +1292,35 @@ export const CultureManagement: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Full Detail Modal - Tabbed view with timeline, history, lineage */}
+      {selectedCulture && (
+        <CultureDetailModal
+          isOpen={showDetailModal}
+          onClose={() => setShowDetailModal(false)}
+          culture={selectedCulture}
+          onLogObservation={() => {
+            setShowDetailModal(false);
+            setShowObservationModal(true);
+          }}
+          onTransfer={() => {
+            setShowDetailModal(false);
+            setShowTransferModal(true);
+          }}
+          onEdit={() => {
+            setShowDetailModal(false);
+            setShowHistoryModal(true);
+          }}
+          onDispose={() => {
+            setShowDetailModal(false);
+            handleDelete(selectedCulture);
+          }}
+          onNavigateToCulture={(culture) => {
+            setSelectedCulture(culture);
+            // Keep the modal open to show the new culture
+          }}
+        />
       )}
     </div>
   );
