@@ -87,8 +87,7 @@ VALUES
   ('00000000-0000-0000-0000-000000000124', 'Psilocybe serbica', 'Psilocybe serbica', ARRAY['Serbian Psilocybe'], 'research', 'European wood-loving species found in Serbia and surrounding regions. Cold tolerant. Similar to P. cyanescens but smaller.', NULL),
   ('00000000-0000-0000-0000-000000000125', 'Psilocybe caerulipes', 'Psilocybe caerulipes', ARRAY['Blue Foot', 'Blue-footed Psilocybe'], 'research', 'Eastern North American species. Distinctive blue staining at stem base. Found on hardwood debris. Cold tolerant, fruits in late summer/fall.', NULL)
 
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
+ON CONFLICT (name) WHERE user_id IS NULL DO UPDATE SET
   scientific_name = EXCLUDED.scientific_name,
   common_names = EXCLUDED.common_names,
   category = EXCLUDED.category,
