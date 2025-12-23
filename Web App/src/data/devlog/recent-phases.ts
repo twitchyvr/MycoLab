@@ -5579,12 +5579,13 @@ Created canonical RoomCheckForm.tsx:
    - GrowDetailModal - 3 tabs: Overview, Timeline, History
 
 5. **Card Components:**
-   - EntityCard - Standardized list view cards
-   - SummaryPanel - Right-side quick view panel
+   - EntityCard - Standardized list view cards with metrics, status, lastActivity
+   - SummaryPanel - Right-side quick view panel with stats, actions, recent activity
 
 **INTEGRATION:**
-- CultureManagement: Added "View Full Details" button
-- GrowManagement: View History now opens full detail modal
+- CultureManagement: Grid view uses EntityCard, sidebar uses SummaryPanel
+- GrowManagement: SummaryPanel appears when grow is selected (lg screens)
+- 3-level hierarchy fully implemented: List (EntityCard) → Quick View (SummaryPanel) → Detail Modal
 
 **UX IMPROVEMENTS:**
 - Replaced cramped accordions with spacious tabbed navigation
