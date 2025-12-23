@@ -1,0 +1,86 @@
+00:00:01 
+Today we're going to talk about how you can better understand the health of your mycelium so that you can dramatically increase the success of your grow and maximize your mushroom yields. This is something that's not widely known and it's incredibly important to understand if you're a mushroom grower. I will introduce advanced mycology concepts that we believe every beginner should have some knowledge of when starting their journey. It is particularly useful for those who have already grown mushrooms and are looking to purchase mushroom cultures in various forms such as liquid culture, grain spawn,
+
+00:00:34 
+colonized agar plates or sawdust spawn from a supplier. Throughout this chat we're going to cover fungal reproduction, how commercial mushroom cultures are created, understanding p-value or mycelium generations, how to multiply mycelium at home or in a lab, the ideal multiplication ratio for healthy growth, mycelium senescence which is gradual aging and dying, and best practices for storage. These are vast and complex topics so we'll only, We'll be touching on key concepts today without delving too deeply into any one area.
+
+00:01:06 
+By the end of this chat, you'll understand how to improve the health and yield of your mushrooms while saving time and money. We also hope to raise awareness of common mistakes made by mushroom farms and suppliers regarding culture maintenance. First, let's start with the basics. How mycelium reproduces. Mycelium begins its life as spores which are released from the gills of mushrooms. This is the primary purpose of mushrooms, to ensure the survival of their species. These spores are incredibly lightweight and can travel long distances through the air.
+
+00:01:37 
+A single mushroom can release trillions of spores before it decomposes. When spores land in a suitable environment, they germinate and grow in search of food. They don't actively seek out a partner but can reproduce sexually if they encounter a compatible spore. Unlike humans, there are no male or female spores, only two types that we'll refer to as A and B. Each type contains 50% of the genetic material needed for reproduction. production. When A spore meets B spore, they combine to form dikaryotic mycelium, which has the full genetic information needed to grow mushrooms.
+
+00:02:09 
+Each spore carries out unique genetic traits that influence characteristics like mushroom size, yield, colour, resistance to contamination and so on. In nature, mushrooms are a result of multi-spore germination, leading to unpredictable traits similar to growing plants from seeds. However, for human cultivation purposes, unpredictability is not ideal. This is why we need dikaryotic mycelium derived from two selected compatible spores A and B to produce predictable mushroom characteristics.
+
+00:02:39 
+Every mushroom grown from dikaryotic mycelium will grow the same each time. For example, it will have consistent traits such as colour, size, temperature preference, humidity tolerance and resistance to contamination. When you buy commercial cultures from us, you are getting dikaryotic mycelium that has been tested and cleared the industrial benchmark. Let's talk about how dikaryotic mycelium works. commercial cultures are made. To create commercially viable mushroom cultures, researchers need to isolate spores under a microscope. Since it's impossible to visually.
+
+00:03:10 
+identify whether two spores are A or B, they pair them randomly on agar plates, let's say 200 plates in total. Over time, they observe which pairs successfully made, forming dikaryotic mycelium, and which do not. Out of these 200 plates, imagine 100 contain successfully paired A and B spores. These successful strains are designated as P0, or generation zero cultures, and are preserved in cryogenic storage to prevent aging during further experimentation. Researchers then grow mushrooms from each plate to evaluate traits like size, flavor, yield, color accuracy, and resistance.
+
+00:03:46 
+to contamination. After rigorous testing, only a few strains meet the desired benchmarks, let's say 7 out of 100. The remaining unsuccessful strains, plates, and cryo vials are discarded. Once finalized, P0 cultures are expanded. into liquid cultures, which are P1, for distribution. Each subsequent expansion, whether into more liquid culture or grain spawn, increases the P value and contributes to aging. Named after mycologist Paul Stamets, we assign the mycelium a P value. Every time the mycelium.
+
+00:04:17 
+is taken and grown onto a new medium, the P value will change. So when the mycelium is first grown onto an agar plate from two spores, it is at P0. When we take that mycelium and grow it into liquid culture, it turns into P1. Paul Stamets is an American mycologist who has inspired thousands of people, including us. Some people prefer using G1 or G2. We will stick to the P value as a gesture of respect for him. Let's talk about the P value and mycelium aging. As discussed earlier, the P.
+
+00:04:47 
+value represents how many times the mycelium culture has been expanded. For example, we get P0 from the original culture that is derived from spores, which is the strongest. We get P1 with further expansion. We get P0 from the original culture that is derived from spores, which is the strongest. We get P2 with further expansion into liquid culture. We get P2. by further expanding it again, which may be into a master's grain spawn. And then we get P3 by expanding it once again onto more grain. As the P value increases, the mycelium becomes older and less vigorous. Lower P values result in faster growth rates, higher yields, stronger resistance to contamination,
+
+00:05:19 
+and better adaptability to environmental conditions. Aging occurs not only through expansion, but also during storage, even under optimal conditions. For example, liquid cultures stored at two degrees remain viable for up to five months. Cryogenic storage using liquid nitrogen halts aging entirely by stopping metabolic activity, but this is only limited to a few years. To maintain high quality cultures, we want to use P1 liquid cultures within five months of receiving them, P2 liquid cultures within three months,
+
+00:05:50 
+and P3 liquid cultures within two months. And we want to store them in the refrigerator's vegetable compartment, away from airflow and light, and in a Ziploc bag. Let's talk about multiplying mycelium. From our experience, when expanding mycelium at home or in a laboratory, it is essential to adhere to a proper multiplication ratio to maintain its vitality and minimise ageing. A standard practice is to expand at a ratio of 1 to 10. For example, 10 mL of P1 liquid culture can be expanded into 100 mL of P2 liquid culture.
+
+00:06:23 
+This ensures that the culture remains robust and healthy. Exceeding this ratio can accelerate the ageing process. Let's say you bought a P1 10 mL liquid culture syringe from us at $60. Because it's a P1 culture, it's very strong and will last up to 5 months in the fridge at 2 degrees for most species. However, for species such as almond mushroom, also known as agaricus subforessens, pink oyster, also known as Pleurotus digemore, and paddy straw mushroom, also known as Volvorella volvacea, a P1, cold sensitive mushrooms and need to be kept at 10 degrees. From here, you can use the liquid.
+
+00:06:57 
+culture syringe to inoculate a one kilogram grain bag to create a P2 master grain spawn. It will last up to three months when kept in the fridge at two degrees for most species and 10 degrees for cold sensitive varieties. A master grain spawn is spawned P2 and younger that can be used to inoculate more grain with. From here, you can use this to inoculate 10 one kilogram grain bags of P3 through grain to grain transfer. This will work out to be $6 per bag. These bags will last up to two months in the fridge at two degrees for most species and 10 degrees for cold sensitive varieties.
+
+00:07:33 
+From here, the 10 one kilogram P3 grain spawn can inoculate 33 three kilogram substrate bags at P4 to then fruit mushrooms directly from. This works out to be $1.80 per bag. Being P4, it is young and vigorous, dramatically increasing your chance of success. It will need to be fruited within four weeks. weeks after fully colonising. It is recommended for this method to work with a laminar flow hood or at minimum a still air box. There's also another way that you can expand a P1 culture which is a lot less susceptible.
+
+00:08:04 
+to contamination. Let's say you bought the same P1 10ml liquid culture syringe at $60, you can then expand it in another 100ml of liquid culture in a sterile jar through an injection port. This will last up to 3 months when stored at 2 degrees for most species and 10 degrees for cold sensitive varieties. This can then be extracted into 10 10ml liquid culture syringes at P2. This will work out to be $6 per syringe. From here, the 10 P2 liquid culture syringes can inoculate 10 1kg grain bags at P3.
+
+00:08:38 
+This needs to be used within 2 months when stored in the fridge at 2 degrees for most species and 10 degrees for cold sensitive varieties. From here, the 10 P3 grain spawn bags can inoculate 33 P3 grain spawn bags at P2. From here, the 10 P3 grain spawn bags can inoculate 33 P3 grain spawn bags at P3. P4, which you can fruit directly from. This will work out to be $1.80 per bag. Being P4, it is young and vigorous, dramatically increasing your chance of success. It will need to be fruited within 4 weeks after fully colonising when kept at 2 degrees for most species and 10 degrees for cold sensitive varieties. For this and subsequent variations,
+
+00:09:13 
+it is recommended to use a still air box to reduce the risk of contamination. Let's say you decided to buy a P2 10ml liquid culture syringe from us for $25. It will last up to 2 months in the fridge at 2 degrees for most species and 10 degrees for cold sensitive varieties. The 10ml P2 liquid culture syringe can then inoculate 100ml of liquid culture at P3. This will then last up to 2 months when stored in the fridge at 2 degrees for most species and 10 degrees for cold sensitive varieties. This can then be extracted into 10 10ml liquid culture.
+
+00:09:47 
+syringe. This can then be extracted into 10 10ml liquid culture syringe. This can then be extracted This can then be extracted into 10 10ml liquid culture syringe. This can then be extracted into 10 10ml liquid culture syringe. This can then be extracted into 10 10ml liquid culture syringe. From here, the 10 P3 liquid culture syringes can inoculate 10 1kg, grain bags at P4. This works out to be $2.50 per bag. This will need to be used within four weeks when stored at 2 degrees for most species and 10 degrees for cold sensitive varieties. From here, the 10 P4 grain spawn bags can inoculate 33 3kg substrate bags at P5, which you can fruit directly from. This works out to be 25 cents per bag. Being P5, it is an older generation mycelium.
+
+00:10:19 
+and won't be as vigorous or resilient as P4. However, it's still healthy enough to colonise and fruit mushrooms. Let's say, however, you purchased a 10ml P3 liquid culture syringe from us for $10. It will last up to two months when stored in the fridge at 2 degrees for most species and 10 degrees for cold sensitive varieties. The P3 10ml liquid culture syringe could then be used to inoculate a 1kg grain bag at P4. It will last up to four weeks when kept in the fridge at 2 degrees. For most species and 10 degrees for cold sensitive varieties.
+
+00:10:53 
+The 1kg P4 grain spawn can then be used to inoculate 3 3kg substrate bags at P5, which you can then fruit directly from. Again, being P5, it is an older generation mycelium and won't be as vigorous or resilient as P4. However, it's still healthy and vigorous enough to colonise and fruit. Let's talk about mycelium ageing, also known as senescence. Over time, all fungi experience senescence, resulting in a gradual decline in vitality that can negatively impact growth and fruiting.
+
+00:11:26 
+Signs of ageing mycelium include abnormal fruiting or smaller mushrooms, increased susceptibility to contamination, failure to fruit despite colonisation, partial or incomplete colonisation, for example, only growing on the top of a grain bag, loss of characteristic colour during growth, for example, pink oyster mycelium losing its pinnacle, and fill blue mycelium losing its violet colour, creating excessive heat during colonisation. colonisation, resulting in the mycelium killing itself. This is sometimes seen in Agaricus.
+
+00:11:57 
+arvensis and pink oyster. Certain species exhibit unique ageing patterns. For example, Cordyceps militaris degenerates quickly, often losing its ability to fruit after four to six months. While P1 Cordyceps cultures can remain viable for up to 1.5 years when stored at two degrees in darkness, subsequent variations P2, P3, etc. degenerate more rapidly. Oyster mushrooms are among the slowest ageing species, while other mushrooms like shimeji, shiitake, lion's mane,
+
+00:12:30 
+chestnut and enoki fall somewhere in between. While some mushrooms may show these signs at P6, others will at P8. We do not have the exact knowledge on what generation a culture will degrade, we just try to keep the P value as low as possible. This is why we don't unnecessarily divide or expand the culture. Let's talk about best practice to prevent ageing. There's a few things we can do to maintain ageing. healthy and vigorous mycelium cultures. First we want to replace cultures regularly. Professional cultures should be replaced every five months for optimal efficiency and commercial.
+
+00:13:03 
+cultures should be replaced monthly for best results, especially if you're a hobbyist or small-scale grower. Secondly we want to store cultures correctly. Most cultures should be stored at two degrees except for specific types like almond, pink oyster and paddy straw mycelium which are cold sensitive and require 10 degrees. We also want to keep the cultures in the dark to avoid exposure to light. Thirdly we want to avoid over multiplication. We want to use appropriate expansion ratios and avoid unnecessary divisions to maintain a low p-value.
+
+00:13:37 
+And fourthly, we want to monitor for signs of ageing. Check for incomplete colonisation or a reduced vigour as indicators of senescence. Let's talk about storing your cultures. Since they continue to grow and age over time, we recommend purchasing fresh cultures rather than stockpiling them in jars or on agar plates. Liquid cultures stored in syringes are more stable than those on agar plates or grain spawn. Lower p-value cultures are more resilient and store longer than higher p-value ones. For farms considering to upgrade, our P2 professional culture range is a superior option compared to our P3 commercial cultures,
+
+00:14:14 
+especially for those hesitant to invest in P1 cultures. Commercial cultures may either originate from our professional range or sourced externally. We advise customers not to store cultures beyond their recommendations. Cultures should be used promptly, either for inoculating grains, or producing additional liquid culture. Prolonged storage, particularly of expanded liquid cultures, reduces their viability. To recap, the best way to store cultures is in liquid form within syringes because they age more slowly compared to agar plates or grain spawn.
+
+00:14:46 
+Lower P-value cultures are more durable and vigorous than higher P-value ones. Each increase in P-value reflects the aging of mycelium. Lower P-values indicate younger, more robust mycelium with stronger immunity and adaptability, while higher P-values result in slower growth and greater susceptibility to contamination and environmental changes. Always purchase your cultures from a trusted supplier to ensure you know the P-value of your product. We impose no restrictions on how our cultures can be used.
+
+00:15:16 
+They can be expanded, sold or incorporated into kits and spawn production. Our high-quality offerings ensure customers return regularly to replenish their stock. With mushroom cultures, quality directly impacts results. For more information, visit www.fema.gov.au, For people using agar plates to make liquid cultures, mycelium is most vigorous at its vegetative stage. Once it reaches the edges of an agar plate, it transitions into reproductive stage. The younger mycelium at the plate's edge should always be used for propagation as it's less aged than the centre.

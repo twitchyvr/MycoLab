@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS batch_passports (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
 
   -- Unique passport identifier (shareable, human-readable)
-  passport_code TEXT UNIQUE NOT NULL, -- e.g., "ML-2024-12-0001"
+  passport_code TEXT UNIQUE NOT NULL, -- e.g., "ML-2025-12-0001"
 
   -- What this passport represents
   entity_type TEXT NOT NULL CHECK (entity_type IN ('grow', 'culture', 'batch')),
@@ -695,7 +695,7 @@ GET /api/passports/:id/analytics
 │ Create Batch Passport                            ✕  │
 ├─────────────────────────────────────────────────────┤
 │                                                     │
-│  Strain: Blue Oyster (BO-2024-12)                   │
+│  Strain: Blue Oyster (BO-2025-12)                   │
 │  Grow: Monotub #3 - 450g total yield               │
 │                                                     │
 │  ─────────────────────────────────────────────────  │
@@ -732,7 +732,7 @@ GET /api/passports/:id/analytics
 │  ══════════════════════════════════════════════════ │
 │                                                     │
 │  [QR CODE]     Blue Oyster                          │
-│                BO-2024-12-0042                      │
+│                BO-2025-12-0042                      │
 │                                                     │
 │                Verified Grow Record                 │
 │                450g Total Yield | 112% BE          │
@@ -742,8 +742,8 @@ GET /api/passports/:id/analytics
 │  📍 Region: Pacific Northwest                       │
 │  🌱 Strain: Blue Oyster (Pleurotus ostreatus)      │
 │  📦 Substrate: Masters Mix (Hardwood + Soy Hulls)  │
-│  📅 Inoculated: Nov 15, 2024                       │
-│  🍄 First Harvest: Dec 1, 2024                     │
+│  📅 Inoculated: Nov 15, 2025                       │
+│  🍄 First Harvest: Dec 1, 2025                     │
 │                                                     │
 │  ─────────────────────────────────────────────────  │
 │                                                     │
@@ -932,7 +932,7 @@ Based on research of competitor apps ([MycoFile](https://play.google.com/store/a
 {
   id: 'dev-1030',
   title: 'Batch Grouping System',
-  description: 'Group multiple items into a batch (e.g., "LC Transfer Batch 2024-12-15"). Track outcomes at batch level. Identify if one jar from batch contaminates.',
+  description: 'Group multiple items into a batch (e.g., "LC Transfer Batch 2025-12-15"). Track outcomes at batch level. Identify if one jar from batch contaminates.',
   category: 'core',
   status: 'planned',
   priority: 'high',
@@ -1007,7 +1007,7 @@ Based on research of competitor apps ([MycoFile](https://play.google.com/store/a
   status: 'planned',
   priority: 'medium',
   estimatedHours: 6,
-  notes: 'Required for selling products in EU as of 2024.',
+  notes: 'Required for selling products in EU as of 2025.',
   createdAt: timestamp(),
   updatedAt: timestamp(),
 },

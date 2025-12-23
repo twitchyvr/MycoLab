@@ -499,7 +499,7 @@ export const recentPhases: DevLogFeature[] = [
   },
 
   // =============================================================================
-  // DECEMBER 2024 UPDATES
+  // DECEMBER 2025 UPDATES
   // Species data improvements and grow management enhancements
   // =============================================================================
   {

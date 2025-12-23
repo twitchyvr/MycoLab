@@ -7,7 +7,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 export const PrivacyPolicy: React.FC = () => {
-  const lastUpdated = 'December 16, 2024';
+  const lastUpdated = 'December 16, 2025';
   const appName = 'MycoLab';
   const companyName = 'MycoLab';
   const contactEmail = 'privacy@theautomationguru.com';

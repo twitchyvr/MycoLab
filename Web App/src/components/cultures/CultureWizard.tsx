@@ -590,7 +590,7 @@ const Step3Acquisition: React.FC<StepProps> = ({ formData, onChange }) => {
               type="text"
               value={formData.lotNumber}
               onChange={e => onChange({ lotNumber: e.target.value })}
-              placeholder="e.g., LOT-2024-001"
+              placeholder="e.g., LOT-2025-001"
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
             />
             <p className="text-xs text-zinc-500 mt-1">Manufacturer's lot/batch number (if provided)</p>
@@ -716,7 +716,7 @@ const Step4SourceCost: React.FC<StepProps> = ({ formData, onChange }) => {
             type="text"
             value={formData.lotNumber}
             onChange={e => onChange({ lotNumber: e.target.value })}
-            placeholder="e.g., LOT-2024-001"
+            placeholder="e.g., LOT-2025-001"
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
           />
           <p className="text-xs text-zinc-500 mt-1">Your batch/lot identifier (optional)</p>

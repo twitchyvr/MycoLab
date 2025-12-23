@@ -1,958 +1,420 @@
 -- ============================================================================
--- MycoLab Species Database Expansion: N-Z Species
--- Part 2 of 2 (See mycolab-research-species-A-M.sql for Part 1)
--- Generated: 2024
--- Sources: Academic literature, cultivation guides, vendor catalogs
+-- MYCOLAB RESEARCH SPECIES SEED DATA - N through Z (Alphabetical)
+-- ============================================================================
+-- Idempotent - Safe to run multiple times
+-- Run this AFTER supabase-schema.sql AND mycolab-research-species-A-M.sql
+-- ============================================================================
+--
+-- SCOPE: Research/Psychoactive mushroom species, names beginning N-Z
+-- Continuation of A-M species seed file.
+--
+-- GENERA COVERED:
+-- - Psilocybe N-Z (P. natalensis, P. ovoideocystidiata, P. semilanceata,
+--                 P. subaeruginosa, P. tampanensis, P. weraroa, etc.)
+-- - Pluteus (P. salicinus - Willow Shield)
+--
+-- TEMPERATURE UNITS: Celsius (matching scientific literature)
+-- HUMIDITY: Percentage (%)
+--
+-- DATA CONFIDENCE RATINGS:
+-- - "well_documented": Multiple peer-reviewed or reputable sources agree
+-- - "community_consensus": Widely accepted in cultivation community
+-- - "limited_reports": Some grower reports, not widely verified
+-- - "theoretical": Based on related species or habitat extrapolation
+-- - "not_domesticated": Wild harvest only, cultivation not established
+-- - "grassland_specialist": Requires specific grass/soil symbiosis
+--
 -- ============================================================================
 
+-- Enable UUID extension (should already exist)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- ============================================================================
--- PSILOCYBE NATALENSIS
--- South African subtropical species, excellent for cultivation
+-- SECTION 1: PSILOCYBE N-Z SPECIES
 -- ============================================================================
 
 INSERT INTO species (
-    name,
-    common_name,
-    genus,
-    description,
-    native_habitat,
-    cultivation_difficulty,
-    typical_yield,
-    notes
-) VALUES (
-    'Psilocybe natalensis',
+  id, name, scientific_name, common_names, category, notes, user_id
+)
+VALUES
+  -- Psilocybe natalensis
+  (
+    '10000000-0000-0000-0003-000000000001',
     'Natal Super Strength',
-    'Psilocybe',
-    'South African subtropical species discovered in Natal province. Closely related to P. cubensis but considered more potent. Produces large, fleshy fruiting bodies with aggressive colonization. Popular in cultivation due to reliability and potency.',
-    'South Africa (KwaZulu-Natal), subtropical grasslands, dung-enriched soils',
-    'beginner',
-    'high',
-    'Often confused with P. cubensis. Responds well to standard cubensis cultivation techniques. May produce larger individual fruits than cubensis. Aggressive colonizer with good contamination resistance.'
-) ON CONFLICT (name) DO UPDATE SET
-    common_name = EXCLUDED.common_name,
-    description = EXCLUDED.description,
-    native_habitat = EXCLUDED.native_habitat,
-    cultivation_difficulty = EXCLUDED.cultivation_difficulty,
-    typical_yield = EXCLUDED.typical_yield,
-    notes = EXCLUDED.notes;
-
-INSERT INTO cultivation_parameters (
-    species_id,
-    parameter_type,
-    min_value,
-    max_value,
-    optimal_value,
-    unit,
-    notes
-) 
-SELECT 
-    s.id,
-    params.parameter_type,
-    params.min_value,
-    params.max_value,
-    params.optimal_value,
-    params.unit,
-    params.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('colonization_temperature', 24.0, 30.0, 27.0, '°C', 'Slightly warmer than cubensis preference'),
-    ('fruiting_temperature', 21.0, 26.0, 23.0, '°C', 'Standard subtropical fruiting range'),
-    ('humidity', 85.0, 95.0, 90.0, '%', 'High humidity required for fruiting'),
-    ('colonization_time', 10.0, 21.0, 14.0, 'days', 'Fast colonizer, often quicker than cubensis'),
-    ('fruiting_time', 5.0, 10.0, 7.0, 'days', 'Pins to harvest'),
-    ('co2_tolerance', 1000.0, 3000.0, 2000.0, 'ppm', 'Moderate CO2 tolerance during colonization')
-) AS params(parameter_type, min_value, max_value, optimal_value, unit, notes)
-WHERE s.name = 'Psilocybe natalensis'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO substrate_compatibility (
-    species_id,
-    substrate_type,
-    compatibility_rating,
-    notes
-)
-SELECT 
-    s.id,
-    substrates.substrate_type,
-    substrates.compatibility_rating,
-    substrates.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('rye_grain', 'excellent', 'Preferred spawn substrate, fast colonization'),
-    ('brown_rice_flour', 'excellent', 'Works well for PF Tek approach'),
-    ('wild_bird_seed', 'excellent', 'Economical spawn option'),
-    ('coco_coir', 'excellent', 'Primary bulk substrate component'),
-    ('vermiculite', 'excellent', 'Moisture retention in bulk substrate'),
-    ('manure_based', 'excellent', 'Horse or cow manure highly compatible'),
-    ('straw', 'good', 'Can be used as bulk substrate additive'),
-    ('gypsum', 'good', 'Supplement at 2-5% for calcium and pH buffering')
-) AS substrates(substrate_type, compatibility_rating, notes)
-WHERE s.name = 'Psilocybe natalensis'
-ON CONFLICT DO NOTHING;
-
-
--- ============================================================================
--- PSILOCYBE OVOIDEOCYSTIDIATA
--- Eastern US wood-lover, excellent for outdoor cultivation
--- ============================================================================
-
-INSERT INTO species (
-    name,
-    common_name,
-    genus,
-    description,
-    native_habitat,
-    cultivation_difficulty,
-    typical_yield,
-    notes
-) VALUES (
-    'Psilocybe ovoideocystidiata',
-    'Ovoid, Ovoids',
-    'Psilocybe',
-    'Wood-loving species formally described in 2003 from Pennsylvania. Native to Eastern US floodplains but spreading via landscaping wood chips. Named for distinctive ovoid-shaped cystidia. One of the easier wood-lovers to cultivate due to tolerance of warmer temperatures.',
-    'Eastern United States (Pennsylvania, Ohio, Maryland, West Virginia, New York), Pacific Northwest, Europe. Floodplains, river banks, wood chip beds, urban landscapes.',
-    'intermediate',
-    'moderate',
-    'Previously mistaken for P. caerulipes. Human-assisted spread through wood chip landscaping. More temperature tolerant than other wood-lovers. Can fruit year-round outdoors in mild climates. Cold shock triggers pinning. Outdoor wood chip beds preferred method.'
-) ON CONFLICT (name) DO UPDATE SET
-    common_name = EXCLUDED.common_name,
-    description = EXCLUDED.description,
-    native_habitat = EXCLUDED.native_habitat,
-    cultivation_difficulty = EXCLUDED.cultivation_difficulty,
-    typical_yield = EXCLUDED.typical_yield,
-    notes = EXCLUDED.notes;
-
-INSERT INTO cultivation_parameters (
-    species_id,
-    parameter_type,
-    min_value,
-    max_value,
-    optimal_value,
-    unit,
-    notes
-) 
-SELECT 
-    s.id,
-    params.parameter_type,
-    params.min_value,
-    params.max_value,
-    params.optimal_value,
-    params.unit,
-    params.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('colonization_temperature', 15.0, 24.0, 20.0, '°C', 'Room temperature acceptable, tolerates wider range than other wood-lovers'),
-    ('fruiting_temperature', 10.0, 19.0, 15.0, '°C', 'Cool temperatures trigger pinning'),
-    ('cold_shock_temperature', 4.0, 10.0, 10.0, '°C', 'Cold shock for 1 week triggers pinning, then raise to 19°C'),
-    ('humidity', 85.0, 95.0, 90.0, '%', 'High humidity for fruiting'),
-    ('colonization_time', 21.0, 60.0, 30.0, 'days', 'Slower than cubensis, approximately 1 month'),
-    ('fruiting_season_start', 4.0, 4.0, 4.0, 'month', 'April start for outdoor fruiting'),
-    ('fruiting_season_end', 6.0, 11.0, 6.0, 'month', 'Primary flush through mid-June, occasional to November')
-) AS params(parameter_type, min_value, max_value, optimal_value, unit, notes)
-WHERE s.name = 'Psilocybe ovoideocystidiata'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO substrate_compatibility (
-    species_id,
-    substrate_type,
-    compatibility_rating,
-    notes
-)
-SELECT 
-    s.id,
-    substrates.substrate_type,
-    substrates.compatibility_rating,
-    substrates.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('hardwood_chips', 'excellent', 'Primary substrate - alder, oak, beech, birch preferred'),
-    ('hardwood_sawdust', 'excellent', 'Indoor cultivation substrate'),
-    ('wood_pellets', 'good', 'Hydrated hardwood fuel pellets work well'),
-    ('coco_coir', 'good', 'Can be mixed with wood chips for moisture retention'),
-    ('river_sand', 'good', 'Mimics natural floodplain habitat, add to substrate'),
-    ('potting_soil', 'moderate', 'Can be added to outdoor beds'),
-    ('straw', 'moderate', 'Supplementary substrate material'),
-    ('cardboard', 'moderate', 'Can supplement wood chip beds')
-) AS substrates(substrate_type, compatibility_rating, notes)
-WHERE s.name = 'Psilocybe ovoideocystidiata'
-ON CONFLICT DO NOTHING;
-
--- Potency data
-INSERT INTO potency_data (
-    species_id,
-    compound,
-    min_percentage,
-    max_percentage,
-    typical_percentage,
-    measurement_method,
-    notes
-)
-SELECT 
-    s.id,
-    potency.compound,
-    potency.min_percentage,
-    potency.max_percentage,
-    potency.typical_percentage,
-    potency.measurement_method,
-    potency.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('psilocybin', 0.40, 0.60, 0.50, 'HPLC', 'Moderate-high potency for size'),
-    ('psilocin', 0.01, 0.15, 0.05, 'HPLC', 'Usually present, variable'),
-    ('baeocystin', 0.00, 0.05, 0.02, 'HPLC', 'Low concentrations typically detected')
-) AS potency(compound, min_percentage, max_percentage, typical_percentage, measurement_method, notes)
-WHERE s.name = 'Psilocybe ovoideocystidiata'
-ON CONFLICT DO NOTHING;
-
-
--- ============================================================================
--- PSILOCYBE SEMILANCEATA
--- Liberty Cap - Most widely distributed, essentially uncultivable
--- ============================================================================
-
-INSERT INTO species (
-    name,
-    common_name,
-    genus,
-    description,
-    native_habitat,
-    cultivation_difficulty,
-    typical_yield,
-    notes
-) VALUES (
-    'Psilocybe semilanceata',
-    'Liberty Cap',
-    'Psilocybe',
-    'The most widely distributed psilocybin mushroom in the world and type species for genus Psilocybe. Described 1838 by Elias Magnus Fries. Iconic conical cap with distinctive nipple (papilla). Saprobic grassland species feeding on decaying grass roots. One of the most potent naturally occurring psilocybin mushrooms.',
-    'Throughout Europe, Pacific Northwest US/Canada, Central Asia, New Zealand, Chile. Upland pastures, meadows, acidic grasslands fertilized with sheep/cow dung. Associated with grasses Agrostis tenuis, Poa annua, Lolium perenne.',
-    'expert',
-    'none',
-    'ESSENTIALLY IMPOSSIBLE TO CULTIVATE. Requires complex symbiotic relationship with specific grasses and acidic soil conditions (pH 4.0-6.0). Indoor attempts rarely succeed. May form sclerotia as wildfire protection. Experienced cultivators describe as "impossible to do" - most turn to other species. Outdoor inoculation of natural pastures only viable approach.'
-) ON CONFLICT (name) DO UPDATE SET
-    common_name = EXCLUDED.common_name,
-    description = EXCLUDED.description,
-    native_habitat = EXCLUDED.native_habitat,
-    cultivation_difficulty = EXCLUDED.cultivation_difficulty,
-    typical_yield = EXCLUDED.typical_yield,
-    notes = EXCLUDED.notes;
-
-INSERT INTO cultivation_parameters (
-    species_id,
-    parameter_type,
-    min_value,
-    max_value,
-    optimal_value,
-    unit,
-    notes
-) 
-SELECT 
-    s.id,
-    params.parameter_type,
-    params.min_value,
-    params.max_value,
-    params.optimal_value,
-    params.unit,
-    params.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('fruiting_temperature', 5.0, 15.0, 10.0, '°C', 'Cool autumn temperatures, natural outdoor only'),
-    ('soil_ph', 4.0, 6.0, 5.0, 'pH', 'Strongly acidic soil required'),
-    ('soil_organic_carbon', 5.0, 15.0, 10.0, '%', 'Moderate organic carbon content'),
-    ('fruiting_season_start', 9.0, 9.0, 9.0, 'month', 'September-November primary season'),
-    ('fruiting_season_end', 11.0, 11.0, 11.0, 'month', 'Occasionally July or spring')
-) AS params(parameter_type, min_value, max_value, optimal_value, unit, notes)
-WHERE s.name = 'Psilocybe semilanceata'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO substrate_compatibility (
-    species_id,
-    substrate_type,
-    compatibility_rating,
-    notes
-)
-SELECT 
-    s.id,
-    substrates.substrate_type,
-    substrates.compatibility_rating,
-    substrates.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('grass_roots', 'required', 'Saprobic on decaying grass roots - Agrostis, Poa, Lolium species'),
-    ('aged_hay_compost', 'experimental', 'Topdress natural pastures only - no indoor success'),
-    ('pasture_soil', 'required', 'Acidic pasture soil with proper grass species essential'),
-    ('standard_substrates', 'incompatible', 'Does not grow on typical cultivation substrates')
-) AS substrates(substrate_type, compatibility_rating, notes)
-WHERE s.name = 'Psilocybe semilanceata'
-ON CONFLICT DO NOTHING;
-
--- Potency data - one of the most potent
-INSERT INTO potency_data (
-    species_id,
-    compound,
-    min_percentage,
-    max_percentage,
-    typical_percentage,
-    measurement_method,
-    notes
-)
-SELECT 
-    s.id,
-    potency.compound,
-    potency.min_percentage,
-    potency.max_percentage,
-    potency.typical_percentage,
-    potency.measurement_method,
-    potency.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('psilocybin', 0.80, 1.80, 1.10, 'HPLC', 'One of the most potent naturally occurring - typically 1.0-1.2%'),
-    ('psilocin', 0.00, 0.10, 0.02, 'HPLC', 'Usually absent or very low'),
-    ('baeocystin', 0.01, 0.10, 0.05, 'HPLC', 'Present in low concentrations')
-) AS potency(compound, min_percentage, max_percentage, typical_percentage, measurement_method, notes)
-WHERE s.name = 'Psilocybe semilanceata'
-ON CONFLICT DO NOTHING;
-
-
--- ============================================================================
--- PSILOCYBE TAMPANENSIS
--- Philosopher's Stones - sclerotia producer
--- ============================================================================
-
-INSERT INTO species (
-    name,
-    common_name,
-    genus,
-    description,
-    native_habitat,
-    cultivation_difficulty,
-    typical_yield,
-    notes
-) VALUES (
-    'Psilocybe tampanensis',
-    'Philosophers Stones, Magic Truffles',
-    'Psilocybe',
-    'Extremely rare species discovered 1977 by Steven Pollock near Tampa, Florida - single specimen. Not found in wild again until 2021 (44 years). All cultivation derives from original 1977 clone. Famous for producing sclerotia (truffles) - hardened mycelial masses. Legal in Netherlands as sclerotia while mushrooms banned. Paul Stamets developed sclerotia cultivation method in 1980s.',
-    'Sandy meadows, deciduous forests - Florida, Mississippi. Extremely rare in wild.',
-    'intermediate',
-    'moderate',
-    'Primary value is sclerotia production, not mushroom fruiting. Sclerotia form as protection mechanism. Pollock granted US patent 1981 for sclerotia production. 3-4 months minimum for sclerotia development, up to 12 months for larger stones. Taste described as bitter, walnut-like, tart and nutty.'
-) ON CONFLICT (name) DO UPDATE SET
-    common_name = EXCLUDED.common_name,
-    description = EXCLUDED.description,
-    native_habitat = EXCLUDED.native_habitat,
-    cultivation_difficulty = EXCLUDED.cultivation_difficulty,
-    typical_yield = EXCLUDED.typical_yield,
-    notes = EXCLUDED.notes;
-
-INSERT INTO cultivation_parameters (
-    species_id,
-    parameter_type,
-    min_value,
-    max_value,
-    optimal_value,
-    unit,
-    notes
-) 
-SELECT 
-    s.id,
-    params.parameter_type,
-    params.min_value,
-    params.max_value,
-    params.optimal_value,
-    params.unit,
-    params.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('colonization_temperature', 21.0, 25.0, 23.0, '°C', '70-77°F for colonization'),
-    ('sclerotia_formation_temperature', 18.0, 24.0, 21.0, '°C', 'Room temperature, dark, undisturbed'),
-    ('fruiting_temperature', 20.0, 24.0, 22.0, '°C', 'If fruiting mushrooms instead of sclerotia'),
-    ('humidity', 90.0, 95.0, 95.0, '%', 'High humidity for mushroom fruiting'),
-    ('colonization_time', 14.0, 28.0, 21.0, 'days', '2-4 weeks to full colonization'),
-    ('sclerotia_formation_time', 90.0, 365.0, 180.0, 'days', '3-4 months minimum, 4-8 months optimal, up to 12 months for large stones'),
-    ('substrate_water_ratio', 2.0, 2.0, 2.0, 'ratio', '10 parts grass seed : 5 parts water (2:1)')
-) AS params(parameter_type, min_value, max_value, optimal_value, unit, notes)
-WHERE s.name = 'Psilocybe tampanensis'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO substrate_compatibility (
-    species_id,
-    substrate_type,
-    compatibility_rating,
-    notes
-)
-SELECT 
-    s.id,
-    substrates.substrate_type,
-    substrates.compatibility_rating,
-    substrates.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('grass_seed', 'excellent', 'Preferred substrate for sclerotia production'),
-    ('rye_grain', 'excellent', 'Good for sclerotia and spawn'),
-    ('wild_bird_seed', 'good', 'Alternative grain substrate'),
-    ('straw', 'good', 'Can be used for sclerotia production'),
-    ('peat_moss', 'good', 'Casing layer for mushroom fruiting - mix with vermiculite'),
-    ('vermiculite', 'good', 'Casing layer component with calcium carbonate'),
-    ('brown_rice_flour', 'moderate', 'Works but grass seed preferred for sclerotia')
-) AS substrates(substrate_type, compatibility_rating, notes)
-WHERE s.name = 'Psilocybe tampanensis'
-ON CONFLICT DO NOTHING;
-
--- Potency data
-INSERT INTO potency_data (
-    species_id,
-    compound,
-    min_percentage,
-    max_percentage,
-    typical_percentage,
-    measurement_method,
-    notes
-)
-SELECT 
-    s.id,
-    potency.compound,
-    potency.min_percentage,
-    potency.max_percentage,
-    potency.typical_percentage,
-    potency.measurement_method,
-    potency.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('psilocybin_sclerotia', 0.31, 0.68, 0.45, 'HPLC', 'Sclerotia potency - substrate dependent'),
-    ('psilocybin_mushroom', 0.50, 1.00, 0.70, 'HPLC', 'Mushroom fruiting bodies higher potency'),
-    ('psilocin', 0.01, 0.20, 0.10, 'HPLC', 'Present in both forms')
-) AS potency(compound, min_percentage, max_percentage, typical_percentage, measurement_method, notes)
-WHERE s.name = 'Psilocybe tampanensis'
-ON CONFLICT DO NOTHING;
-
-
--- ============================================================================
--- PSILOCYBE SUBAERUGINOSA
--- Australian wood-lover, extremely potent
--- ============================================================================
-
-INSERT INTO species (
-    name,
-    common_name,
-    genus,
-    description,
-    native_habitat,
-    cultivation_difficulty,
-    typical_yield,
-    notes
-) VALUES (
-    'Psilocybe subaeruginosa',
-    'Subs, Golden Tops',
-    'Psilocybe',
-    'Described 1927 by John Burton Cleland from Australia. Name means "somewhat copper-rust colored" referring to blue-green bruising. One of the most potent naturally occurring psilocybin mushrooms - highest recorded at 1.93% psilocybin. Native to Australia and New Zealand. Wood-loving saprobe found in eucalyptus forests, pine plantations, urban wood chip gardens.',
-    'Australia (Victoria, Tasmania, South Australia, NSW), New Zealand. Eucalyptus forests, pine plantations, urban gardens and parks with wood mulch.',
-    'intermediate',
-    'moderate',
-    'Extremely potent - possibly most potent naturally occurring species. Woodlover Paralysis (WLP) possible. Outdoor cultivation preferred - wood chip beds can fruit for years. Similar techniques to P. azurescens and P. cyanescens. Requires cold shock to initiate pinning. Earliest collection June 1915 NSW.'
-) ON CONFLICT (name) DO UPDATE SET
-    common_name = EXCLUDED.common_name,
-    description = EXCLUDED.description,
-    native_habitat = EXCLUDED.native_habitat,
-    cultivation_difficulty = EXCLUDED.cultivation_difficulty,
-    typical_yield = EXCLUDED.typical_yield,
-    notes = EXCLUDED.notes;
-
-INSERT INTO cultivation_parameters (
-    species_id,
-    parameter_type,
-    min_value,
-    max_value,
-    optimal_value,
-    unit,
-    notes
-) 
-SELECT 
-    s.id,
-    params.parameter_type,
-    params.min_value,
-    params.max_value,
-    params.optimal_value,
-    params.unit,
-    params.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('colonization_temperature', 20.0, 30.0, 24.0, '°C', '68-75°F, can tolerate up to 30°C'),
-    ('cold_shock_temperature', 4.0, 10.0, 10.0, '°C', 'Cold shock ~50°F for 1 week triggers pinning'),
-    ('fruiting_temperature', 10.0, 20.0, 15.0, '°C', 'Raise to 65°F after cold shock, optimal 50-68°F'),
-    ('humidity', 85.0, 95.0, 90.0, '%', 'Consistent high humidity required'),
-    ('fruiting_season_start', 4.0, 4.0, 4.0, 'month', 'April start (Southern Hemisphere autumn)'),
-    ('fruiting_season_end', 8.0, 8.0, 7.0, 'month', 'Through August, peak May-July')
-) AS params(parameter_type, min_value, max_value, optimal_value, unit, notes)
-WHERE s.name = 'Psilocybe subaeruginosa'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO substrate_compatibility (
-    species_id,
-    substrate_type,
-    compatibility_rating,
-    notes
-)
-SELECT 
-    s.id,
-    substrates.substrate_type,
-    substrates.compatibility_rating,
-    substrates.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('eucalyptus_chips', 'excellent', 'Native substrate - eucalyptus wood chips preferred'),
-    ('hardwood_chips', 'excellent', 'Alder, oak, other hardwoods work well'),
-    ('pine_chips', 'good', 'Found in pine plantations naturally'),
-    ('cardboard', 'good', 'Can supplement wood chip beds'),
-    ('burlap', 'good', 'Layer in outdoor beds for moisture retention'),
-    ('straw', 'moderate', 'Supplementary substrate'),
-    ('wood_pellets', 'good', 'Hydrated hardwood fuel pellets')
-) AS substrates(substrate_type, compatibility_rating, notes)
-WHERE s.name = 'Psilocybe subaeruginosa'
-ON CONFLICT DO NOTHING;
-
--- Potency data - extremely potent
-INSERT INTO potency_data (
-    species_id,
-    compound,
-    min_percentage,
-    max_percentage,
-    typical_percentage,
-    measurement_method,
-    notes
-)
-SELECT 
-    s.id,
-    potency.compound,
-    potency.min_percentage,
-    potency.max_percentage,
-    potency.typical_percentage,
-    potency.measurement_method,
-    potency.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('psilocybin', 0.06, 1.93, 0.80, 'HPLC', 'Extremely variable - highest recorded 1.93%, possibly most potent natural species'),
-    ('psilocin', 0.00, 0.17, 0.08, 'HPLC', 'Low to moderate psilocin content'),
-    ('baeocystin', 0.01, 0.10, 0.05, 'HPLC', 'Multiple indole alkaloids present')
-) AS potency(compound, min_percentage, max_percentage, typical_percentage, measurement_method, notes)
-WHERE s.name = 'Psilocybe subaeruginosa'
-ON CONFLICT DO NOTHING;
-
-
--- ============================================================================
--- PSILOCYBE WERAROA
--- New Zealand secotioid pouch fungus
--- ============================================================================
-
-INSERT INTO species (
-    name,
-    common_name,
-    genus,
-    description,
-    native_habitat,
-    cultivation_difficulty,
-    typical_yield,
-    notes
-) VALUES (
-    'Psilocybe weraroa',
-    'Blue Secotioid, Pouch Fungus',
-    'Psilocybe',
-    'Unique secotioid (pouch-like) fungus endemic to New Zealand. Formerly Weraroa novae-zelandiae. Unlike typical mushrooms, cap remains closed encasing gills. Closely related to P. cyanescens and P. subaeruginosa despite unusual morphology. First described 1924 by Gordon Cunningham. Reclassified to Psilocybe 2011 based on molecular phylogeny. Being cultivated commercially by Rua Bioscience for medical research integrating traditional Rongoā Māori medicine.',
-    'New Zealand native forests. Decaying wood buried in leaf litter, rotting branches of mahoe (Melicytus ramiflorus), kahikatea, kohekohe, kawakawa, pine, tree fern fronds. Often near streams.',
-    'expert',
-    'low',
-    'EXTREMELY CHALLENGING to cultivate. Highly specific environmental requirements. Spore prints impossible due to secotioid form - tissue cloning via agar required. Outdoor cultivation with native wood chips best approach but success rates very low. Indicator species for healthy forest regeneration. Evolved pouch shape possibly to be eaten by now-extinct moa for spore dispersal.'
-) ON CONFLICT (name) DO UPDATE SET
-    common_name = EXCLUDED.common_name,
-    description = EXCLUDED.description,
-    native_habitat = EXCLUDED.native_habitat,
-    cultivation_difficulty = EXCLUDED.cultivation_difficulty,
-    typical_yield = EXCLUDED.typical_yield,
-    notes = EXCLUDED.notes;
-
-INSERT INTO cultivation_parameters (
-    species_id,
-    parameter_type,
-    min_value,
-    max_value,
-    optimal_value,
-    unit,
-    notes
-) 
-SELECT 
-    s.id,
-    params.parameter_type,
-    params.min_value,
-    params.max_value,
-    params.optimal_value,
-    params.unit,
-    params.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('colonization_temperature', 15.0, 22.0, 18.0, '°C', 'Cool temperate conditions'),
-    ('fruiting_temperature', 10.0, 18.0, 14.0, '°C', 'Cool temperatures, mild autumn best'),
-    ('humidity', 85.0, 95.0, 90.0, '%', 'High humidity - near streams naturally'),
-    ('light', 0.0, 1.0, 0.0, 'relative', 'Fruits buried in leaf litter - low light')
-) AS params(parameter_type, min_value, max_value, optimal_value, unit, notes)
-WHERE s.name = 'Psilocybe weraroa'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO substrate_compatibility (
-    species_id,
-    substrate_type,
-    compatibility_rating,
-    notes
-)
-SELECT 
-    s.id,
-    substrates.substrate_type,
-    substrates.compatibility_rating,
-    substrates.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('native_nz_hardwood', 'excellent', 'Well-decayed tawa, mahoe, kahikatea preferred'),
-    ('hardwood_chips_decayed', 'good', 'Must be well-rotted, not fresh'),
-    ('tree_fern_fronds', 'good', 'Natural substrate - ponga fronds'),
-    ('lignin_rich_mulch', 'good', 'High lignin content required'),
-    ('fresh_sawdust', 'poor', 'Does not colonize fresh wood substrates'),
-    ('standard_substrates', 'incompatible', 'Typical cultivation substrates fail')
-) AS substrates(substrate_type, compatibility_rating, notes)
-WHERE s.name = 'Psilocybe weraroa'
-ON CONFLICT DO NOTHING;
-
--- Potency data
-INSERT INTO potency_data (
-    species_id,
-    compound,
-    min_percentage,
-    max_percentage,
-    typical_percentage,
-    measurement_method,
-    notes
-)
-SELECT 
-    s.id,
-    potency.compound,
-    potency.min_percentage,
-    potency.max_percentage,
-    potency.typical_percentage,
-    potency.measurement_method,
-    potency.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('psilocybin', 0.16, 0.85, 0.50, 'HPLC', 'Estimated similar to P. cyanescens complex - empirical data limited'),
-    ('psilocin', 0.03, 0.60, 0.30, 'HPLC', 'Estimated range based on related species')
-) AS potency(compound, min_percentage, max_percentage, typical_percentage, measurement_method, notes)
-WHERE s.name = 'Psilocybe weraroa'
-ON CONFLICT DO NOTHING;
-
-
--- ============================================================================
--- PLUTEUS SALICINUS
--- Willow Shield - wood-loving, variable potency
--- ============================================================================
-
-INSERT INTO species (
-    name,
-    common_name,
-    genus,
-    description,
-    native_habitat,
-    cultivation_difficulty,
-    typical_yield,
-    notes
-) VALUES (
-    'Pluteus salicinus',
-    'Willow Shield',
-    'Pluteus',
-    'Wood-rotting psychoactive species outside Psilocybe genus. Described 1798 by Persoon. Contains psilocybin acquired via horizontal gene transfer - unrelated to Psilocybe lineage. Distinctive gray to bluish cap with pink spore print. Potency highly variable by region - some populations may lack psychoactive compounds. Free gills distinguish from Psilocybe species.',
-    'Europe, North America, Russia. Decaying hardwood stumps and logs, especially willow (Salix), poplar, alder, beech. Moist deciduous forests, lowland to montane (up to 1200m).',
-    'expert',
-    'low',
-    'EXTREMELY DIFFICULT to cultivate. Requires very well-decayed wood - does not colonize fresh substrates. Limited cultivation attempts documented. One reference to fruiting related P. cervinus on exhausted shiitake blocks. Variable psilocybin content - some populations weakly active, others moderate. Singer recognized non-bluing variety (var. achloes) possibly lacking psilocybin.'
-) ON CONFLICT (name) DO UPDATE SET
-    common_name = EXCLUDED.common_name,
-    description = EXCLUDED.description,
-    native_habitat = EXCLUDED.native_habitat,
-    cultivation_difficulty = EXCLUDED.cultivation_difficulty,
-    typical_yield = EXCLUDED.typical_yield,
-    notes = EXCLUDED.notes;
-
-INSERT INTO cultivation_parameters (
-    species_id,
-    parameter_type,
-    min_value,
-    max_value,
-    optimal_value,
-    unit,
-    notes
-) 
-SELECT 
-    s.id,
-    params.parameter_type,
-    params.min_value,
-    params.max_value,
-    params.optimal_value,
-    params.unit,
-    params.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('colonization_temperature', 15.0, 22.0, 18.0, '°C', 'Cool temperate conditions'),
-    ('fruiting_temperature', 12.0, 20.0, 16.0, '°C', 'Summer through late autumn naturally'),
-    ('humidity', 80.0, 95.0, 85.0, '%', 'Moist forest conditions'),
-    ('fruiting_season_start', 6.0, 6.0, 6.0, 'month', 'Early summer start'),
-    ('fruiting_season_end', 11.0, 11.0, 10.0, 'month', 'Through late autumn')
-) AS params(parameter_type, min_value, max_value, optimal_value, unit, notes)
-WHERE s.name = 'Pluteus salicinus'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO substrate_compatibility (
-    species_id,
-    substrate_type,
-    compatibility_rating,
-    notes
-)
-SELECT 
-    s.id,
-    substrates.substrate_type,
-    substrates.compatibility_rating,
-    substrates.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('willow_wood_decayed', 'excellent', 'Preferred natural substrate - must be well-rotted'),
-    ('poplar_wood_decayed', 'excellent', 'Common natural substrate'),
-    ('alder_wood_decayed', 'good', 'Well-decayed alder works'),
-    ('beech_wood_decayed', 'good', 'Decayed beech suitable'),
-    ('exhausted_shiitake_blocks', 'experimental', 'One reported success with related P. cervinus'),
-    ('fresh_sawdust', 'incompatible', 'Does not colonize fresh substrates'),
-    ('standard_grain', 'poor', 'Limited colonization on typical spawn substrates')
-) AS substrates(substrate_type, compatibility_rating, notes)
-WHERE s.name = 'Pluteus salicinus'
-ON CONFLICT DO NOTHING;
-
--- Potency data - highly variable
-INSERT INTO potency_data (
-    species_id,
-    compound,
-    min_percentage,
-    max_percentage,
-    typical_percentage,
-    measurement_method,
-    notes
-)
-SELECT 
-    s.id,
-    potency.compound,
-    potency.min_percentage,
-    potency.max_percentage,
-    potency.typical_percentage,
-    potency.measurement_method,
-    potency.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('psilocybin', 0.05, 0.35, 0.15, 'HPLC', 'Highly variable - Stijve & Kuyper 1985: 0.05-0.25%, Christiansen 1984: 0.35%'),
-    ('psilocin', 0.00, 0.02, 0.01, 'HPLC', 'Usually absent or trace amounts'),
-    ('baeocystin', 0.00, 0.01, 0.004, 'HPLC', 'Zero to 0.008% reported')
-) AS potency(compound, min_percentage, max_percentage, typical_percentage, measurement_method, notes)
-WHERE s.name = 'Pluteus salicinus'
-ON CONFLICT DO NOTHING;
-
-
--- ============================================================================
--- ADDITIONAL N-Z SPECIES FROM TRUE BLUE GENETICS CATALOG
--- Brief entries for species with limited cultivation data
--- ============================================================================
-
--- Psilocybe niveotropicalis
-INSERT INTO species (
-    name,
-    common_name,
-    genus,
-    description,
-    native_habitat,
-    cultivation_difficulty,
-    typical_yield,
-    notes
-) VALUES (
-    'Psilocybe niveotropicalis',
-    'Snow White Tropical',
-    'Psilocybe',
-    'Tropical Psilocybe species. Limited cultivation documentation available. Related to other tropical dung-loving species.',
-    'Tropical regions, dung-enriched substrates',
-    'intermediate',
-    'moderate',
-    'Limited published cultivation data. Likely responds to standard tropical Psilocybe cultivation techniques similar to P. cubensis.'
-) ON CONFLICT (name) DO UPDATE SET
-    common_name = EXCLUDED.common_name,
-    description = EXCLUDED.description,
-    native_habitat = EXCLUDED.native_habitat,
-    cultivation_difficulty = EXCLUDED.cultivation_difficulty,
-    notes = EXCLUDED.notes;
-
--- Psilocybe subtropicalis
-INSERT INTO species (
-    name,
-    common_name,
-    genus,
-    description,
-    native_habitat,
-    cultivation_difficulty,
-    typical_yield,
-    notes
-) VALUES (
-    'Psilocybe subtropicalis',
-    'Subtropical Psilocybe',
-    'Psilocybe',
-    'Subtropical species adapted to warmer climates with seasonal variation. May tolerate wider temperature ranges than strict tropical species.',
-    'Subtropical regions, varied substrates',
-    'intermediate',
-    'moderate',
-    'Limited published cultivation data. Subtropical adaptation may allow more temperature flexibility than tropical relatives.'
-) ON CONFLICT (name) DO UPDATE SET
-    common_name = EXCLUDED.common_name,
-    description = EXCLUDED.description,
-    native_habitat = EXCLUDED.native_habitat,
-    cultivation_difficulty = EXCLUDED.cultivation_difficulty,
-    notes = EXCLUDED.notes;
-
-
--- ============================================================================
--- DANGEROUS LOOKALIKES WARNING TABLE
--- Critical safety information for species identification
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS dangerous_lookalikes (
-    id SERIAL PRIMARY KEY,
-    target_species_id INTEGER REFERENCES species(id),
-    lookalike_name VARCHAR(255) NOT NULL,
-    lookalike_genus VARCHAR(100),
-    toxicity_level VARCHAR(50), -- 'deadly', 'toxic', 'psychoactive', 'inedible'
-    distinguishing_features TEXT,
-    toxins_present TEXT,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- P. semilanceata lookalikes
-INSERT INTO dangerous_lookalikes (target_species_id, lookalike_name, lookalike_genus, toxicity_level, distinguishing_features, toxins_present, notes)
-SELECT s.id, lookalike.name, lookalike.genus, lookalike.toxicity, lookalike.features, lookalike.toxins, lookalike.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('Galerina marginata', 'Galerina', 'deadly', 'Brown spore print (not purple-brown), ring on stem, grows on wood not grass', 'Amatoxins (α-amanitin)', 'DEADLY - causes liver failure. Never consume grassland mushrooms without spore print verification.'),
-    ('Cortinarius rubellus', 'Cortinarius', 'deadly', 'Rusty brown spores, cortina (web-like veil), no blue bruising', 'Orellanine', 'DEADLY - causes irreversible kidney failure. Symptoms delayed 3-14 days.'),
-    ('Panaeolina foenisecii', 'Panaeolina', 'inedible', 'Dark brown spore print, no blue bruising, cap margin lined', 'None significant', 'Common lawn mushroom, not toxic but not psychoactive. Sometimes called "mowers mushroom".'),
-    ('Psathyrella species', 'Psathyrella', 'inedible', 'Dark spores, fragile flesh, no blue bruising', 'None significant', 'Various grassland species, generally not dangerous but not psychoactive.')
-) AS lookalike(name, genus, toxicity, features, toxins, notes)
-WHERE s.name = 'Psilocybe semilanceata'
-ON CONFLICT DO NOTHING;
-
--- P. subaeruginosa lookalikes
-INSERT INTO dangerous_lookalikes (target_species_id, lookalike_name, lookalike_genus, toxicity_level, distinguishing_features, toxins_present, notes)
-SELECT s.id, lookalike.name, lookalike.genus, lookalike.toxicity, lookalike.features, lookalike.toxins, lookalike.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('Galerina marginata', 'Galerina', 'deadly', 'Brown spore print, prominent ring, typically smaller', 'Amatoxins (α-amanitin)', 'DEADLY - grows on same wood substrates. Always verify blue bruising and spore print.'),
-    ('Hebeloma crustuliniforme', 'Hebeloma', 'toxic', 'Clay-brown spores, radish-like odor, slimy cap', 'Various toxins', 'Poison Pie - causes severe GI distress. No blue bruising.')
-) AS lookalike(name, genus, toxicity, features, toxins, notes)
-WHERE s.name = 'Psilocybe subaeruginosa'
-ON CONFLICT DO NOTHING;
-
--- P. weraroa lookalikes
-INSERT INTO dangerous_lookalikes (target_species_id, lookalike_name, lookalike_genus, toxicity_level, distinguishing_features, toxins_present, notes)
-SELECT s.id, lookalike.name, lookalike.genus, lookalike.toxicity, lookalike.features, lookalike.toxins, lookalike.notes
-FROM species s
-CROSS JOIN (VALUES
-    ('Cortinarius species (secotioid)', 'Cortinarius', 'potentially deadly', 'Lacks blue bruising, different spore color', 'Orellanine possible', 'Several secotioid Cortinarius in NZ forests may contain deadly toxins.'),
-    ('Clavogaster virescens', 'Clavogaster', 'non-toxic', 'Naturally blue-green (not from bruising), stout smooth stem, no psychoactive properties', 'None', 'Similar habitat and appearance but no blue BRUISING reaction - naturally colored.'),
-    ('Scleroderma species', 'Scleroderma', 'toxic', 'Hard peridium, dark spore mass, no blue bruising', 'Various', 'Earthballs - can cause GI distress. Very different texture.')
-) AS lookalike(name, genus, toxicity, features, toxins, notes)
-WHERE s.name = 'Psilocybe weraroa'
-ON CONFLICT DO NOTHING;
-
-
--- ============================================================================
--- SPECIAL CULTIVATION TECHNIQUES TABLE
--- Advanced methods for specific species
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS special_techniques (
-    id SERIAL PRIMARY KEY,
-    species_id INTEGER REFERENCES species(id),
-    technique_name VARCHAR(255) NOT NULL,
-    technique_type VARCHAR(100), -- 'cold_shock', 'outdoor', 'sclerotia', 'casing', etc.
-    description TEXT,
-    procedure TEXT,
-    success_rate VARCHAR(50),
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- P. ovoideocystidiata frozen mycelium technique
-INSERT INTO special_techniques (species_id, technique_name, technique_type, description, procedure, success_rate, notes)
-SELECT s.id, 
-    'Frozen Mycelium Method',
-    'cold_shock',
-    'Freeze colonized substrate then thaw and case with sandy mud to mimic natural floodplain habitat',
-    '1. Fully colonize grain spawn on wood chip substrate. 2. Freeze entire colonized substrate for 24-48 hours. 3. Thaw slowly at room temperature. 4. Apply casing layer of sandy mud/river substrate. 5. Maintain high humidity and wait for pinning.',
-    'moderate',
-    'Mimics natural freeze-thaw cycles in floodplain habitat. River sand/mud casing replicates natural growing conditions.'
-FROM species s WHERE s.name = 'Psilocybe ovoideocystidiata'
-ON CONFLICT DO NOTHING;
-
--- P. tampanensis sclerotia production
-INSERT INTO special_techniques (species_id, technique_name, technique_type, description, procedure, success_rate, notes)
-SELECT s.id,
-    'Sclerotia (Truffle) Production',
-    'sclerotia',
-    'Standard method for producing philosopher stones - underground hardened mycelial masses',
-    '1. Prepare substrate: 10 parts grass seed to 5 parts water. 2. Sterilize in pressure cooker at 15 psi for 1 hour. 3. Inoculate with spore syringe or agar culture. 4. Incubate at 21-25°C in dark. 5. Shake jars periodically during colonization (2-4 weeks). 6. STOP shaking after full colonization - leave completely undisturbed. 7. Wait 3-4 months minimum for sclerotia formation. 8. Optimal harvest at 4-8 months. 9. Store refrigerated 2-5°C in airtight containers.',
-    'high',
-    'Patience critical - rushing reduces yield. Can wait up to 12 months for larger stones. Periodic shaking during colonization speeds initial growth but must stop for sclerotia formation.'
-FROM species s WHERE s.name = 'Psilocybe tampanensis'
-ON CONFLICT DO NOTHING;
-
--- Wood-lover outdoor bed technique
-INSERT INTO special_techniques (species_id, technique_name, technique_type, description, procedure, success_rate, notes)
-SELECT s.id,
-    'Outdoor Wood Chip Bed',
-    'outdoor',
-    'Preferred cultivation method for wood-loving species - establishes perennial fruiting patch',
-    '1. Select shaded outdoor location with good drainage. 2. Prepare bed with 4-6 inches fresh hardwood chips. 3. Layer spawn throughout chips. 4. Cover with additional chip layer. 5. Maintain moisture - water during dry periods. 6. Wait for natural seasonal fruiting (requires cold period). 7. Beds can produce for multiple years with maintenance.',
-    'moderate',
-    'Patience required - may take full season to establish. Cold shock from natural autumn temperatures triggers fruiting. Add fresh chips annually to maintain.'
-FROM species s WHERE s.name IN ('Psilocybe ovoideocystidiata', 'Psilocybe subaeruginosa')
-ON CONFLICT DO NOTHING;
-
-
--- ============================================================================
--- SUMMARY STATISTICS
--- ============================================================================
-
--- Count species by difficulty
-SELECT 
-    cultivation_difficulty,
-    COUNT(*) as species_count
-FROM species
-WHERE name IN (
     'Psilocybe natalensis',
-    'Psilocybe ovoideocystidiata', 
-    'Psilocybe semilanceata',
-    'Psilocybe tampanensis',
-    'Psilocybe subaeruginosa',
-    'Psilocybe weraroa',
-    'Pluteus salicinus',
+    ARRAY['Nats', 'South African Psilocybe', 'P. natalensis'],
+    'research',
+    E'SUBTROPICAL DUNG-LOVING SPECIES - BEGINNER FRIENDLY\n\n' ||
+    E'South African species discovered in KwaZulu-Natal province.\n' ||
+    E'Closely related to P. cubensis but considered more potent.\n' ||
+    E'Produces large, fleshy fruiting bodies with aggressive colonization.\n\n' ||
+    E'HABITAT: Subtropical grasslands, dung-enriched soils (South Africa).\n\n' ||
+    E'CULTIVATION PARAMETERS:\n' ||
+    E'- Difficulty: Beginner (similar to cubensis)\n' ||
+    E'- Colonization Temp: 24-30°C (optimal 27°C) - slightly warmer than cubensis\n' ||
+    E'- Fruiting Temp: 21-26°C (optimal 23°C)\n' ||
+    E'- Humidity: 85-95% (optimal 90%)\n' ||
+    E'- Colonization Time: 10-21 days (fast colonizer)\n' ||
+    E'- Fruiting Time: 5-10 days pins to harvest\n' ||
+    E'- Yield: High\n\n' ||
+    E'SUBSTRATES:\n' ||
+    E'- Excellent: Rye grain, BRF, WBS, coco coir, vermiculite, manure-based\n' ||
+    E'- Good: Straw, gypsum (2-5% supplement)\n\n' ||
+    E'NOTES:\n' ||
+    E'- Often confused with P. cubensis\n' ||
+    E'- May produce larger individual fruits\n' ||
+    E'- Aggressive colonizer with good contamination resistance\n' ||
+    E'- Standard cubensis tek works well\n\n' ||
+    E'DATA CONFIDENCE: community_consensus',
+    NULL
+  ),
+
+  -- Psilocybe niveotropicalis
+  (
+    '10000000-0000-0000-0003-000000000002',
+    'Snow White Tropical',
     'Psilocybe niveotropicalis',
-    'Psilocybe subtropicalis'
-)
-GROUP BY cultivation_difficulty
-ORDER BY 
-    CASE cultivation_difficulty 
-        WHEN 'beginner' THEN 1 
-        WHEN 'intermediate' THEN 2 
-        WHEN 'expert' THEN 3 
-    END;
+    ARRAY['Niveotropicalis', 'Florida Wood-lover'],
+    'research',
+    E'TROPICAL WOOD-LOVING SPECIES - LIMITED DATA\n\n' ||
+    E'Described in April 2019, found by Scott Ostuni in Jupiter, Florida.\n' ||
+    E'Grows in irrigated decaying wood mulch beds.\n\n' ||
+    E'HABITAT: Wood mulch, decaying wood debris (Florida, USA).\n\n' ||
+    E'CULTIVATION PARAMETERS:\n' ||
+    E'- Difficulty: Intermediate\n' ||
+    E'- Limited published cultivation data\n' ||
+    E'- Likely similar to other wood-loving Psilocybe\n\n' ||
+    E'SUBSTRATES:\n' ||
+    E'- Theoretical: Hardwood chips, wood mulch, supplemented sawdust\n\n' ||
+    E'DATA CONFIDENCE: limited_reports',
+    NULL
+  ),
+
+  -- Psilocybe ovoideocystidiata
+  (
+    '10000000-0000-0000-0003-000000000003',
+    'Ovoids',
+    'Psilocybe ovoideocystidiata',
+    ARRAY['Ovoid', 'River Teacher', 'P. ovoid', 'Ovoideocystidiata'],
+    'research',
+    E'EASTERN US WOOD-LOVER - INTERMEDIATE DIFFICULTY\n\n' ||
+    E'Formally described 2003 by Richard Gaines in Montgomery County, Pennsylvania.\n' ||
+    E'Previously mistaken for P. caerulipes. Named for distinctive ovoid-shaped cystidia.\n' ||
+    E'Human-assisted spread via landscaping wood chips.\n\n' ||
+    E'HABITAT:\n' ||
+    E'- Native: Eastern US (Pennsylvania, Ohio, Maryland, West Virginia, New York)\n' ||
+    E'- Expanded: Pacific Northwest, Western US, Europe (Switzerland, Germany)\n' ||
+    E'- Substrate: Woody debris near rivers/streams, wood chips, urban mulch\n' ||
+    E'- Does NOT grow directly on dung\n\n' ||
+    E'CULTIVATION PARAMETERS:\n' ||
+    E'- Difficulty: Intermediate\n' ||
+    E'- Colonization Temp: 15-24°C (room temp acceptable)\n' ||
+    E'- Cold Shock Trigger: ~10°C (50°F) for 1 week to initiate pinning\n' ||
+    E'- Fruiting Temp: 10-19°C (raise to 19°C/65°F after cold shock)\n' ||
+    E'- Humidity: 85-95% (optimal 90%)\n' ||
+    E'- Colonization Time: ~30 days (1 month typical)\n' ||
+    E'- Outdoor Season: April to mid-June (occasionally to November)\n' ||
+    E'- Yield: Moderate\n\n' ||
+    E'SUBSTRATES:\n' ||
+    E'- Excellent: Hardwood chips (alder, oak, beech, birch), hardwood sawdust\n' ||
+    E'- Good: Wood pellets, coco coir, river sand (mimics floodplain)\n' ||
+    E'- Moderate: Potting soil, straw, cardboard\n\n' ||
+    E'SPECIAL TECHNIQUES:\n' ||
+    E'- Frozen Mycelium Method: Freeze colonized substrate, thaw, case with sandy mud\n' ||
+    E'- Outdoor beds preferred: Wood chip beds can fruit for years\n' ||
+    E'- More contamination resistant than cubensis\n\n' ||
+    E'POTENCY:\n' ||
+    E'- Psilocybin: 0.4-0.6% dry weight (moderate-high for size)\n' ||
+    E'- Psilocin: Usually present, variable\n' ||
+    E'- Baeocystin: Low concentrations\n' ||
+    E'- Effects: Clear, visual, less body load than cubensis\n\n' ||
+    E'DATA CONFIDENCE: well_documented',
+    NULL
+  ),
+
+  -- Psilocybe semilanceata
+  (
+    '10000000-0000-0000-0003-000000000004',
+    'Liberty Cap',
+    'Psilocybe semilanceata',
+    ARRAY['Libs', 'Magic Mushroom', 'Pixie Cap', 'Witchs Hat'],
+    'research',
+    E'⚠️ GRASSLAND SPECIALIST - ESSENTIALLY IMPOSSIBLE TO CULTIVATE ⚠️\n\n' ||
+    E'The most widely distributed psilocybin mushroom in the world.\n' ||
+    E'Described 1838 by Elias Magnus Fries. Type species for genus Psilocybe.\n' ||
+    E'Iconic conical cap with distinctive nipple (papilla).\n\n' ||
+    E'HABITAT:\n' ||
+    E'- Distribution: Throughout Europe, Pacific Northwest US/Canada, Central Asia,\n' ||
+    E'  New Zealand, Chile - most widespread psilocybin species globally\n' ||
+    E'- Environment: Upland pastures, meadows, acidic grasslands (pH 4.0-6.0)\n' ||
+    E'- Substrate: Saprobic on decaying grass roots (Agrostis tenuis, Poa annua, Lolium)\n' ||
+    E'- Soil: Acidic, organic carbon 5-15%\n' ||
+    E'- Does NOT grow directly on dung (but favors grazed pastures)\n\n' ||
+    E'CULTIVATION STATUS: ESSENTIALLY IMPOSSIBLE\n' ||
+    E'- Requires complex symbiotic relationship with specific grasses\n' ||
+    E'- Specific ecological niche extremely difficult to replicate\n' ||
+    E'- Indoor attempts rarely succeed, yields notoriously low\n' ||
+    E'- Experienced cultivators describe as "impossible to do"\n' ||
+    E'- Most turn to other Psilocybe species\n' ||
+    E'- Only viable approach: Outdoor inoculation of natural pastures\n\n' ||
+    E'FRUITING PARAMETERS (Wild):\n' ||
+    E'- Season: September-November (autumn), occasionally July or spring\n' ||
+    E'- Temperature: 5-15°C (cool conditions)\n' ||
+    E'- May form sclerotia as wildfire/stress protection\n\n' ||
+    E'POTENCY - ONE OF THE MOST POTENT:\n' ||
+    E'- Psilocybin: 0.8-1.8% dry weight (typically 1.0-1.2%)\n' ||
+    E'- Psilocin: Usually absent or very low\n' ||
+    E'- Baeocystin: Present\n' ||
+    E'- Effects: Clear-headed, cerebral, highly visual, less body load\n\n' ||
+    E'⚠️ DANGEROUS LOOKALIKES:\n' ||
+    E'- Galerina marginata: DEADLY (amatoxins) - brown spores, ring, grows on wood\n' ||
+    E'- Cortinarius rubellus: DEADLY (orellanine) - causes kidney failure\n' ||
+    E'- Panaeolina foenisecii: Non-toxic but not psychoactive\n' ||
+    E'- Psathyrella species: Generally non-toxic\n\n' ||
+    E'DATA CONFIDENCE: well_documented (wild), not_domesticated (cultivation)',
+    NULL
+  ),
+
+  -- Psilocybe subaeruginosa
+  (
+    '10000000-0000-0000-0003-000000000005',
+    'Subs',
+    'Psilocybe subaeruginosa',
+    ARRAY['Golden Tops', 'Australian Psilocybe', 'Subaeruginosa'],
+    'research',
+    E'AUSTRALIAN WOOD-LOVER - EXTREMELY POTENT\n\n' ||
+    E'Described 1927 by John Burton Cleland from Australia.\n' ||
+    E'Name: Latin aeruginosa = copper rust/verdigris (blue-green bruising).\n' ||
+    E'Possibly the most potent naturally occurring psilocybin mushroom.\n\n' ||
+    E'HABITAT:\n' ||
+    E'- Native: Australia (Victoria, Tasmania, South Australia, NSW), New Zealand\n' ||
+    E'- Environment: Eucalyptus forests, pine plantations, urban parks/gardens\n' ||
+    E'- Substrate: Wood chips, mulch, woody debris, occasionally dung\n' ||
+    E'- Earliest collection: June 1915, NSW\n\n' ||
+    E'CULTIVATION PARAMETERS:\n' ||
+    E'- Difficulty: Intermediate\n' ||
+    E'- Colonization Temp: 20-30°C (68-75°F, can tolerate up to 30°C)\n' ||
+    E'- Cold Shock Trigger: ~10°C (50°F) for 1 week initiates pinning\n' ||
+    E'- Fruiting Temp: 10-20°C (50-68°F) - raise to 19°C after cold shock\n' ||
+    E'- Humidity: 85-95% (consistent high humidity)\n' ||
+    E'- Outdoor Season: April-August (Southern Hemisphere autumn-winter, peak May-July)\n' ||
+    E'- Yield: Moderate\n\n' ||
+    E'SUBSTRATES:\n' ||
+    E'- Excellent: Eucalyptus chips (native), hardwood chips (alder, oak)\n' ||
+    E'- Good: Pine chips, cardboard, burlap, wood pellets\n' ||
+    E'- Moderate: Straw\n\n' ||
+    E'CULTIVATION NOTES:\n' ||
+    E'- Outdoor cultivation preferred - wood chip beds can fruit for years\n' ||
+    E'- Similar techniques to P. azurescens, P. cyanescens, Stropharia rugosoannulata\n' ||
+    E'- Slower than cubensis, outdoor establishment can take months\n\n' ||
+    E'POTENCY - EXTREMELY HIGH:\n' ||
+    E'- Psilocybin: 0.06-1.93% dry weight (highest recorded 1.93%!)\n' ||
+    E'- Psilocin: 0.0-0.17%\n' ||
+    E'- Multiple indole alkaloids present\n' ||
+    E'- Potency highly variable by substrate (wood chip specimens particularly strong)\n' ||
+    E'- Effects: Intense, highly visual\n' ||
+    E'- ⚠️ Woodlover Paralysis (WLP) possible\n\n' ||
+    E'⚠️ DANGEROUS LOOKALIKES:\n' ||
+    E'- Galerina marginata: DEADLY (amatoxins) - grows on same substrates!\n' ||
+    E'- Hebeloma crustuliniforme: Toxic (Poison Pie) - radish odor, clay-brown spores\n\n' ||
+    E'DATA CONFIDENCE: well_documented',
+    NULL
+  ),
+
+  -- Psilocybe tampanensis
+  (
+    '10000000-0000-0000-0003-000000000006',
+    'Philosophers Stones',
+    'Psilocybe tampanensis',
+    ARRAY['Magic Truffles', 'Tampanensis', 'Psilocybe Truffles'],
+    'research',
+    E'SCLEROTIA-PRODUCING SPECIES - INTERMEDIATE DIFFICULTY\n\n' ||
+    E'Discovered 1977 by Steven Pollock near Tampa, Florida (single specimen).\n' ||
+    E'Not found in wild again until 2021 (44 years later!).\n' ||
+    E'ALL cultivation derives from original 1977 clone.\n' ||
+    E'Paul Stamets developed sclerotia cultivation method in 1980s.\n' ||
+    E'Pollock granted US patent 1981 for sclerotia production.\n' ||
+    E'Legal in Netherlands as sclerotia (mushrooms banned 2008).\n\n' ||
+    E'HABITAT:\n' ||
+    E'- Extremely rare in wild\n' ||
+    E'- Sandy meadows, deciduous forests (Florida, Mississippi)\n' ||
+    E'- Saprobic\n' ||
+    E'- Forms sclerotia (truffles) as protection from wildfires/disasters\n\n' ||
+    E'CULTIVATION - SCLEROTIA PRODUCTION (Primary Method):\n' ||
+    E'- Difficulty: Intermediate\n' ||
+    E'- Substrate Recipe: 10 parts grass seed : 5 parts water (2:1 ratio)\n' ||
+    E'- Sterilization: Pressure cook 1 hour at 15 psi\n' ||
+    E'- Inoculation: Spore syringe or agar culture\n' ||
+    E'- Colonization Temp: 21-25°C (70-77°F), dark\n' ||
+    E'- Colonization Time: 2-4 weeks\n' ||
+    E'- IMPORTANT: Shake jars periodically during colonization\n' ||
+    E'- After full colonization: STOP shaking, leave completely undisturbed\n' ||
+    E'- Sclerotia Formation: 3-4 months MINIMUM (patience critical!)\n' ||
+    E'- Optimal Harvest: 4-8 months (up to 12 months for larger stones)\n' ||
+    E'- Storage: Refrigerate 2-5°C in airtight containers (6-12 months)\n\n' ||
+    E'SUBSTRATES FOR SCLEROTIA:\n' ||
+    E'- Excellent: Grass seed (preferred), rye grain\n' ||
+    E'- Good: Wild bird seed, straw\n\n' ||
+    E'CULTIVATION - MUSHROOM FRUITING (Alternative):\n' ||
+    E'- After colonization: Add casing layer (peat, vermiculite, calcium carbonate) 1-1.5cm\n' ||
+    E'- Fruiting Temp: 20°C+\n' ||
+    E'- Humidity: 95%\n' ||
+    E'- Fresh air and indirect light\n\n' ||
+    E'POTENCY:\n' ||
+    E'- Sclerotia Psilocybin: 0.31-0.68% dry weight (substrate-dependent)\n' ||
+    E'- Mushroom Psilocybin: Up to 1.0% dry weight\n' ||
+    E'- Moderately to highly active\n' ||
+    E'- Taste: Somewhat bitter, walnut-like, tart and nutty\n\n' ||
+    E'DATA CONFIDENCE: well_documented',
+    NULL
+  ),
+
+  -- Psilocybe weraroa
+  (
+    '10000000-0000-0000-0003-000000000007',
+    'Blue Secotioid',
+    'Psilocybe weraroa',
+    ARRAY['Weraroa', 'Pouch Fungus', 'NZ Pouch'],
+    'research',
+    E'⚠️ NEW ZEALAND ENDEMIC - EXPERT ONLY / VERY DIFFICULT ⚠️\n\n' ||
+    E'Unique secotioid (pouch-like) fungus endemic to New Zealand.\n' ||
+    E'Formerly Weraroa novae-zelandiae. Reclassified to Psilocybe 2011.\n' ||
+    E'Unlike typical mushrooms, cap remains closed encasing gills.\n' ||
+    E'Closely related to P. cyanescens and P. subaeruginosa despite unusual form.\n' ||
+    E'First described 1924 by Gordon Cunningham.\n' ||
+    E'Being commercially cultivated by Rua Bioscience for medical research.\n\n' ||
+    E'HABITAT:\n' ||
+    E'- Endemic: New Zealand native forests only\n' ||
+    E'- Substrate: Decaying wood buried in leaf litter, rotting branches\n' ||
+    E'- Host trees: Mahoe (Melicytus ramiflorus), kahikatea, kohekohe, kawakawa,\n' ||
+    E'  pine, tree fern fronds (ponga)\n' ||
+    E'- Often near streams\n' ||
+    E'- Most common in Wellington region\n' ||
+    E'- Fruits year-round\n\n' ||
+    E'CULTIVATION STATUS: EXTREMELY CHALLENGING\n' ||
+    E'- Difficulty: Expert - one of the most difficult\n' ||
+    E'- Highly specific environmental requirements\n' ||
+    E'- Spore prints IMPOSSIBLE due to secotioid structure\n' ||
+    E'- Propagation: Tissue cloning via agar plates only\n' ||
+    E'- Success rates very low even for experienced cultivators\n\n' ||
+    E'CULTIVATION PARAMETERS (Theoretical):\n' ||
+    E'- Colonization Temp: 15-22°C (cool temperate)\n' ||
+    E'- Fruiting Temp: 10-18°C (optimal ~14°C)\n' ||
+    E'- Humidity: 85-95%\n' ||
+    E'- Light: Low (fruits buried in leaf litter naturally)\n' ||
+    E'- Best approach: Outdoor cultivation with native wood chips and shade\n\n' ||
+    E'SUBSTRATES:\n' ||
+    E'- Excellent: Well-decayed NZ native hardwood (tawa, mahoe preferred)\n' ||
+    E'- Good: Decayed hardwood chips, tree fern fronds, lignin-rich mulch\n' ||
+    E'- Incompatible: Fresh sawdust, standard cultivation substrates\n' ||
+    E'- Requires WELL-ROTTED wood, not fresh\n\n' ||
+    E'POTENCY (Estimated):\n' ||
+    E'- Similar to P. cyanescens complex\n' ||
+    E'- Psilocybin: 0.16-0.85% estimated\n' ||
+    E'- Psilocin: 0.03-0.60% estimated\n' ||
+    E'- Limited empirical data available\n\n' ||
+    E'ECOLOGY NOTES:\n' ||
+    E'- Indicator species for healthy forest regeneration\n' ||
+    E'- Depends on slugs/birds for spore dispersal (doesnt drop spores)\n' ||
+    E'- Evolved pouch shape possibly to be eaten by extinct moa\n\n' ||
+    E'⚠️ LOOKALIKES:\n' ||
+    E'- Cortinarius species (secotioid): May contain deadly orellanine, no blue bruising\n' ||
+    E'- Clavogaster virescens: Naturally blue-green (NOT from bruising), non-psychoactive\n' ||
+    E'- Scleroderma: Hard peridium, toxic, no blue bruising\n\n' ||
+    E'DATA CONFIDENCE: limited_reports (cultivation), community_consensus (wild)',
+    NULL
+  )
+ON CONFLICT (name) DO UPDATE SET
+  scientific_name = EXCLUDED.scientific_name,
+  common_names = EXCLUDED.common_names,
+  category = EXCLUDED.category,
+  notes = EXCLUDED.notes;
+
 
 -- ============================================================================
--- END OF N-Z SPECIES FILE
--- Total species in this file: 9
--- Combined with A-M file: 29 + 9 = 38 species total
+-- SECTION 2: PLUTEUS (Psilocybin-containing, non-Psilocybe genus)
+-- ============================================================================
+
+INSERT INTO species (
+  id, name, scientific_name, common_names, category, notes, user_id
+)
+VALUES
+  -- Pluteus salicinus
+  (
+    '10000000-0000-0000-0004-000000000001',
+    'Willow Shield',
+    'Pluteus salicinus',
+    ARRAY['Pluteus salicinus', 'Gray Dragon Mushroom'],
+    'research',
+    E'⚠️ WOOD-LOVER - EXPERT ONLY / VERY DIFFICULT ⚠️\n\n' ||
+    E'Wood-rotting psychoactive species OUTSIDE Psilocybe genus.\n' ||
+    E'Described 1798 by Persoon, transferred to Pluteus by Kummer 1871.\n' ||
+    E'Contains psilocybin acquired via horizontal gene transfer - unrelated to Psilocybe!\n' ||
+    E'Distinctive gray to bluish cap with PINK spore print.\n' ||
+    E'Free gills distinguish from Psilocybe.\n\n' ||
+    E'HABITAT:\n' ||
+    E'- Distribution: Europe, North America, Russia\n' ||
+    E'- Substrate: Decaying hardwood stumps and logs\n' ||
+    E'- Host trees: Willow (Salix) especially, poplar, alder, beech\n' ||
+    E'- Environment: Moist deciduous forests, lowland to montane (up to 1200m)\n' ||
+    E'- Season: Early summer through late autumn\n\n' ||
+    E'CULTIVATION STATUS: EXTREMELY DIFFICULT\n' ||
+    E'- Difficulty: Expert\n' ||
+    E'- Requires VERY well-decayed wood - does not colonize fresh substrates!\n' ||
+    E'- Limited cultivation attempts documented\n' ||
+    E'- One reference: P. cervinus (related) fruited on exhausted shiitake blocks\n\n' ||
+    E'CULTIVATION PARAMETERS (Theoretical):\n' ||
+    E'- Colonization Temp: 15-22°C\n' ||
+    E'- Fruiting Temp: 12-20°C\n' ||
+    E'- Humidity: 80-95%\n\n' ||
+    E'SUBSTRATES:\n' ||
+    E'- Excellent: Well-decayed willow wood, poplar, alder, beech\n' ||
+    E'- Experimental: Exhausted shiitake blocks\n' ||
+    E'- Incompatible: Fresh sawdust, standard grain spawn\n' ||
+    E'- KEY: Must be WELL-ROTTED wood\n\n' ||
+    E'POTENCY - HIGHLY VARIABLE:\n' ||
+    E'- Psilocybin: 0.05-0.35% dry weight\n' ||
+    E'  - Stijve & Kuyper 1985: 0.05-0.25%\n' ||
+    E'  - Christiansen 1984: 0.35%\n' ||
+    E'- Psilocin: Usually absent or trace (0-0.02%)\n' ||
+    E'- Baeocystin: 0-0.008%\n' ||
+    E'- Singer recognized non-bluing variety (var. achloes) possibly lacking psilocybin\n' ||
+    E'- Potency varies significantly by region!\n\n' ||
+    E'IDENTIFICATION:\n' ||
+    E'- Cap: 2-7cm, gray to bluish-gray, scales near center\n' ||
+    E'- Gills: FREE (not attached), pink at maturity\n' ||
+    E'- Stem: White with grayish-green to bluish-green tones at base\n' ||
+    E'- Spore print: PINK (key identifier)\n' ||
+    E'- Blue bruising: Variable (not all specimens blue)\n\n' ||
+    E'DATA CONFIDENCE: limited_reports',
+    NULL
+  )
+ON CONFLICT (name) DO UPDATE SET
+  scientific_name = EXCLUDED.scientific_name,
+  common_names = EXCLUDED.common_names,
+  category = EXCLUDED.category,
+  notes = EXCLUDED.notes;
+
+
+-- ============================================================================
+-- SUMMARY
+-- ============================================================================
+--
+-- Species added in this file (N-Z):
+--
+-- Psilocybe species:
+-- 1. P. natalensis - Natal Super Strength (beginner, subtropical dung-lover)
+-- 2. P. niveotropicalis - Snow White Tropical (limited data, FL wood-lover)
+-- 3. P. ovoideocystidiata - Ovoids (intermediate, Eastern US wood-lover)
+-- 4. P. semilanceata - Liberty Cap (UNCULTIVABLE, grassland specialist)
+-- 5. P. subaeruginosa - Subs (intermediate, Australian, extremely potent)
+-- 6. P. tampanensis - Philosopher's Stones (intermediate, sclerotia producer)
+-- 7. P. weraroa - Blue Secotioid (expert, NZ endemic pouch fungus)
+--
+-- Other genera:
+-- 8. Pluteus salicinus - Willow Shield (expert, wood-lover, variable potency)
+--
+-- Total: 8 species
+-- Combined with A-M file: 29 + 8 = 37+ species total
+--
 -- ============================================================================
