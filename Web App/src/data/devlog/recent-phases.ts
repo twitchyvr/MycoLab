@@ -5712,6 +5712,39 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1323',
+    title: 'Add isSterilizable Field to Container Forms',
+    description: 'Added missing isSterilizable checkbox to ContainerForm and SettingsPage container form. Field was in schema and types but not exposed in UI forms.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'medium',
+    phaseId: 30,
+    notes: `Added isSterilizable UI control to container creation/editing:
+
+**Issue:**
+- Container type had isSterilizable: boolean field in schema and types
+- Database transformation functions supported isSterilizable
+- But ContainerForm and SettingsPage forms didn't expose this field to users
+- Users couldn't distinguish sterilizable containers (glass jars) from non-sterilizable (plastic syringes)
+
+**Changes:**
+- ContainerForm.tsx: Added isSterilizable to ContainerFormData interface and checkbox UI
+- CreationContext.tsx: Added isSterilizable: true to container default values
+- SettingsPage.tsx: Added isSterilizable to initial form data, item-to-form mapping, and UI checkbox
+
+**UI Improvement:**
+- Checkbox displays next to "Reusable" checkbox with label "Sterilizable"
+- Helpful text: "Can withstand pressure cooker or autoclave (e.g., glass jars). Uncheck for plastic syringes, bags."
+- Defaults to true for new containers
+
+**Files Changed:**
+- src/components/forms/ContainerForm.tsx
+- src/store/CreationContext.tsx
+- src/components/settings/SettingsPage.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
