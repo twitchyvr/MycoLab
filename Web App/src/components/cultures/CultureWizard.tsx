@@ -22,6 +22,7 @@ import { useData } from '../../store';
 import { useCreation, ENTITY_CONFIGS } from '../../store/CreationContext';
 import { Portal } from '../common';
 import { StandardDropdown } from '../common/StandardDropdown';
+import { StrainSearchDropdown } from '../common/StrainSearchDropdown';
 import { NumericInput } from '../common/NumericInput';
 import { VolumeInput } from '../common/VolumeInput';
 import type { Culture, CultureType, CultureStatus } from '../../store/types';
@@ -237,15 +238,13 @@ const Step1TypeStrain: React.FC<StepProps> = ({ formData, onChange, errors }) =>
         </div>
       </div>
 
-      {/* Strain Selection */}
-      <StandardDropdown
+      {/* Strain Selection - Searchable with species info */}
+      <StrainSearchDropdown
         label="Strain"
         required
         value={formData.strainId}
         onChange={value => onChange({ strainId: value })}
-        options={activeStrains}
-        placeholder="Select the strain..."
-        entityType="strain"
+        placeholder="Search for a strain..."
         fieldName="strainId"
         error={errors.strainId}
         helpText="Which species/strain is this culture?"

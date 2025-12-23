@@ -16,6 +16,8 @@ export { AltitudeInput } from './AltitudeInput';
 export { TemperatureInput } from './TemperatureInput';
 export { HumidityInput } from './HumidityInput';
 export { StandardDropdown } from './StandardDropdown';
+export { SearchableDropdown } from './SearchableDropdown';
+export { StrainSearchDropdown } from './StrainSearchDropdown';
 
 // Modal Components
 export { AmendmentModal } from './AmendmentModal';
