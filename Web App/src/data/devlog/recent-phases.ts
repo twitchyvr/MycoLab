@@ -5656,6 +5656,62 @@ Created canonical RoomCheckForm.tsx:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-1322',
+    title: 'Critical Fix: Entity Creation 400 Errors from Undefined Fields',
+    description: 'Fixed critical bug where creating entities (locations, strains, containers, etc.) failed with 400 errors because transformation functions sent undefined values to Supabase.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    phaseId: 30,
+    notes: `Critical bug fix for entity creation failures:
+
+**Root Cause:**
+- All \`transformXxxToDb\` functions used spread syntax: \`{ field: value.field }\`
+- When form data didn't include a field, it sent \`{ field: undefined }\`
+- Supabase rejects undefined values with 400 Bad Request errors
+- User-facing error: "Failed to create. Please try again."
+
+**Affected Functions (ALL fixed):**
+- transformLocationToDb - ~23 undefined fields were being sent
+- transformStrainToDb - ~16 fields
+- transformContainerToDb - ~12 fields
+- transformSubstrateTypeToDb - ~8 fields
+- transformInventoryItemToDb - ~14 fields
+- transformInventoryCategoryToDb - ~4 fields
+- transformRecipeCategoryToDb - ~5 fields
+- transformSupplierToDb - ~6 fields
+- transformFlushToDb - ~9 fields
+- transformGrainTypeToDb - ~4 fields
+- transformSpeciesToDb - ~30+ fields
+- transformPreparedSpawnToDb - ~30+ fields
+- transformObservationHistoryToDb - ~18 fields
+- transformHarvestHistoryToDb - ~14 fields
+- transformTransferHistoryToDb - ~13 fields
+- transformStageTransitionToDb - ~9 fields
+- transformLocationTypeToDb - ~5 fields
+- transformLocationClassificationToDb - ~5 fields
+
+**Solution:**
+- Converted all transformation functions from spread syntax to builder pattern
+- Each field now conditionally added: \`if (value !== undefined) result.field = value\`
+- Only defined fields are sent to Supabase
+- Database defaults and NULL handling work correctly
+
+**Example Fix:**
+Before: \`export const transformLocationToDb = (...) => ({ type: location.type, ... })\`
+After: \`const result = {}; if (location.type !== undefined) result.type = location.type; ...\`
+
+**User Impact:**
+- Location creation now works (user reported "Fridge" creation failure)
+- All entity creation forms should now work reliably
+- Forms only send fields that have data, letting database defaults apply
+
+**Files Changed:**
+- src/store/transformations.ts - All 18+ transformation functions converted to builder pattern`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

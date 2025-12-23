@@ -83,34 +83,44 @@ export const transformStrainFromDb = (row: any): Strain => ({
   referenceImage: row.reference_image,
 });
 
-export const transformStrainToDb = (strain: Partial<Strain>, userId?: string | null) => ({
-  name: strain.name,
-  species_id: strain.speciesId,
-  species: strain.species,
+export const transformStrainToDb = (strain: Partial<Strain>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+
+  if (strain.name !== undefined) result.name = strain.name;
+  if (strain.speciesId !== undefined) result.species_id = strain.speciesId;
+  if (strain.species !== undefined) result.species = strain.species;
+
   // Variety/Phenotype tracking
-  variety: strain.variety,
-  phenotype: strain.phenotype,
-  genetics_source: strain.geneticsSource,
-  isolation_type: strain.isolationType,
-  generation: strain.generation,
+  if (strain.variety !== undefined) result.variety = strain.variety;
+  if (strain.phenotype !== undefined) result.phenotype = strain.phenotype;
+  if (strain.geneticsSource !== undefined) result.genetics_source = strain.geneticsSource;
+  if (strain.isolationType !== undefined) result.isolation_type = strain.isolationType;
+  if (strain.generation !== undefined) result.generation = strain.generation;
+
   // Growing characteristics
-  difficulty: strain.difficulty,
-  colonization_days_min: strain.colonizationDays?.min,
-  colonization_days_max: strain.colonizationDays?.max,
-  fruiting_days_min: strain.fruitingDays?.min,
-  fruiting_days_max: strain.fruitingDays?.max,
-  optimal_temp_colonization: strain.optimalTempColonization?.min,
-  optimal_temp_fruiting: strain.optimalTempFruiting?.min,
+  if (strain.difficulty !== undefined) result.difficulty = strain.difficulty;
+  if (strain.colonizationDays?.min !== undefined) result.colonization_days_min = strain.colonizationDays.min;
+  if (strain.colonizationDays?.max !== undefined) result.colonization_days_max = strain.colonizationDays.max;
+  if (strain.fruitingDays?.min !== undefined) result.fruiting_days_min = strain.fruitingDays.min;
+  if (strain.fruitingDays?.max !== undefined) result.fruiting_days_max = strain.fruitingDays.max;
+  if (strain.optimalTempColonization?.min !== undefined) result.optimal_temp_colonization = strain.optimalTempColonization.min;
+  if (strain.optimalTempFruiting?.min !== undefined) result.optimal_temp_fruiting = strain.optimalTempFruiting.min;
+
   // Additional metadata
-  origin: strain.origin,
-  description: strain.description,
-  notes: strain.notes,
-  is_active: strain.isActive,
+  if (strain.origin !== undefined) result.origin = strain.origin;
+  if (strain.description !== undefined) result.description = strain.description;
+  if (strain.notes !== undefined) result.notes = strain.notes;
+  if (strain.isActive !== undefined) result.is_active = strain.isActive;
+
   // Image support
-  images: strain.images,
-  reference_image: strain.referenceImage,
-  ...(userId && { user_id: userId }),
-});
+  if (strain.images !== undefined) result.images = strain.images;
+  if (strain.referenceImage !== undefined) result.reference_image = strain.referenceImage;
+
+  // User ID
+  if (userId) result.user_id = userId;
+
+  return result;
+};
 
 // ============================================================================
 // LOCATION TYPE TRANSFORMATIONS
@@ -126,14 +136,16 @@ export const transformLocationTypeFromDb = (row: any): LocationType => ({
   isActive: row.is_active ?? true,
 });
 
-export const transformLocationTypeToDb = (lt: Partial<LocationType>, userId?: string | null) => ({
-  name: lt.name,
-  code: lt.code,
-  description: lt.description,
-  notes: lt.notes,
-  is_active: lt.isActive,
-  ...(userId && { user_id: userId }),
-});
+export const transformLocationTypeToDb = (lt: Partial<LocationType>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+  if (lt.name !== undefined) result.name = lt.name;
+  if (lt.code !== undefined) result.code = lt.code;
+  if (lt.description !== undefined) result.description = lt.description;
+  if (lt.notes !== undefined) result.notes = lt.notes;
+  if (lt.isActive !== undefined) result.is_active = lt.isActive;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 // ============================================================================
 // LOCATION CLASSIFICATION TRANSFORMATIONS
@@ -149,14 +161,16 @@ export const transformLocationClassificationFromDb = (row: any): LocationClassif
   isActive: row.is_active ?? true,
 });
 
-export const transformLocationClassificationToDb = (lc: Partial<LocationClassification>, userId?: string | null) => ({
-  name: lc.name,
-  code: lc.code,
-  description: lc.description,
-  notes: lc.notes,
-  is_active: lc.isActive,
-  ...(userId && { user_id: userId }),
-});
+export const transformLocationClassificationToDb = (lc: Partial<LocationClassification>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+  if (lc.name !== undefined) result.name = lc.name;
+  if (lc.code !== undefined) result.code = lc.code;
+  if (lc.description !== undefined) result.description = lc.description;
+  if (lc.notes !== undefined) result.notes = lc.notes;
+  if (lc.isActive !== undefined) result.is_active = lc.isActive;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 // ============================================================================
 // LOCATION TRANSFORMATIONS
@@ -205,46 +219,72 @@ export const transformLocationFromDb = (row: any): Location => ({
   notificationsMuted: row.notifications_muted ?? false,
 });
 
-export const transformLocationToDb = (location: Partial<Location>, userId?: string | null) => ({
-  name: location.name,
-  type: location.type,
-  type_id: toDbId(location.typeId),
-  classification_id: toDbId(location.classificationId),
-  temp_min: location.tempRange?.min,
-  temp_max: location.tempRange?.max,
-  humidity_min: location.humidityRange?.min,
-  humidity_max: location.humidityRange?.max,
-  has_power: location.hasPower,
-  power_usage: location.powerUsage,
-  has_air_circulation: location.hasAirCirculation,
-  size: location.size,
-  supplier_id: toDbId(location.supplierId),
-  cost: location.cost,
-  procurement_date: location.procurementDate?.toISOString(),
-  notes: location.notes,
-  description: location.description,
-  is_active: location.isActive,
+export const transformLocationToDb = (location: Partial<Location>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+
+  // Required/common fields
+  if (location.name !== undefined) result.name = location.name;
+  if (location.type !== undefined) result.type = location.type;
+  if (location.typeId !== undefined) result.type_id = toDbId(location.typeId);
+  if (location.classificationId !== undefined) result.classification_id = toDbId(location.classificationId);
+
+  // Temperature and humidity ranges
+  if (location.tempRange?.min !== undefined) result.temp_min = location.tempRange.min;
+  if (location.tempRange?.max !== undefined) result.temp_max = location.tempRange.max;
+  if (location.humidityRange?.min !== undefined) result.humidity_min = location.humidityRange.min;
+  if (location.humidityRange?.max !== undefined) result.humidity_max = location.humidityRange.max;
+
+  // Facility/equipment fields
+  if (location.hasPower !== undefined) result.has_power = location.hasPower;
+  if (location.powerUsage !== undefined) result.power_usage = location.powerUsage;
+  if (location.hasAirCirculation !== undefined) result.has_air_circulation = location.hasAirCirculation;
+  if (location.size !== undefined) result.size = location.size;
+  if (location.supplierId !== undefined) result.supplier_id = toDbId(location.supplierId);
+  if (location.cost !== undefined) result.cost = location.cost;
+  if (location.procurementDate !== undefined) result.procurement_date = location.procurementDate.toISOString();
+
+  // Notes and description
+  if (location.notes !== undefined) result.notes = location.notes;
+  if (location.description !== undefined) result.description = location.description;
+  if (location.isActive !== undefined) result.is_active = location.isActive;
+
   // Hierarchical location fields
-  parent_id: toDbId(location.parentId),
-  level: location.level,
-  room_purpose: location.roomPurposes?.[0] || location.roomPurpose, // Store first purpose in legacy field
-  room_purposes: location.roomPurposes, // Store full array
-  capacity: location.capacity,
-  current_occupancy: location.currentOccupancy,
-  sort_order: location.sortOrder,
-  path: location.path,
-  code: location.code,
-  dimension_length: location.dimensions?.length,
-  dimension_width: location.dimensions?.width,
-  dimension_height: location.dimensions?.height,
-  dimension_unit: location.dimensions?.unit || 'cm',
+  if (location.parentId !== undefined) result.parent_id = toDbId(location.parentId);
+  if (location.level !== undefined) result.level = location.level;
+
+  // Room purposes (support both legacy single and new array)
+  if (location.roomPurposes !== undefined && location.roomPurposes.length > 0) {
+    result.room_purpose = location.roomPurposes[0]; // Legacy single purpose
+    result.room_purposes = location.roomPurposes;   // Full array
+  } else if (location.roomPurpose !== undefined) {
+    result.room_purpose = location.roomPurpose;
+  }
+
+  // Capacity and occupancy
+  if (location.capacity !== undefined) result.capacity = location.capacity;
+  if (location.currentOccupancy !== undefined) result.current_occupancy = location.currentOccupancy;
+  if (location.sortOrder !== undefined) result.sort_order = location.sortOrder;
+  if (location.path !== undefined) result.path = location.path;
+  if (location.code !== undefined) result.code = location.code;
+
+  // Dimensions
+  if (location.dimensions?.length !== undefined) result.dimension_length = location.dimensions.length;
+  if (location.dimensions?.width !== undefined) result.dimension_width = location.dimensions.width;
+  if (location.dimensions?.height !== undefined) result.dimension_height = location.dimensions.height;
+  if (location.dimensions?.unit !== undefined) result.dimension_unit = location.dimensions.unit;
+
   // Image support
-  photos: location.photos,
-  current_photo: location.currentPhoto,
+  if (location.photos !== undefined) result.photos = location.photos;
+  if (location.currentPhoto !== undefined) result.current_photo = location.currentPhoto;
+
   // Notification preferences
-  notifications_muted: location.notificationsMuted,
-  ...(userId && { user_id: userId }),
-});
+  if (location.notificationsMuted !== undefined) result.notifications_muted = location.notificationsMuted;
+
+  // User ID
+  if (userId) result.user_id = userId;
+
+  return result;
+};
 
 // ============================================================================
 // CONTAINER TRANSFORMATIONS (Unified - replaces Vessel and ContainerType)
@@ -271,21 +311,23 @@ export const transformContainerFromDb = (row: any): Container => ({
   isActive: row.is_active ?? true,
 });
 
-export const transformContainerToDb = (container: Partial<Container>, userId?: string | null) => ({
-  name: container.name,
-  category: container.category,
-  volume_ml: container.volumeMl,
-  dimension_length: container.dimensions?.length,
-  dimension_width: container.dimensions?.width,
-  dimension_height: container.dimensions?.height,
-  dimension_unit: container.dimensions?.unit || 'cm',
-  is_reusable: container.isReusable,
-  is_sterilizable: container.isSterilizable,
-  usage_context: container.usageContext,
-  notes: container.notes,
-  is_active: container.isActive,
-  ...(userId && { user_id: userId }),
-});
+export const transformContainerToDb = (container: Partial<Container>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+  if (container.name !== undefined) result.name = container.name;
+  if (container.category !== undefined) result.category = container.category;
+  if (container.volumeMl !== undefined) result.volume_ml = container.volumeMl;
+  if (container.dimensions?.length !== undefined) result.dimension_length = container.dimensions.length;
+  if (container.dimensions?.width !== undefined) result.dimension_width = container.dimensions.width;
+  if (container.dimensions?.height !== undefined) result.dimension_height = container.dimensions.height;
+  if (container.dimensions?.unit !== undefined) result.dimension_unit = container.dimensions.unit;
+  if (container.isReusable !== undefined) result.is_reusable = container.isReusable;
+  if (container.isSterilizable !== undefined) result.is_sterilizable = container.isSterilizable;
+  if (container.usageContext !== undefined) result.usage_context = container.usageContext;
+  if (container.notes !== undefined) result.notes = container.notes;
+  if (container.isActive !== undefined) result.is_active = container.isActive;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 // Legacy transformation aliases for backward compatibility
 /** @deprecated Use transformContainerFromDb instead */
@@ -317,18 +359,20 @@ export const transformSubstrateTypeFromDb = (row: any): SubstrateType => ({
   isActive: row.is_active ?? true,
 });
 
-export const transformSubstrateTypeToDb = (st: Partial<SubstrateType>, userId?: string | null) => ({
-  name: st.name,
-  code: st.code,
-  category: st.category,
-  spawn_rate_min: st.spawnRateRange?.min,
-  spawn_rate_optimal: st.spawnRateRange?.optimal,
-  spawn_rate_max: st.spawnRateRange?.max,
-  field_capacity: st.fieldCapacity,
-  notes: st.notes,
-  is_active: st.isActive,
-  ...(userId && { user_id: userId }),
-});
+export const transformSubstrateTypeToDb = (st: Partial<SubstrateType>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+  if (st.name !== undefined) result.name = st.name;
+  if (st.code !== undefined) result.code = st.code;
+  if (st.category !== undefined) result.category = st.category;
+  if (st.spawnRateRange?.min !== undefined) result.spawn_rate_min = st.spawnRateRange.min;
+  if (st.spawnRateRange?.optimal !== undefined) result.spawn_rate_optimal = st.spawnRateRange.optimal;
+  if (st.spawnRateRange?.max !== undefined) result.spawn_rate_max = st.spawnRateRange.max;
+  if (st.fieldCapacity !== undefined) result.field_capacity = st.fieldCapacity;
+  if (st.notes !== undefined) result.notes = st.notes;
+  if (st.isActive !== undefined) result.is_active = st.isActive;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 // ============================================================================
 // INVENTORY CATEGORY TRANSFORMATIONS
@@ -343,13 +387,15 @@ export const transformInventoryCategoryFromDb = (row: any): InventoryCategory =>
   isActive: row.is_active ?? true,
 });
 
-export const transformInventoryCategoryToDb = (cat: Partial<InventoryCategory>, userId?: string | null) => ({
-  name: cat.name,
-  color: cat.color,
-  icon: cat.icon,
-  is_active: cat.isActive,
-  ...(userId && { user_id: userId }),
-});
+export const transformInventoryCategoryToDb = (cat: Partial<InventoryCategory>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+  if (cat.name !== undefined) result.name = cat.name;
+  if (cat.color !== undefined) result.color = cat.color;
+  if (cat.icon !== undefined) result.icon = cat.icon;
+  if (cat.isActive !== undefined) result.is_active = cat.isActive;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 // ============================================================================
 // INVENTORY ITEM TRANSFORMATIONS
@@ -377,25 +423,26 @@ export const transformInventoryItemFromDb = (row: any): InventoryItem => ({
   notificationsMuted: row.notifications_muted ?? false,
 });
 
-export const transformInventoryItemToDb = (item: Partial<InventoryItem>, userId?: string | null) => ({
-  name: item.name,
-  category_id: item.categoryId || null,
-  sku: item.sku,
-  quantity: item.quantity,
-  unit: item.unit,
-  cost_per_unit: item.unitCost,
-  reorder_point: item.reorderPoint,
-  reorder_qty: item.reorderQty,
-  supplier_id: item.supplierId || null,
-  location_id: item.locationId || null,
-  expires_at: item.expiresAt instanceof Date ? item.expiresAt.toISOString() : item.expiresAt,
-  lot_number: item.lotNumber,
-  notes: item.notes,
-  is_active: item.isActive,
-  // Notification preferences
-  notifications_muted: item.notificationsMuted,
-  ...(userId && { user_id: userId }),
-});
+export const transformInventoryItemToDb = (item: Partial<InventoryItem>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+  if (item.name !== undefined) result.name = item.name;
+  if (item.categoryId !== undefined) result.category_id = item.categoryId || null;
+  if (item.sku !== undefined) result.sku = item.sku;
+  if (item.quantity !== undefined) result.quantity = item.quantity;
+  if (item.unit !== undefined) result.unit = item.unit;
+  if (item.unitCost !== undefined) result.cost_per_unit = item.unitCost;
+  if (item.reorderPoint !== undefined) result.reorder_point = item.reorderPoint;
+  if (item.reorderQty !== undefined) result.reorder_qty = item.reorderQty;
+  if (item.supplierId !== undefined) result.supplier_id = item.supplierId || null;
+  if (item.locationId !== undefined) result.location_id = item.locationId || null;
+  if (item.expiresAt !== undefined) result.expires_at = item.expiresAt instanceof Date ? item.expiresAt.toISOString() : item.expiresAt;
+  if (item.lotNumber !== undefined) result.lot_number = item.lotNumber;
+  if (item.notes !== undefined) result.notes = item.notes;
+  if (item.isActive !== undefined) result.is_active = item.isActive;
+  if (item.notificationsMuted !== undefined) result.notifications_muted = item.notificationsMuted;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 // ============================================================================
 // RECIPE CATEGORY TRANSFORMATIONS
@@ -411,14 +458,16 @@ export const transformRecipeCategoryFromDb = (row: any): RecipeCategoryItem => (
   isActive: row.is_active ?? true,
 });
 
-export const transformRecipeCategoryToDb = (cat: Partial<RecipeCategoryItem>, userId?: string | null) => ({
-  name: cat.name,
-  code: cat.code,
-  icon: cat.icon,
-  color: cat.color,
-  is_active: cat.isActive,
-  ...(userId && { user_id: userId }),
-});
+export const transformRecipeCategoryToDb = (cat: Partial<RecipeCategoryItem>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+  if (cat.name !== undefined) result.name = cat.name;
+  if (cat.code !== undefined) result.code = cat.code;
+  if (cat.icon !== undefined) result.icon = cat.icon;
+  if (cat.color !== undefined) result.color = cat.color;
+  if (cat.isActive !== undefined) result.is_active = cat.isActive;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 // ============================================================================
 // CULTURE TRANSFORMATIONS
@@ -686,15 +735,17 @@ export const transformSupplierFromDb = (row: any): Supplier => ({
   isActive: row.is_active ?? true,
 });
 
-export const transformSupplierToDb = (supplier: Partial<Supplier>, userId?: string | null) => ({
-  name: supplier.name,
-  website: supplier.website,
-  email: supplier.email,
-  phone: supplier.phone,
-  notes: supplier.notes,
-  is_active: supplier.isActive,
-  ...(userId && { user_id: userId }),
-});
+export const transformSupplierToDb = (supplier: Partial<Supplier>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+  if (supplier.name !== undefined) result.name = supplier.name;
+  if (supplier.website !== undefined) result.website = supplier.website;
+  if (supplier.email !== undefined) result.email = supplier.email;
+  if (supplier.phone !== undefined) result.phone = supplier.phone;
+  if (supplier.notes !== undefined) result.notes = supplier.notes;
+  if (supplier.isActive !== undefined) result.is_active = supplier.isActive;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 // ============================================================================
 // FLUSH TRANSFORMATIONS
@@ -724,19 +775,19 @@ export const transformFlushFromDb = (row: any): Flush => ({
  * Transform flush data from app format to database format.
  * Uses the new column names with _g suffix (for grams).
  */
-export const transformFlushToDb = (flush: Omit<Flush, 'id'>, growId: string) => ({
-  grow_id: growId,
-  flush_number: flush.flushNumber,
-  harvest_date: flush.harvestDate instanceof Date ? flush.harvestDate.toISOString() : flush.harvestDate,
-  wet_weight_g: flush.wetWeight,
-  dry_weight_g: flush.dryWeight,
-  mushroom_count: flush.mushroomCount,
-  quality: flush.quality,
-  notes: flush.notes,
-  // Image support
-  harvest_images: flush.harvestImages,
-  primary_harvest_photo: flush.primaryHarvestPhoto,
-});
+export const transformFlushToDb = (flush: Omit<Flush, 'id'>, growId: string) => {
+  const result: Record<string, any> = { grow_id: growId };
+  if (flush.flushNumber !== undefined) result.flush_number = flush.flushNumber;
+  if (flush.harvestDate !== undefined) result.harvest_date = flush.harvestDate instanceof Date ? flush.harvestDate.toISOString() : flush.harvestDate;
+  if (flush.wetWeight !== undefined) result.wet_weight_g = flush.wetWeight;
+  if (flush.dryWeight !== undefined) result.dry_weight_g = flush.dryWeight;
+  if (flush.mushroomCount !== undefined) result.mushroom_count = flush.mushroomCount;
+  if (flush.quality !== undefined) result.quality = flush.quality;
+  if (flush.notes !== undefined) result.notes = flush.notes;
+  if (flush.harvestImages !== undefined) result.harvest_images = flush.harvestImages;
+  if (flush.primaryHarvestPhoto !== undefined) result.primary_harvest_photo = flush.primaryHarvestPhoto;
+  return result;
+};
 
 // ============================================================================
 // GRAIN TYPE TRANSFORMATIONS
@@ -751,13 +802,15 @@ export const transformGrainTypeFromDb = (row: any): GrainType => ({
   isActive: row.is_active ?? true,
 });
 
-export const transformGrainTypeToDb = (grain: Partial<GrainType>, userId?: string | null) => ({
-  name: grain.name,
-  code: grain.code,
-  notes: grain.notes,
-  is_active: grain.isActive,
-  ...(userId && { user_id: userId }),
-});
+export const transformGrainTypeToDb = (grain: Partial<GrainType>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+  if (grain.name !== undefined) result.name = grain.name;
+  if (grain.code !== undefined) result.code = grain.code;
+  if (grain.notes !== undefined) result.notes = grain.notes;
+  if (grain.isActive !== undefined) result.is_active = grain.isActive;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 // ============================================================================
 // INVENTORY LOT TRANSFORMATIONS
@@ -909,49 +962,51 @@ export const transformSpeciesFromDb = (row: any): Species => ({
   isActive: row.is_active ?? true,
 });
 
-export const transformSpeciesToDb = (species: Partial<Species>, userId?: string | null) => ({
-  name: species.name,
-  scientific_name: species.scientificName,
-  common_names: species.commonNames,
-  category: species.category,
+export const transformSpeciesToDb = (species: Partial<Species>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+  if (species.name !== undefined) result.name = species.name;
+  if (species.scientificName !== undefined) result.scientific_name = species.scientificName;
+  if (species.commonNames !== undefined) result.common_names = species.commonNames;
+  if (species.category !== undefined) result.category = species.category;
   // Growing parameters (JSONB)
-  spawn_colonization: species.spawnColonization,
-  bulk_colonization: species.bulkColonization,
-  pinning: species.pinning,
-  maturation: species.maturation,
+  if (species.spawnColonization !== undefined) result.spawn_colonization = species.spawnColonization;
+  if (species.bulkColonization !== undefined) result.bulk_colonization = species.bulkColonization;
+  if (species.pinning !== undefined) result.pinning = species.pinning;
+  if (species.maturation !== undefined) result.maturation = species.maturation;
   // Substrate preferences
-  preferred_substrates: species.preferredSubstrates,
-  substrate_notes: species.substrateNotes,
+  if (species.preferredSubstrates !== undefined) result.preferred_substrates = species.preferredSubstrates;
+  if (species.substrateNotes !== undefined) result.substrate_notes = species.substrateNotes;
   // Growing characteristics
-  difficulty: species.difficulty,
-  characteristics: species.characteristics,
+  if (species.difficulty !== undefined) result.difficulty = species.difficulty;
+  if (species.characteristics !== undefined) result.characteristics = species.characteristics;
   // Culinary/Usage info
-  flavor_profile: species.flavorProfile,
-  culinary_notes: species.culinaryNotes,
-  medicinal_properties: species.medicinalProperties,
+  if (species.flavorProfile !== undefined) result.flavor_profile = species.flavorProfile;
+  if (species.culinaryNotes !== undefined) result.culinary_notes = species.culinaryNotes;
+  if (species.medicinalProperties !== undefined) result.medicinal_properties = species.medicinalProperties;
   // Community knowledge
-  community_tips: species.communityTips,
-  important_facts: species.importantFacts,
+  if (species.communityTips !== undefined) result.community_tips = species.communityTips;
+  if (species.importantFacts !== undefined) result.important_facts = species.importantFacts;
   // Yield expectations
-  typical_yield: species.typicalYield,
-  flush_count: species.flushCount,
+  if (species.typicalYield !== undefined) result.typical_yield = species.typicalYield;
+  if (species.flushCount !== undefined) result.flush_count = species.flushCount;
   // Shelf life
-  shelf_life_days_min: species.shelfLifeDays?.min,
-  shelf_life_days_max: species.shelfLifeDays?.max,
+  if (species.shelfLifeDays?.min !== undefined) result.shelf_life_days_min = species.shelfLifeDays.min;
+  if (species.shelfLifeDays?.max !== undefined) result.shelf_life_days_max = species.shelfLifeDays.max;
   // Cold storage requirements
-  cold_sensitive: species.coldSensitive,
-  min_storage_temp_c: species.minStorageTempC,
+  if (species.coldSensitive !== undefined) result.cold_sensitive = species.coldSensitive;
+  if (species.minStorageTempC !== undefined) result.min_storage_temp_c = species.minStorageTempC;
   // Automation configuration (JSONB for IoT/sensor integration)
-  automation_config: species.automationConfig,
+  if (species.automationConfig !== undefined) result.automation_config = species.automationConfig;
   // Stage-specific notes
-  spawn_colonization_notes: species.spawnColonizationNotes,
-  bulk_colonization_notes: species.bulkColonizationNotes,
-  pinning_notes: species.pinningNotes,
-  maturation_notes: species.maturationNotes,
-  notes: species.notes,
-  is_active: species.isActive,
-  ...(userId && { user_id: userId }),
-});
+  if (species.spawnColonizationNotes !== undefined) result.spawn_colonization_notes = species.spawnColonizationNotes;
+  if (species.bulkColonizationNotes !== undefined) result.bulk_colonization_notes = species.bulkColonizationNotes;
+  if (species.pinningNotes !== undefined) result.pinning_notes = species.pinningNotes;
+  if (species.maturationNotes !== undefined) result.maturation_notes = species.maturationNotes;
+  if (species.notes !== undefined) result.notes = species.notes;
+  if (species.isActive !== undefined) result.is_active = species.isActive;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 // ============================================================================
 // PREPARED SPAWN TRANSFORMATIONS
@@ -1016,59 +1071,65 @@ export const transformPreparedSpawnFromDb = (row: any): PreparedSpawn => ({
   notificationsMuted: row.notifications_muted ?? false,
 });
 
-export const transformPreparedSpawnToDb = (spawn: Partial<PreparedSpawn>, userId?: string | null) => ({
-  type: spawn.type,
-  label: spawn.label,
-  container_id: toDbId(spawn.containerId),
-  container_count: spawn.containerCount,
+export const transformPreparedSpawnToDb = (spawn: Partial<PreparedSpawn>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+
+  // Core fields
+  if (spawn.type !== undefined) result.type = spawn.type;
+  if (spawn.label !== undefined) result.label = spawn.label;
+  if (spawn.containerId !== undefined) result.container_id = toDbId(spawn.containerId);
+  if (spawn.containerCount !== undefined) result.container_count = spawn.containerCount;
 
   // Contents
-  grain_type_id: toDbId(spawn.grainTypeId),
-  recipe_id: toDbId(spawn.recipeId),
-  volume_ml: spawn.volumeMl,
-  weight_grams: spawn.weightGrams,
+  if (spawn.grainTypeId !== undefined) result.grain_type_id = toDbId(spawn.grainTypeId);
+  if (spawn.recipeId !== undefined) result.recipe_id = toDbId(spawn.recipeId);
+  if (spawn.volumeMl !== undefined) result.volume_ml = spawn.volumeMl;
+  if (spawn.weightGrams !== undefined) result.weight_grams = spawn.weightGrams;
 
   // Preparation
-  prep_date: spawn.prepDate instanceof Date ? spawn.prepDate.toISOString().split('T')[0] : spawn.prepDate,
-  sterilization_date: spawn.sterilizationDate instanceof Date ? spawn.sterilizationDate.toISOString().split('T')[0] : spawn.sterilizationDate,
-  sterilization_method: spawn.sterilizationMethod,
-  expires_at: spawn.expiresAt instanceof Date ? spawn.expiresAt.toISOString().split('T')[0] : spawn.expiresAt,
+  if (spawn.prepDate !== undefined) result.prep_date = spawn.prepDate instanceof Date ? spawn.prepDate.toISOString().split('T')[0] : spawn.prepDate;
+  if (spawn.sterilizationDate !== undefined) result.sterilization_date = spawn.sterilizationDate instanceof Date ? spawn.sterilizationDate.toISOString().split('T')[0] : spawn.sterilizationDate;
+  if (spawn.sterilizationMethod !== undefined) result.sterilization_method = spawn.sterilizationMethod;
+  if (spawn.expiresAt !== undefined) result.expires_at = spawn.expiresAt instanceof Date ? spawn.expiresAt.toISOString().split('T')[0] : spawn.expiresAt;
 
   // Location & tracking
-  location_id: toDbId(spawn.locationId),
-  status: spawn.status,
+  if (spawn.locationId !== undefined) result.location_id = toDbId(spawn.locationId);
+  if (spawn.status !== undefined) result.status = spawn.status;
 
   // Cost tracking
-  production_cost: spawn.productionCost,
+  if (spawn.productionCost !== undefined) result.production_cost = spawn.productionCost;
 
   // Linkage
-  inoculated_at: spawn.inoculatedAt instanceof Date ? spawn.inoculatedAt.toISOString() : spawn.inoculatedAt,
-  result_culture_id: spawn.resultCultureId,
-  result_grow_id: spawn.resultGrowId,
+  if (spawn.inoculatedAt !== undefined) result.inoculated_at = spawn.inoculatedAt instanceof Date ? spawn.inoculatedAt.toISOString() : spawn.inoculatedAt;
+  if (spawn.resultCultureId !== undefined) result.result_culture_id = spawn.resultCultureId;
+  if (spawn.resultGrowId !== undefined) result.result_grow_id = spawn.resultGrowId;
 
   // Metadata
-  notes: spawn.notes,
-  images: spawn.images,
-  is_active: spawn.isActive,
-  ...(userId && { user_id: userId }),
+  if (spawn.notes !== undefined) result.notes = spawn.notes;
+  if (spawn.images !== undefined) result.images = spawn.images;
+  if (spawn.isActive !== undefined) result.is_active = spawn.isActive;
+  if (userId) result.user_id = userId;
 
   // Immutability fields
-  ...(spawn.version !== undefined && { version: spawn.version }),
-  ...(spawn.recordGroupId !== undefined && { record_group_id: spawn.recordGroupId }),
-  ...(spawn.isCurrent !== undefined && { is_current: spawn.isCurrent }),
-  ...(spawn.validFrom !== undefined && { valid_from: spawn.validFrom instanceof Date ? spawn.validFrom.toISOString() : spawn.validFrom }),
-  ...(spawn.validTo !== undefined && { valid_to: spawn.validTo instanceof Date ? spawn.validTo.toISOString() : spawn.validTo }),
-  ...(spawn.supersededById !== undefined && { superseded_by_id: spawn.supersededById }),
-  ...(spawn.isArchived !== undefined && { is_archived: spawn.isArchived }),
-  ...(spawn.archivedAt !== undefined && { archived_at: spawn.archivedAt instanceof Date ? spawn.archivedAt.toISOString() : spawn.archivedAt }),
-  ...(spawn.archivedBy !== undefined && { archived_by: spawn.archivedBy }),
-  ...(spawn.archiveReason !== undefined && { archive_reason: spawn.archiveReason }),
-  ...(spawn.amendmentType !== undefined && { amendment_type: spawn.amendmentType }),
-  ...(spawn.amendmentReason !== undefined && { amendment_reason: spawn.amendmentReason }),
-  ...(spawn.amendsRecordId !== undefined && { amends_record_id: spawn.amendsRecordId }),
+  if (spawn.version !== undefined) result.version = spawn.version;
+  if (spawn.recordGroupId !== undefined) result.record_group_id = spawn.recordGroupId;
+  if (spawn.isCurrent !== undefined) result.is_current = spawn.isCurrent;
+  if (spawn.validFrom !== undefined) result.valid_from = spawn.validFrom instanceof Date ? spawn.validFrom.toISOString() : spawn.validFrom;
+  if (spawn.validTo !== undefined) result.valid_to = spawn.validTo instanceof Date ? spawn.validTo.toISOString() : spawn.validTo;
+  if (spawn.supersededById !== undefined) result.superseded_by_id = spawn.supersededById;
+  if (spawn.isArchived !== undefined) result.is_archived = spawn.isArchived;
+  if (spawn.archivedAt !== undefined) result.archived_at = spawn.archivedAt instanceof Date ? spawn.archivedAt.toISOString() : spawn.archivedAt;
+  if (spawn.archivedBy !== undefined) result.archived_by = spawn.archivedBy;
+  if (spawn.archiveReason !== undefined) result.archive_reason = spawn.archiveReason;
+  if (spawn.amendmentType !== undefined) result.amendment_type = spawn.amendmentType;
+  if (spawn.amendmentReason !== undefined) result.amendment_reason = spawn.amendmentReason;
+  if (spawn.amendsRecordId !== undefined) result.amends_record_id = spawn.amendsRecordId;
+
   // Notification preferences
-  ...(spawn.notificationsMuted !== undefined && { notifications_muted: spawn.notificationsMuted }),
-});
+  if (spawn.notificationsMuted !== undefined) result.notifications_muted = spawn.notificationsMuted;
+
+  return result;
+};
 
 // ============================================================================
 // ENTITY OUTCOME TRANSFORMATIONS
@@ -1143,26 +1204,28 @@ export const transformObservationHistoryFromDb = (row: any): ObservationHistoryE
   createdAt: new Date(row.created_at),
 });
 
-export const transformObservationHistoryToDb = (obs: Partial<ObservationHistoryEntry>, userId?: string) => ({
-  entity_type: obs.entityType,
-  entity_id: obs.entityId,
-  entity_record_group_id: obs.entityRecordGroupId,
-  observed_at: obs.observedAt instanceof Date ? obs.observedAt.toISOString() : obs.observedAt,
-  observation_type: obs.observationType,
-  title: obs.title,
-  notes: obs.notes,
-  temperature: obs.temperature,
-  humidity: obs.humidity,
-  co2_ppm: obs.co2Ppm,
-  colonization_percent: obs.colonizationPercent,
-  health_rating: obs.healthRating,
-  stage: obs.stage,
-  images: obs.images,
-  is_current: obs.isCurrent,
-  superseded_by_id: obs.supersededById,
-  amendment_reason: obs.amendmentReason,
-  ...(userId && { user_id: userId }),
-});
+export const transformObservationHistoryToDb = (obs: Partial<ObservationHistoryEntry>, userId?: string) => {
+  const result: Record<string, any> = {};
+  if (obs.entityType !== undefined) result.entity_type = obs.entityType;
+  if (obs.entityId !== undefined) result.entity_id = obs.entityId;
+  if (obs.entityRecordGroupId !== undefined) result.entity_record_group_id = obs.entityRecordGroupId;
+  if (obs.observedAt !== undefined) result.observed_at = obs.observedAt instanceof Date ? obs.observedAt.toISOString() : obs.observedAt;
+  if (obs.observationType !== undefined) result.observation_type = obs.observationType;
+  if (obs.title !== undefined) result.title = obs.title;
+  if (obs.notes !== undefined) result.notes = obs.notes;
+  if (obs.temperature !== undefined) result.temperature = obs.temperature;
+  if (obs.humidity !== undefined) result.humidity = obs.humidity;
+  if (obs.co2Ppm !== undefined) result.co2_ppm = obs.co2Ppm;
+  if (obs.colonizationPercent !== undefined) result.colonization_percent = obs.colonizationPercent;
+  if (obs.healthRating !== undefined) result.health_rating = obs.healthRating;
+  if (obs.stage !== undefined) result.stage = obs.stage;
+  if (obs.images !== undefined) result.images = obs.images;
+  if (obs.isCurrent !== undefined) result.is_current = obs.isCurrent;
+  if (obs.supersededById !== undefined) result.superseded_by_id = obs.supersededById;
+  if (obs.amendmentReason !== undefined) result.amendment_reason = obs.amendmentReason;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 export const transformHarvestHistoryFromDb = (row: any): HarvestHistoryEntry => ({
   id: row.id,
@@ -1185,22 +1248,24 @@ export const transformHarvestHistoryFromDb = (row: any): HarvestHistoryEntry => 
   createdAt: new Date(row.created_at),
 });
 
-export const transformHarvestHistoryToDb = (harvest: Partial<HarvestHistoryEntry>, userId?: string) => ({
-  grow_id: harvest.growId,
-  grow_record_group_id: harvest.growRecordGroupId,
-  flush_number: harvest.flushNumber,
-  harvest_date: harvest.harvestDate instanceof Date ? harvest.harvestDate.toISOString().split('T')[0] : harvest.harvestDate,
-  wet_weight_g: harvest.wetWeightG,
-  dry_weight_g: harvest.dryWeightG,
-  mushroom_count: harvest.mushroomCount,
-  quality: harvest.quality,
-  notes: harvest.notes,
-  images: harvest.images,
-  is_current: harvest.isCurrent,
-  superseded_by_id: harvest.supersededById,
-  amendment_reason: harvest.amendmentReason,
-  ...(userId && { user_id: userId }),
-});
+export const transformHarvestHistoryToDb = (harvest: Partial<HarvestHistoryEntry>, userId?: string) => {
+  const result: Record<string, any> = {};
+  if (harvest.growId !== undefined) result.grow_id = harvest.growId;
+  if (harvest.growRecordGroupId !== undefined) result.grow_record_group_id = harvest.growRecordGroupId;
+  if (harvest.flushNumber !== undefined) result.flush_number = harvest.flushNumber;
+  if (harvest.harvestDate !== undefined) result.harvest_date = harvest.harvestDate instanceof Date ? harvest.harvestDate.toISOString().split('T')[0] : harvest.harvestDate;
+  if (harvest.wetWeightG !== undefined) result.wet_weight_g = harvest.wetWeightG;
+  if (harvest.dryWeightG !== undefined) result.dry_weight_g = harvest.dryWeightG;
+  if (harvest.mushroomCount !== undefined) result.mushroom_count = harvest.mushroomCount;
+  if (harvest.quality !== undefined) result.quality = harvest.quality;
+  if (harvest.notes !== undefined) result.notes = harvest.notes;
+  if (harvest.images !== undefined) result.images = harvest.images;
+  if (harvest.isCurrent !== undefined) result.is_current = harvest.isCurrent;
+  if (harvest.supersededById !== undefined) result.superseded_by_id = harvest.supersededById;
+  if (harvest.amendmentReason !== undefined) result.amendment_reason = harvest.amendmentReason;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 export const transformTransferHistoryFromDb = (row: any): TransferHistoryEntry => ({
   id: row.id,
@@ -1222,21 +1287,23 @@ export const transformTransferHistoryFromDb = (row: any): TransferHistoryEntry =
   createdAt: new Date(row.created_at),
 });
 
-export const transformTransferHistoryToDb = (transfer: Partial<TransferHistoryEntry>, userId?: string) => ({
-  from_culture_id: transfer.fromCultureId,
-  from_culture_record_group_id: transfer.fromCultureRecordGroupId,
-  to_entity_type: transfer.toEntityType,
-  to_entity_id: transfer.toEntityId,
-  to_entity_record_group_id: transfer.toEntityRecordGroupId,
-  transfer_date: transfer.transferDate instanceof Date ? transfer.transferDate.toISOString() : transfer.transferDate,
-  quantity: transfer.quantity,
-  unit: transfer.unit,
-  notes: transfer.notes,
-  is_current: transfer.isCurrent,
-  superseded_by_id: transfer.supersededById,
-  amendment_reason: transfer.amendmentReason,
-  ...(userId && { user_id: userId }),
-});
+export const transformTransferHistoryToDb = (transfer: Partial<TransferHistoryEntry>, userId?: string) => {
+  const result: Record<string, any> = {};
+  if (transfer.fromCultureId !== undefined) result.from_culture_id = transfer.fromCultureId;
+  if (transfer.fromCultureRecordGroupId !== undefined) result.from_culture_record_group_id = transfer.fromCultureRecordGroupId;
+  if (transfer.toEntityType !== undefined) result.to_entity_type = transfer.toEntityType;
+  if (transfer.toEntityId !== undefined) result.to_entity_id = transfer.toEntityId;
+  if (transfer.toEntityRecordGroupId !== undefined) result.to_entity_record_group_id = transfer.toEntityRecordGroupId;
+  if (transfer.transferDate !== undefined) result.transfer_date = transfer.transferDate instanceof Date ? transfer.transferDate.toISOString() : transfer.transferDate;
+  if (transfer.quantity !== undefined) result.quantity = transfer.quantity;
+  if (transfer.unit !== undefined) result.unit = transfer.unit;
+  if (transfer.notes !== undefined) result.notes = transfer.notes;
+  if (transfer.isCurrent !== undefined) result.is_current = transfer.isCurrent;
+  if (transfer.supersededById !== undefined) result.superseded_by_id = transfer.supersededById;
+  if (transfer.amendmentReason !== undefined) result.amendment_reason = transfer.amendmentReason;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 export const transformStageTransitionFromDb = (row: any): StageTransitionEntry => ({
   id: row.id,
@@ -1254,17 +1321,19 @@ export const transformStageTransitionFromDb = (row: any): StageTransitionEntry =
   createdAt: new Date(row.created_at),
 });
 
-export const transformStageTransitionToDb = (transition: Partial<StageTransitionEntry>, userId?: string) => ({
-  entity_type: transition.entityType,
-  entity_id: transition.entityId,
-  entity_record_group_id: transition.entityRecordGroupId,
-  from_stage: transition.fromStage,
-  to_stage: transition.toStage,
-  transitioned_at: transition.transitionedAt instanceof Date ? transition.transitionedAt.toISOString() : transition.transitionedAt,
-  notes: transition.notes,
-  trigger: transition.trigger,
-  ...(userId && { user_id: userId }),
-});
+export const transformStageTransitionToDb = (transition: Partial<StageTransitionEntry>, userId?: string) => {
+  const result: Record<string, any> = {};
+  if (transition.entityType !== undefined) result.entity_type = transition.entityType;
+  if (transition.entityId !== undefined) result.entity_id = transition.entityId;
+  if (transition.entityRecordGroupId !== undefined) result.entity_record_group_id = transition.entityRecordGroupId;
+  if (transition.fromStage !== undefined) result.from_stage = transition.fromStage;
+  if (transition.toStage !== undefined) result.to_stage = transition.toStage;
+  if (transition.transitionedAt !== undefined) result.transitioned_at = transition.transitionedAt instanceof Date ? transition.transitionedAt.toISOString() : transition.transitionedAt;
+  if (transition.notes !== undefined) result.notes = transition.notes;
+  if (transition.trigger !== undefined) result.trigger = transition.trigger;
+  if (userId) result.user_id = userId;
+  return result;
+};
 
 export const transformDataAmendmentLogFromDb = (row: any): DataAmendmentLogEntry => ({
   id: row.id,
