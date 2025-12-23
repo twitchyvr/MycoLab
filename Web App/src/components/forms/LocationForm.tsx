@@ -8,6 +8,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../store';
 import { TemperatureInput } from '../common/TemperatureInput';
 import { HumidityInput } from '../common/HumidityInput';
+import { StandardDropdown } from '../common/StandardDropdown';
 import type { Location, LocationLevel, RoomPurpose } from '../../store/types';
 
 // ============================================================================
@@ -379,18 +380,14 @@ export const LocationForm: React.FC<LocationFormProps> = ({
 
       {/* Type / Level */}
       <div>
-        <label className="block text-sm font-medium text-zinc-400 mb-1">
-          Type <span className="text-red-400">*</span>
-        </label>
-        <select
+        <StandardDropdown
+          label="Type"
+          required
           value={data.level}
-          onChange={e => onChange({ level: e.target.value as LocationLevel })}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-        >
-          {levelOptions.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
+          onChange={value => onChange({ level: value as LocationLevel })}
+          options={levelOptions.map(opt => ({ id: opt.value, name: opt.label }))}
+          placeholder="Select location type..."
+        />
         <p className="mt-1 text-xs text-zinc-500">
           {levelOptions.find(o => o.value === data.level)?.description}
         </p>
@@ -435,19 +432,19 @@ export const LocationForm: React.FC<LocationFormProps> = ({
 
       {/* Parent Location */}
       <div>
-        <label className="block text-sm font-medium text-zinc-400 mb-1">Parent Location</label>
-        <select
+        <StandardDropdown
+          label="Parent Location"
           value={data.parentId || ''}
-          onChange={e => onChange({ parentId: e.target.value || null })}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-        >
-          <option value="">(No parent - top level)</option>
-          {availableParents.map(l => (
-            <option key={l.id} value={l.id}>
-              {getLocationPath(l.id, state.locations)}
-            </option>
-          ))}
-        </select>
+          onChange={value => onChange({ parentId: value || null })}
+          options={[
+            { id: '', name: '(No parent - top level)' },
+            ...availableParents.map(l => ({
+              id: l.id,
+              name: getLocationPath(l.id, state.locations),
+            })),
+          ]}
+          placeholder="Select parent location..."
+        />
       </div>
 
       {/* Room Purposes - show for room/zone levels */}

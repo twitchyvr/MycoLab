@@ -6,7 +6,8 @@
 import React from 'react';
 import { NumericInput } from '../common/NumericInput';
 import { VolumeInput } from '../common/VolumeInput';
-import type { ContainerCategory, ContainerUsageContext } from '../../store/types';
+import { StandardDropdown } from '../common/StandardDropdown';
+import type { ContainerCategory, ContainerUsageContext, Supplier } from '../../store/types';
 
 export interface ContainerFormData {
   name: string;
@@ -23,12 +24,27 @@ export interface ContainerFormData {
   usageContext: ContainerUsageContext[];
   notes?: string;
   isActive: boolean;
+  // Cost tracking fields
+  unitCost?: number;
+  purchasePrice?: number;
+  quantityOwned?: number;
+  supplierId?: string;
+  purchaseDate?: string;  // ISO string for form
+  orderDate?: string;     // ISO string for form
+  receivedDate?: string;  // ISO string for form
+  lotNumber?: string;
+  sku?: string;
+  reorderUrl?: string;
 }
 
 interface ContainerFormProps {
   data: ContainerFormData;
   onChange: (data: Partial<ContainerFormData>) => void;
   errors?: Record<string, string>;
+  /** Available suppliers for the dropdown */
+  suppliers?: Supplier[];
+  /** Show advanced/procurement fields */
+  showAdvanced?: boolean;
 }
 
 const containerCategories = [
@@ -60,6 +76,8 @@ export const ContainerForm: React.FC<ContainerFormProps> = ({
   data,
   onChange,
   errors = {},
+  suppliers = [],
+  showAdvanced = true,
 }) => {
   const handleQuickSelect = (container: typeof commonContainers[0]) => {
     onChange({
@@ -299,6 +317,146 @@ export const ContainerForm: React.FC<ContainerFormProps> = ({
           className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
         />
       </div>
+
+      {/* Cost & Procurement Section */}
+      {showAdvanced && (
+        <div className="border-t border-zinc-700 pt-4 mt-4 space-y-4">
+          <div className="flex items-center gap-2 text-sm text-zinc-400 mb-3">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+            <span>Cost & Procurement</span>
+          </div>
+
+          {/* Cost Fields */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Unit Cost ($)</label>
+              <NumericInput
+                value={data.unitCost}
+                onChange={value => onChange({ unitCost: value ?? undefined })}
+                step={0.01}
+                placeholder="0.00"
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+              />
+              <p className="text-xs text-zinc-600 mt-0.5">Per container</p>
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Quantity Owned</label>
+              <NumericInput
+                value={data.quantityOwned}
+                onChange={value => onChange({ quantityOwned: value ?? undefined })}
+                placeholder="0"
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+              />
+              <p className="text-xs text-zinc-600 mt-0.5">In stock</p>
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Total Purchase ($)</label>
+              <NumericInput
+                value={data.purchasePrice}
+                onChange={value => onChange({ purchasePrice: value ?? undefined })}
+                step={0.01}
+                placeholder="0.00"
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+              />
+              <p className="text-xs text-zinc-600 mt-0.5">Last order total</p>
+            </div>
+          </div>
+
+          {/* Supplier & SKU */}
+          <div className="grid grid-cols-2 gap-3">
+            <StandardDropdown
+              label="Supplier"
+              value={data.supplierId || ''}
+              onChange={value => onChange({ supplierId: value || undefined })}
+              options={suppliers}
+              placeholder="Select supplier..."
+              entityType="supplier"
+              fieldName="supplierId"
+            />
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">SKU / Product Code</label>
+              <input
+                type="text"
+                value={data.sku || ''}
+                onChange={e => onChange({ sku: e.target.value || undefined })}
+                placeholder="e.g., MJ-QT-12"
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Order Date</label>
+              <input
+                type="date"
+                value={data.orderDate || ''}
+                onChange={e => onChange({ orderDate: e.target.value || undefined })}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm [color-scheme:dark] focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Purchase Date</label>
+              <input
+                type="date"
+                value={data.purchaseDate || ''}
+                onChange={e => onChange({ purchaseDate: e.target.value || undefined })}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm [color-scheme:dark] focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Received Date</label>
+              <input
+                type="date"
+                value={data.receivedDate || ''}
+                onChange={e => onChange({ receivedDate: e.target.value || undefined })}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm [color-scheme:dark] focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          {/* Lot Number & Reorder URL */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Lot Number</label>
+              <input
+                type="text"
+                value={data.lotNumber || ''}
+                onChange={e => onChange({ lotNumber: e.target.value || undefined })}
+                placeholder="Manufacturer lot #"
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Reorder URL</label>
+              <input
+                type="url"
+                value={data.reorderUrl || ''}
+                onChange={e => onChange({ reorderUrl: e.target.value || undefined })}
+                placeholder="https://..."
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          {/* Calculated unit cost hint */}
+          {data.purchasePrice && data.quantityOwned && data.quantityOwned > 0 && (
+            <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+              <p className="text-xs text-zinc-500">Calculated Unit Cost</p>
+              <p className="text-lg font-medium text-emerald-400">
+                ${(data.purchasePrice / data.quantityOwned).toFixed(2)} per container
+              </p>
+              <p className="text-xs text-zinc-600 mt-1">
+                Based on ${data.purchasePrice.toFixed(2)} ÷ {data.quantityOwned} units
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

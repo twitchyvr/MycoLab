@@ -32,8 +32,13 @@ export interface GrowFormData {
   targetTempColonization: number;
   targetTempFruiting: number;
   targetHumidity: number;
-  estimatedCost: number;
+  budgetCost: number;         // What user expects/hopes to spend (renamed from estimatedCost)
+  laborCost: number;          // Manual labor cost entry
+  overheadCost: number;       // Overhead allocation
   notes: string;
+  // Read-only calculated values (passed in for display)
+  sourceCultureCost?: number;
+  inventoryCost?: number;
 }
 
 interface CultureOption {
@@ -116,7 +121,7 @@ export const GrowForm: React.FC<GrowFormProps> = ({
     return substrateTypes.filter(s => s.category === 'bulk');
   }, [substrateTypes]);
 
-  const spacing = compact ? 'space-y-3' : 'space-y-4';
+  const spacing = compact ? 'space-y-4' : 'space-y-5';
   const gridGap = compact ? 'gap-3' : 'gap-4';
 
   return (
@@ -136,8 +141,8 @@ export const GrowForm: React.FC<GrowFormProps> = ({
         {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
       </div>
 
-      {/* Strain & Source Culture */}
-      <div className={`grid grid-cols-2 ${gridGap}`}>
+      {/* Strain & Source Culture - stacks on mobile for better spacing */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${gridGap}`}>
         <StrainSearchDropdown
           label="Strain"
           required
@@ -152,19 +157,19 @@ export const GrowForm: React.FC<GrowFormProps> = ({
           value={data.sourceCultureId}
           onChange={(value) => onChange({ sourceCultureId: value })}
           options={sourceCultures}
-          placeholder="None"
+          placeholder="None (optional)"
           fieldName="sourceCultureId"
         />
       </div>
 
       {/* Spawn Type & Weight */}
-      <div className={`grid grid-cols-2 ${gridGap}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${gridGap}`}>
         <StandardDropdown
           label="Spawn Type"
           value={data.grainTypeId}
           onChange={(value) => onChange({ grainTypeId: value })}
           options={grainTypes}
-          placeholder="Select..."
+          placeholder="Select spawn type..."
           entityType="grainType"
           fieldName="grainTypeId"
         />
@@ -178,14 +183,14 @@ export const GrowForm: React.FC<GrowFormProps> = ({
       </div>
 
       {/* Substrate & Weight */}
-      <div className={`grid grid-cols-2 ${gridGap}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${gridGap}`}>
         <StandardDropdown
           label="Substrate"
           required
           value={data.substrateTypeId}
           onChange={(value) => onChange({ substrateTypeId: value })}
           options={bulkSubstrates}
-          placeholder="Select..."
+          placeholder="Select substrate..."
           entityType="substrateType"
           fieldName="substrateTypeId"
         />
@@ -213,14 +218,14 @@ export const GrowForm: React.FC<GrowFormProps> = ({
       )}
 
       {/* Container & Count */}
-      <div className={`grid grid-cols-2 ${gridGap}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${gridGap}`}>
         <StandardDropdown
           label="Container"
           required
           value={data.containerId}
           onChange={(value) => onChange({ containerId: value })}
           options={growContainers.length > 0 ? growContainers : containers}
-          placeholder="Select..."
+          placeholder="Select container..."
           entityType="container"
           fieldName="containerId"
         />
@@ -232,21 +237,21 @@ export const GrowForm: React.FC<GrowFormProps> = ({
             min={1}
             allowEmpty={false}
             defaultValue={1}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-emerald-500"
           />
         </div>
       </div>
       {errors.containerId && <p className="text-red-400 text-xs -mt-2">{errors.containerId}</p>}
 
       {/* Location & Inoculation Date */}
-      <div className={`grid grid-cols-2 ${gridGap}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${gridGap}`}>
         <StandardDropdown
           label="Location"
           required
           value={data.locationId}
           onChange={(value) => onChange({ locationId: value })}
           options={locations}
-          placeholder="Select..."
+          placeholder="Select location..."
           entityType="location"
           fieldName="locationId"
         />
@@ -302,15 +307,89 @@ export const GrowForm: React.FC<GrowFormProps> = ({
             </div>
           </div>
 
-          {/* Estimated Cost */}
-          <div>
-            <label className="block text-sm text-zinc-400 mb-2">Estimated Cost ($)</label>
-            <NumericInput
-              value={data.estimatedCost}
-              onChange={(value) => onChange({ estimatedCost: value ?? 0 })}
-              step={0.01}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-            />
+          {/* Cost Tracking */}
+          <div className="p-3 bg-zinc-900/50 border border-zinc-800 rounded-lg space-y-3">
+            <div className="flex items-center gap-2 text-sm text-zinc-400">
+              <Icons.Info />
+              <span>Cost Tracking</span>
+            </div>
+
+            {/* Calculated Cost Display */}
+            {(data.sourceCultureCost || data.inventoryCost || data.laborCost || data.overheadCost) && (
+              <div className="bg-zinc-800/50 rounded-lg p-3 space-y-2">
+                <p className="text-xs text-zinc-500 uppercase tracking-wide">Calculated Costs</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {data.sourceCultureCost !== undefined && data.sourceCultureCost > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Source Culture:</span>
+                      <span className="text-white">${data.sourceCultureCost.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {data.inventoryCost !== undefined && data.inventoryCost > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Inventory:</span>
+                      <span className="text-white">${data.inventoryCost.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {data.laborCost > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Labor:</span>
+                      <span className="text-white">${data.laborCost.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {data.overheadCost > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Overhead:</span>
+                      <span className="text-white">${data.overheadCost.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="border-t border-zinc-700 pt-2 flex justify-between text-sm font-medium">
+                  <span className="text-zinc-300">Total Cost:</span>
+                  <span className="text-emerald-400">
+                    ${((data.sourceCultureCost || 0) + (data.inventoryCost || 0) + data.laborCost + data.overheadCost).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Editable Cost Inputs */}
+            <div className={`grid grid-cols-3 ${gridGap}`}>
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Budget / Expected ($)</label>
+                <NumericInput
+                  value={data.budgetCost}
+                  onChange={(value) => onChange({ budgetCost: value ?? 0 })}
+                  step={0.01}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+                />
+                <p className="text-xs text-zinc-600 mt-0.5">What you expect to spend</p>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Labor Cost ($)</label>
+                <NumericInput
+                  value={data.laborCost}
+                  onChange={(value) => onChange({ laborCost: value ?? 0 })}
+                  step={0.01}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+                />
+                <p className="text-xs text-zinc-600 mt-0.5">Your time value</p>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Overhead ($)</label>
+                <NumericInput
+                  value={data.overheadCost}
+                  onChange={(value) => onChange({ overheadCost: value ?? 0 })}
+                  step={0.01}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+                />
+                <p className="text-xs text-zinc-600 mt-0.5">Utilities, space, etc.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-600">
+              Source culture and inventory costs are calculated automatically when you link items.
+            </p>
           </div>
         </>
       )}
@@ -351,7 +430,9 @@ export const getDefaultGrowFormData = (): GrowFormData => ({
   targetTempColonization: 24,
   targetTempFruiting: 22,
   targetHumidity: 90,
-  estimatedCost: 0,
+  budgetCost: 0,
+  laborCost: 0,
+  overheadCost: 0,
   notes: '',
 });
 

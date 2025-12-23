@@ -332,6 +332,18 @@ export interface Container {
   usageContext: ContainerUsageContext[];  // What this container can be used for
   notes?: string;
   isActive: boolean;
+
+  // Cost tracking fields
+  unitCost?: number;          // Cost per container unit (e.g., $0.50 per jar)
+  purchasePrice?: number;     // Total purchase price for a batch
+  quantityOwned?: number;     // Total quantity owned/in stock
+  supplierId?: string;        // Where purchased from
+  purchaseDate?: Date;        // When purchased
+  orderDate?: Date;           // When ordered (may differ from purchase/received)
+  receivedDate?: Date;        // When physically received
+  lotNumber?: string;         // Manufacturer lot number
+  sku?: string;               // Product SKU for reordering
+  reorderUrl?: string;        // URL for reordering
 }
 
 // Legacy type aliases for backward compatibility during migration

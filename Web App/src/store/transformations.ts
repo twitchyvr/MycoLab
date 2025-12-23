@@ -309,6 +309,17 @@ export const transformContainerFromDb = (row: any): Container => ({
   usageContext: row.usage_context || ['culture', 'grow'],
   notes: row.notes,
   isActive: row.is_active ?? true,
+  // Cost tracking fields
+  unitCost: row.unit_cost != null ? parseFloat(row.unit_cost) : undefined,
+  purchasePrice: row.purchase_price != null ? parseFloat(row.purchase_price) : undefined,
+  quantityOwned: row.quantity_owned != null ? parseInt(row.quantity_owned, 10) : undefined,
+  supplierId: row.supplier_id,
+  purchaseDate: row.purchase_date ? new Date(row.purchase_date) : undefined,
+  orderDate: row.order_date ? new Date(row.order_date) : undefined,
+  receivedDate: row.received_date ? new Date(row.received_date) : undefined,
+  lotNumber: row.lot_number,
+  sku: row.sku,
+  reorderUrl: row.reorder_url,
 });
 
 export const transformContainerToDb = (container: Partial<Container>, userId?: string | null) => {
@@ -325,6 +336,17 @@ export const transformContainerToDb = (container: Partial<Container>, userId?: s
   if (container.usageContext !== undefined) result.usage_context = container.usageContext;
   if (container.notes !== undefined) result.notes = container.notes;
   if (container.isActive !== undefined) result.is_active = container.isActive;
+  // Cost tracking fields
+  if (container.unitCost !== undefined) result.unit_cost = container.unitCost;
+  if (container.purchasePrice !== undefined) result.purchase_price = container.purchasePrice;
+  if (container.quantityOwned !== undefined) result.quantity_owned = container.quantityOwned;
+  if (container.supplierId !== undefined) result.supplier_id = container.supplierId;
+  if (container.purchaseDate !== undefined) result.purchase_date = container.purchaseDate instanceof Date ? container.purchaseDate.toISOString() : container.purchaseDate;
+  if (container.orderDate !== undefined) result.order_date = container.orderDate instanceof Date ? container.orderDate.toISOString() : container.orderDate;
+  if (container.receivedDate !== undefined) result.received_date = container.receivedDate instanceof Date ? container.receivedDate.toISOString() : container.receivedDate;
+  if (container.lotNumber !== undefined) result.lot_number = container.lotNumber;
+  if (container.sku !== undefined) result.sku = container.sku;
+  if (container.reorderUrl !== undefined) result.reorder_url = container.reorderUrl;
   if (userId) result.user_id = userId;
   return result;
 };

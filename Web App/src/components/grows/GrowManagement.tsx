@@ -10,6 +10,7 @@ import type { Grow, GrowStage, GrowStatus, GrowObservation, Flush, GrowOutcomeCo
 import { StandardDropdown } from '../common/StandardDropdown';
 import { NumericInput } from '../common/NumericInput';
 import { WeightInput } from '../common/WeightInput';
+import { Portal } from '../common/Portal';
 import { ExitSurveyModal, ExitSurveyData } from '../surveys';
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
 import { NotificationBellCompact } from '../common/NotificationBell';
@@ -763,7 +764,9 @@ export const GrowManagement: React.FC = () => {
       targetTempColonization: newGrow.targetTempColonization,
       targetTempFruiting: newGrow.targetTempFruiting,
       targetHumidity: newGrow.targetHumidity,
-      estimatedCost: newGrow.estimatedCost,
+      estimatedCost: newGrow.budgetCost,  // budgetCost from form maps to estimatedCost in DB
+      laborCost: newGrow.laborCost,
+      overheadCost: newGrow.overheadCost,
       notes: newGrow.notes,
     });
 
@@ -789,7 +792,11 @@ export const GrowManagement: React.FC = () => {
       targetTempColonization: grow.targetTempColonization || 24,
       targetTempFruiting: grow.targetTempFruiting || 22,
       targetHumidity: grow.targetHumidity || 90,
-      estimatedCost: grow.estimatedCost,
+      budgetCost: grow.estimatedCost,  // Map estimatedCost from DB to budgetCost in form
+      laborCost: grow.laborCost || 0,
+      overheadCost: grow.overheadCost || 0,
+      sourceCultureCost: grow.sourceCultureCost,
+      inventoryCost: grow.inventoryCost,
       notes: grow.notes,
     });
     setShowEditModal(true);
@@ -822,7 +829,9 @@ export const GrowManagement: React.FC = () => {
       targetTempColonization: editGrow.targetTempColonization,
       targetTempFruiting: editGrow.targetTempFruiting,
       targetHumidity: editGrow.targetHumidity,
-      estimatedCost: editGrow.estimatedCost,
+      estimatedCost: editGrow.budgetCost,  // budgetCost from form maps to estimatedCost in DB
+      laborCost: editGrow.laborCost,
+      overheadCost: editGrow.overheadCost,
       notes: editGrow.notes,
     });
 
@@ -889,7 +898,8 @@ export const GrowManagement: React.FC = () => {
         outcomeLabel: surveyData.outcomeLabel,
         startedAt: exitSurveyGrow.spawnedAt,
         endedAt: new Date(),
-        totalCost: exitSurveyGrow.estimatedCost,
+        // Use calculated totalCost if available, otherwise fall back to budget (estimatedCost)
+        totalCost: exitSurveyGrow.totalCost ?? exitSurveyGrow.estimatedCost,
         totalYieldWet: exitSurveyGrow.totalYield,
         flushCount: exitSurveyGrow.flushes.length,
         strainId: exitSurveyGrow.strainId,
@@ -1421,99 +1431,115 @@ export const GrowManagement: React.FC = () => {
 
       {/* Create Modal - Uses canonical GrowForm */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">New Grow</h3>
-              <button onClick={() => setShowCreateModal(false)} className="text-zinc-400 hover:text-white">
-                <Icons.X />
-              </button>
-            </div>
-
-            {/* Canonical GrowForm */}
-            <GrowForm
-              data={newGrow}
-              onChange={(updates) => setNewGrow(prev => ({ ...prev, ...updates }))}
-              errors={formErrors}
-              strains={activeStrains}
-              containers={activeContainers}
-              locations={activeLocations}
-              substrateTypes={activeSubstrateTypes}
-              grainTypes={activeGrainTypes}
-              sourceCultures={readyCultureOptions}
-              showAdvanced={state.settings?.experienceLevel !== 'beginner'}
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setShowCreateModal(false)}
             />
+            {/* Modal */}
+            <div className="relative bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-white">New Grow</h3>
+                <button onClick={() => setShowCreateModal(false)} className="text-zinc-400 hover:text-white p-1 hover:bg-zinc-800 rounded">
+                  <Icons.X />
+                </button>
+              </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  clearDraft();
-                  setNewGrow(getDefaultGrowFormData());
-                  setFormErrors({});
-                }}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 rounded-lg font-medium"
-              >
-                Save Draft
-              </button>
-              <button
-                onClick={handleCreateGrow}
-                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
-              >
-                Create Grow
-              </button>
+              {/* Canonical GrowForm */}
+              <GrowForm
+                data={newGrow}
+                onChange={(updates) => setNewGrow(prev => ({ ...prev, ...updates }))}
+                errors={formErrors}
+                strains={activeStrains}
+                containers={activeContainers}
+                locations={activeLocations}
+                substrateTypes={activeSubstrateTypes}
+                grainTypes={activeGrainTypes}
+                sourceCultures={readyCultureOptions}
+                showAdvanced={state.settings?.experienceLevel !== 'beginner'}
+              />
+
+              <div className="flex gap-3 mt-6 pt-4 border-t border-zinc-800">
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    clearDraft();
+                    setNewGrow(getDefaultGrowFormData());
+                    setFormErrors({});
+                  }}
+                  className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 rounded-lg font-medium transition-colors"
+                >
+                  Save Draft
+                </button>
+                <button
+                  onClick={handleCreateGrow}
+                  className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium transition-colors"
+                >
+                  Create Grow
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {/* Edit Modal - Uses canonical GrowForm */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Edit Grow</h3>
-              <button onClick={() => setShowEditModal(false)} className="text-zinc-400 hover:text-white">
-                <Icons.X />
-              </button>
-            </div>
-
-            {/* Canonical GrowForm in edit mode */}
-            <GrowForm
-              data={editGrow}
-              onChange={(updates) => setEditGrow(prev => ({ ...prev, ...updates }))}
-              isEditMode={true}
-              strains={activeStrains}
-              containers={activeContainers}
-              locations={activeLocations}
-              substrateTypes={activeSubstrateTypes}
-              grainTypes={activeGrainTypes}
-              sourceCultures={readyCultureOptions}
-              showAdvanced={true}
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setShowEditModal(false)}
             />
+            {/* Modal */}
+            <div className="relative bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-white">Edit Grow</h3>
+                <button onClick={() => setShowEditModal(false)} className="text-zinc-400 hover:text-white p-1 hover:bg-zinc-800 rounded">
+                  <Icons.X />
+                </button>
+              </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdateGrow}
-                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium"
-              >
-                Save Changes
-              </button>
+              {/* Canonical GrowForm in edit mode */}
+              <GrowForm
+                data={editGrow}
+                onChange={(updates) => setEditGrow(prev => ({ ...prev, ...updates }))}
+                isEditMode={true}
+                strains={activeStrains}
+                containers={activeContainers}
+                locations={activeLocations}
+                substrateTypes={activeSubstrateTypes}
+                grainTypes={activeGrainTypes}
+                sourceCultures={readyCultureOptions}
+                showAdvanced={true}
+              />
+
+              <div className="flex gap-3 mt-6 pt-4 border-t border-zinc-800">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateGrow}
+                  className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  Save Changes
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {/* Observation Modal - Uses canonical ObservationModal */}
