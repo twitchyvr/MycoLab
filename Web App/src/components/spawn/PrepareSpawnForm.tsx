@@ -44,11 +44,13 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
     activeLocations,
     activeInventoryItems,
     activeInventoryLots,
+    activeLabItemInstances,
     getInventoryItem,
     getInventoryCategory,
     getContainer,
     addPreparedSpawn,
     adjustLotQuantity,
+    markInstanceInUse,
     generateId,
   } = useData();
 
@@ -70,6 +72,36 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Instance tracking for containers
+  const [selectedInstanceIds, setSelectedInstanceIds] = useState<string[]>([]);
+
+  // Get available instances for the selected container lot
+  const availableInstancesForLot = useMemo(() => {
+    if (!containerInventoryLotId) return [];
+    return activeLabItemInstances.filter(
+      inst => inst.inventoryLotId === containerInventoryLotId && inst.status === 'available'
+    );
+  }, [containerInventoryLotId, activeLabItemInstances]);
+
+  // Check if this lot tracks instances (has any instances at all)
+  const lotHasInstances = useMemo(() => {
+    if (!containerInventoryLotId) return false;
+    return activeLabItemInstances.some(inst => inst.inventoryLotId === containerInventoryLotId);
+  }, [containerInventoryLotId, activeLabItemInstances]);
+
+  // Auto-select instances when lot changes or count changes
+  useEffect(() => {
+    if (lotHasInstances && availableInstancesForLot.length > 0) {
+      // Auto-select first N available instances based on containerCount
+      const autoSelected = availableInstancesForLot
+        .slice(0, containerCount)
+        .map(inst => inst.id);
+      setSelectedInstanceIds(autoSelected);
+    } else {
+      setSelectedInstanceIds([]);
+    }
+  }, [containerInventoryLotId, containerCount, lotHasInstances, availableInstancesForLot]);
 
   // Filter inventory items by category for grain preparation
   const grainItems = useMemo(() => {
@@ -249,13 +281,26 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
 
       // Decrement container inventory if a lot was selected
       if (containerInventoryLotId && containerCount > 0) {
-        await adjustLotQuantity(
-          containerInventoryLotId,
-          -containerCount, // Negative to decrement
-          'spawn_preparation',
-          undefined, // Will be filled with spawn ID after creation
-          `Prepared spawn: ${label || spawnType}`
-        );
+        // If we have tracked instances, mark them as in_use
+        if (selectedInstanceIds.length > 0) {
+          for (const instanceId of selectedInstanceIds) {
+            await markInstanceInUse(instanceId, {
+              entityType: 'prepared_spawn',
+              entityId: '', // Will be set after spawn creation
+              entityLabel: label || spawnType,
+              usedAt: new Date(),
+            });
+          }
+        } else {
+          // No instances tracked, just decrement lot quantity
+          await adjustLotQuantity(
+            containerInventoryLotId,
+            -containerCount, // Negative to decrement
+            'spawn_preparation',
+            undefined, // Will be filled with spawn ID after creation
+            `Prepared spawn: ${label || spawnType}`
+          );
+        }
       }
 
       // Decrement ingredient lots
@@ -443,6 +488,39 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
                         (${containerUnitCost.toFixed(2)} × {containerCount})
                       </span>
                     </span>
+                  )}
+                </div>
+              )}
+
+              {/* Instance Tracking Info */}
+              {lotHasInstances && containerInventoryLotId && (
+                <div className="mt-3 p-3 bg-blue-950/30 border border-blue-800/50 rounded-lg">
+                  <p className="text-sm text-blue-400 font-medium mb-2">
+                    📦 Container Instance Tracking
+                  </p>
+                  {availableInstancesForLot.length === 0 ? (
+                    <p className="text-sm text-amber-400">
+                      ⚠️ No available instances. All containers from this lot are in use.
+                    </p>
+                  ) : availableInstancesForLot.length < containerCount ? (
+                    <p className="text-sm text-amber-400">
+                      ⚠️ Only {availableInstancesForLot.length} instances available (need {containerCount})
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedInstanceIds.map((id, idx) => {
+                        const inst = availableInstancesForLot.find(i => i.id === id);
+                        return inst && (
+                          <span key={id} className="px-2 py-1 bg-blue-900/50 text-blue-300 rounded text-xs">
+                            #{inst.instanceNumber}
+                            {inst.label && ` (${inst.label})`}
+                          </span>
+                        );
+                      })}
+                      <span className="text-xs text-zinc-400 self-center ml-1">
+                        {selectedInstanceIds.length} container{selectedInstanceIds.length !== 1 ? 's' : ''} will be marked as in-use
+                      </span>
+                    </div>
                   )}
                 </div>
               )}

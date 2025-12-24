@@ -6181,6 +6181,37 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  {
+    id: 'dev-908',
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 4 PrepareSpawnForm Integration',
+    description: 'Integrated instance tracking into spawn preparation workflow.',
+    notes: `Phase 4 of inventory system rebuild - PrepareSpawnForm instance integration:
+
+**1. Instance Selection:**
+- Added activeLabItemInstances and markInstanceInUse from context
+- Auto-selects available instances based on container count
+- Filters instances by selected lot
+
+**2. Instance Status Updates:**
+- When preparing spawn with tracked containers, marks instances as in_use
+- Links instances to prepared spawn via usageRef
+- Falls back to adjustLotQuantity for non-instance-tracked lots
+
+**3. UI Feedback:**
+- Shows blue info panel when lot has instance tracking
+- Displays selected instance numbers
+- Warns if not enough instances available
+- Shows count of containers that will be marked as in-use
+
+**Files Changed:**
+- src/components/spawn/PrepareSpawnForm.tsx - Instance integration`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
