@@ -5942,6 +5942,58 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-901',
+    phaseId: 30,
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'PreparedSpawn Preparation Workflow Enhancement',
+    description: 'Extended PreparedSpawn with full preparation workflow tracking: preparing → sterilizing → cooling → ready. Added temperature tracking for cooling stage, ingredient consumption tracking, and labor cost fields. Also fixed Stock Management Edit modal.',
+    notes: `Enhanced PreparedSpawn entity for complete preparation workflow:
+
+**1. New Status Values:**
+- 'preparing' - Being prepared (hydrating grain, mixing media)
+- 'sterilizing' - In pressure cooker/autoclave
+- 'cooling' - Just removed from PC, too hot to inoculate
+- 'ready' - Cooled, ready for inoculation (replaces 'available')
+- 'reserved', 'inoculated', 'contaminated', 'expired' - existing statuses
+
+**2. New Tracking Fields:**
+- prepCompletedAt - When preparation was completed
+- sterilizationStartedAt - When PC started
+- sterilizationPressurePsi - Pressure used (e.g., 15 psi)
+- sterilizationDurationMins - Duration in minutes
+- coolingStartedAt - When removed from PC
+- cooledAt - When cooled to safe temperature
+- currentTempC - Current temperature reading
+- lastTempUpdateAt - When temp was last checked
+- targetTempC - Target temperature for safety (default 25°C)
+- ingredientsUsed - JSONB array of IngredientUsage objects
+- laborCost - Manual labor cost entry
+
+**3. Workflow Logic:**
+- User can only inoculate spawn that is in 'ready' status
+- After sterilization complete, status changes to 'cooling'
+- User manually marks as 'ready' when cooled (IoT integration later)
+- Temperature tracking supports future IoT probe integration
+
+**4. StockManagement Fix:**
+- Added missing Edit Lot modal for inventory lots
+- Edit button now opens modal with pre-populated form
+- Can edit quantity, status, supplier, location, dates, notes
+
+**Files Changed:**
+- supabase-schema.sql - PreparedSpawn workflow columns migration
+- src/store/types.ts - PreparedSpawnStatus, IngredientUsage types
+- src/store/transformations.ts - Updated fromDb/toDb functions
+- src/store/DataContext.tsx - Updated filters for 'ready' status
+- src/components/tools/PressureCookingCalculator.tsx - Updated status handling
+- src/components/spawn/InoculateToGrainModal.tsx - Updated empty state message
+- src/components/inventory/StockManagement.tsx - Added Edit Lot modal`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

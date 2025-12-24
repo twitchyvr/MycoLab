@@ -896,7 +896,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const activeInventoryLots = useMemo(() => state.inventoryLots.filter(l => l.isActive), [state.inventoryLots]);
   const activePurchaseOrders = useMemo(() => state.purchaseOrders.filter(o => o.isActive), [state.purchaseOrders]);
   const activeRecipes = useMemo(() => state.recipes.filter(r => r.isActive), [state.recipes]);
-  const availablePreparedSpawn = useMemo(() => state.preparedSpawn.filter(s => s.isActive && s.status === 'available'), [state.preparedSpawn]);
+  const availablePreparedSpawn = useMemo(() => state.preparedSpawn.filter(s => s.isActive && s.status === 'ready'), [state.preparedSpawn]);
 
   // GrainSpawn lookup helpers
   const activeGrainSpawn = useMemo(() => state.grainSpawn.filter(gs => !gs.isArchived && !['contaminated', 'expired', 'spawned_to_bulk'].includes(gs.status)), [state.grainSpawn]);
@@ -1800,7 +1800,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const getAvailablePreparedSpawn = useCallback((type?: PreparedSpawn['type']): PreparedSpawn[] => {
     return state.preparedSpawn.filter(s =>
-      s.status === 'available' &&
+      s.status === 'ready' &&
       s.isActive &&
       (!type || s.type === type)
     );

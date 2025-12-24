@@ -286,8 +286,11 @@ export const InoculateToGrainModal: React.FC<InoculateToGrainModalProps> = ({
             </label>
             {grainPreparedSpawn.length === 0 ? (
               <div className="p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg text-center">
-                <p className="text-zinc-400 text-sm">No available prepared spawn</p>
-                <p className="text-zinc-500 text-xs mt-1">Prepare and sterilize grain jars or bags first</p>
+                <p className="text-zinc-400 text-sm">No ready spawn available</p>
+                <p className="text-zinc-500 text-xs mt-1">
+                  Only spawn that has been sterilized and cooled (status: ready) can be inoculated.
+                  Prepare grain jars, sterilize them, then mark them as cooled when ready.
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">

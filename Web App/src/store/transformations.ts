@@ -1054,16 +1054,29 @@ export const transformPreparedSpawnFromDb = (row: any): PreparedSpawn => ({
 
   // Preparation
   prepDate: row.prep_date ? new Date(row.prep_date) : new Date(),
+  prepCompletedAt: row.prep_completed_at ? new Date(row.prep_completed_at) : undefined,
   sterilizationDate: row.sterilization_date ? new Date(row.sterilization_date) : undefined,
   sterilizationMethod: row.sterilization_method,
+  sterilizationStartedAt: row.sterilization_started_at ? new Date(row.sterilization_started_at) : undefined,
+  sterilizationPressurePsi: row.sterilization_pressure_psi,
+  sterilizationDurationMins: row.sterilization_duration_mins,
   expiresAt: row.expires_at ? new Date(row.expires_at) : undefined,
+
+  // Cooling/temperature tracking
+  coolingStartedAt: row.cooling_started_at ? new Date(row.cooling_started_at) : undefined,
+  cooledAt: row.cooled_at ? new Date(row.cooled_at) : undefined,
+  currentTempC: row.current_temp_c,
+  lastTempUpdateAt: row.last_temp_update_at ? new Date(row.last_temp_update_at) : undefined,
+  targetTempC: row.target_temp_c ?? 25,
 
   // Location & tracking
   locationId: row.location_id || '',
-  status: row.status || 'available',
+  status: row.status || 'ready',
 
   // Cost tracking
   productionCost: row.production_cost,
+  laborCost: row.labor_cost,
+  ingredientsUsed: row.ingredients_used || [],
 
   // Linkage
   inoculatedAt: row.inoculated_at ? new Date(row.inoculated_at) : undefined,
@@ -1112,9 +1125,20 @@ export const transformPreparedSpawnToDb = (spawn: Partial<PreparedSpawn>, userId
 
   // Preparation
   if (spawn.prepDate !== undefined) result.prep_date = spawn.prepDate instanceof Date ? spawn.prepDate.toISOString().split('T')[0] : spawn.prepDate;
+  if (spawn.prepCompletedAt !== undefined) result.prep_completed_at = spawn.prepCompletedAt instanceof Date ? spawn.prepCompletedAt.toISOString() : spawn.prepCompletedAt;
   if (spawn.sterilizationDate !== undefined) result.sterilization_date = spawn.sterilizationDate instanceof Date ? spawn.sterilizationDate.toISOString().split('T')[0] : spawn.sterilizationDate;
   if (spawn.sterilizationMethod !== undefined) result.sterilization_method = spawn.sterilizationMethod;
+  if (spawn.sterilizationStartedAt !== undefined) result.sterilization_started_at = spawn.sterilizationStartedAt instanceof Date ? spawn.sterilizationStartedAt.toISOString() : spawn.sterilizationStartedAt;
+  if (spawn.sterilizationPressurePsi !== undefined) result.sterilization_pressure_psi = spawn.sterilizationPressurePsi;
+  if (spawn.sterilizationDurationMins !== undefined) result.sterilization_duration_mins = spawn.sterilizationDurationMins;
   if (spawn.expiresAt !== undefined) result.expires_at = spawn.expiresAt instanceof Date ? spawn.expiresAt.toISOString().split('T')[0] : spawn.expiresAt;
+
+  // Cooling/temperature tracking
+  if (spawn.coolingStartedAt !== undefined) result.cooling_started_at = spawn.coolingStartedAt instanceof Date ? spawn.coolingStartedAt.toISOString() : spawn.coolingStartedAt;
+  if (spawn.cooledAt !== undefined) result.cooled_at = spawn.cooledAt instanceof Date ? spawn.cooledAt.toISOString() : spawn.cooledAt;
+  if (spawn.currentTempC !== undefined) result.current_temp_c = spawn.currentTempC;
+  if (spawn.lastTempUpdateAt !== undefined) result.last_temp_update_at = spawn.lastTempUpdateAt instanceof Date ? spawn.lastTempUpdateAt.toISOString() : spawn.lastTempUpdateAt;
+  if (spawn.targetTempC !== undefined) result.target_temp_c = spawn.targetTempC;
 
   // Location & tracking
   if (spawn.locationId !== undefined) result.location_id = toDbId(spawn.locationId);
@@ -1122,6 +1146,8 @@ export const transformPreparedSpawnToDb = (spawn: Partial<PreparedSpawn>, userId
 
   // Cost tracking
   if (spawn.productionCost !== undefined) result.production_cost = spawn.productionCost;
+  if (spawn.laborCost !== undefined) result.labor_cost = spawn.laborCost;
+  if (spawn.ingredientsUsed !== undefined) result.ingredients_used = spawn.ingredientsUsed;
 
   // Linkage
   if (spawn.inoculatedAt !== undefined) result.inoculated_at = spawn.inoculatedAt instanceof Date ? spawn.inoculatedAt.toISOString() : spawn.inoculatedAt;
