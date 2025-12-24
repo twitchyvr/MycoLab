@@ -8553,6 +8553,99 @@ DO $$ BEGIN
 END $$;
 
 -- ============================================================================
+-- PREPARED SPAWN WORKFLOW FIELDS MIGRATION
+-- Adds preparation workflow status and temperature tracking for grain spawn lifecycle
+-- ============================================================================
+DO $$
+BEGIN
+  RAISE NOTICE 'Adding PreparedSpawn preparation workflow fields...';
+
+  -- Update status CHECK constraint to include new workflow statuses
+  -- First drop the existing constraint, then add the new one
+  BEGIN
+    ALTER TABLE prepared_spawn DROP CONSTRAINT IF EXISTS prepared_spawn_status_check;
+    ALTER TABLE prepared_spawn ADD CONSTRAINT prepared_spawn_status_check
+      CHECK (status IN ('preparing', 'sterilizing', 'cooling', 'ready', 'reserved', 'inoculated', 'contaminated', 'expired'));
+    RAISE NOTICE 'Updated prepared_spawn status check constraint';
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Could not update status constraint: %', SQLERRM;
+  END;
+
+  -- Migrate old 'available' status to 'ready'
+  UPDATE prepared_spawn SET status = 'ready' WHERE status = 'available';
+
+  -- Preparation completion timestamp
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'prep_completed_at') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN prep_completed_at TIMESTAMPTZ;
+    RAISE NOTICE 'Added prep_completed_at column';
+  END IF;
+
+  -- Sterilization tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'sterilization_started_at') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN sterilization_started_at TIMESTAMPTZ;
+    RAISE NOTICE 'Added sterilization_started_at column';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'sterilization_pressure_psi') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN sterilization_pressure_psi DECIMAL;
+    RAISE NOTICE 'Added sterilization_pressure_psi column';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'sterilization_duration_mins') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN sterilization_duration_mins INTEGER;
+    RAISE NOTICE 'Added sterilization_duration_mins column';
+  END IF;
+
+  -- Cooling/temperature tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'cooling_started_at') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN cooling_started_at TIMESTAMPTZ;
+    RAISE NOTICE 'Added cooling_started_at column';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'cooled_at') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN cooled_at TIMESTAMPTZ;
+    RAISE NOTICE 'Added cooled_at column';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'current_temp_c') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN current_temp_c DECIMAL;
+    RAISE NOTICE 'Added current_temp_c column';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'last_temp_update_at') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN last_temp_update_at TIMESTAMPTZ;
+    RAISE NOTICE 'Added last_temp_update_at column';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'target_temp_c') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN target_temp_c DECIMAL DEFAULT 25;
+    RAISE NOTICE 'Added target_temp_c column with default 25C';
+  END IF;
+
+  -- Ingredient consumption tracking (JSONB array of IngredientUsage objects)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'ingredients_used') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN ingredients_used JSONB DEFAULT '[]'::JSONB;
+    RAISE NOTICE 'Added ingredients_used column (JSONB)';
+  END IF;
+
+  -- Labor cost tracking
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'prepared_spawn' AND column_name = 'labor_cost') THEN
+    ALTER TABLE prepared_spawn ADD COLUMN labor_cost DECIMAL;
+    RAISE NOTICE 'Added labor_cost column';
+  END IF;
+
+  RAISE NOTICE 'PreparedSpawn workflow fields migration complete!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error in PreparedSpawn workflow migration: %', SQLERRM;
+END $$;
+
+-- Update the index for ready status (was 'available')
+DROP INDEX IF EXISTS idx_prepared_spawn_status;
+CREATE INDEX IF NOT EXISTS idx_prepared_spawn_status_ready ON prepared_spawn(status) WHERE status = 'ready';
+CREATE INDEX IF NOT EXISTS idx_prepared_spawn_status_cooling ON prepared_spawn(status) WHERE status = 'cooling';
+CREATE INDEX IF NOT EXISTS idx_prepared_spawn_status_preparing ON prepared_spawn(status) WHERE status = 'preparing';
+
+-- ============================================================================
 -- SUCCESS MESSAGE
 -- ============================================================================
 -- If you see this, the schema was applied successfully!

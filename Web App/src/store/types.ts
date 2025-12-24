@@ -651,7 +651,28 @@ export interface Culture {
 // ============================================================================
 
 export type PreparedSpawnType = 'grain_jar' | 'lc_jar' | 'agar_plate' | 'slant_tube' | 'spawn_bag' | 'other';
-export type PreparedSpawnStatus = 'available' | 'reserved' | 'inoculated' | 'contaminated' | 'expired';
+
+// Status tracks the full preparation → inoculation workflow
+export type PreparedSpawnStatus =
+  | 'preparing'      // Being prepared (hydrating grain, mixing media)
+  | 'sterilizing'    // In pressure cooker / autoclave
+  | 'cooling'        // Just removed from PC, too hot to inoculate
+  | 'ready'          // Cooled, ready to be inoculated (was 'available')
+  | 'reserved'       // Reserved for a specific culture/grow
+  | 'inoculated'     // Has been inoculated, no longer available
+  | 'contaminated'   // Lost to contamination
+  | 'expired';       // Past viability date
+
+// Ingredient consumption record for cost tracking
+export interface IngredientUsage {
+  id: string;
+  inventoryItemId: string;      // Which inventory item was used
+  inventoryLotId?: string;      // Specific lot if tracked
+  quantity: number;             // How much was used
+  unit: string;                 // Unit of measure
+  unitCost?: number;            // Cost per unit at time of use
+  totalCost?: number;           // quantity * unitCost
+}
 
 export interface PreparedSpawn {
   id: string;
@@ -669,18 +690,34 @@ export interface PreparedSpawn {
   volumeMl?: number;             // Volume of media (for LC jars)
   weightGrams?: number;          // Weight of grain (for grain jars)
 
-  // Preparation
-  prepDate: Date;                // When it was prepared
-  sterilizationDate?: Date;      // When it was sterilized (may be same as prepDate)
+  // Preparation workflow
+  prepDate: Date;                // When preparation started
+  prepCompletedAt?: Date;        // When preparation finished (hydration done, loaded in PC)
+
+  // Sterilization tracking
+  sterilizationStartedAt?: Date; // When sterilization started
+  sterilizationDate?: Date;      // When sterilization completed (alias for backwards compat)
   sterilizationMethod?: string;  // e.g., "PC 15psi 90min", "Pre-sterilized"
+  sterilizationPressurePsi?: number;  // Pressure used
+  sterilizationDurationMins?: number; // Duration in minutes
+
+  // Cooling tracking (critical for inoculation timing)
+  coolingStartedAt?: Date;       // When removed from PC
+  cooledAt?: Date;               // When reached inoculation-safe temperature
+  currentTempC?: number;         // Current temperature (manual or IoT)
+  lastTempUpdateAt?: Date;       // When temperature was last updated
+  targetTempC?: number;          // Target temperature for inoculation (default ~25°C)
+
   expiresAt?: Date;              // Expiration/viability date
 
   // Location & tracking
   locationId: string;            // Where it's stored
   status: PreparedSpawnStatus;
 
-  // Cost tracking
-  productionCost?: number;       // Cost to produce (ingredients, labor)
+  // Ingredients consumed during preparation
+  ingredientsUsed?: IngredientUsage[];  // Track inventory items consumed
+  productionCost?: number;       // Total cost to produce (sum of ingredients + labor)
+  laborCost?: number;            // Manual labor cost entry
 
   // Linkage (when inoculated)
   inoculatedAt?: Date;           // When it was inoculated

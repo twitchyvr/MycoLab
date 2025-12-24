@@ -140,8 +140,24 @@ export const StockManagement: React.FC = () => {
   // Modal states
   const [showAddLotModal, setShowAddLotModal] = useState(false);
   const [showAddOrderModal, setShowAddOrderModal] = useState(false);
+  const [showEditLotModal, setShowEditLotModal] = useState(false);
   const [selectedLot, setSelectedLot] = useState<InventoryLot | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
+
+  // Edit lot form state
+  const [editLot, setEditLot] = useState({
+    quantity: 0,
+    unit: 'g',
+    supplierId: '',
+    purchaseDate: '',
+    purchaseCost: 0,
+    locationId: '',
+    expirationDate: '',
+    lotNumber: '',
+    images: [] as string[],
+    notes: '',
+    status: 'available' as LotStatus,
+  });
 
   // Form states
   const [newLot, setNewLot] = useState({
@@ -347,6 +363,48 @@ export const StockManagement: React.FC = () => {
     }));
   };
 
+  // Open edit lot modal
+  const openEditLot = (lot: InventoryLot) => {
+    setSelectedLot(lot);
+    setEditLot({
+      quantity: lot.quantity,
+      unit: lot.unit,
+      supplierId: lot.supplierId || '',
+      purchaseDate: lot.purchaseDate ? new Date(lot.purchaseDate).toISOString().split('T')[0] : '',
+      purchaseCost: lot.purchaseCost || 0,
+      locationId: lot.locationId || '',
+      expirationDate: lot.expirationDate ? new Date(lot.expirationDate).toISOString().split('T')[0] : '',
+      lotNumber: lot.lotNumber || '',
+      images: lot.images || [],
+      notes: lot.notes || '',
+      status: lot.status,
+    });
+    setShowEditLotModal(true);
+  };
+
+  // Update lot handler
+  const handleUpdateLot = async () => {
+    if (!guardAction()) return;
+    if (!selectedLot) return;
+
+    await updateInventoryLot(selectedLot.id, {
+      quantity: editLot.quantity,
+      unit: editLot.unit,
+      supplierId: editLot.supplierId || undefined,
+      purchaseDate: editLot.purchaseDate ? new Date(editLot.purchaseDate) : undefined,
+      purchaseCost: editLot.purchaseCost || undefined,
+      locationId: editLot.locationId || undefined,
+      expirationDate: editLot.expirationDate ? new Date(editLot.expirationDate) : undefined,
+      lotNumber: editLot.lotNumber || undefined,
+      images: editLot.images.length > 0 ? editLot.images : undefined,
+      notes: editLot.notes || undefined,
+      status: editLot.status,
+    });
+
+    setShowEditLotModal(false);
+    setSelectedLot(null);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -533,7 +591,7 @@ export const StockManagement: React.FC = () => {
                     <td className="p-3">
                       <div className="flex gap-1">
                         <button
-                          onClick={() => setSelectedLot(lot)}
+                          onClick={() => openEditLot(lot)}
                           className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded transition-colors"
                           title="Edit"
                         >
@@ -1014,6 +1072,167 @@ export const StockManagement: React.FC = () => {
                 className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
               >
                 Create Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Lot Modal */}
+      {showEditLotModal && selectedLot && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white">Edit Stock Lot</h3>
+              <button onClick={() => { setShowEditLotModal(false); setSelectedLot(null); }} className="text-zinc-400 hover:text-white">
+                <Icons.X />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Item name (read-only) */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-2">Item</label>
+                <p className="text-white font-medium">{getInventoryItem(selectedLot.inventoryItemId)?.name || 'Unknown'}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Quantity *</label>
+                  <input
+                    type="number"
+                    value={editLot.quantity || ''}
+                    onChange={e => setEditLot(prev => ({ ...prev, quantity: parseFloat(e.target.value) || 0 }))}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Unit</label>
+                  <select
+                    value={editLot.unit}
+                    onChange={e => setEditLot(prev => ({ ...prev, unit: e.target.value }))}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                  >
+                    <option value="g">Grams (g)</option>
+                    <option value="kg">Kilograms (kg)</option>
+                    <option value="lb">Pounds (lb)</option>
+                    <option value="oz">Ounces (oz)</option>
+                    <option value="ml">Milliliters (ml)</option>
+                    <option value="L">Liters (L)</option>
+                    <option value="ea">Each (ea)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-zinc-400 mb-2">Status</label>
+                <select
+                  value={editLot.status}
+                  onChange={e => setEditLot(prev => ({ ...prev, status: e.target.value as LotStatus }))}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                >
+                  {Object.entries(lotStatusConfig).map(([key, config]) => (
+                    <option key={key} value={key}>{config.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <StandardDropdown
+                label="Supplier"
+                value={editLot.supplierId}
+                onChange={value => setEditLot(prev => ({ ...prev, supplierId: value }))}
+                options={activeSuppliers}
+                placeholder="Select supplier..."
+                entityType="supplier"
+                fieldName="supplierId"
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Purchase Date</label>
+                  <input
+                    type="date"
+                    value={editLot.purchaseDate}
+                    onChange={e => setEditLot(prev => ({ ...prev, purchaseDate: e.target.value }))}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Cost ($)</label>
+                  <input
+                    type="number"
+                    value={editLot.purchaseCost || ''}
+                    onChange={e => setEditLot(prev => ({ ...prev, purchaseCost: parseFloat(e.target.value) || 0 }))}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                    step="0.01"
+                  />
+                </div>
+              </div>
+
+              <StandardDropdown
+                label="Location"
+                value={editLot.locationId}
+                onChange={value => setEditLot(prev => ({ ...prev, locationId: value }))}
+                options={activeLocations}
+                placeholder="Select location..."
+                entityType="location"
+                fieldName="locationId"
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Expiration Date</label>
+                  <input
+                    type="date"
+                    value={editLot.expirationDate}
+                    onChange={e => setEditLot(prev => ({ ...prev, expirationDate: e.target.value }))}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-zinc-400 mb-2">Lot Number</label>
+                  <input
+                    type="text"
+                    value={editLot.lotNumber}
+                    onChange={e => setEditLot(prev => ({ ...prev, lotNumber: e.target.value }))}
+                    placeholder="Manufacturer lot #"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+              </div>
+
+              <PhotoUpload
+                images={editLot.images}
+                onImagesChange={images => setEditLot(prev => ({ ...prev, images }))}
+              />
+
+              <div>
+                <label className="block text-sm text-zinc-400 mb-2">Notes</label>
+                <textarea
+                  value={editLot.notes}
+                  onChange={e => setEditLot(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={2}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => { setShowEditLotModal(false); setSelectedLot(null); }}
+                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateLot}
+                disabled={!editLot.quantity}
+                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium"
+              >
+                Save Changes
               </button>
             </div>
           </div>

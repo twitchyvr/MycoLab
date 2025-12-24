@@ -388,17 +388,17 @@ export const PressureCookingCalculator: React.FC = () => {
   const soundSelectorRef = React.useRef<HTMLDivElement>(null);
   const itemSelectorRef = React.useRef<HTMLDivElement>(null);
 
-  // Get prepared spawn that needs sterilization (not yet sterilized - no sterilization date)
+  // Get prepared spawn that needs sterilization (in 'preparing' status - not yet sterilized)
   const needsSterilizationSpawn = useMemo(() => {
     return state.preparedSpawn.filter(s =>
-      s.isActive && s.status === 'available' && !s.sterilizationDate
+      s.isActive && s.status === 'preparing'
     );
   }, [state.preparedSpawn]);
 
-  // Available prepared spawn that could be re-sterilized (already sterilized)
+  // Available prepared spawn that is ready (already sterilized and cooled)
   const availableSpawn = useMemo(() => {
     return state.preparedSpawn.filter(s =>
-      s.isActive && s.status === 'available' && s.sterilizationDate
+      s.isActive && s.status === 'ready'
     );
   }, [state.preparedSpawn]);
 
@@ -582,14 +582,15 @@ export const PressureCookingCalculator: React.FC = () => {
     const sterilizationMethod = `PC ${calculation.psi}psi ${calculation.minutes}min`;
     const sterilizationDate = new Date();
 
-    // Update all prepared spawn items that were sterilized
+    // Update all prepared spawn items that were sterilized - set to cooling status
     for (const item of sterilizationItems) {
       if (item.type === 'prepared_spawn' && item.refId) {
         try {
           await updatePreparedSpawn(item.refId, {
-            status: 'available',
+            status: 'cooling',
             sterilizationDate,
             sterilizationMethod,
+            coolingStartedAt: sterilizationDate,
           });
         } catch (error) {
           console.error('Failed to update prepared spawn:', error);
