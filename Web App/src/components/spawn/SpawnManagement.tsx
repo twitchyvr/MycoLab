@@ -10,10 +10,25 @@ import type {
   GrainSpawn,
   GrainSpawnStatus,
   GrainSpawnWorkflowStage,
+  PreparedSpawn,
+  PreparedSpawnStatus,
 } from '../../store/types';
 import { InoculateToGrainModal } from './InoculateToGrainModal';
 import { ShakeModal } from './ShakeModal';
 import { SpawnToBulkModal } from './SpawnToBulkModal';
+import { PrepareSpawnForm } from './PrepareSpawnForm';
+
+// Prepared spawn status config
+const preparedSpawnStatusConfig: Record<PreparedSpawnStatus, { label: string; color: string; icon: string }> = {
+  preparing: { label: 'Preparing', color: 'text-amber-400 bg-amber-950/50', icon: '🥣' },
+  sterilizing: { label: 'Sterilizing', color: 'text-red-400 bg-red-950/50', icon: '🔥' },
+  cooling: { label: 'Cooling', color: 'text-blue-400 bg-blue-950/50', icon: '❄️' },
+  ready: { label: 'Ready', color: 'text-emerald-400 bg-emerald-950/50', icon: '✓' },
+  reserved: { label: 'Reserved', color: 'text-purple-400 bg-purple-950/50', icon: '📌' },
+  inoculated: { label: 'Inoculated', color: 'text-green-400 bg-green-950/50', icon: '💉' },
+  contaminated: { label: 'Contaminated', color: 'text-red-400 bg-red-950/50', icon: '☠️' },
+  expired: { label: 'Expired', color: 'text-zinc-400 bg-zinc-800', icon: '⏰' },
+};
 
 // Status configurations
 const grainSpawnStatusConfig: Record<GrainSpawnStatus, { label: string; color: string; description: string }> = {
@@ -108,8 +123,31 @@ export const SpawnManagement: React.FC = () => {
 
   // Modal state
   const [showInoculateModal, setShowInoculateModal] = useState(false);
+  const [showPrepareModal, setShowPrepareModal] = useState(false);
   const [shakeModalSpawn, setShakeModalSpawn] = useState<GrainSpawn | null>(null);
   const [spawnToBulkSpawn, setSpawnToBulkSpawn] = useState<GrainSpawn | null>(null);
+  const [selectedPreparedSpawn, setSelectedPreparedSpawn] = useState<PreparedSpawn | null>(null);
+
+  // Tab state for prepared vs inoculated
+  const [activeTab, setActiveTab] = useState<'prepared' | 'inoculated'>('prepared');
+
+  // Get prepared spawn in workflow
+  const preparedSpawnInProgress = useMemo(() => {
+    return state.preparedSpawn.filter(ps =>
+      ps.isActive &&
+      ['preparing', 'sterilizing', 'cooling', 'ready'].includes(ps.status) &&
+      (ps.type === 'grain_jar' || ps.type === 'spawn_bag')
+    ).sort((a, b) => {
+      // Sort by status priority
+      const statusPriority: Record<string, number> = {
+        cooling: 0,  // Most urgent - needs attention
+        ready: 1,    // Ready to inoculate
+        sterilizing: 2,
+        preparing: 3,
+      };
+      return (statusPriority[a.status] ?? 99) - (statusPriority[b.status] ?? 99);
+    });
+  }, [state.preparedSpawn]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -374,38 +412,209 @@ export const SpawnManagement: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-100">Grain Spawn</h1>
-          <p className="text-zinc-400 mt-1">Track colonization from inoculation to spawn-to-bulk</p>
+          <p className="text-zinc-400 mt-1">Prepare, sterilize, and track spawn through colonization</p>
         </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowPrepareModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
+          >
+            <Icons.Plus />
+            <span>Prepare Spawn</span>
+          </button>
+          <button
+            onClick={() => setShowInoculateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
+          >
+            <Icons.Plus />
+            <span>Inoculate</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs: Prepared vs Inoculated */}
+      <div className="flex gap-1 p-1 bg-zinc-800/50 rounded-lg w-fit">
         <button
-          onClick={() => setShowInoculateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
+          onClick={() => setActiveTab('prepared')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'prepared'
+              ? 'bg-zinc-700 text-zinc-100'
+              : 'text-zinc-400 hover:text-zinc-200'
+          }`}
         >
-          <Icons.Plus />
-          <span>Inoculate Spawn</span>
+          Preparation ({preparedSpawnInProgress.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('inoculated')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'inoculated'
+              ? 'bg-zinc-700 text-zinc-100'
+              : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          Colonizing ({stats.active})
         </button>
       </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
-          <div className="text-2xl font-bold text-emerald-400">{stats.active}</div>
-          <div className="text-sm text-zinc-400">Active Batches</div>
-        </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
-          <div className="text-2xl font-bold text-cyan-400">{stats.colonizing}</div>
-          <div className="text-sm text-zinc-400">Colonizing</div>
-        </div>
-        <div className={`bg-zinc-900/50 border rounded-lg p-4 ${stats.shakeReady > 0 ? 'border-amber-700' : 'border-zinc-800'}`}>
-          <div className={`text-2xl font-bold ${stats.shakeReady > 0 ? 'text-amber-400' : 'text-zinc-400'}`}>{stats.shakeReady}</div>
-          <div className="text-sm text-zinc-400">Shake Ready</div>
-        </div>
-        <div className={`bg-zinc-900/50 border rounded-lg p-4 ${stats.ready > 0 ? 'border-emerald-700' : 'border-zinc-800'}`}>
-          <div className={`text-2xl font-bold ${stats.ready > 0 ? 'text-emerald-400' : 'text-zinc-400'}`}>{stats.ready}</div>
-          <div className="text-sm text-zinc-400">Ready to Spawn</div>
-        </div>
-      </div>
+      {/* Prepared Tab Content */}
+      {activeTab === 'prepared' && (
+        <>
+          {/* Prepared Spawn Workflow Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+              <div className="text-2xl font-bold text-amber-400">
+                {preparedSpawnInProgress.filter(ps => ps.status === 'preparing').length}
+              </div>
+              <div className="text-sm text-zinc-400">Preparing</div>
+            </div>
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+              <div className="text-2xl font-bold text-red-400">
+                {preparedSpawnInProgress.filter(ps => ps.status === 'sterilizing').length}
+              </div>
+              <div className="text-sm text-zinc-400">Sterilizing</div>
+            </div>
+            <div className="bg-zinc-900/50 border border-blue-800 rounded-lg p-4">
+              <div className="text-2xl font-bold text-blue-400">
+                {preparedSpawnInProgress.filter(ps => ps.status === 'cooling').length}
+              </div>
+              <div className="text-sm text-zinc-400">Cooling</div>
+            </div>
+            <div className="bg-zinc-900/50 border border-emerald-800 rounded-lg p-4">
+              <div className="text-2xl font-bold text-emerald-400">
+                {preparedSpawnInProgress.filter(ps => ps.status === 'ready').length}
+              </div>
+              <div className="text-sm text-zinc-400">Ready to Inoculate</div>
+            </div>
+          </div>
 
-      {/* Filters and Search */}
+          {/* Prepared Spawn List */}
+          {preparedSpawnInProgress.length === 0 ? (
+            <div className="text-center py-12 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+              <div className="text-6xl mb-4">📦</div>
+              <h3 className="text-lg font-medium text-zinc-300 mb-2">No Spawn in Preparation</h3>
+              <p className="text-zinc-500 mb-4">Start by preparing grain jars or bags</p>
+              <button
+                onClick={() => setShowPrepareModal(true)}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
+              >
+                Prepare Spawn
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {preparedSpawnInProgress.map(ps => {
+                const statusConfig = preparedSpawnStatusConfig[ps.status];
+                const container = state.containers.find(c => c.id === ps.containerId);
+                const grainType = ps.grainTypeId ? state.grainTypes.find(g => g.id === ps.grainTypeId) : null;
+
+                return (
+                  <div
+                    key={ps.id}
+                    className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 hover:border-zinc-700 transition-colors"
+                  >
+                    {/* Header */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-medium text-zinc-100">
+                          {ps.label || container?.name || 'Prepared Spawn'}
+                        </h3>
+                        <p className="text-sm text-zinc-400">
+                          {grainType?.name || ps.type.replace('_', ' ')}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs rounded-md flex items-center gap-1 ${statusConfig.color}`}>
+                        <span>{statusConfig.icon}</span>
+                        {statusConfig.label}
+                      </span>
+                    </div>
+
+                    {/* Details */}
+                    <div className="space-y-2 text-sm">
+                      {ps.containerCount > 1 && (
+                        <div className="flex justify-between text-zinc-400">
+                          <span>Containers:</span>
+                          <span className="text-zinc-200">{ps.containerCount}</span>
+                        </div>
+                      )}
+                      {ps.weightGrams && (
+                        <div className="flex justify-between text-zinc-400">
+                          <span>Weight:</span>
+                          <span className="text-zinc-200">{ps.weightGrams}g</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-zinc-400">
+                        <span>Prepared:</span>
+                        <span className="text-zinc-200">{format(ps.prepDate, 'MMM d')}</span>
+                      </div>
+                      {ps.currentTempC !== undefined && (
+                        <div className="flex justify-between text-zinc-400">
+                          <span>Temperature:</span>
+                          <span className={`${ps.currentTempC <= (ps.targetTempC || 25) ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            {ps.currentTempC}°C
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions based on status */}
+                    <div className="flex gap-2 mt-4">
+                      {ps.status === 'preparing' && (
+                        <button
+                          onClick={() => {/* Navigate to PC calculator */}}
+                          className="flex-1 px-3 py-1.5 text-xs bg-red-600 hover:bg-red-500 text-white rounded-md transition-colors"
+                        >
+                          Start Sterilization
+                        </button>
+                      )}
+                      {ps.status === 'cooling' && (
+                        <button
+                          onClick={() => setSelectedPreparedSpawn(ps)}
+                          className="flex-1 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors"
+                        >
+                          Update Temperature
+                        </button>
+                      )}
+                      {ps.status === 'ready' && (
+                        <button
+                          onClick={() => setShowInoculateModal(true)}
+                          className="flex-1 px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition-colors"
+                        >
+                          Inoculate
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Inoculated Tab Content */}
+      {activeTab === 'inoculated' && (
+        <>
+          {/* Stats Summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+              <div className="text-2xl font-bold text-emerald-400">{stats.active}</div>
+              <div className="text-sm text-zinc-400">Active Batches</div>
+            </div>
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+              <div className="text-2xl font-bold text-cyan-400">{stats.colonizing}</div>
+              <div className="text-sm text-zinc-400">Colonizing</div>
+            </div>
+            <div className={`bg-zinc-900/50 border rounded-lg p-4 ${stats.shakeReady > 0 ? 'border-amber-700' : 'border-zinc-800'}`}>
+              <div className={`text-2xl font-bold ${stats.shakeReady > 0 ? 'text-amber-400' : 'text-zinc-400'}`}>{stats.shakeReady}</div>
+              <div className="text-sm text-zinc-400">Shake Ready</div>
+            </div>
+            <div className={`bg-zinc-900/50 border rounded-lg p-4 ${stats.ready > 0 ? 'border-emerald-700' : 'border-zinc-800'}`}>
+              <div className={`text-2xl font-bold ${stats.ready > 0 ? 'text-emerald-400' : 'text-zinc-400'}`}>{stats.ready}</div>
+              <div className="text-sm text-zinc-400">Ready to Spawn</div>
+            </div>
+          </div>
+
+          {/* Filters and Search */}
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Search */}
         <div className="flex-1 relative">
@@ -501,6 +710,8 @@ export const SpawnManagement: React.FC = () => {
             </span>
           )}
         </div>
+      )}
+        </>
       )}
 
       {/* Detail Modal */}
@@ -604,6 +815,11 @@ export const SpawnManagement: React.FC = () => {
           initialGrainSpawn={spawnToBulkSpawn}
         />
       )}
+
+      <PrepareSpawnForm
+        isOpen={showPrepareModal}
+        onClose={() => setShowPrepareModal(false)}
+      />
     </div>
   );
 };
