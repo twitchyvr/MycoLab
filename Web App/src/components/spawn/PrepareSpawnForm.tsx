@@ -3,15 +3,18 @@
 // Form for preparing grain spawn - select ingredients, containers, create PreparedSpawn
 // ============================================================================
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
-import type { PreparedSpawn, IngredientUsage } from '../../store/types';
+import type { PreparedSpawn, IngredientUsage, InventoryLot } from '../../store/types';
 
 interface PrepareSpawnFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (preparedSpawn: PreparedSpawn) => void;
 }
+
+// Container category ID from seed data
+const CONTAINERS_CATEGORY_ID = '00000000-0000-0000-0005-000000000004';
 
 // Icons
 const Icons = {
@@ -43,7 +46,9 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
     activeInventoryLots,
     getInventoryItem,
     getInventoryCategory,
+    getContainer,
     addPreparedSpawn,
+    adjustLotQuantity,
     generateId,
   } = useData();
 
@@ -52,6 +57,7 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
   const [label, setLabel] = useState('');
   const [containerId, setContainerId] = useState('');
   const [containerCount, setContainerCount] = useState(1);
+  const [containerInventoryLotId, setContainerInventoryLotId] = useState<string>(''); // Track which inventory lot to decrement
   const [grainTypeId, setGrainTypeId] = useState('');
   const [weightGrams, setWeightGrams] = useState<string>('');
   const [locationId, setLocationId] = useState('');
@@ -86,6 +92,68 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
              catName.includes('supplement');
     });
   }, [activeInventoryItems, getInventoryCategory]);
+
+  // Container inventory items (items in the Containers category)
+  const containerInventoryItems = useMemo(() => {
+    return activeInventoryItems.filter(item => item.categoryId === CONTAINERS_CATEGORY_ID);
+  }, [activeInventoryItems]);
+
+  // Find inventory items matching the selected container type
+  const matchingContainerInventory = useMemo(() => {
+    if (!containerId) return [];
+    const container = getContainer(containerId);
+    if (!container) return [];
+
+    // Find inventory items that match by name or volume
+    return containerInventoryItems.filter(item => {
+      const itemName = item.name.toLowerCase();
+      const containerName = container.name.toLowerCase();
+      // Match by name similarity or if item name contains container name parts
+      return itemName.includes(containerName) ||
+             containerName.includes(itemName) ||
+             (container.volumeMl && itemName.includes(`${container.volumeMl}ml`));
+    });
+  }, [containerId, containerInventoryItems, getContainer]);
+
+  // Get available lots for container inventory items
+  const containerInventoryLots = useMemo(() => {
+    const lots: (InventoryLot & { itemName: string })[] = [];
+    matchingContainerInventory.forEach(item => {
+      activeInventoryLots
+        .filter(lot =>
+          lot.inventoryItemId === item.id &&
+          lot.quantity > 0 &&
+          (lot.status === 'available' || lot.status === 'low')
+        )
+        .forEach(lot => {
+          lots.push({ ...lot, itemName: item.name });
+        });
+    });
+    return lots;
+  }, [matchingContainerInventory, activeInventoryLots]);
+
+  // Calculate per-unit container cost from selected lot
+  const containerUnitCost = useMemo(() => {
+    if (!containerInventoryLotId) return 0;
+    const lot = activeInventoryLots.find(l => l.id === containerInventoryLotId);
+    if (!lot || !lot.purchaseCost || !lot.originalQuantity) return 0;
+    return lot.purchaseCost / lot.originalQuantity;
+  }, [containerInventoryLotId, activeInventoryLots]);
+
+  // Total container cost for the batch
+  const totalContainerCost = containerUnitCost * containerCount;
+
+  // Get available quantity from selected container lot
+  const availableContainerQuantity = useMemo(() => {
+    if (!containerInventoryLotId) return null;
+    const lot = activeInventoryLots.find(l => l.id === containerInventoryLotId);
+    return lot?.quantity ?? null;
+  }, [containerInventoryLotId, activeInventoryLots]);
+
+  // Reset container inventory lot when container type changes
+  useEffect(() => {
+    setContainerInventoryLotId('');
+  }, [containerId]);
 
   // Get available lots for a specific item
   const getLotsForItem = (itemId: string) => {
@@ -174,10 +242,34 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
           };
         });
 
-      // Calculate production cost
+      // Calculate production cost (ingredients + containers + labor)
       const ingredientCost = ingredientsUsed.reduce((sum, ing) => sum + (ing.totalCost || 0), 0);
       const labor = parseFloat(laborCost) || 0;
-      const productionCost = ingredientCost + labor;
+      const productionCost = ingredientCost + totalContainerCost + labor;
+
+      // Decrement container inventory if a lot was selected
+      if (containerInventoryLotId && containerCount > 0) {
+        await adjustLotQuantity(
+          containerInventoryLotId,
+          -containerCount, // Negative to decrement
+          'spawn_preparation',
+          undefined, // Will be filled with spawn ID after creation
+          `Prepared spawn: ${label || spawnType}`
+        );
+      }
+
+      // Decrement ingredient lots
+      for (const ing of ingredientsUsed) {
+        if (ing.inventoryLotId && ing.quantity > 0) {
+          await adjustLotQuantity(
+            ing.inventoryLotId,
+            -ing.quantity,
+            'spawn_preparation',
+            undefined,
+            `Prepared spawn: ${label || spawnType}`
+          );
+        }
+      }
 
       const newSpawn = await addPreparedSpawn({
         type: spawnType,
@@ -307,12 +399,62 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
               <input
                 type="number"
                 min="1"
+                max={availableContainerQuantity ?? undefined}
                 value={containerCount}
                 onChange={(e) => setContainerCount(parseInt(e.target.value) || 1)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
               />
             </div>
           </div>
+
+          {/* Container Inventory Selection - shows matching inventory lots */}
+          {containerId && containerInventoryLots.length > 0 && (
+            <div className="p-3 bg-emerald-950/30 border border-emerald-800/50 rounded-lg">
+              <label className="block text-sm font-medium text-emerald-300 mb-2">
+                📦 Use from Inventory
+              </label>
+              <select
+                value={containerInventoryLotId}
+                onChange={(e) => setContainerInventoryLotId(e.target.value)}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+              >
+                <option value="">Don't track inventory...</option>
+                {containerInventoryLots.map(lot => (
+                  <option key={lot.id} value={lot.id}>
+                    {lot.itemName} - {lot.quantity} available
+                    {lot.purchaseCost && lot.originalQuantity
+                      ? ` ($${(lot.purchaseCost / lot.originalQuantity).toFixed(2)} each)`
+                      : ''}
+                  </option>
+                ))}
+              </select>
+              {containerInventoryLotId && availableContainerQuantity !== null && (
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-zinc-400">
+                    Available: <span className="text-emerald-400 font-medium">{availableContainerQuantity}</span>
+                    {containerCount > availableContainerQuantity && (
+                      <span className="text-red-400 ml-2">⚠️ Not enough!</span>
+                    )}
+                  </span>
+                  {containerUnitCost > 0 && (
+                    <span className="text-zinc-400">
+                      Cost: <span className="text-emerald-400">${totalContainerCost.toFixed(2)}</span>
+                      <span className="text-zinc-500 text-xs ml-1">
+                        (${containerUnitCost.toFixed(2)} × {containerCount})
+                      </span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* No matching inventory info */}
+          {containerId && containerInventoryLots.length === 0 && (
+            <div className="p-3 bg-zinc-800/50 border border-zinc-700 border-dashed rounded-lg text-sm text-zinc-500">
+              <p>💡 No matching containers in inventory. Add containers to your inventory to track usage automatically.</p>
+            </div>
+          )}
 
           {/* Label */}
           <div>
@@ -528,10 +670,16 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
           </div>
 
           {/* Cost Summary */}
-          {(totalIngredientCost > 0 || parseFloat(laborCost) > 0) && (
+          {(totalIngredientCost > 0 || totalContainerCost > 0 || parseFloat(laborCost) > 0) && (
             <div className="p-3 bg-zinc-800/50 border border-zinc-700 rounded-lg">
               <h4 className="text-sm font-medium text-zinc-300 mb-2">Cost Summary</h4>
               <div className="space-y-1 text-sm">
+                {totalContainerCost > 0 && (
+                  <div className="flex justify-between text-zinc-400">
+                    <span>Containers ({containerCount}×):</span>
+                    <span>${totalContainerCost.toFixed(2)}</span>
+                  </div>
+                )}
                 {totalIngredientCost > 0 && (
                   <div className="flex justify-between text-zinc-400">
                     <span>Ingredients:</span>
@@ -546,12 +694,12 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
                 )}
                 <div className="flex justify-between text-zinc-200 font-medium pt-1 border-t border-zinc-700">
                   <span>Total:</span>
-                  <span>${(totalIngredientCost + (parseFloat(laborCost) || 0)).toFixed(2)}</span>
+                  <span>${(totalContainerCost + totalIngredientCost + (parseFloat(laborCost) || 0)).toFixed(2)}</span>
                 </div>
                 {containerCount > 1 && (
                   <div className="flex justify-between text-zinc-500 text-xs">
                     <span>Per container:</span>
-                    <span>${((totalIngredientCost + (parseFloat(laborCost) || 0)) / containerCount).toFixed(2)}</span>
+                    <span>${((totalContainerCost + totalIngredientCost + (parseFloat(laborCost) || 0)) / containerCount).toFixed(2)}</span>
                   </div>
                 )}
               </div>

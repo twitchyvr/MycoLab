@@ -5994,6 +5994,48 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-902',
+    phaseId: 30,
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Container Inventory Integration in Spawn Preparation',
+    description: 'PrepareSpawnForm now integrates with container inventory, allowing users to select containers from their tracked inventory. Automatically decrements container stock and calculates per-unit costs.',
+    notes: `Enhanced spawn preparation with container inventory tracking:
+
+**1. Container Inventory Selection:**
+- When preparing spawn, user can select container type (e.g., "1L Mason Jar")
+- Form finds matching inventory items in the Containers category
+- Shows available lots with quantities and per-unit costs
+- Example: "Mason Jars - 8 available ($2.50 each)"
+
+**2. Automatic Cost Calculation:**
+- Per-unit container cost calculated from lot's purchaseCost/originalQuantity
+- Container cost × count added to production cost
+- Cost summary shows: Containers, Ingredients, Labor, Total
+- Per-container cost breakdown for batch preparations
+
+**3. Inventory Decrement:**
+- When spawn is created, container lot is automatically decremented
+- Uses adjustLotQuantity with 'spawn_preparation' usage type
+- Ingredient lots also decremented with same pattern
+- Creates audit trail in inventory_usages table
+
+**4. Usage Type Addition:**
+- Added 'spawn_preparation' to UsageType union
+- Enables proper tracking of spawn prep usage in analytics
+
+**5. Validation:**
+- Shows warning if requested count > available quantity
+- Maximum container count limited to available quantity
+
+**Files Changed:**
+- src/components/spawn/PrepareSpawnForm.tsx - Container inventory integration
+- src/store/types.ts - Added 'spawn_preparation' to UsageType`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

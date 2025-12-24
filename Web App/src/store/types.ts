@@ -530,7 +530,7 @@ export interface PurchaseOrder {
 // INVENTORY USAGE TYPES - Track what's used from which lot
 // ============================================================================
 
-export type UsageType = 'recipe' | 'grow' | 'culture' | 'waste' | 'adjustment' | 'other';
+export type UsageType = 'recipe' | 'grow' | 'culture' | 'spawn_preparation' | 'waste' | 'adjustment' | 'other';
 
 export interface InventoryUsage {
   id: string;
