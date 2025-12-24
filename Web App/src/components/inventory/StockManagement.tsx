@@ -554,6 +554,9 @@ export const StockManagement: React.FC = () => {
                 const location = lot.locationId ? getLocation(lot.locationId) : null;
                 const statusConfig = lotStatusConfig[lot.status];
                 const percentRemaining = Math.round((lot.quantity / lot.originalQuantity) * 100);
+                const availableQty = lot.quantity - (lot.inUseQuantity || 0);
+                const hasInUse = (lot.inUseQuantity || 0) > 0;
+                const unitCost = lot.unitCost || (lot.purchaseCost && lot.originalQuantity ? lot.purchaseCost / lot.originalQuantity : 0);
 
                 return (
                   <tr key={lot.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
@@ -563,8 +566,19 @@ export const StockManagement: React.FC = () => {
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-white">{lot.quantity} {lot.unit}</span>
-                        <span className="text-xs text-zinc-500">/ {lot.originalQuantity}</span>
+                        {hasInUse ? (
+                          <>
+                            <span className="font-medium text-emerald-400">{availableQty}</span>
+                            <span className="text-zinc-500">/</span>
+                            <span className="text-blue-400">{lot.inUseQuantity} in use</span>
+                            <span className="text-xs text-zinc-500">({lot.quantity} {lot.unit})</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-medium text-white">{lot.quantity} {lot.unit}</span>
+                            <span className="text-xs text-zinc-500">/ {lot.originalQuantity}</span>
+                          </>
+                        )}
                       </div>
                       <div className="w-20 h-1.5 bg-zinc-700 rounded-full overflow-hidden mt-1">
                         <div
@@ -587,7 +601,14 @@ export const StockManagement: React.FC = () => {
                       {lot.expirationDate ? new Date(lot.expirationDate).toLocaleDateString() : '-'}
                     </td>
                     <td className="p-3 text-sm text-white">
-                      {lot.purchaseCost ? `$${lot.purchaseCost.toFixed(2)}` : '-'}
+                      {lot.purchaseCost ? (
+                        <div>
+                          <span>${lot.purchaseCost.toFixed(2)}</span>
+                          {unitCost > 0 && (
+                            <span className="block text-xs text-zinc-500">${unitCost.toFixed(2)}/ea</span>
+                          )}
+                        </div>
+                      ) : '-'}
                     </td>
                     <td className="p-3">
                       <div className="flex gap-1">

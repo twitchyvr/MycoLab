@@ -6099,6 +6099,46 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  {
+    id: 'dev-906',
+    status: 'in_progress',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 2 UI Integration',
+    description: 'UI updates for inventory system rebuild: stock management display, item behavior forms, and auto-instance creation.',
+    notes: `Phase 2 of inventory system rebuild - UI integration:
+
+**1. StockManagement UI Updates:**
+- Shows available vs in-use counts for lots
+- Green/blue color coding: "5 available / 3 in use (8 total)"
+- Per-unit cost display below total cost
+- Progress bar still shows overall remaining percentage
+
+**2. InventoryItem Form Enhancements:**
+- New "Item Type" dropdown with behavior options
+- Container/equipment items show instance tracking options
+- Checkboxes for: trackInstances, isSterilizable, holdsContents
+- Auto-sets default properties based on selected behavior
+
+**3. Auto-Instance Creation:**
+- receiveOrder now checks item behavior
+- Containers and equipment automatically get instances created
+- Uses createInstancesFromLot to generate individual tracking records
+- Each instance gets calculated unit cost from lot
+
+**4. Transformation Updates:**
+- InventoryItem FromDb/ToDb handle itemBehavior and itemProperties
+- JSONB parsing for itemProperties with fallback handling
+
+**Files Changed:**
+- src/components/inventory/StockManagement.tsx - available/in-use display
+- src/components/forms/InventoryItemForm.tsx - itemBehavior fields
+- src/store/DataContext.tsx - receiveOrder instance creation
+- src/store/transformations.ts - InventoryItem field mapping`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

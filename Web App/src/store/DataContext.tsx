@@ -4048,7 +4048,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     for (const item of order.items) {
       const receivedQty = receivedItems?.find(r => r.itemId === item.id)?.quantity ?? item.quantity;
       if (receivedQty > 0) {
-        await addInventoryLot({
+        const newLot = await addInventoryLot({
           inventoryItemId: item.inventoryItemId || generateId('inv'),
           quantity: receivedQty,
           originalQuantity: receivedQty,
@@ -4061,9 +4061,23 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           purchaseCost: item.unitCost * receivedQty,
           isActive: true,
         });
+
+        // Check if this item should have instances created (containers, reusable items)
+        const inventoryItem = state.inventoryItems.find(i => i.id === item.inventoryItemId);
+        if (inventoryItem) {
+          const shouldTrackInstances =
+            inventoryItem.itemBehavior === 'container' ||
+            inventoryItem.itemBehavior === 'equipment' ||
+            inventoryItem.itemProperties?.trackInstances;
+
+          if (shouldTrackInstances && receivedQty > 0) {
+            // Create individual instances for tracking
+            await createInstancesFromLot(newLot.id, receivedQty);
+          }
+        }
       }
     }
-  }, [state.purchaseOrders, updatePurchaseOrder, addInventoryLot, generateId]);
+  }, [state.purchaseOrders, state.inventoryItems, updatePurchaseOrder, addInventoryLot, createInstancesFromLot, generateId]);
 
   // ============================================================================
   // SETTINGS

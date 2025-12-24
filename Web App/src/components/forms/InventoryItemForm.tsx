@@ -6,6 +6,7 @@ import React from 'react';
 import { useData } from '../../store';
 import { StandardDropdown } from '../common/StandardDropdown';
 import { NumericInput } from '../common/NumericInput';
+import type { ItemBehavior, ItemProperties } from '../../store/types';
 
 export interface InventoryItemFormData {
   name: string;
@@ -17,7 +18,17 @@ export interface InventoryItemFormData {
   reorderQty?: number;
   notes?: string;
   isActive: boolean;
+  itemBehavior?: ItemBehavior;
+  itemProperties?: ItemProperties;
 }
+
+const ITEM_BEHAVIOR_OPTIONS: { value: ItemBehavior; label: string; description: string }[] = [
+  { value: 'consumable', label: 'Consumable', description: 'Gets used up (grains, agar powder, chemicals)' },
+  { value: 'container', label: 'Container', description: 'Holds things (jars, bags, plates) - tracked individually' },
+  { value: 'equipment', label: 'Equipment', description: 'Lab tools (scales, flow hoods) - tracked individually' },
+  { value: 'supply', label: 'Supply', description: 'Disposable supplies (gloves, wipes, parafilm)' },
+  { value: 'surface', label: 'Surface', description: 'Work surfaces (SAB, tables) - tracked for cleaning' },
+];
 
 interface InventoryItemFormProps {
   data: InventoryItemFormData;
@@ -78,6 +89,88 @@ export const InventoryItemForm: React.FC<InventoryItemFormProps> = ({
         fieldName="categoryId"
         helpText="Group similar items together (e.g., Grains, Substrates, Lab Supplies)"
       />
+
+      {/* Item Behavior */}
+      <div>
+        <label className="block text-sm text-zinc-400 mb-2">Item Type</label>
+        <select
+          value={data.itemBehavior || ''}
+          onChange={e => {
+            const behavior = e.target.value as ItemBehavior | '';
+            onChange({
+              itemBehavior: behavior || undefined,
+              // Set default properties based on behavior
+              itemProperties: behavior ? {
+                ...data.itemProperties,
+                unitType: behavior === 'container' || behavior === 'equipment' || behavior === 'surface' ? 'countable' : 'weight',
+                defaultUnit: behavior === 'container' || behavior === 'equipment' ? 'ea' : data.unit || 'g',
+                trackInstances: behavior === 'container' || behavior === 'equipment',
+                isReusable: behavior === 'container' || behavior === 'equipment' || behavior === 'surface',
+                isSterilizable: behavior === 'container',
+                holdsContents: behavior === 'container',
+              } : undefined,
+            });
+          }}
+          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+        >
+          <option value="">Select item type...</option>
+          {ITEM_BEHAVIOR_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {data.itemBehavior && (
+          <p className="text-xs text-zinc-500 mt-1">
+            {ITEM_BEHAVIOR_OPTIONS.find(o => o.value === data.itemBehavior)?.description}
+          </p>
+        )}
+      </div>
+
+      {/* Instance Tracking Options (for containers/equipment) */}
+      {(data.itemBehavior === 'container' || data.itemBehavior === 'equipment') && (
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 space-y-2">
+          <p className="text-sm text-emerald-400 font-medium">Instance Tracking</p>
+          <p className="text-xs text-zinc-400 mb-2">
+            Individual items will be tracked (e.g., "Jar #1", "Jar #2"). Each item's status, usage, and cost are recorded.
+          </p>
+          <label className="flex items-center gap-2 text-sm text-zinc-300">
+            <input
+              type="checkbox"
+              checked={data.itemProperties?.trackInstances ?? true}
+              onChange={e => onChange({
+                itemProperties: { ...data.itemProperties, trackInstances: e.target.checked, unitType: data.itemProperties?.unitType || 'countable', defaultUnit: data.itemProperties?.defaultUnit || 'ea' }
+              })}
+              className="rounded border-zinc-600 bg-zinc-700 text-emerald-500 focus:ring-emerald-500"
+            />
+            Track individual instances
+          </label>
+          {data.itemBehavior === 'container' && (
+            <>
+              <label className="flex items-center gap-2 text-sm text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={data.itemProperties?.isSterilizable ?? true}
+                  onChange={e => onChange({
+                    itemProperties: { ...data.itemProperties, isSterilizable: e.target.checked, unitType: data.itemProperties?.unitType || 'countable', defaultUnit: data.itemProperties?.defaultUnit || 'ea' }
+                  })}
+                  className="rounded border-zinc-600 bg-zinc-700 text-emerald-500 focus:ring-emerald-500"
+                />
+                Can be sterilized (PC, autoclave)
+              </label>
+              <label className="flex items-center gap-2 text-sm text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={data.itemProperties?.holdsContents ?? true}
+                  onChange={e => onChange({
+                    itemProperties: { ...data.itemProperties, holdsContents: e.target.checked, unitType: data.itemProperties?.unitType || 'countable', defaultUnit: data.itemProperties?.defaultUnit || 'ea' }
+                  })}
+                  className="rounded border-zinc-600 bg-zinc-700 text-emerald-500 focus:ring-emerald-500"
+                />
+                Holds contents (LC, agar, spawn)
+              </label>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         {/* Unit */}
