@@ -6139,6 +6139,48 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  {
+    id: 'dev-907',
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 3 Instance Management UI',
+    description: 'New instance management page to view and manage individual container/equipment instances.',
+    notes: `Phase 3 of inventory system rebuild - Instance Management UI:
+
+**1. New InstanceManagement Component:**
+- Lists all tracked instances grouped by inventory item
+- Expandable sections for each item type
+- Shows instance number, label, status, cost, and usage info
+
+**2. Instance Status Management:**
+- Color-coded status badges (available, in_use, sterilized, dirty, damaged, disposed)
+- Status change dropdown menu
+- Handles releaseInstance for returning to available
+
+**3. Filtering & Search:**
+- Search by item name, instance number, or label
+- Filter by status chips
+- Filter by specific inventory item
+
+**4. Stats Dashboard:**
+- Total instances count
+- Available/in-use/dirty breakdown
+- Color-coded summary badges
+
+**5. Integration:**
+- Added 'Containers' nav item in Resources group
+- New /instances route
+- Container icon added to icon library
+
+**Files Changed:**
+- src/components/inventory/InstanceManagement.tsx - New component
+- src/components/icons/IconLibrary.tsx - Added Container icon
+- src/App.tsx - Added instances page, route, and nav item`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
