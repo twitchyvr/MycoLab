@@ -405,6 +405,124 @@ export type AssetType =
   | 'durable'         // Reusable items - partial depreciation to grows (e.g., monotubs, jars)
   | 'culture_source'; // Purchased cultures - cost tracked per-use (e.g., LC syringe, spore print)
 
+// ============================================================================
+// SMART ITEM CLASSIFICATION - Context-aware inventory properties
+// ============================================================================
+
+/**
+ * ItemBehavior - Determines how an item behaves in the lab
+ * This affects unit types, tracking methods, and available actions
+ */
+export type ItemBehavior =
+  | 'container'       // Holds things: jars, bags, plates, tubes. Unit: each. Tracked as instances.
+  | 'consumable'      // Gets used up: grains, agar powder, chemicals. Unit: weight/volume. Depletes.
+  | 'equipment'       // Lab tools: scales, flow hoods, PC. Unit: each. Tracked but not consumed.
+  | 'supply'          // Disposable supplies: gloves, wipes, parafilm. Unit: each/box. Depletes.
+  | 'surface';        // Work surfaces: SAB, table, shelving. Unit: each. Tracked for cleaning.
+
+/**
+ * UnitType - Determines valid units for an item
+ * Auto-derived from ItemBehavior, can be overridden
+ */
+export type UnitType =
+  | 'countable'   // Units: each, pair, set, box, pack
+  | 'weight'      // Units: g, kg, oz, lb
+  | 'volume';     // Units: ml, L, fl oz, gal
+
+/**
+ * ContainerMaterial - For containers, what they're made of
+ * Affects sterilizability and reusability
+ */
+export type ContainerMaterial =
+  | 'glass'       // Sterilizable, reusable (mason jars, bottles)
+  | 'plastic'     // Some sterilizable, some disposable (bags, petri dishes)
+  | 'metal'       // Sterilizable, reusable (lids, tools)
+  | 'silicone'    // Heat resistant, reusable (gaskets, mats)
+  | 'other';
+
+/**
+ * InstanceStatus - For reusable items, tracks individual unit lifecycle
+ */
+export type InstanceStatus =
+  | 'available'     // Ready to use
+  | 'in_use'        // Currently holding contents (linked to entity)
+  | 'sterilized'    // Sterilized and cooling/ready
+  | 'dirty'         // Needs cleaning before reuse
+  | 'damaged'       // Broken/cracked, needs repair or disposal
+  | 'disposed';     // No longer in inventory
+
+/**
+ * InstanceUsageRef - Links an instance to what's using it
+ */
+export interface InstanceUsageRef {
+  entityType: 'prepared_spawn' | 'culture' | 'grow' | 'recipe_batch';
+  entityId: string;
+  entityLabel?: string;  // Display name (e.g., "LC-241212-001")
+  usedAt: Date;
+}
+
+/**
+ * ItemProperties - Smart properties derived from or set on an item
+ */
+export interface ItemProperties {
+  // Container-specific
+  isSterilizable?: boolean;   // Can be autoclaved/pressure cooked
+  isReusable?: boolean;       // Can be cleaned and reused
+  holdsContents?: boolean;    // Can contain cultures, grains, etc.
+  material?: ContainerMaterial;
+
+  // Derived from behavior (can be overridden)
+  unitType: UnitType;
+  defaultUnit: string;        // 'each', 'g', 'ml', etc.
+
+  // Tracking preferences
+  trackInstances?: boolean;   // Create individual instance records
+}
+
+/**
+ * LabItemInstance - Individual trackable unit of a reusable item
+ * For containers: each jar/bag/plate gets an instance when used
+ */
+export interface LabItemInstance {
+  id: string;
+  inventoryItemId: string;    // Parent item definition
+  inventoryLotId: string;     // Which lot this came from (for cost tracking)
+
+  // Identity
+  instanceNumber: number;     // 1, 2, 3... for "Jar #1", "Jar #2"
+  label?: string;             // Custom label (e.g., "Blue Lid Jar")
+
+  // Status
+  status: InstanceStatus;
+  usageRef?: InstanceUsageRef; // What's using this instance (if in_use)
+
+  // Cost tracking
+  unitCost: number;           // Calculated from lot: purchaseCost / originalQuantity
+
+  // Lifecycle tracking
+  acquisitionDate: Date;      // When this instance was added
+  usageCount: number;         // How many times used (for reusables)
+  lastUsedAt?: Date;
+  lastCleanedAt?: Date;
+  lastSterilizedAt?: Date;
+
+  // Location
+  locationId?: string;
+
+  // Condition
+  conditionNotes?: string;    // "Small chip on rim", etc.
+  images?: string[];
+
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isActive: boolean;
+}
+
+// ============================================================================
+// INVENTORY ITEM - Enhanced with smart properties
+// ============================================================================
+
 export interface InventoryItem {
   id: string;
   name: string;
@@ -434,6 +552,10 @@ export interface InventoryItem {
 
   // Notification control
   notificationsMuted?: boolean;   // Mute low stock/expiring notifications for this item
+
+  // Smart item classification (new)
+  itemBehavior?: ItemBehavior;    // What kind of item is this? Default: inferred from category
+  itemProperties?: ItemProperties; // Context-aware properties
 }
 
 // ============================================================================
@@ -445,16 +567,22 @@ export type LotStatus = 'available' | 'low' | 'empty' | 'expired' | 'reserved';
 export interface InventoryLot {
   id: string;
   inventoryItemId: string;  // Parent item (e.g., "Light Malt Extract")
-  quantity: number;         // Current quantity (e.g., 3.42)
+  quantity: number;         // Current AVAILABLE quantity (e.g., 3.42)
   originalQuantity: number; // Starting quantity (e.g., 5.0)
   unit: string;             // Unit of measure (e.g., "lb", "g", "ml")
   status: LotStatus;
+
+  // In-use tracking (for reusable items like containers)
+  inUseQuantity: number;    // How many are currently in use (default: 0)
 
   // Purchase info
   purchaseOrderId?: string;
   supplierId?: string;
   purchaseDate?: Date;
   purchaseCost?: number;
+
+  // Calculated cost (auto-computed)
+  unitCost?: number;        // purchaseCost / originalQuantity
 
   // Tracking
   locationId?: string;
@@ -1611,6 +1739,7 @@ export interface DataStoreState {
   // Core entities
   inventoryItems: InventoryItem[];
   inventoryLots: InventoryLot[];
+  labItemInstances: LabItemInstance[]; // Individual tracked instances (for containers, equipment)
   inventoryUsages: InventoryUsage[];
   purchaseOrders: PurchaseOrder[];
   cultures: Culture[];
@@ -2297,6 +2426,7 @@ export interface LookupHelpers {
   getGrainType: (id: string) => GrainType | undefined;
   getInventoryItem: (id: string) => InventoryItem | undefined;
   getInventoryLot: (id: string) => InventoryLot | undefined;
+  getLabItemInstance: (id: string) => LabItemInstance | undefined;
   getPurchaseOrder: (id: string) => PurchaseOrder | undefined;
   getCulture: (id: string) => Culture | undefined;
   getPreparedSpawn: (id: string) => PreparedSpawn | undefined;
@@ -2318,6 +2448,9 @@ export interface LookupHelpers {
   activeGrainTypes: GrainType[];
   activeInventoryItems: InventoryItem[];
   activeInventoryLots: InventoryLot[];
+  activeLabItemInstances: LabItemInstance[];      // All active instances
+  availableLabItemInstances: LabItemInstance[];   // Instances with status='available'
+  inUseLabItemInstances: LabItemInstance[];       // Instances with status='in_use'
   activePurchaseOrders: PurchaseOrder[];
   activeRecipes: Recipe[];
   availablePreparedSpawn: PreparedSpawn[];  // PreparedSpawn with status='available'

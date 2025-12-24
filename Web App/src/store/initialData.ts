@@ -1221,6 +1221,7 @@ export const initialDataState: DataStoreState = {
   inventoryItems: initialInventoryItems,
   inventoryLots: [],
   inventoryUsages: [],
+  labItemInstances: [],
   purchaseOrders: [],
   cultures: initialCultures,
   preparedSpawn: [],

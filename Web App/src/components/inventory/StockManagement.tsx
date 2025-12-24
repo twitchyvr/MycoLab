@@ -249,6 +249,7 @@ export const StockManagement: React.FC = () => {
       inventoryItemId: newLot.inventoryItemId,
       quantity: newLot.quantity,
       originalQuantity: newLot.quantity,
+      inUseQuantity: 0,
       unit: newLot.unit,
       status: 'available',
       supplierId: newLot.supplierId || undefined,

@@ -109,10 +109,12 @@ export const SpawnManagement: React.FC = () => {
     getStrain,
     getLocation,
     getGrainType,
+    getContainer,
     shakeGrainSpawn,
     markGrainSpawnFullyColonized,
     markGrainSpawnContaminated,
     deleteGrainSpawn,
+    updatePreparedSpawn,
   } = useData();
 
   // State

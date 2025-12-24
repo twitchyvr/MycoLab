@@ -16,6 +16,7 @@ import {
   InventoryCategory,
   InventoryItem,
   InventoryLot,
+  LabItemInstance,
   PurchaseOrder,
   Culture,
   Grow,
@@ -845,12 +846,14 @@ export const transformInventoryLotFromDb = (row: any): InventoryLot => ({
   inventoryItemId: row.inventory_item_id,
   quantity: parseFloat(row.quantity) || 0,
   originalQuantity: parseFloat(row.original_quantity) || 0,
+  inUseQuantity: parseFloat(row.in_use_quantity) || 0,
   unit: row.unit || 'g',
   status: row.status || 'available',
   purchaseOrderId: row.purchase_order_id,
   supplierId: row.supplier_id,
   purchaseDate: row.purchase_date ? new Date(row.purchase_date) : undefined,
   purchaseCost: row.purchase_cost ? parseFloat(row.purchase_cost) : undefined,
+  unitCost: row.unit_cost ? parseFloat(row.unit_cost) : undefined,
   locationId: row.location_id,
   expirationDate: row.expiration_date ? new Date(row.expiration_date) : undefined,
   lotNumber: row.lot_number,
@@ -866,12 +869,14 @@ export const transformInventoryLotToDb = (lot: Partial<InventoryLot>) => {
   if (lot.inventoryItemId !== undefined) result.inventory_item_id = lot.inventoryItemId;
   if (lot.quantity !== undefined) result.quantity = lot.quantity;
   if (lot.originalQuantity !== undefined) result.original_quantity = lot.originalQuantity;
+  if (lot.inUseQuantity !== undefined) result.in_use_quantity = lot.inUseQuantity;
   if (lot.unit !== undefined) result.unit = lot.unit;
   if (lot.status !== undefined) result.status = lot.status;
   if (lot.purchaseOrderId !== undefined) result.purchase_order_id = lot.purchaseOrderId;
   if (lot.supplierId !== undefined) result.supplier_id = lot.supplierId;
   if (lot.purchaseDate !== undefined) result.purchase_date = lot.purchaseDate instanceof Date ? lot.purchaseDate.toISOString() : lot.purchaseDate;
   if (lot.purchaseCost !== undefined) result.purchase_cost = lot.purchaseCost;
+  if (lot.unitCost !== undefined) result.unit_cost = lot.unitCost;
   if (lot.locationId !== undefined) result.location_id = lot.locationId;
   if (lot.expirationDate !== undefined) result.expiration_date = lot.expirationDate instanceof Date ? lot.expirationDate.toISOString() : lot.expirationDate;
   if (lot.lotNumber !== undefined) result.lot_number = lot.lotNumber;
@@ -1622,3 +1627,53 @@ export const transformBulkOperationFromDb = (row: any): BulkOperation => ({
   userId: row.user_id,
   createdAt: new Date(row.created_at),
 });
+
+// ============================================================================
+// LAB ITEM INSTANCE TRANSFORMATIONS
+// ============================================================================
+
+export const transformLabItemInstanceFromDb = (row: any): LabItemInstance => ({
+  id: row.id,
+  inventoryItemId: row.inventory_item_id,
+  inventoryLotId: row.inventory_lot_id,
+  instanceNumber: row.instance_number || 1,
+  label: row.label,
+  status: row.status || 'available',
+  usageRef: row.usage_ref ? JSON.parse(row.usage_ref) : undefined,
+  unitCost: parseFloat(row.unit_cost) || 0,
+  acquisitionDate: new Date(row.acquisition_date),
+  usageCount: row.usage_count || 0,
+  lastUsedAt: row.last_used_at ? new Date(row.last_used_at) : undefined,
+  lastCleanedAt: row.last_cleaned_at ? new Date(row.last_cleaned_at) : undefined,
+  lastSterilizedAt: row.last_sterilized_at ? new Date(row.last_sterilized_at) : undefined,
+  locationId: row.location_id,
+  conditionNotes: row.condition_notes,
+  images: row.images || [],
+  notes: row.notes,
+  createdAt: new Date(row.created_at),
+  updatedAt: new Date(row.updated_at),
+  isActive: row.is_active ?? true,
+});
+
+export const transformLabItemInstanceToDb = (instance: Partial<LabItemInstance>, userId?: string) => {
+  const result: Record<string, any> = {};
+  if (instance.inventoryItemId !== undefined) result.inventory_item_id = instance.inventoryItemId;
+  if (instance.inventoryLotId !== undefined) result.inventory_lot_id = instance.inventoryLotId;
+  if (instance.instanceNumber !== undefined) result.instance_number = instance.instanceNumber;
+  if (instance.label !== undefined) result.label = instance.label;
+  if (instance.status !== undefined) result.status = instance.status;
+  if (instance.usageRef !== undefined) result.usage_ref = JSON.stringify(instance.usageRef);
+  if (instance.unitCost !== undefined) result.unit_cost = instance.unitCost;
+  if (instance.acquisitionDate !== undefined) result.acquisition_date = instance.acquisitionDate instanceof Date ? instance.acquisitionDate.toISOString() : instance.acquisitionDate;
+  if (instance.usageCount !== undefined) result.usage_count = instance.usageCount;
+  if (instance.lastUsedAt !== undefined) result.last_used_at = instance.lastUsedAt instanceof Date ? instance.lastUsedAt.toISOString() : instance.lastUsedAt;
+  if (instance.lastCleanedAt !== undefined) result.last_cleaned_at = instance.lastCleanedAt instanceof Date ? instance.lastCleanedAt.toISOString() : instance.lastCleanedAt;
+  if (instance.lastSterilizedAt !== undefined) result.last_sterilized_at = instance.lastSterilizedAt instanceof Date ? instance.lastSterilizedAt.toISOString() : instance.lastSterilizedAt;
+  if (instance.locationId !== undefined) result.location_id = instance.locationId;
+  if (instance.conditionNotes !== undefined) result.condition_notes = instance.conditionNotes;
+  if (instance.images !== undefined) result.images = instance.images;
+  if (instance.notes !== undefined) result.notes = instance.notes;
+  if (instance.isActive !== undefined) result.is_active = instance.isActive;
+  if (userId) result.user_id = userId;
+  return result;
+};

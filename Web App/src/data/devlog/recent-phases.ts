@@ -6036,6 +6036,69 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  // =============================================================================
+  // INVENTORY SYSTEM REBUILD - PHASE 1: FOUNDATION
+  // Smart item classification, instance tracking, and cost calculation
+  // =============================================================================
+  {
+    id: 'dev-903',
+    status: 'in_progress',
+    priority: 'critical',
+    category: 'core',
+    title: 'Inventory System Rebuild - Instance Tracking Foundation',
+    description: 'Complete architectural rebuild of inventory system to support smart item classification, individual instance tracking for reusable items, and automatic cost calculations.',
+    notes: `Phase 1 of comprehensive inventory system rebuild:
+
+**1. Smart Item Classification (ItemBehavior):**
+- 'container': Holds things (jars, bags, plates) - tracked as instances
+- 'consumable': Gets used up (grains, agar powder) - depletes by weight/volume
+- 'equipment': Lab tools (scales, flow hoods) - tracked but not consumed
+- 'supply': Disposable supplies (gloves, wipes) - depletes by count
+- 'surface': Work surfaces (SAB, tables) - tracked for cleaning
+
+**2. Item Properties:**
+- isSterilizable, isReusable, holdsContents, material
+- unitType: 'countable' | 'weight' | 'volume'
+- trackInstances flag for reusable items
+
+**3. Instance Tracking (LabItemInstance):**
+- Individual tracking for reusable items
+- Status lifecycle: available → in_use → sterilized → dirty → damaged → disposed
+- Links to usage: knows which culture/spawn is using each container
+- Per-instance cost calculated from lot
+
+**4. Lot Enhancements:**
+- inUseQuantity: Track items currently in use vs available
+- unitCost: Automatic per-unit cost calculation
+- Available = quantity - inUseQuantity
+
+**5. CRUD Operations:**
+- addLabItemInstance, updateLabItemInstance, deleteLabItemInstance
+- markInstanceInUse, releaseInstance: Manage instance lifecycle
+- createInstancesFromLot: Auto-create instances when receiving inventory
+
+**6. Database Schema:**
+- lab_item_instances table with full lifecycle tracking
+- in_use_quantity and unit_cost columns on inventory_lots
+- item_behavior and item_properties columns on inventory_items
+- Updated inventory_usages usage_type check constraint
+
+**Files Changed:**
+- src/store/types.ts - ItemBehavior, UnitType, InstanceStatus, LabItemInstance types
+- src/store/transformations.ts - LabItemInstance transformations, inUseQuantity/unitCost
+- src/store/defaults.ts - labItemInstances in emptyState
+- src/store/initialData.ts - labItemInstances in initial state
+- src/store/DataContext.tsx - CRUD operations, lookup helpers
+- src/components/inventory/StockManagement.tsx - inUseQuantity in lot creation
+- src/lib/db/DataLoader.ts - LabItemInstance loading
+- src/lib/db/EntityLoader.ts - TABLE_CONFIGS for lab_item_instances
+- supabase-schema.sql - lab_item_instances table, new columns
+- supabase-wipe-user-data.sql - lab_item_instances cleanup
+- supabase-reset-database.sql - lab_item_instances drop`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

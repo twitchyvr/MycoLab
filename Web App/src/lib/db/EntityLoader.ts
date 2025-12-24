@@ -44,6 +44,7 @@ const TABLE_PRIORITIES: Record<string, number> = {
   // Lower priority - detail/related data
   flushes: 25,
   inventory_lots: 20,
+  lab_item_instances: 18,
   purchase_orders: 15,
   user_settings: 10,
 
@@ -300,6 +301,11 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
   },
   inventory_lots: {
     name: 'inventory_lots',
+    orderBy: { column: 'created_at', ascending: false },
+    required: false,
+  },
+  lab_item_instances: {
+    name: 'lab_item_instances',
     orderBy: { column: 'created_at', ascending: false },
     required: false,
   },

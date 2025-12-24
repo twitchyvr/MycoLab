@@ -15,6 +15,7 @@ import {
   EntityOutcome, ContaminationDetails, OutcomeCategory, OutcomeCode, ContaminationType, ContaminationStage, SuspectedCause,
   PreparedSpawn, PreparedSpawnStatus,
   GrainSpawn, GrainSpawnObservation, GrainSpawnStatus,
+  LabItemInstance, InstanceUsageRef,
   // Immutable database types
   AmendmentType, RecordVersionSummary, DataAmendmentLogEntry,
 } from './types';
@@ -117,6 +118,8 @@ import {
   transformGrainSpawnToDb,
   transformGrainSpawnObservationFromDb,
   transformGrainSpawnObservationToDb,
+  transformLabItemInstanceFromDb,
+  transformLabItemInstanceToDb,
 } from './transformations';
 
 // ============================================================================
@@ -252,6 +255,14 @@ interface DataContextValue extends LookupHelpers {
     notes?: string;
   }) => Promise<GrainSpawn>;
   spawnGrainToBulk: (grainSpawnIds: string[], growData: Omit<Grow, 'id' | 'createdAt' | 'observations' | 'flushes' | 'totalYield' | 'grainSpawnIds'>) => Promise<Grow>;
+
+  // Lab Item Instance CRUD (individual tracked items like jars, bags, etc.)
+  addLabItemInstance: (instance: Omit<LabItemInstance, 'id' | 'createdAt' | 'updatedAt'>) => Promise<LabItemInstance>;
+  updateLabItemInstance: (id: string, updates: Partial<LabItemInstance>) => Promise<void>;
+  deleteLabItemInstance: (id: string) => Promise<void>;
+  markInstanceInUse: (instanceId: string, usageRef: InstanceUsageRef) => Promise<void>;
+  releaseInstance: (instanceId: string) => Promise<void>;
+  createInstancesFromLot: (lotId: string, count: number) => Promise<LabItemInstance[]>;
 
   // Grow CRUD
   addGrow: (grow: Omit<Grow, 'id' | 'createdAt' | 'observations' | 'flushes' | 'totalYield'>) => Promise<Grow>;
@@ -879,6 +890,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const getPreparedSpawn = useCallback((id: string) => state.preparedSpawn.find(s => s.id === id), [state.preparedSpawn]);
   const getGrow = useCallback((id: string) => state.grows.find(g => g.id === id), [state.grows]);
   const getRecipe = useCallback((id: string) => state.recipes.find(r => r.id === id), [state.recipes]);
+  const getLabItemInstance = useCallback((id: string) => state.labItemInstances.find(i => i.id === id), [state.labItemInstances]);
 
   // Active lists
   const activeSpecies = useMemo(() => state.species.filter(s => s.isActive), [state.species]);
@@ -897,6 +909,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const activePurchaseOrders = useMemo(() => state.purchaseOrders.filter(o => o.isActive), [state.purchaseOrders]);
   const activeRecipes = useMemo(() => state.recipes.filter(r => r.isActive), [state.recipes]);
   const availablePreparedSpawn = useMemo(() => state.preparedSpawn.filter(s => s.isActive && s.status === 'ready'), [state.preparedSpawn]);
+
+  // LabItemInstance lookup helpers
+  const activeLabItemInstances = useMemo(() => state.labItemInstances.filter(i => i.isActive), [state.labItemInstances]);
+  const availableLabItemInstances = useMemo(() => state.labItemInstances.filter(i => i.isActive && i.status === 'available'), [state.labItemInstances]);
+  const inUseLabItemInstances = useMemo(() => state.labItemInstances.filter(i => i.isActive && i.status === 'in_use'), [state.labItemInstances]);
 
   // GrainSpawn lookup helpers
   const activeGrainSpawn = useMemo(() => state.grainSpawn.filter(gs => !gs.isArchived && !['contaminated', 'expired', 'spawned_to_bulk'].includes(gs.status)), [state.grainSpawn]);
@@ -3228,6 +3245,178 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, [state.grainSpawn, addGrow, updateGrainSpawn]);
 
   // ============================================================================
+  // LAB ITEM INSTANCE CRUD
+  // Individual tracked items (jars, bags, plates, etc.)
+  // ============================================================================
+
+  const addLabItemInstance = useCallback(async (instance: Omit<LabItemInstance, 'id' | 'createdAt' | 'updatedAt'>): Promise<LabItemInstance> => {
+    if (supabase) {
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('Authentication required. Please sign in to create lab item instances.');
+      }
+      const insertData = {
+        ...transformLabItemInstanceToDb(instance, userId),
+      };
+
+      const { data, error } = await supabase
+        .from('lab_item_instances')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newInstance = transformLabItemInstanceFromDb(data);
+      setState(prev => ({ ...prev, labItemInstances: [newInstance, ...prev.labItemInstances] }));
+      return newInstance;
+    }
+
+    const newInstance: LabItemInstance = {
+      ...instance,
+      id: generateId('lab-instance'),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    setState(prev => ({ ...prev, labItemInstances: [newInstance, ...prev.labItemInstances] }));
+    return newInstance;
+  }, [supabase, generateId]);
+
+  const updateLabItemInstance = useCallback(async (id: string, updates: Partial<LabItemInstance>) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('lab_item_instances')
+        .update({
+          ...transformLabItemInstanceToDb(updates),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+
+    setState(prev => ({
+      ...prev,
+      labItemInstances: prev.labItemInstances.map(i => i.id === id ? { ...i, ...updates, updatedAt: new Date() } : i)
+    }));
+  }, [supabase]);
+
+  const deleteLabItemInstance = useCallback(async (id: string) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('lab_item_instances')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+
+    setState(prev => ({
+      ...prev,
+      labItemInstances: prev.labItemInstances.filter(i => i.id !== id)
+    }));
+  }, [supabase]);
+
+  // Mark an instance as in use (when a jar/bag is being used for something)
+  const markInstanceInUse = useCallback(async (instanceId: string, usageRef: InstanceUsageRef) => {
+    const instance = state.labItemInstances.find(i => i.id === instanceId);
+    if (!instance) throw new Error('Instance not found');
+    if (instance.status === 'in_use') throw new Error('Instance is already in use');
+
+    await updateLabItemInstance(instanceId, {
+      status: 'in_use',
+      usageRef,
+      usageCount: instance.usageCount + 1,
+      lastUsedAt: new Date(),
+    });
+
+    // Also update the lot's in_use_quantity
+    if (instance.inventoryLotId) {
+      const lot = state.inventoryLots.find(l => l.id === instance.inventoryLotId);
+      if (lot) {
+        // Inline lot update to avoid circular dependency
+        if (supabase) {
+          await supabase
+            .from('inventory_lots')
+            .update({ in_use_quantity: lot.inUseQuantity + 1, updated_at: new Date().toISOString() })
+            .eq('id', instance.inventoryLotId);
+        }
+        setState(prev => ({
+          ...prev,
+          inventoryLots: prev.inventoryLots.map(l =>
+            l.id === instance.inventoryLotId ? { ...l, inUseQuantity: l.inUseQuantity + 1, updatedAt: new Date() } : l
+          )
+        }));
+      }
+    }
+  }, [state.labItemInstances, state.inventoryLots, updateLabItemInstance, supabase]);
+
+  // Release an instance (when done using a jar/bag)
+  const releaseInstance = useCallback(async (instanceId: string) => {
+    const instance = state.labItemInstances.find(i => i.id === instanceId);
+    if (!instance) throw new Error('Instance not found');
+    if (instance.status !== 'in_use') throw new Error('Instance is not in use');
+
+    await updateLabItemInstance(instanceId, {
+      status: 'dirty', // Needs cleaning before reuse
+      usageRef: undefined,
+    });
+
+    // Update the lot's in_use_quantity
+    if (instance.inventoryLotId) {
+      const lot = state.inventoryLots.find(l => l.id === instance.inventoryLotId);
+      if (lot && lot.inUseQuantity > 0) {
+        // Inline lot update to avoid circular dependency
+        if (supabase) {
+          await supabase
+            .from('inventory_lots')
+            .update({ in_use_quantity: lot.inUseQuantity - 1, updated_at: new Date().toISOString() })
+            .eq('id', instance.inventoryLotId);
+        }
+        setState(prev => ({
+          ...prev,
+          inventoryLots: prev.inventoryLots.map(l =>
+            l.id === instance.inventoryLotId ? { ...l, inUseQuantity: Math.max(0, l.inUseQuantity - 1), updatedAt: new Date() } : l
+          )
+        }));
+      }
+    }
+  }, [state.labItemInstances, state.inventoryLots, updateLabItemInstance, supabase]);
+
+  // Create instances from a lot (when receiving a purchase order with reusable items)
+  const createInstancesFromLot = useCallback(async (lotId: string, count: number): Promise<LabItemInstance[]> => {
+    const lot = state.inventoryLots.find(l => l.id === lotId);
+    if (!lot) throw new Error('Lot not found');
+
+    const item = state.inventoryItems.find(i => i.id === lot.inventoryItemId);
+    if (!item) throw new Error('Inventory item not found');
+
+    // Calculate unit cost
+    const unitCost = lot.purchaseCost && lot.originalQuantity
+      ? lot.purchaseCost / lot.originalQuantity
+      : 0;
+
+    const instances: LabItemInstance[] = [];
+    for (let i = 0; i < count; i++) {
+      const instance = await addLabItemInstance({
+        inventoryItemId: lot.inventoryItemId,
+        inventoryLotId: lotId,
+        instanceNumber: i + 1,
+        label: `${item.name} #${i + 1}`,
+        status: 'available',
+        unitCost,
+        acquisitionDate: lot.purchaseDate || new Date(),
+        usageCount: 0,
+        locationId: lot.locationId,
+        isActive: true,
+      });
+      instances.push(instance);
+    }
+
+    return instances;
+  }, [state.inventoryLots, state.inventoryItems, addLabItemInstance]);
+
+  // ============================================================================
   // RECIPE CRUD
   // ============================================================================
 
@@ -3863,6 +4052,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           inventoryItemId: item.inventoryItemId || generateId('inv'),
           quantity: receivedQty,
           originalQuantity: receivedQty,
+          inUseQuantity: 0,
           unit: item.unit,
           status: 'available',
           purchaseOrderId: orderId,
@@ -4102,9 +4292,11 @@ const loadSettings = async (): Promise<AppSettings> => {
     getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
     getInventoryLot, getPurchaseOrder, getCulture, getPreparedSpawn, getGrainSpawn, getGrow, getRecipe,
+    getLabItemInstance,
     activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeContainers,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes, availablePreparedSpawn,
+    activeLabItemInstances, availableLabItemInstances, inUseLabItemInstances,
     activeGrainSpawn, colonizingGrainSpawn, readyGrainSpawn, shakeReadyGrainSpawn,
 
     // CRUD operations
@@ -4128,6 +4320,8 @@ const loadSettings = async (): Promise<AppSettings> => {
     addGrainSpawn, updateGrainSpawn, deleteGrainSpawn, addGrainSpawnObservation,
     shakeGrainSpawn, updateColonizationProgress, markGrainSpawnFullyColonized, markGrainSpawnContaminated,
     inoculateToGrainSpawn, spawnGrainToBulk,
+    addLabItemInstance, updateLabItemInstance, deleteLabItemInstance,
+    markInstanceInUse, releaseInstance, createInstancesFromLot,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated, amendGrow, archiveGrow,
     addGrowObservation, addFlush,
     getRecordHistory, getAmendmentLog, archiveAllUserData,
@@ -4144,9 +4338,11 @@ const loadSettings = async (): Promise<AppSettings> => {
     getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
     getInventoryLot, getPurchaseOrder, getCulture, getPreparedSpawn, getGrainSpawn, getGrow, getRecipe,
+    getLabItemInstance,
     activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeContainers,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes, availablePreparedSpawn,
+    activeLabItemInstances, availableLabItemInstances, inUseLabItemInstances,
     activeGrainSpawn, colonizingGrainSpawn, readyGrainSpawn, shakeReadyGrainSpawn,
     addSpecies, updateSpecies, deleteSpecies,
     addStrain, updateStrain, deleteStrain,
@@ -4168,6 +4364,8 @@ const loadSettings = async (): Promise<AppSettings> => {
     addGrainSpawn, updateGrainSpawn, deleteGrainSpawn, addGrainSpawnObservation,
     shakeGrainSpawn, updateColonizationProgress, markGrainSpawnFullyColonized, markGrainSpawnContaminated,
     inoculateToGrainSpawn, spawnGrainToBulk,
+    addLabItemInstance, updateLabItemInstance, deleteLabItemInstance,
+    markInstanceInUse, releaseInstance, createInstancesFromLot,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated, amendGrow, archiveGrow,
     addGrowObservation, addFlush,
     getRecordHistory, getAmendmentLog, archiveAllUserData,
