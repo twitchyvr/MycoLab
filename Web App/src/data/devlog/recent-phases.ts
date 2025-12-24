@@ -5874,6 +5874,74 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-900',
+    title: 'Grain Spawn Lifecycle Tracking',
+    description: 'Complete grain spawn entity for tracking inoculated grain through colonization lifecycle. Includes dedicated Spawn Management page, inoculation from cultures, break & shake tracking, spawn-to-bulk workflow, and workflow stage indicators.',
+    category: 'core',
+    status: 'completed',
+    priority: 'critical',
+    phaseId: 30,
+    notes: `Major architectural addition for proper grain spawn lifecycle tracking:
+
+**1. GrainSpawn Entity:**
+- New entity type separate from PreparedSpawn (which remains for pre-inoculation containers)
+- Tracks: inoculation date, colonization progress, shake count, workflow stage
+- Status lifecycle: inoculated → colonizing → shake_ready → shaken → fully_colonized → spawned_to_bulk
+- Workflow stages: sterile_work, clean_work, observation, completed
+- Links to source culture, prepared spawn container, grain type
+
+**2. Database Schema:**
+- New grain_spawn table with full colonization tracking fields
+- grain_spawn_observations table for progress logging
+- Proper RLS policies for multi-tenant support
+- Transformation functions for DB ↔ TypeScript
+
+**3. Data Layer Integration:**
+- Added to DataContext with full CRUD operations
+- Lookup helpers: activeGrainSpawn, colonizingGrainSpawn, readyGrainSpawn, shakeReadyGrainSpawn
+- EntityLoader and DataLoader integration for optimized loading
+- Realtime sync support
+
+**4. Spawn Management Page:**
+- New dedicated page at /spawn route
+- Grid/list view of grain spawn batches
+- Stats summary: active, colonizing, shake ready, ready to spawn
+- Search and filter by status
+- Colonization progress visualization
+- Workflow stage indicators (sterile work, clean work, observation)
+
+**5. Modal Components:**
+- InoculateToGrainModal: Transfer culture to prepared grain containers
+- ShakeModal: Record break & shake with colonization progress update
+- SpawnToBulkModal: Create grow from fully colonized spawn with spawn rate calculation
+
+**6. Culture Management Integration:**
+- "Inoculate Grain" action for LC, agar, and spore syringe cultures
+- Direct access to InoculateToGrainModal from culture detail panel
+
+**7. Workflow Guidance:**
+- Visual indicators for work environment requirements
+- Sterile work (SAB/flow hood) for inoculation
+- Clean work for shake and spawn-to-bulk
+- Observation only for progress checks
+
+**Files Changed:**
+- supabase-schema.sql - grain_spawn table and observations
+- src/store/types.ts - GrainSpawn, GrainSpawnObservation types
+- src/store/transformations.ts - DB transformation functions
+- src/store/DataContext.tsx - CRUD operations and lookup helpers
+- src/lib/db/EntityLoader.ts - Grain spawn loading config
+- src/lib/db/DataLoader.ts - Parallel loading support
+- src/components/spawn/SpawnManagement.tsx - Main spawn page
+- src/components/spawn/InoculateToGrainModal.tsx - Inoculation modal
+- src/components/spawn/ShakeModal.tsx - Shake recording
+- src/components/spawn/SpawnToBulkModal.tsx - Spawn to bulk workflow
+- src/components/cultures/CultureManagement.tsx - Inoculate grain action
+- src/App.tsx - Spawn route and navigation`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

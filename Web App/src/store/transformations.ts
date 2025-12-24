@@ -24,6 +24,8 @@ import {
   RecipeCategoryItem,
   GrainType,
   PreparedSpawn,
+  GrainSpawn,
+  GrainSpawnObservation,
   EntityOutcome,
 } from './types';
 
@@ -1149,6 +1151,212 @@ export const transformPreparedSpawnToDb = (spawn: Partial<PreparedSpawn>, userId
 
   // Notification preferences
   if (spawn.notificationsMuted !== undefined) result.notifications_muted = spawn.notificationsMuted;
+
+  // Linkage to GrainSpawn
+  if (spawn.resultGrainSpawnId !== undefined) result.result_grain_spawn_id = spawn.resultGrainSpawnId;
+
+  return result;
+};
+
+// ============================================================================
+// GRAIN SPAWN TRANSFORMATIONS
+// Inoculated grain going through colonization lifecycle
+// ============================================================================
+
+export const transformGrainSpawnFromDb = (row: any): GrainSpawn => ({
+  id: row.id,
+  userId: row.user_id ?? null,
+
+  // Identification
+  label: row.label,
+  strainId: row.strain_id || '',
+
+  // Source information
+  sourcePreparedSpawnId: row.source_prepared_spawn_id,
+  sourceCultureId: row.source_culture_id,
+  sourceType: row.source_type || 'liquid_culture',
+
+  // Container info
+  containerId: row.container_id || '',
+  containerCount: row.container_count || 1,
+  grainTypeId: row.grain_type_id,
+  weightGrams: row.weight_grams,
+
+  // Inoculation details
+  inoculatedAt: row.inoculated_at ? new Date(row.inoculated_at) : new Date(),
+  inoculationVolumeMl: row.inoculation_volume_ml,
+  inoculationUnits: row.inoculation_units,
+  inoculationUnit: row.inoculation_unit || 'ml',
+
+  // Location
+  locationId: row.location_id || '',
+
+  // Colonization lifecycle
+  status: row.status || 'inoculated',
+  colonizationProgress: row.colonization_progress || 0,
+
+  // Shake tracking
+  shakeCount: row.shake_count || 0,
+  lastShakeAt: row.last_shake_at ? new Date(row.last_shake_at) : undefined,
+
+  // Milestone dates
+  firstGrowthAt: row.first_growth_at ? new Date(row.first_growth_at) : undefined,
+  fullyColonizedAt: row.fully_colonized_at ? new Date(row.fully_colonized_at) : undefined,
+  spawnedAt: row.spawned_at ? new Date(row.spawned_at) : undefined,
+
+  // Expiration
+  expiresAt: row.expires_at ? new Date(row.expires_at) : undefined,
+
+  // Output tracking
+  resultGrowIds: row.result_grow_ids || [],
+
+  // Cost tracking
+  productionCost: row.production_cost,
+  sourceCultureCost: row.source_culture_cost,
+
+  // Workflow metadata
+  requiresSterileEnvironment: row.requires_sterile_environment ?? false,
+  workflowStage: row.workflow_stage || 'sterile_work',
+
+  // General
+  notes: row.notes,
+  images: row.images || [],
+  isActive: row.is_active ?? true,
+  createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+  updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+
+  // Immutability fields
+  version: row.version ?? 1,
+  recordGroupId: row.record_group_id ?? row.id,
+  isCurrent: row.is_current ?? true,
+  validFrom: row.valid_from ? new Date(row.valid_from) : undefined,
+  validTo: row.valid_to ? new Date(row.valid_to) : undefined,
+  supersededById: row.superseded_by_id,
+  isArchived: row.is_archived ?? false,
+  archivedAt: row.archived_at ? new Date(row.archived_at) : undefined,
+  archivedBy: row.archived_by,
+  archiveReason: row.archive_reason,
+  amendmentType: row.amendment_type ?? 'original',
+  amendmentReason: row.amendment_reason,
+  amendsRecordId: row.amends_record_id,
+
+  // Notification preferences
+  notificationsMuted: row.notifications_muted ?? false,
+});
+
+export const transformGrainSpawnToDb = (grainSpawn: Partial<GrainSpawn>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+
+  // Identification
+  if (grainSpawn.label !== undefined) result.label = grainSpawn.label;
+  if (grainSpawn.strainId !== undefined) result.strain_id = toDbId(grainSpawn.strainId);
+
+  // Source information
+  if (grainSpawn.sourcePreparedSpawnId !== undefined) result.source_prepared_spawn_id = grainSpawn.sourcePreparedSpawnId;
+  if (grainSpawn.sourceCultureId !== undefined) result.source_culture_id = grainSpawn.sourceCultureId;
+  if (grainSpawn.sourceType !== undefined) result.source_type = grainSpawn.sourceType;
+
+  // Container info
+  if (grainSpawn.containerId !== undefined) result.container_id = toDbId(grainSpawn.containerId);
+  if (grainSpawn.containerCount !== undefined) result.container_count = grainSpawn.containerCount;
+  if (grainSpawn.grainTypeId !== undefined) result.grain_type_id = toDbId(grainSpawn.grainTypeId);
+  if (grainSpawn.weightGrams !== undefined) result.weight_grams = grainSpawn.weightGrams;
+
+  // Inoculation details
+  if (grainSpawn.inoculatedAt !== undefined) result.inoculated_at = grainSpawn.inoculatedAt instanceof Date ? grainSpawn.inoculatedAt.toISOString() : grainSpawn.inoculatedAt;
+  if (grainSpawn.inoculationVolumeMl !== undefined) result.inoculation_volume_ml = grainSpawn.inoculationVolumeMl;
+  if (grainSpawn.inoculationUnits !== undefined) result.inoculation_units = grainSpawn.inoculationUnits;
+  if (grainSpawn.inoculationUnit !== undefined) result.inoculation_unit = grainSpawn.inoculationUnit;
+
+  // Location
+  if (grainSpawn.locationId !== undefined) result.location_id = toDbId(grainSpawn.locationId);
+
+  // Colonization lifecycle
+  if (grainSpawn.status !== undefined) result.status = grainSpawn.status;
+  if (grainSpawn.colonizationProgress !== undefined) result.colonization_progress = grainSpawn.colonizationProgress;
+
+  // Shake tracking
+  if (grainSpawn.shakeCount !== undefined) result.shake_count = grainSpawn.shakeCount;
+  if (grainSpawn.lastShakeAt !== undefined) result.last_shake_at = grainSpawn.lastShakeAt instanceof Date ? grainSpawn.lastShakeAt.toISOString() : grainSpawn.lastShakeAt;
+
+  // Milestone dates
+  if (grainSpawn.firstGrowthAt !== undefined) result.first_growth_at = grainSpawn.firstGrowthAt instanceof Date ? grainSpawn.firstGrowthAt.toISOString() : grainSpawn.firstGrowthAt;
+  if (grainSpawn.fullyColonizedAt !== undefined) result.fully_colonized_at = grainSpawn.fullyColonizedAt instanceof Date ? grainSpawn.fullyColonizedAt.toISOString() : grainSpawn.fullyColonizedAt;
+  if (grainSpawn.spawnedAt !== undefined) result.spawned_at = grainSpawn.spawnedAt instanceof Date ? grainSpawn.spawnedAt.toISOString() : grainSpawn.spawnedAt;
+
+  // Expiration
+  if (grainSpawn.expiresAt !== undefined) result.expires_at = grainSpawn.expiresAt instanceof Date ? grainSpawn.expiresAt.toISOString().split('T')[0] : grainSpawn.expiresAt;
+
+  // Output tracking
+  if (grainSpawn.resultGrowIds !== undefined) result.result_grow_ids = grainSpawn.resultGrowIds;
+
+  // Cost tracking
+  if (grainSpawn.productionCost !== undefined) result.production_cost = grainSpawn.productionCost;
+  if (grainSpawn.sourceCultureCost !== undefined) result.source_culture_cost = grainSpawn.sourceCultureCost;
+
+  // Workflow metadata
+  if (grainSpawn.requiresSterileEnvironment !== undefined) result.requires_sterile_environment = grainSpawn.requiresSterileEnvironment;
+  if (grainSpawn.workflowStage !== undefined) result.workflow_stage = grainSpawn.workflowStage;
+
+  // General
+  if (grainSpawn.notes !== undefined) result.notes = grainSpawn.notes;
+  if (grainSpawn.images !== undefined) result.images = grainSpawn.images;
+  if (grainSpawn.isActive !== undefined) result.is_active = grainSpawn.isActive;
+  if (userId) result.user_id = userId;
+
+  // Immutability fields
+  if (grainSpawn.version !== undefined) result.version = grainSpawn.version;
+  if (grainSpawn.recordGroupId !== undefined) result.record_group_id = grainSpawn.recordGroupId;
+  if (grainSpawn.isCurrent !== undefined) result.is_current = grainSpawn.isCurrent;
+  if (grainSpawn.validFrom !== undefined) result.valid_from = grainSpawn.validFrom instanceof Date ? grainSpawn.validFrom.toISOString() : grainSpawn.validFrom;
+  if (grainSpawn.validTo !== undefined) result.valid_to = grainSpawn.validTo instanceof Date ? grainSpawn.validTo.toISOString() : grainSpawn.validTo;
+  if (grainSpawn.supersededById !== undefined) result.superseded_by_id = grainSpawn.supersededById;
+  if (grainSpawn.isArchived !== undefined) result.is_archived = grainSpawn.isArchived;
+  if (grainSpawn.archivedAt !== undefined) result.archived_at = grainSpawn.archivedAt instanceof Date ? grainSpawn.archivedAt.toISOString() : grainSpawn.archivedAt;
+  if (grainSpawn.archivedBy !== undefined) result.archived_by = grainSpawn.archivedBy;
+  if (grainSpawn.archiveReason !== undefined) result.archive_reason = grainSpawn.archiveReason;
+  if (grainSpawn.amendmentType !== undefined) result.amendment_type = grainSpawn.amendmentType;
+  if (grainSpawn.amendmentReason !== undefined) result.amendment_reason = grainSpawn.amendmentReason;
+  if (grainSpawn.amendsRecordId !== undefined) result.amends_record_id = grainSpawn.amendsRecordId;
+
+  // Notification preferences
+  if (grainSpawn.notificationsMuted !== undefined) result.notifications_muted = grainSpawn.notificationsMuted;
+
+  return result;
+};
+
+// ============================================================================
+// GRAIN SPAWN OBSERVATION TRANSFORMATIONS
+// ============================================================================
+
+export const transformGrainSpawnObservationFromDb = (row: any): GrainSpawnObservation => ({
+  id: row.id,
+  grainSpawnId: row.grain_spawn_id,
+  date: row.date ? new Date(row.date) : new Date(),
+  type: row.type || 'general',
+  title: row.title,
+  notes: row.notes,
+  colonizationPercent: row.colonization_percent,
+  temperature: row.temperature,
+  humidity: row.humidity,
+  images: row.images || [],
+  createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+  userId: row.user_id,
+});
+
+export const transformGrainSpawnObservationToDb = (obs: Partial<GrainSpawnObservation>, userId?: string | null) => {
+  const result: Record<string, any> = {};
+
+  if (obs.grainSpawnId !== undefined) result.grain_spawn_id = obs.grainSpawnId;
+  if (obs.date !== undefined) result.date = obs.date instanceof Date ? obs.date.toISOString() : obs.date;
+  if (obs.type !== undefined) result.type = obs.type;
+  if (obs.title !== undefined) result.title = obs.title;
+  if (obs.notes !== undefined) result.notes = obs.notes;
+  if (obs.colonizationPercent !== undefined) result.colonization_percent = obs.colonizationPercent;
+  if (obs.temperature !== undefined) result.temperature = obs.temperature;
+  if (obs.humidity !== undefined) result.humidity = obs.humidity;
+  if (obs.images !== undefined) result.images = obs.images;
+  if (userId) result.user_id = userId;
 
   return result;
 };

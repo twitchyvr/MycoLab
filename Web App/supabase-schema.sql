@@ -748,6 +748,159 @@ CREATE INDEX IF NOT EXISTS idx_prepared_spawn_status ON prepared_spawn(status) W
 CREATE INDEX IF NOT EXISTS idx_prepared_spawn_type ON prepared_spawn(type);
 CREATE INDEX IF NOT EXISTS idx_prepared_spawn_user ON prepared_spawn(user_id);
 
+-- ============================================================================
+-- GRAIN SPAWN (Inoculated grain going through colonization lifecycle)
+-- This tracks grain spawn from inoculation through colonization to spawn-to-bulk
+-- Separate from PreparedSpawn which only tracks sterilized containers
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS grain_spawn (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- Identification
+  label TEXT,                                    -- User-defined label (e.g., "Blue Oyster Batch 1")
+  strain_id UUID REFERENCES strains(id),         -- What's growing
+
+  -- Source information
+  source_prepared_spawn_id UUID REFERENCES prepared_spawn(id), -- Which sterilized container was used
+  source_culture_id UUID REFERENCES cultures(id),              -- Which culture was used to inoculate
+  source_type TEXT CHECK (source_type IN ('liquid_culture', 'agar', 'grain_transfer', 'spore_syringe')) NOT NULL,
+
+  -- Container info (copied from PreparedSpawn for denormalization)
+  container_id UUID REFERENCES containers(id),
+  container_count INTEGER DEFAULT 1,             -- Number of containers in this batch
+  grain_type_id UUID REFERENCES grain_types(id),
+  weight_grams DECIMAL,                          -- Total grain weight
+
+  -- Inoculation details
+  inoculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  inoculation_volume_ml DECIMAL,                 -- How much LC was used (ml)
+  inoculation_units INTEGER,                     -- How many agar wedges, drops, etc.
+  inoculation_unit TEXT DEFAULT 'ml',            -- 'ml', 'cc', 'wedge', 'drop'
+
+  -- Location
+  location_id UUID REFERENCES locations(id),
+
+  -- Colonization lifecycle
+  status TEXT CHECK (status IN (
+    'inoculated',           -- Just inoculated, no visible growth
+    'colonizing',           -- Mycelium visible and spreading
+    'shake_ready',          -- 20-30% colonized, ready for break & shake
+    'shaken',               -- Recently shaken, recovering
+    'fully_colonized',      -- 100% colonized, ready for spawn-to-bulk
+    'spawned_to_bulk',      -- Used in a grow
+    'contaminated',         -- Lost to contamination
+    'stalled',              -- Growth stopped unexpectedly
+    'expired'               -- Sat too long, no longer viable
+  )) DEFAULT 'inoculated',
+
+  colonization_progress INTEGER DEFAULT 0 CHECK (colonization_progress >= 0 AND colonization_progress <= 100),
+
+  -- Shake tracking
+  shake_count INTEGER DEFAULT 0,
+  last_shake_at TIMESTAMPTZ,
+
+  -- Milestone dates
+  first_growth_at TIMESTAMPTZ,                   -- When mycelium first visible
+  fully_colonized_at TIMESTAMPTZ,                -- When reached 100%
+  spawned_at TIMESTAMPTZ,                        -- When used for spawn-to-bulk
+
+  -- Expiration
+  expires_at DATE,
+
+  -- Output tracking (FK added later after grows table exists)
+  result_grow_ids UUID[],                        -- Grows created from this spawn
+
+  -- Cost tracking
+  production_cost DECIMAL,                       -- Cost to produce
+  source_culture_cost DECIMAL,                   -- Proportional cost from source culture
+
+  -- Workflow metadata
+  requires_sterile_environment BOOLEAN DEFAULT false, -- True if currently needs sterile handling
+  workflow_stage TEXT CHECK (workflow_stage IN (
+    'sterile_work',    -- Inoculation (requires flow hood/SAB)
+    'clean_work',      -- Post-inoculation handling (controlled but not sterile)
+    'observation',     -- Just monitoring
+    'completed'        -- Done
+  )) DEFAULT 'sterile_work',
+
+  -- General
+  notes TEXT,
+  images TEXT[],
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+
+  -- Immutability fields
+  version INTEGER DEFAULT 1,
+  record_group_id UUID,
+  is_current BOOLEAN DEFAULT true,
+  valid_from TIMESTAMPTZ DEFAULT NOW(),
+  valid_to TIMESTAMPTZ,
+  superseded_by_id UUID REFERENCES grain_spawn(id),
+  is_archived BOOLEAN DEFAULT false,
+  archived_at TIMESTAMPTZ,
+  archived_by UUID REFERENCES auth.users(id),
+  archive_reason TEXT,
+  amendment_type TEXT DEFAULT 'original',
+  amendment_reason TEXT,
+  amends_record_id UUID REFERENCES grain_spawn(id),
+
+  -- Notification control
+  notifications_muted BOOLEAN DEFAULT false
+);
+
+-- Indexes for grain_spawn
+CREATE INDEX IF NOT EXISTS idx_grain_spawn_status ON grain_spawn(status);
+CREATE INDEX IF NOT EXISTS idx_grain_spawn_user ON grain_spawn(user_id);
+CREATE INDEX IF NOT EXISTS idx_grain_spawn_strain ON grain_spawn(strain_id);
+CREATE INDEX IF NOT EXISTS idx_grain_spawn_source_culture ON grain_spawn(source_culture_id);
+CREATE INDEX IF NOT EXISTS idx_grain_spawn_colonization ON grain_spawn(colonization_progress) WHERE status = 'colonizing';
+CREATE INDEX IF NOT EXISTS idx_grain_spawn_ready ON grain_spawn(status) WHERE status = 'fully_colonized';
+CREATE INDEX IF NOT EXISTS idx_grain_spawn_current ON grain_spawn(record_group_id, is_current) WHERE is_current = true AND (is_archived = false OR is_archived IS NULL);
+
+-- Initialize record_group_id for existing records
+DO $$ BEGIN
+  UPDATE grain_spawn SET record_group_id = id WHERE record_group_id IS NULL;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- ============================================================================
+-- GRAIN SPAWN OBSERVATIONS (Track colonization progress and events)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS grain_spawn_observations (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  grain_spawn_id UUID REFERENCES grain_spawn(id) ON DELETE CASCADE,
+
+  date TIMESTAMPTZ DEFAULT NOW(),
+  type TEXT CHECK (type IN (
+    'growth',            -- Normal growth observation
+    'shake',             -- Break and shake event
+    'contamination',     -- Contamination spotted
+    'stall',             -- Growth stopped
+    'milestone',         -- Reached a milestone (first growth, 50%, 100%)
+    'environmental',     -- Temperature, humidity reading
+    'general'            -- General note
+  )) DEFAULT 'general',
+
+  title TEXT,
+  notes TEXT,
+
+  -- Measurements
+  colonization_percent INTEGER CHECK (colonization_percent >= 0 AND colonization_percent <= 100),
+  temperature DECIMAL,
+  humidity DECIMAL,
+
+  -- Photos
+  images TEXT[],
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_grain_spawn_observations_spawn ON grain_spawn_observations(grain_spawn_id);
+CREATE INDEX IF NOT EXISTS idx_grain_spawn_observations_type ON grain_spawn_observations(type);
+
 -- Grows
 CREATE TABLE IF NOT EXISTS grows (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -931,6 +1084,15 @@ BEGIN
   ) THEN
     ALTER TABLE grows ADD COLUMN estimated_cost DECIMAL DEFAULT 0;
     RAISE NOTICE 'Added estimated_cost column to grows';
+  END IF;
+
+  -- Add grain_spawn_ids column to track which grain spawn batches were used
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grows' AND column_name = 'grain_spawn_ids'
+  ) THEN
+    ALTER TABLE grows ADD COLUMN grain_spawn_ids UUID[];
+    RAISE NOTICE 'Added grain_spawn_ids column to grows';
   END IF;
 
   RAISE NOTICE 'Grows table migration complete';
@@ -3838,6 +4000,8 @@ ALTER TABLE culture_transfers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE grows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE grow_observations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE flushes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grain_spawn ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grain_spawn_observations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_ingredients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
@@ -4113,6 +4277,18 @@ DROP POLICY IF EXISTS "grow_observations_insert" ON grow_observations;
 DROP POLICY IF EXISTS "grow_observations_update" ON grow_observations;
 DROP POLICY IF EXISTS "grow_observations_delete" ON grow_observations;
 
+-- Grain spawn
+DROP POLICY IF EXISTS "grain_spawn_select" ON grain_spawn;
+DROP POLICY IF EXISTS "grain_spawn_insert" ON grain_spawn;
+DROP POLICY IF EXISTS "grain_spawn_update" ON grain_spawn;
+DROP POLICY IF EXISTS "grain_spawn_delete" ON grain_spawn;
+
+-- Grain spawn observations
+DROP POLICY IF EXISTS "grain_spawn_observations_select" ON grain_spawn_observations;
+DROP POLICY IF EXISTS "grain_spawn_observations_insert" ON grain_spawn_observations;
+DROP POLICY IF EXISTS "grain_spawn_observations_update" ON grain_spawn_observations;
+DROP POLICY IF EXISTS "grain_spawn_observations_delete" ON grain_spawn_observations;
+
 -- Flushes
 DROP POLICY IF EXISTS "anon_flushes_select" ON flushes;
 DROP POLICY IF EXISTS "anon_flushes_insert" ON flushes;
@@ -4355,6 +4531,18 @@ CREATE POLICY "grow_observations_select" ON grow_observations FOR SELECT USING (
 CREATE POLICY "grow_observations_insert" ON grow_observations FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
 CREATE POLICY "grow_observations_update" ON grow_observations FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
 CREATE POLICY "grow_observations_delete" ON grow_observations FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+
+-- Grain spawn policies (user's own only - no anonymous access)
+CREATE POLICY "grain_spawn_select" ON grain_spawn FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+CREATE POLICY "grain_spawn_insert" ON grain_spawn FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
+CREATE POLICY "grain_spawn_update" ON grain_spawn FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+CREATE POLICY "grain_spawn_delete" ON grain_spawn FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+
+-- Grain spawn observations policies (user's own only - no anonymous access)
+CREATE POLICY "grain_spawn_observations_select" ON grain_spawn_observations FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+CREATE POLICY "grain_spawn_observations_insert" ON grain_spawn_observations FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
+CREATE POLICY "grain_spawn_observations_update" ON grain_spawn_observations FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+CREATE POLICY "grain_spawn_observations_delete" ON grain_spawn_observations FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
 
 -- Flushes policies (user's own only - no anonymous access)
 CREATE POLICY "flushes_select" ON flushes FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));

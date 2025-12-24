@@ -14,6 +14,7 @@ import {
   RecipeCategoryItem, GrainType, LotStatus, UsageType,
   EntityOutcome, ContaminationDetails, OutcomeCategory, OutcomeCode, ContaminationType, ContaminationStage, SuspectedCause,
   PreparedSpawn, PreparedSpawnStatus,
+  GrainSpawn, GrainSpawnObservation, GrainSpawnStatus,
   // Immutable database types
   AmendmentType, RecordVersionSummary, DataAmendmentLogEntry,
 } from './types';
@@ -112,6 +113,10 @@ import {
   transformPurchaseOrderToDb,
   transformPreparedSpawnFromDb,
   transformPreparedSpawnToDb,
+  transformGrainSpawnFromDb,
+  transformGrainSpawnToDb,
+  transformGrainSpawnObservationFromDb,
+  transformGrainSpawnObservationToDb,
 } from './transformations';
 
 // ============================================================================
@@ -228,6 +233,25 @@ interface DataContextValue extends LookupHelpers {
   deletePreparedSpawn: (id: string) => Promise<void>;
   inoculatePreparedSpawn: (preparedSpawnId: string, resultCultureId: string) => Promise<void>;
   getAvailablePreparedSpawn: (type?: PreparedSpawn['type']) => PreparedSpawn[];
+
+  // Grain Spawn CRUD (inoculated grain going through colonization)
+  addGrainSpawn: (grainSpawn: Omit<GrainSpawn, 'id' | 'createdAt' | 'updatedAt'>) => Promise<GrainSpawn>;
+  updateGrainSpawn: (id: string, updates: Partial<GrainSpawn>) => Promise<void>;
+  deleteGrainSpawn: (id: string, outcome?: EntityOutcomeData) => Promise<void>;
+  addGrainSpawnObservation: (grainSpawnId: string, observation: Omit<GrainSpawnObservation, 'id' | 'createdAt'>) => Promise<void>;
+  shakeGrainSpawn: (grainSpawnId: string, notes?: string) => Promise<void>;
+  updateColonizationProgress: (grainSpawnId: string, progress: number, notes?: string) => Promise<void>;
+  markGrainSpawnFullyColonized: (grainSpawnId: string) => Promise<void>;
+  markGrainSpawnContaminated: (grainSpawnId: string, notes?: string) => Promise<void>;
+  inoculateToGrainSpawn: (sourceCultureId: string, preparedSpawnId: string, inoculationData: {
+    containerCount?: number;
+    inoculationVolumeMl?: number;
+    inoculationUnits?: number;
+    inoculationUnit?: string;
+    locationId?: string;
+    notes?: string;
+  }) => Promise<GrainSpawn>;
+  spawnGrainToBulk: (grainSpawnIds: string[], growData: Omit<Grow, 'id' | 'createdAt' | 'observations' | 'flushes' | 'totalYield' | 'grainSpawnIds'>) => Promise<Grow>;
 
   // Grow CRUD
   addGrow: (grow: Omit<Grow, 'id' | 'createdAt' | 'observations' | 'flushes' | 'totalYield'>) => Promise<Grow>;
@@ -873,6 +897,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const activePurchaseOrders = useMemo(() => state.purchaseOrders.filter(o => o.isActive), [state.purchaseOrders]);
   const activeRecipes = useMemo(() => state.recipes.filter(r => r.isActive), [state.recipes]);
   const availablePreparedSpawn = useMemo(() => state.preparedSpawn.filter(s => s.isActive && s.status === 'available'), [state.preparedSpawn]);
+
+  // GrainSpawn lookup helpers
+  const activeGrainSpawn = useMemo(() => state.grainSpawn.filter(gs => !gs.isArchived && !['contaminated', 'expired', 'spawned_to_bulk'].includes(gs.status)), [state.grainSpawn]);
+  const colonizingGrainSpawn = useMemo(() => state.grainSpawn.filter(gs => !gs.isArchived && ['inoculated', 'colonizing', 'shaken'].includes(gs.status)), [state.grainSpawn]);
+  const readyGrainSpawn = useMemo(() => state.grainSpawn.filter(gs => !gs.isArchived && gs.status === 'fully_colonized'), [state.grainSpawn]);
+  const shakeReadyGrainSpawn = useMemo(() => state.grainSpawn.filter(gs => !gs.isArchived && gs.status === 'shake_ready'), [state.grainSpawn]);
 
   // ============================================================================
   // SPECIES CRUD
@@ -1775,6 +1805,316 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       (!type || s.type === type)
     );
   }, [state.preparedSpawn]);
+
+  const getGrainSpawn = useCallback((id: string): GrainSpawn | undefined => {
+    return state.grainSpawn.find(gs => gs.id === id);
+  }, [state.grainSpawn]);
+
+  // ============================================================================
+  // GRAIN SPAWN CRUD (Inoculated grain going through colonization)
+  // ============================================================================
+
+  const addGrainSpawn = useCallback(async (grainSpawn: Omit<GrainSpawn, 'id' | 'createdAt' | 'updatedAt'>): Promise<GrainSpawn> => {
+    if (supabase) {
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('Authentication required. Please sign in to create grain spawn.');
+      }
+      const insertData = {
+        ...transformGrainSpawnToDb(grainSpawn),
+        user_id: userId,
+      };
+
+      const { data, error } = await supabase
+        .from('grain_spawn')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newGrainSpawn = transformGrainSpawnFromDb(data);
+      setState(prev => ({ ...prev, grainSpawn: [newGrainSpawn, ...prev.grainSpawn] }));
+      return newGrainSpawn;
+    }
+
+    const newGrainSpawn: GrainSpawn = {
+      ...grainSpawn,
+      id: generateId('grain-spawn'),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    setState(prev => ({ ...prev, grainSpawn: [newGrainSpawn, ...prev.grainSpawn] }));
+    return newGrainSpawn;
+  }, [supabase, generateId]);
+
+  const updateGrainSpawn = useCallback(async (id: string, updates: Partial<GrainSpawn>) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('grain_spawn')
+        .update({
+          ...transformGrainSpawnToDb(updates),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+
+    setState(prev => ({
+      ...prev,
+      grainSpawn: prev.grainSpawn.map(gs => gs.id === id ? { ...gs, ...updates, updatedAt: new Date() } : gs)
+    }));
+  }, [supabase]);
+
+  const deleteGrainSpawn = useCallback(async (id: string, outcome?: EntityOutcomeData) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('grain_spawn')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+
+    setState(prev => ({
+      ...prev,
+      grainSpawn: prev.grainSpawn.filter(gs => gs.id !== id)
+    }));
+  }, [supabase]);
+
+  const addGrainSpawnObservation = useCallback(async (grainSpawnId: string, observation: Omit<GrainSpawnObservation, 'id' | 'createdAt'>) => {
+    const newObservation: GrainSpawnObservation = {
+      ...observation,
+      id: generateId('grain-spawn-obs'),
+      grainSpawnId,
+      createdAt: new Date(),
+    };
+
+    if (supabase) {
+      const userId = await getCurrentUserId();
+      const { error } = await supabase
+        .from('grain_spawn_observations')
+        .insert(transformGrainSpawnObservationToDb(newObservation, userId));
+
+      if (error) throw error;
+    }
+
+    // Update local state with observation and any cascading updates
+    const updates: Partial<GrainSpawn> = {
+      updatedAt: new Date(),
+    };
+
+    // If colonization percent is provided, update the progress
+    if (observation.colonizationPercent !== undefined) {
+      updates.colonizationProgress = observation.colonizationPercent;
+
+      // Auto-update status based on progress
+      if (observation.colonizationPercent > 0 && observation.colonizationPercent < 25) {
+        updates.status = 'colonizing';
+        if (!state.grainSpawn.find(gs => gs.id === grainSpawnId)?.firstGrowthAt) {
+          updates.firstGrowthAt = new Date();
+        }
+      } else if (observation.colonizationPercent >= 20 && observation.colonizationPercent < 35) {
+        updates.status = 'shake_ready';
+      } else if (observation.colonizationPercent === 100) {
+        updates.status = 'fully_colonized';
+        updates.fullyColonizedAt = new Date();
+        updates.workflowStage = 'clean_work';
+      }
+    }
+
+    // Handle contamination observations
+    if (observation.type === 'contamination') {
+      updates.status = 'contaminated';
+    }
+
+    // Handle stall observations
+    if (observation.type === 'stall') {
+      updates.status = 'stalled';
+    }
+
+    setState(prev => ({
+      ...prev,
+      grainSpawn: prev.grainSpawn.map(gs => {
+        if (gs.id !== grainSpawnId) return gs;
+        return {
+          ...gs,
+          ...updates,
+          observations: [...(gs.observations || []), newObservation],
+        };
+      }),
+    }));
+  }, [supabase, generateId, state.grainSpawn]);
+
+  const shakeGrainSpawn = useCallback(async (grainSpawnId: string, notes?: string) => {
+    const grainSpawn = state.grainSpawn.find(gs => gs.id === grainSpawnId);
+    if (!grainSpawn) throw new Error('Grain spawn not found');
+
+    const newShakeCount = (grainSpawn.shakeCount || 0) + 1;
+    const updates: Partial<GrainSpawn> = {
+      shakeCount: newShakeCount,
+      lastShakeAt: new Date(),
+      status: 'shaken' as GrainSpawnStatus,
+      updatedAt: new Date(),
+    };
+
+    await updateGrainSpawn(grainSpawnId, updates);
+
+    // Log shake observation
+    await addGrainSpawnObservation(grainSpawnId, {
+      grainSpawnId,
+      date: new Date(),
+      type: 'shake',
+      title: `Break & Shake #${newShakeCount}`,
+      notes: notes || `Break and shake at ${grainSpawn.colonizationProgress || 0}% colonization`,
+      colonizationPercent: grainSpawn.colonizationProgress,
+    });
+  }, [state.grainSpawn, updateGrainSpawn, addGrainSpawnObservation]);
+
+  const updateColonizationProgress = useCallback(async (grainSpawnId: string, progress: number, notes?: string) => {
+    const updates: Partial<GrainSpawn> = {
+      colonizationProgress: progress,
+      updatedAt: new Date(),
+    };
+
+    // Auto-update status and workflow stage based on progress
+    if (progress > 0 && progress < 20) {
+      updates.status = 'colonizing';
+      updates.workflowStage = 'observation';
+    } else if (progress >= 20 && progress < 35) {
+      updates.status = 'shake_ready';
+      updates.workflowStage = 'clean_work';
+    } else if (progress >= 35 && progress < 100) {
+      updates.status = 'colonizing';
+      updates.workflowStage = 'observation';
+    } else if (progress === 100) {
+      updates.status = 'fully_colonized';
+      updates.fullyColonizedAt = new Date();
+      updates.workflowStage = 'clean_work';
+    }
+
+    // Check if first growth
+    const grainSpawn = state.grainSpawn.find(gs => gs.id === grainSpawnId);
+    if (grainSpawn && progress > 0 && !grainSpawn.firstGrowthAt) {
+      updates.firstGrowthAt = new Date();
+    }
+
+    await updateGrainSpawn(grainSpawnId, updates);
+
+    // Log progress observation
+    if (notes) {
+      await addGrainSpawnObservation(grainSpawnId, {
+        grainSpawnId,
+        date: new Date(),
+        type: 'growth',
+        title: `${progress}% Colonized`,
+        notes,
+        colonizationPercent: progress,
+      });
+    }
+  }, [state.grainSpawn, updateGrainSpawn, addGrainSpawnObservation]);
+
+  const markGrainSpawnFullyColonized = useCallback(async (grainSpawnId: string) => {
+    const updates: Partial<GrainSpawn> = {
+      status: 'fully_colonized' as GrainSpawnStatus,
+      colonizationProgress: 100,
+      fullyColonizedAt: new Date(),
+      workflowStage: 'clean_work',
+      updatedAt: new Date(),
+    };
+
+    await updateGrainSpawn(grainSpawnId, updates);
+
+    await addGrainSpawnObservation(grainSpawnId, {
+      grainSpawnId,
+      date: new Date(),
+      type: 'milestone',
+      title: 'Fully Colonized',
+      notes: 'Grain spawn is 100% colonized and ready for spawn-to-bulk',
+      colonizationPercent: 100,
+    });
+  }, [updateGrainSpawn, addGrainSpawnObservation]);
+
+  const markGrainSpawnContaminated = useCallback(async (grainSpawnId: string, notes?: string) => {
+    const updates: Partial<GrainSpawn> = {
+      status: 'contaminated' as GrainSpawnStatus,
+      updatedAt: new Date(),
+    };
+
+    await updateGrainSpawn(grainSpawnId, updates);
+
+    await addGrainSpawnObservation(grainSpawnId, {
+      grainSpawnId,
+      date: new Date(),
+      type: 'contamination',
+      title: 'Contamination Detected',
+      notes: notes || 'Contamination detected in grain spawn',
+    });
+  }, [updateGrainSpawn, addGrainSpawnObservation]);
+
+  const inoculateToGrainSpawn = useCallback(async (
+    sourceCultureId: string,
+    preparedSpawnId: string,
+    inoculationData: {
+      containerCount?: number;
+      inoculationVolumeMl?: number;
+      inoculationUnits?: number;
+      inoculationUnit?: string;
+      locationId?: string;
+      notes?: string;
+    }
+  ): Promise<GrainSpawn> => {
+    // Get source culture
+    const sourceCulture = state.cultures.find(c => c.id === sourceCultureId);
+    if (!sourceCulture) throw new Error('Source culture not found');
+
+    // Get prepared spawn
+    const preparedSpawn = state.preparedSpawn.find(ps => ps.id === preparedSpawnId);
+    if (!preparedSpawn) throw new Error('Prepared spawn not found');
+
+    // Determine source type
+    let sourceType: GrainSpawn['sourceType'] = 'liquid_culture';
+    if (sourceCulture.type === 'agar') sourceType = 'agar';
+    else if (sourceCulture.type === 'spore_syringe') sourceType = 'spore_syringe';
+
+    // Create grain spawn record
+    const newGrainSpawn = await addGrainSpawn({
+      label: preparedSpawn.label || `GS-${Date.now()}`,
+      strainId: sourceCulture.strainId,
+      sourcePreparedSpawnId: preparedSpawnId,
+      sourceCultureId,
+      sourceType,
+      containerId: preparedSpawn.containerId,
+      containerCount: inoculationData.containerCount || preparedSpawn.containerCount || 1,
+      grainTypeId: preparedSpawn.grainTypeId,
+      weightGrams: preparedSpawn.weightGrams,
+      inoculatedAt: new Date(),
+      inoculationVolumeMl: inoculationData.inoculationVolumeMl,
+      inoculationUnits: inoculationData.inoculationUnits,
+      inoculationUnit: inoculationData.inoculationUnit || 'ml',
+      locationId: inoculationData.locationId || preparedSpawn.locationId,
+      status: 'inoculated',
+      colonizationProgress: 0,
+      shakeCount: 0,
+      requiresSterileEnvironment: true,
+      workflowStage: 'sterile_work',
+      notes: inoculationData.notes,
+      isActive: true,
+    });
+
+    // Update prepared spawn status
+    await updatePreparedSpawn(preparedSpawnId, {
+      status: 'inoculated' as PreparedSpawnStatus,
+      inoculatedAt: new Date(),
+      resultGrainSpawnId: newGrainSpawn.id,
+    });
+
+    // Log transfer on culture (if tracking transfers)
+    // This could optionally add to culture.transfers array
+
+    return newGrainSpawn;
+  }, [state.cultures, state.preparedSpawn, addGrainSpawn, updatePreparedSpawn]);
 
   // ============================================================================
   // GROW CRUD
@@ -2849,6 +3189,45 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, [state.inventoryItems, state.locations]);
 
   // ============================================================================
+  // SPAWN TO BULK (creates Grow from GrainSpawn batches)
+  // Placed after addGrow to avoid declaration order issues
+  // ============================================================================
+
+  const spawnGrainToBulk = useCallback(async (
+    grainSpawnIds: string[],
+    growData: Omit<Grow, 'id' | 'createdAt' | 'observations' | 'flushes' | 'totalYield' | 'grainSpawnIds'>
+  ): Promise<Grow> => {
+    // Validate all grain spawn batches exist and are ready
+    const grainSpawnBatches = grainSpawnIds.map(id => {
+      const gs = state.grainSpawn.find(g => g.id === id);
+      if (!gs) throw new Error(`Grain spawn ${id} not found`);
+      if (gs.status !== 'fully_colonized') {
+        throw new Error(`Grain spawn ${gs.label || id} is not fully colonized`);
+      }
+      return gs;
+    });
+
+    // Create the grow with grain spawn IDs
+    const newGrow = await addGrow({
+      ...growData,
+      grainSpawnIds,
+    } as Omit<Grow, 'id' | 'createdAt' | 'observations' | 'flushes' | 'totalYield'>);
+
+    // Update all grain spawn batches to spawned_to_bulk status
+    for (const gs of grainSpawnBatches) {
+      const resultGrowIds = [...(gs.resultGrowIds || []), newGrow.id];
+      await updateGrainSpawn(gs.id, {
+        status: 'spawned_to_bulk' as GrainSpawnStatus,
+        spawnedAt: new Date(),
+        resultGrowIds,
+        workflowStage: 'completed',
+      });
+    }
+
+    return newGrow;
+  }, [state.grainSpawn, addGrow, updateGrainSpawn]);
+
+  // ============================================================================
   // RECIPE CRUD
   // ============================================================================
 
@@ -3722,10 +4101,11 @@ const loadSettings = async (): Promise<AppSettings> => {
     // Lookup helpers
     getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
-    getInventoryLot, getPurchaseOrder, getCulture, getPreparedSpawn, getGrow, getRecipe,
+    getInventoryLot, getPurchaseOrder, getCulture, getPreparedSpawn, getGrainSpawn, getGrow, getRecipe,
     activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeContainers,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes, availablePreparedSpawn,
+    activeGrainSpawn, colonizingGrainSpawn, readyGrainSpawn, shakeReadyGrainSpawn,
 
     // CRUD operations
     addSpecies, updateSpecies, deleteSpecies,
@@ -3745,6 +4125,9 @@ const loadSettings = async (): Promise<AppSettings> => {
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
     getCultureLineage, generateCultureLabel, amendCulture, archiveCulture,
     addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn,
+    addGrainSpawn, updateGrainSpawn, deleteGrainSpawn, addGrainSpawnObservation,
+    shakeGrainSpawn, updateColonizationProgress, markGrainSpawnFullyColonized, markGrainSpawnContaminated,
+    inoculateToGrainSpawn, spawnGrainToBulk,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated, amendGrow, archiveGrow,
     addGrowObservation, addFlush,
     getRecordHistory, getAmendmentLog, archiveAllUserData,
@@ -3760,10 +4143,11 @@ const loadSettings = async (): Promise<AppSettings> => {
     requireAuth,
     getSpecies, getStrain, getLocation, getLocationType, getLocationClassification, getContainer, getSubstrateType,
     getSupplier, getInventoryCategory, getRecipeCategory, getGrainType, getInventoryItem,
-    getInventoryLot, getPurchaseOrder, getCulture, getPreparedSpawn, getGrow, getRecipe,
+    getInventoryLot, getPurchaseOrder, getCulture, getPreparedSpawn, getGrainSpawn, getGrow, getRecipe,
     activeSpecies, activeStrains, activeLocations, activeLocationTypes, activeLocationClassifications, activeContainers,
     activeSubstrateTypes, activeSuppliers, activeInventoryCategories, activeRecipeCategories,
     activeGrainTypes, activeInventoryItems, activeInventoryLots, activePurchaseOrders, activeRecipes, availablePreparedSpawn,
+    activeGrainSpawn, colonizingGrainSpawn, readyGrainSpawn, shakeReadyGrainSpawn,
     addSpecies, updateSpecies, deleteSpecies,
     addStrain, updateStrain, deleteStrain,
     addLocation, updateLocation, deleteLocation,
@@ -3781,6 +4165,9 @@ const loadSettings = async (): Promise<AppSettings> => {
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
     getCultureLineage, generateCultureLabel, amendCulture, archiveCulture,
     addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn,
+    addGrainSpawn, updateGrainSpawn, deleteGrainSpawn, addGrainSpawnObservation,
+    shakeGrainSpawn, updateColonizationProgress, markGrainSpawnFullyColonized, markGrainSpawnContaminated,
+    inoculateToGrainSpawn, spawnGrainToBulk,
     addGrow, updateGrow, deleteGrow, advanceGrowStage, markGrowContaminated, amendGrow, archiveGrow,
     addGrowObservation, addFlush,
     getRecordHistory, getAmendmentLog, archiveAllUserData,

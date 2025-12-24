@@ -92,6 +92,7 @@ export const emptyState: DataStoreState = {
   purchaseOrders: [],
   cultures: [],
   preparedSpawn: [],
+  grainSpawn: [],
   grows: [],
   recipes: [],
   // Historical tracking

@@ -15,6 +15,7 @@ import { EntityDisposalModal, DisposalOutcome } from '../common/EntityDisposalMo
 import { RecordHistoryTab } from '../common/RecordHistoryTab';
 import { NotificationBellCompact } from '../common/NotificationBell';
 import { ObservationModal, type ObservationFormData } from '../forms/ObservationForm';
+import { InoculateToGrainModal } from '../spawn/InoculateToGrainModal';
 import { calculateShelfLife, formatRemainingShelfLife, getStorageRecommendation, getExpectedShelfLifeDays, coldSensitiveSpecies } from '../../utils';
 import type { Culture, CultureType, CultureStatus, CultureObservation, PreparedSpawn, ContaminationType, SuspectedCause, AmendmentType } from '../../store/types';
 
@@ -254,6 +255,7 @@ export const CultureManagement: React.FC = () => {
   const [cultureToDispose, setCultureToDispose] = useState<Culture | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showInoculateGrainModal, setShowInoculateGrainModal] = useState(false);
 
   // newObservation state removed - using canonical ObservationModal
 
@@ -821,6 +823,11 @@ export const CultureManagement: React.FC = () => {
             { label: 'Log Observation', onClick: () => setShowObservationModal(true), variant: 'secondary' },
             { label: 'Transfer', onClick: () => setShowTransferModal(true), variant: 'primary' },
           ];
+          // Show "Inoculate Grain" for cultures that can be used to inoculate (LC, agar, spore syringe)
+          if (['active', 'ready', 'colonizing'].includes(selectedCulture.status) &&
+              ['liquid_culture', 'agar', 'spore_syringe'].includes(selectedCulture.type)) {
+            panelActions.push({ label: 'Inoculate Grain', onClick: () => setShowInoculateGrainModal(true), variant: 'secondary' });
+          }
           if (!['archived', 'depleted', 'contaminated'].includes(selectedCulture.status)) {
             panelActions.push({ label: 'Dispose', onClick: () => handleDelete(selectedCulture), variant: 'danger' });
           }
@@ -1322,6 +1329,13 @@ export const CultureManagement: React.FC = () => {
           }}
         />
       )}
+
+      {/* Inoculate Grain Spawn Modal */}
+      <InoculateToGrainModal
+        isOpen={showInoculateGrainModal}
+        onClose={() => setShowInoculateGrainModal(false)}
+        preSelectedCultureId={selectedCulture?.id}
+      />
     </div>
   );
 };

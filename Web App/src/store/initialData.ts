@@ -1224,6 +1224,7 @@ export const initialDataState: DataStoreState = {
   purchaseOrders: [],
   cultures: initialCultures,
   preparedSpawn: [],
+  grainSpawn: [],
   grows: initialGrows,
   recipes: initialRecipes,
   // Historical tracking

@@ -711,6 +711,140 @@ export interface PreparedSpawn {
 
   // Notification control
   notificationsMuted?: boolean;   // Mute spawn ready/expiring notifications
+
+  // Linkage to GrainSpawn (when used for grain spawn)
+  resultGrainSpawnId?: string;    // The grain spawn record created from inoculation
+}
+
+// ============================================================================
+// GRAIN SPAWN TYPES
+// Tracks inoculated grain going through colonization lifecycle
+// Separate from PreparedSpawn which only tracks sterilized containers
+// ============================================================================
+
+export type GrainSpawnSourceType = 'liquid_culture' | 'agar' | 'grain_transfer' | 'spore_syringe';
+
+export type GrainSpawnStatus =
+  | 'inoculated'        // Just inoculated, no visible growth
+  | 'colonizing'        // Mycelium visible and spreading
+  | 'shake_ready'       // 20-30% colonized, ready for break & shake
+  | 'shaken'            // Recently shaken, recovering
+  | 'fully_colonized'   // 100% colonized, ready for spawn-to-bulk
+  | 'spawned_to_bulk'   // Used in a grow
+  | 'contaminated'      // Lost to contamination
+  | 'stalled'           // Growth stopped unexpectedly
+  | 'expired';          // Sat too long, no longer viable
+
+export type GrainSpawnWorkflowStage =
+  | 'sterile_work'      // Inoculation (requires flow hood/SAB)
+  | 'clean_work'        // Post-inoculation handling (controlled but not sterile)
+  | 'observation'       // Just monitoring
+  | 'completed';        // Done
+
+export interface GrainSpawnObservation {
+  id: string;
+  grainSpawnId: string;
+  date: Date;
+  type: 'growth' | 'shake' | 'contamination' | 'stall' | 'milestone' | 'environmental' | 'general';
+  title?: string;
+  notes?: string;
+  colonizationPercent?: number;
+  temperature?: number;
+  humidity?: number;
+  images?: string[];
+  createdAt: Date;
+  userId?: string;
+}
+
+export interface GrainSpawnShake {
+  date: Date;
+  progressBefore: number;
+  notes?: string;
+}
+
+export interface GrainSpawn {
+  id: string;
+  userId?: string | null;
+
+  // Identification
+  label?: string;                    // User-defined label (e.g., "Blue Oyster Batch 1")
+  strainId: string;                  // What's growing
+
+  // Source information
+  sourcePreparedSpawnId?: string;    // Which sterilized container was used
+  sourceCultureId?: string;          // Which culture was used to inoculate
+  sourceType: GrainSpawnSourceType;
+
+  // Container info (copied from PreparedSpawn for denormalization)
+  containerId: string;
+  containerCount: number;            // Number of containers in this batch
+  grainTypeId?: string;
+  weightGrams?: number;              // Total grain weight
+
+  // Inoculation details
+  inoculatedAt: Date;
+  inoculationVolumeMl?: number;      // How much LC was used (ml)
+  inoculationUnits?: number;         // How many agar wedges, drops, etc.
+  inoculationUnit: string;           // 'ml', 'cc', 'wedge', 'drop'
+
+  // Location
+  locationId: string;
+
+  // Colonization lifecycle
+  status: GrainSpawnStatus;
+  colonizationProgress: number;      // 0-100%
+
+  // Shake tracking
+  shakeCount: number;
+  lastShakeAt?: Date;
+  shakes?: GrainSpawnShake[];        // History of shakes
+
+  // Milestone dates
+  firstGrowthAt?: Date;              // When mycelium first visible
+  fullyColonizedAt?: Date;           // When reached 100%
+  spawnedAt?: Date;                  // When used for spawn-to-bulk
+
+  // Expiration
+  expiresAt?: Date;
+
+  // Output tracking
+  resultGrowIds?: string[];          // Grows created from this spawn
+
+  // Cost tracking
+  productionCost?: number;           // Cost to produce
+  sourceCultureCost?: number;        // Proportional cost from source culture
+
+  // Workflow metadata
+  requiresSterileEnvironment: boolean;
+  workflowStage: GrainSpawnWorkflowStage;
+
+  // Observations (embedded for convenience, also stored separately)
+  observations?: GrainSpawnObservation[];
+
+  // General
+  notes?: string;
+  images?: string[];
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+
+  // Immutability fields
+  version?: number;
+  recordGroupId?: string;
+  isCurrent?: boolean;
+  validFrom?: Date;
+  validTo?: Date;
+  supersededById?: string;
+  isArchived?: boolean;
+  archivedAt?: Date;
+  archivedBy?: string;
+  archiveReason?: string;
+  amendmentType?: AmendmentType;
+  amendmentReason?: string;
+  amendsRecordId?: string;
+
+  // Notification control
+  notificationsMuted?: boolean;
 }
 
 // ============================================================================
@@ -755,6 +889,7 @@ export interface Grow {
   
   // Source
   sourceCultureId?: string;
+  grainSpawnIds?: string[];        // Grain spawn batches used for this grow
   spawnType: string;
   spawnWeight: number;
   
@@ -1443,6 +1578,7 @@ export interface DataStoreState {
   purchaseOrders: PurchaseOrder[];
   cultures: Culture[];
   preparedSpawn: PreparedSpawn[];  // Sterilized containers ready for inoculation
+  grainSpawn: GrainSpawn[];         // Inoculated grain going through colonization
   grows: Grow[];
   recipes: Recipe[];
 
@@ -2127,6 +2263,7 @@ export interface LookupHelpers {
   getPurchaseOrder: (id: string) => PurchaseOrder | undefined;
   getCulture: (id: string) => Culture | undefined;
   getPreparedSpawn: (id: string) => PreparedSpawn | undefined;
+  getGrainSpawn: (id: string) => GrainSpawn | undefined;
   getGrow: (id: string) => Grow | undefined;
   getRecipe: (id: string) => Recipe | undefined;
 
@@ -2147,6 +2284,12 @@ export interface LookupHelpers {
   activePurchaseOrders: PurchaseOrder[];
   activeRecipes: Recipe[];
   availablePreparedSpawn: PreparedSpawn[];  // PreparedSpawn with status='available'
+
+  // GrainSpawn filtered lists
+  activeGrainSpawn: GrainSpawn[];                // All non-archived grain spawn
+  colonizingGrainSpawn: GrainSpawn[];            // Grain spawn in colonization phase
+  readyGrainSpawn: GrainSpawn[];                 // Fully colonized, ready for spawn-to-bulk
+  shakeReadyGrainSpawn: GrainSpawn[];            // Ready for break & shake
 }
 
 // ============================================================================
