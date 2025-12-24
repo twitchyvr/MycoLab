@@ -89,6 +89,7 @@ export const emptyState: DataStoreState = {
   inventoryItems: [],
   inventoryLots: [],
   inventoryUsages: [],
+  labItemInstances: [],
   purchaseOrders: [],
   cultures: [],
   preparedSpawn: [],

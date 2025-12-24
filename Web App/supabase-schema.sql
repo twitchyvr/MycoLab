@@ -8646,6 +8646,134 @@ CREATE INDEX IF NOT EXISTS idx_prepared_spawn_status_cooling ON prepared_spawn(s
 CREATE INDEX IF NOT EXISTS idx_prepared_spawn_status_preparing ON prepared_spawn(status) WHERE status = 'preparing';
 
 -- ============================================================================
+-- INVENTORY SYSTEM REBUILD - NEW FIELDS
+-- Instance tracking, smart item behaviors, and cost calculations
+-- ============================================================================
+
+-- Add new columns to inventory_items for smart item classification
+DO $$
+BEGIN
+  -- Item behavior classification
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'item_behavior') THEN
+    ALTER TABLE inventory_items ADD COLUMN item_behavior TEXT CHECK (item_behavior IN ('container', 'consumable', 'equipment', 'supply', 'surface'));
+    RAISE NOTICE 'Added item_behavior column to inventory_items';
+  END IF;
+
+  -- Item properties (JSONB for flexible properties)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'item_properties') THEN
+    ALTER TABLE inventory_items ADD COLUMN item_properties JSONB DEFAULT '{}'::JSONB;
+    RAISE NOTICE 'Added item_properties column to inventory_items';
+  END IF;
+
+  RAISE NOTICE 'Inventory items smart classification migration complete!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error in inventory_items classification migration: %', SQLERRM;
+END $$;
+
+-- Add new columns to inventory_lots for instance tracking
+DO $$
+BEGIN
+  -- Track how many items are currently in use
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_lots' AND column_name = 'in_use_quantity') THEN
+    ALTER TABLE inventory_lots ADD COLUMN in_use_quantity DECIMAL DEFAULT 0;
+    RAISE NOTICE 'Added in_use_quantity column to inventory_lots';
+  END IF;
+
+  -- Unit cost (calculated from purchase_cost / original_quantity)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_lots' AND column_name = 'unit_cost') THEN
+    ALTER TABLE inventory_lots ADD COLUMN unit_cost DECIMAL;
+    RAISE NOTICE 'Added unit_cost column to inventory_lots';
+  END IF;
+
+  RAISE NOTICE 'Inventory lots instance tracking migration complete!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error in inventory_lots instance tracking migration: %', SQLERRM;
+END $$;
+
+-- Create lab_item_instances table for tracking individual reusable items
+CREATE TABLE IF NOT EXISTS lab_item_instances (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  inventory_item_id UUID REFERENCES inventory_items(id) ON DELETE CASCADE,
+  inventory_lot_id UUID REFERENCES inventory_lots(id) ON DELETE CASCADE,
+  instance_number INTEGER DEFAULT 1,
+  label TEXT,
+  status TEXT CHECK (status IN ('available', 'in_use', 'sterilized', 'dirty', 'damaged', 'disposed')) DEFAULT 'available',
+  usage_ref JSONB, -- References entity using this instance {entityType, entityId, entityLabel, usedAt}
+  unit_cost DECIMAL DEFAULT 0,
+  acquisition_date TIMESTAMPTZ DEFAULT NOW(),
+  usage_count INTEGER DEFAULT 0,
+  last_used_at TIMESTAMPTZ,
+  last_cleaned_at TIMESTAMPTZ,
+  last_sterilized_at TIMESTAMPTZ,
+  location_id UUID REFERENCES locations(id),
+  condition_notes TEXT,
+  images TEXT[],
+  notes TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Indexes for lab_item_instances
+CREATE INDEX IF NOT EXISTS idx_lab_item_instances_item ON lab_item_instances(inventory_item_id);
+CREATE INDEX IF NOT EXISTS idx_lab_item_instances_lot ON lab_item_instances(inventory_lot_id);
+CREATE INDEX IF NOT EXISTS idx_lab_item_instances_status ON lab_item_instances(status);
+CREATE INDEX IF NOT EXISTS idx_lab_item_instances_user ON lab_item_instances(user_id);
+CREATE INDEX IF NOT EXISTS idx_lab_item_instances_available ON lab_item_instances(status) WHERE status = 'available' AND is_active = true;
+
+-- RLS for lab_item_instances
+ALTER TABLE lab_item_instances ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_select') THEN
+    CREATE POLICY lab_item_instances_select ON lab_item_instances FOR SELECT USING (user_id = auth.uid());
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_insert') THEN
+    CREATE POLICY lab_item_instances_insert ON lab_item_instances FOR INSERT WITH CHECK (user_id = auth.uid());
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_update') THEN
+    CREATE POLICY lab_item_instances_update ON lab_item_instances FOR UPDATE USING (user_id = auth.uid());
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_delete') THEN
+    CREATE POLICY lab_item_instances_delete ON lab_item_instances FOR DELETE USING (user_id = auth.uid());
+  END IF;
+
+  RAISE NOTICE 'Lab item instances RLS policies created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating lab_item_instances RLS policies: %', SQLERRM;
+END $$;
+
+-- Updated_at trigger for lab_item_instances
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'lab_item_instances_updated_at') THEN
+    CREATE TRIGGER lab_item_instances_updated_at
+      BEFORE UPDATE ON lab_item_instances
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating lab_item_instances trigger: %', SQLERRM;
+END $$;
+
+-- Update inventory_usages usage_type to include spawn_preparation
+DO $$
+BEGIN
+  -- Add spawn_preparation to the allowed usage types
+  ALTER TABLE inventory_usages DROP CONSTRAINT IF EXISTS inventory_usages_usage_type_check;
+  ALTER TABLE inventory_usages ADD CONSTRAINT inventory_usages_usage_type_check
+    CHECK (usage_type IN ('recipe', 'grow', 'culture', 'waste', 'adjustment', 'other', 'spawn_preparation'));
+  RAISE NOTICE 'Updated inventory_usages usage_type check constraint';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error updating inventory_usages usage_type: %', SQLERRM;
+END $$;
+
+-- ============================================================================
 -- SUCCESS MESSAGE
 -- ============================================================================
 -- If you see this, the schema was applied successfully!

@@ -14,7 +14,7 @@ import type { LoadResult, RealtimePayload } from './types';
 import type {
   Species, Strain, Location, LocationType, LocationClassification,
   Container, SubstrateType, Supplier, InventoryCategory, InventoryItem,
-  InventoryLot, PurchaseOrder, Culture, Grow, Recipe, Flush,
+  InventoryLot, LabItemInstance, PurchaseOrder, Culture, Grow, Recipe, Flush,
   RecipeCategoryItem, GrainType, PreparedSpawn, GrainSpawn, AppSettings, EntityOutcome,
 } from '../../store/types';
 
@@ -36,6 +36,7 @@ import {
   transformFlushFromDb,
   transformGrainTypeFromDb,
   transformInventoryLotFromDb,
+  transformLabItemInstanceFromDb,
   transformPurchaseOrderFromDb,
   transformPreparedSpawnFromDb,
   transformGrainSpawnFromDb,
@@ -58,6 +59,7 @@ export interface DataLoaderState {
   inventoryCategories: InventoryCategory[];
   inventoryItems: InventoryItem[];
   inventoryLots: InventoryLot[];
+  labItemInstances: LabItemInstance[];
   purchaseOrders: PurchaseOrder[];
   recipeCategories: RecipeCategoryItem[];
   grainTypes: GrainType[];
@@ -96,6 +98,7 @@ const TRANSFORMATIONS: Record<string, (row: any) => any> = {
   inventory_categories: transformInventoryCategoryFromDb,
   inventory_items: transformInventoryItemFromDb,
   inventory_lots: transformInventoryLotFromDb,
+  lab_item_instances: transformLabItemInstanceFromDb,
   purchase_orders: transformPurchaseOrderFromDb,
   recipe_categories: transformRecipeCategoryFromDb,
   grain_types: transformGrainTypeFromDb,
@@ -122,6 +125,7 @@ const TABLE_TO_STATE: Record<string, keyof DataLoaderState> = {
   inventory_categories: 'inventoryCategories',
   inventory_items: 'inventoryItems',
   inventory_lots: 'inventoryLots',
+  lab_item_instances: 'labItemInstances',
   purchase_orders: 'purchaseOrders',
   recipe_categories: 'recipeCategories',
   grain_types: 'grainTypes',
@@ -344,6 +348,7 @@ export function setupRealtimeSync(callback: RealtimeCallback): () => void {
     'recipes',
     'inventory_items',
     'inventory_lots',
+    'lab_item_instances',
     'prepared_spawn',
     'grain_spawn',
   ];

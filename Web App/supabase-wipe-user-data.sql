@@ -194,6 +194,7 @@ DELETE FROM recipe_ingredients WHERE user_id IS NOT NULL;
 
 -- Inventory children
 DELETE FROM inventory_usages WHERE user_id IS NOT NULL;
+DELETE FROM lab_item_instances WHERE user_id IS NOT NULL;
 DELETE FROM inventory_lots WHERE user_id IS NOT NULL;
 
 -- ============================================================================

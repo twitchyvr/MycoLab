@@ -312,6 +312,7 @@ DROP TABLE IF EXISTS public.recipe_ingredients CASCADE;
 
 -- Inventory children
 DROP TABLE IF EXISTS public.inventory_usages CASCADE;
+DROP TABLE IF EXISTS public.lab_item_instances CASCADE;
 DROP TABLE IF EXISTS public.inventory_lots CASCADE;
 
 DO $$
