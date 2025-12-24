@@ -47,6 +47,7 @@ import { CultureMultiplicationCalculator } from './components/tools/CultureMulti
 import { CultureManagement } from './components/cultures/CultureManagement';
 import { LineageVisualization } from './components/cultures/LineageVisualization';
 import { GrowManagement } from './components/grows/GrowManagement';
+import { SpawnManagement } from './components/spawn/SpawnManagement';
 import { RecipeBuilder } from './components/recipes/RecipeBuilder';
 import { SetupWizard } from './components/setup/SetupWizard';
 import { OnboardingWizard } from './components/setup/OnboardingWizard';
@@ -120,7 +121,7 @@ const initialState: AppState = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'cultureguide' | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'multiplication' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes' | 'settings' | 'profile' | 'devlog' | 'featuretracker';
+type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'cultureguide' | 'inventory' | 'stock' | 'cultures' | 'spawn' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'multiplication' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes' | 'settings' | 'profile' | 'devlog' | 'featuretracker';
 
 // Route configuration: maps Page to URL paths
 // Routes with :id support deep-linking to specific items
@@ -139,6 +140,7 @@ const routeConfig: Record<Page, string> = {
   inventory: '/inventory',
   stock: '/stock',
   cultures: '/cultures',
+  spawn: '/spawn',
   lineage: '/lineage',
   grows: '/grows',
   recipes: '/recipes',
@@ -215,6 +217,7 @@ const navGroups: NavGroup[] = [
     defaultOpen: false,
     items: [
       { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
+      { id: 'spawn', label: 'Grain Spawn', icon: Icons.Grain },
       { id: 'grows', label: 'Grows', icon: Icons.Grow },
       { id: 'lineage', label: 'Lineage Tree', icon: Icons.Lineage },
       { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
@@ -1147,6 +1150,7 @@ const AppWithRouter: React.FC = () => {
     inventory: { title: 'Lab Inventory', subtitle: 'All cultures, spawn, and grows' },
     stock: { title: 'Lab Stock', subtitle: 'Inventory lots, purchases, and tracking' },
     cultures: { title: 'Culture Library', subtitle: 'Manage your cultures and genetics' },
+    spawn: { title: 'Grain Spawn', subtitle: 'Track colonization from inoculation to spawn-to-bulk' },
     lineage: { title: 'Lineage Visualization', subtitle: 'Interactive family tree of your cultures' },
     grows: { title: 'Grow Tracking', subtitle: 'Track your active and completed grows' },
     recipes: { title: 'Recipes', subtitle: 'Agar, LC, substrate formulations' },
@@ -1262,6 +1266,12 @@ const AppWithRouter: React.FC = () => {
         return (
           <div className="p-6">
             <CultureManagement />
+          </div>
+        );
+      case 'spawn':
+        return (
+          <div className="p-6">
+            <SpawnManagement />
           </div>
         );
       case 'lineage':

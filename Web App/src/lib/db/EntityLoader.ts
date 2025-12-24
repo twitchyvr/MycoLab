@@ -39,6 +39,7 @@ const TABLE_PRIORITIES: Record<string, number> = {
   recipes: 40,
   inventory_items: 35,
   prepared_spawn: 30,
+  grain_spawn: 28,
 
   // Lower priority - detail/related data
   flushes: 25,
@@ -50,6 +51,7 @@ const TABLE_PRIORITIES: Record<string, number> = {
   culture_observations: 5,
   culture_transfers: 5,
   grow_observations: 5,
+  grain_spawn_observations: 5,
 };
 
 export class EntityLoader implements IEntityLoader {
@@ -326,6 +328,13 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
   prepared_spawn: {
     name: 'prepared_spawn',
     orderBy: { column: 'prep_date', ascending: false },
+    required: false,
+    // Exclude archived records from loading
+    filter: (query: any) => query.or('is_archived.is.null,is_archived.eq.false'),
+  },
+  grain_spawn: {
+    name: 'grain_spawn',
+    orderBy: { column: 'inoculation_date', ascending: false },
     required: false,
     // Exclude archived records from loading
     filter: (query: any) => query.or('is_archived.is.null,is_archived.eq.false'),

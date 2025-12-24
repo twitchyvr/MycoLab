@@ -15,7 +15,7 @@ import type {
   Species, Strain, Location, LocationType, LocationClassification,
   Container, SubstrateType, Supplier, InventoryCategory, InventoryItem,
   InventoryLot, PurchaseOrder, Culture, Grow, Recipe, Flush,
-  RecipeCategoryItem, GrainType, PreparedSpawn, AppSettings, EntityOutcome,
+  RecipeCategoryItem, GrainType, PreparedSpawn, GrainSpawn, AppSettings, EntityOutcome,
 } from '../../store/types';
 
 // Import transformations
@@ -38,6 +38,7 @@ import {
   transformInventoryLotFromDb,
   transformPurchaseOrderFromDb,
   transformPreparedSpawnFromDb,
+  transformGrainSpawnFromDb,
   transformEntityOutcomeFromDb,
 } from '../../store/transformations';
 
@@ -62,6 +63,7 @@ export interface DataLoaderState {
   grainTypes: GrainType[];
   cultures: Culture[];
   preparedSpawn: PreparedSpawn[];
+  grainSpawn: GrainSpawn[];
   grows: Grow[];
   flushes: Flush[];
   recipes: Recipe[];
@@ -99,6 +101,7 @@ const TRANSFORMATIONS: Record<string, (row: any) => any> = {
   grain_types: transformGrainTypeFromDb,
   cultures: transformCultureFromDb,
   prepared_spawn: transformPreparedSpawnFromDb,
+  grain_spawn: transformGrainSpawnFromDb,
   grows: transformGrowFromDb,
   flushes: transformFlushFromDb,
   recipes: transformRecipeFromDb,
@@ -124,6 +127,7 @@ const TABLE_TO_STATE: Record<string, keyof DataLoaderState> = {
   grain_types: 'grainTypes',
   cultures: 'cultures',
   prepared_spawn: 'preparedSpawn',
+  grain_spawn: 'grainSpawn',
   grows: 'grows',
   flushes: 'flushes',
   recipes: 'recipes',
@@ -341,6 +345,7 @@ export function setupRealtimeSync(callback: RealtimeCallback): () => void {
     'inventory_items',
     'inventory_lots',
     'prepared_spawn',
+    'grain_spawn',
   ];
 
   for (const table of realtimeTables) {
@@ -384,6 +389,7 @@ export interface EntityLookupMaps {
   grainTypes: LookupMap<GrainType>;
   cultures: IndexedLookupMap<Culture>;
   preparedSpawn: IndexedLookupMap<PreparedSpawn>;
+  grainSpawn: IndexedLookupMap<GrainSpawn>;
   grows: IndexedLookupMap<Grow>;
   recipes: LookupMap<Recipe>;
 }
@@ -456,6 +462,10 @@ export function createLookupMaps(state: Partial<DataLoaderState>): Partial<Entit
 
   if (state.preparedSpawn) {
     maps.preparedSpawn = new IndexedLookupMap(state.preparedSpawn, ['type', 'status']);
+  }
+
+  if (state.grainSpawn) {
+    maps.grainSpawn = new IndexedLookupMap(state.grainSpawn, ['strainId', 'status', 'workflowStage']);
   }
 
   if (state.grows) {
