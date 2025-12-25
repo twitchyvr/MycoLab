@@ -629,6 +629,18 @@ export const transformGrowFromDb = (row: any): Grow => ({
   targetHumidity: row.target_humidity || 90,
   totalYield: row.total_yield || 0,
   estimatedCost: row.estimated_cost || 0,
+  // Cost tracking
+  sourceCultureCost: row.source_culture_cost,
+  spawnCost: row.spawn_cost,
+  inventoryCost: row.inventory_cost,
+  laborCost: row.labor_cost,
+  overheadCost: row.overhead_cost,
+  totalCost: row.total_cost,
+  // Revenue tracking
+  revenue: row.revenue,
+  profit: row.profit,
+  costPerGramWet: row.cost_per_gram_wet,
+  costPerGramDry: row.cost_per_gram_dry,
   notes: row.notes,
   createdAt: new Date(row.created_at),
   observations: [],
@@ -679,6 +691,18 @@ export const transformGrowToDb = (grow: Partial<Grow>) => {
   if (grow.targetHumidity !== undefined) result.target_humidity = grow.targetHumidity;
   if (grow.totalYield !== undefined) result.total_yield = grow.totalYield;
   if (grow.estimatedCost !== undefined) result.estimated_cost = grow.estimatedCost;
+  // Cost tracking
+  if (grow.sourceCultureCost !== undefined) result.source_culture_cost = grow.sourceCultureCost;
+  if (grow.spawnCost !== undefined) result.spawn_cost = grow.spawnCost;
+  if (grow.inventoryCost !== undefined) result.inventory_cost = grow.inventoryCost;
+  if (grow.laborCost !== undefined) result.labor_cost = grow.laborCost;
+  if (grow.overheadCost !== undefined) result.overhead_cost = grow.overheadCost;
+  if (grow.totalCost !== undefined) result.total_cost = grow.totalCost;
+  // Revenue tracking
+  if (grow.revenue !== undefined) result.revenue = grow.revenue;
+  if (grow.profit !== undefined) result.profit = grow.profit;
+  if (grow.costPerGramWet !== undefined) result.cost_per_gram_wet = grow.costPerGramWet;
+  if (grow.costPerGramDry !== undefined) result.cost_per_gram_dry = grow.costPerGramDry;
   if (grow.notes !== undefined) result.notes = grow.notes;
   // Image support
   if (grow.images !== undefined) result.images = grow.images;

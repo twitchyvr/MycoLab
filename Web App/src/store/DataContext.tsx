@@ -3265,6 +3265,20 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       sourceCultureCost = calculateSourceCultureCost(grow.sourceCultureId, estimatedVolumeUsed);
     }
 
+    // Calculate spawn cost from grain spawn → prepared spawn chain
+    let spawnCost = 0;
+    if (grow.grainSpawnIds && grow.grainSpawnIds.length > 0) {
+      for (const gsId of grow.grainSpawnIds) {
+        const grainSpawn = state.grainSpawn.find(gs => gs.id === gsId);
+        if (grainSpawn?.sourcePreparedSpawnId) {
+          const preparedSpawn = state.preparedSpawn.find(ps => ps.id === grainSpawn.sourcePreparedSpawnId);
+          if (preparedSpawn?.productionCost) {
+            spawnCost += preparedSpawn.productionCost;
+          }
+        }
+      }
+    }
+
     // Calculate inventory cost from tracked usages
     const inventoryCost = calculateGrowInventoryCost(growId);
 
@@ -3272,8 +3286,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     const laborCost = grow.laborCost ?? 0;
     const overheadCost = grow.overheadCost ?? 0;
 
-    // Calculate total cost
-    const totalCost = sourceCultureCost + inventoryCost + laborCost + overheadCost;
+    // Calculate total cost (now includes spawn cost)
+    const totalCost = sourceCultureCost + spawnCost + inventoryCost + laborCost + overheadCost;
 
     // Calculate cost per gram if we have yields
     const totalYield = grow.totalYield ?? 0;
@@ -3287,13 +3301,14 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
     await updateGrow(growId, {
       sourceCultureCost,
+      spawnCost,
       inventoryCost,
       totalCost,
       costPerGramWet,
       costPerGramDry,
       profit,
     });
-  }, [state.grows, calculateSourceCultureCost, calculateGrowInventoryCost, updateGrow]);
+  }, [state.grows, state.grainSpawn, state.preparedSpawn, calculateSourceCultureCost, calculateGrowInventoryCost, updateGrow]);
 
   /**
    * Get total lab valuation broken down by asset type

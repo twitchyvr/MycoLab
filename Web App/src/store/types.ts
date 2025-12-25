@@ -1092,6 +1092,7 @@ export interface Grow {
 
   // Cost tracking - detailed breakdown
   sourceCultureCost?: number;   // Cost from source culture (proportional to amount used)
+  spawnCost?: number;           // Cost from prepared spawn (containers, grain, prep labor)
   inventoryCost?: number;       // Total cost from inventory items consumed
   laborCost?: number;           // Manual labor cost entry
   overheadCost?: number;        // Overhead allocation

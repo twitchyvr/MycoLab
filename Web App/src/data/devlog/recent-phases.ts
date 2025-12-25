@@ -6215,7 +6215,7 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
 
   {
     id: 'dev-909',
-    status: 'in_progress',
+    status: 'completed',
     priority: 'high',
     category: 'core',
     title: 'Inventory System Rebuild - Phase 5 Instance Lifecycle',
@@ -6236,13 +6236,82 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
 - markPreparedSpawnContaminated(id, notes?) - Mark spawn contaminated, dispose instances
 - markPreparedSpawnExpired(id) - Mark spawn expired, release instances for cleaning
 
-**Remaining Work:**
-- Update instance usageRef when spawn becomes grow
-- UI for manually releasing instances
-- Full lifecycle testing
+**4. InstanceManagement Fix:**
+- handleStatusChange only uses releaseInstance when transitioning from 'in_use' to 'available'
+- Other status transitions use updateLabItemInstance directly
 
 **Files Changed:**
-- src/store/DataContext.tsx - Instance release helpers and new functions`,
+- src/store/DataContext.tsx - Instance release helpers and new functions
+- src/components/inventory/InstanceManagement.tsx - Fixed status change handling`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-910',
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 6 Cost Flow',
+    description: 'Added spawn cost flow from PreparedSpawn through to Grow total cost calculation.',
+    notes: `Phase 6 of inventory system rebuild - Cost Flow Integration:
+
+**1. Grow Cost Tracking:**
+- Added spawnCost field to Grow type for tracking spawn-related costs
+- recalculateGrowCosts now calculates spawn cost from grainSpawnIds → preparedSpawn chain
+- Total cost now includes: sourceCultureCost + spawnCost + inventoryCost + laborCost + overheadCost
+
+**2. Database Schema:**
+- Added spawn_cost column to grows table in supabase-schema.sql
+- Updated version history documentation
+
+**3. Transformations:**
+- Added spawn_cost to transformGrowFromDb and transformGrowToDb
+- Added all cost fields (sourceCultureCost, inventoryCost, laborCost, overheadCost, etc.)
+
+**Files Changed:**
+- src/store/types.ts - Added spawnCost to Grow interface
+- src/store/DataContext.tsx - Updated recalculateGrowCosts
+- src/store/transformations.ts - Added cost field transformations
+- supabase-schema.sql - Added spawn_cost column`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-911',
+    status: 'completed',
+    priority: 'medium',
+    category: 'ui',
+    title: 'Inventory System Rebuild - Phase 6 UI Polish',
+    description: 'Improved InstanceManagement page with clickable stats, quick actions, and navigation.',
+    notes: `Phase 6 UI improvements for InstanceManagement:
+
+**1. Clickable Stats:**
+- Stats cards now filter instances when clicked
+- Active filter state visually indicated
+- "Total" button clears filters
+
+**2. Quick Actions:**
+- Dirty instances show "Mark Clean" and "Sterilize" buttons
+- Available instances show "Sterilize" button
+- In-use instances can't be quick-changed (require proper release)
+
+**3. Navigation:**
+- Linked entities (prepared_spawn, culture, grow) are now clickable
+- Clicking navigates to the entity's management page
+
+**4. Improved Empty State:**
+- Larger visual with descriptive text
+- Action button to navigate to Stock Management
+
+**5. Responsive Design:**
+- Status labels hidden on mobile
+- Quick actions hidden on smaller screens
+- Timestamp column only on larger screens
+
+**Files Changed:**
+- src/components/inventory/InstanceManagement.tsx - Full UI overhaul`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },

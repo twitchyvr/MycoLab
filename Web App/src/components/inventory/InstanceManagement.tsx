@@ -171,21 +171,62 @@ export const InstanceManagement: React.FC<InstanceManagementProps> = ({ onNaviga
             Track individual jars, bags, plates, and equipment
           </p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
-          <div className="px-3 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700">
+        {/* Clickable stats for quick filtering */}
+        <div className="flex items-center gap-2 text-sm">
+          <button
+            onClick={() => setSelectedStatuses([])}
+            className={`px-3 py-1.5 rounded-lg border transition-colors ${
+              selectedStatuses.length === 0
+                ? 'bg-zinc-700 border-zinc-600 text-white'
+                : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:text-zinc-300'
+            }`}
+          >
             <span className="text-zinc-400">Total:</span>{' '}
-            <span className="text-white font-medium">{stats.total}</span>
-          </div>
-          <div className="px-3 py-1.5 rounded-lg bg-emerald-950/30 border border-emerald-800/50">
-            <span className="text-emerald-400">{stats.available} available</span>
-          </div>
-          <div className="px-3 py-1.5 rounded-lg bg-blue-950/30 border border-blue-800/50">
-            <span className="text-blue-400">{stats.inUse} in use</span>
-          </div>
+            <span className="font-medium">{stats.total}</span>
+          </button>
+          <button
+            onClick={() => setSelectedStatuses(['available'])}
+            className={`px-3 py-1.5 rounded-lg border transition-colors ${
+              selectedStatuses.length === 1 && selectedStatuses[0] === 'available'
+                ? 'bg-emerald-950/50 border-emerald-700 text-emerald-300'
+                : 'bg-emerald-950/30 border-emerald-800/50 text-emerald-400 hover:bg-emerald-950/50'
+            }`}
+          >
+            {stats.available} available
+          </button>
+          <button
+            onClick={() => setSelectedStatuses(['in_use'])}
+            className={`px-3 py-1.5 rounded-lg border transition-colors ${
+              selectedStatuses.length === 1 && selectedStatuses[0] === 'in_use'
+                ? 'bg-blue-950/50 border-blue-700 text-blue-300'
+                : 'bg-blue-950/30 border-blue-800/50 text-blue-400 hover:bg-blue-950/50'
+            }`}
+          >
+            {stats.inUse} in use
+          </button>
           {stats.dirty > 0 && (
-            <div className="px-3 py-1.5 rounded-lg bg-amber-950/30 border border-amber-800/50">
-              <span className="text-amber-400">{stats.dirty} need cleaning</span>
-            </div>
+            <button
+              onClick={() => setSelectedStatuses(['dirty'])}
+              className={`px-3 py-1.5 rounded-lg border transition-colors ${
+                selectedStatuses.length === 1 && selectedStatuses[0] === 'dirty'
+                  ? 'bg-amber-950/50 border-amber-700 text-amber-300'
+                  : 'bg-amber-950/30 border-amber-800/50 text-amber-400 hover:bg-amber-950/50'
+              }`}
+            >
+              {stats.dirty} need cleaning
+            </button>
+          )}
+          {stats.sterilized > 0 && (
+            <button
+              onClick={() => setSelectedStatuses(['sterilized'])}
+              className={`px-3 py-1.5 rounded-lg border transition-colors ${
+                selectedStatuses.length === 1 && selectedStatuses[0] === 'sterilized'
+                  ? 'bg-purple-950/50 border-purple-700 text-purple-300'
+                  : 'bg-purple-950/30 border-purple-800/50 text-purple-400 hover:bg-purple-950/50'
+              }`}
+            >
+              {stats.sterilized} sterilized
+            </button>
           )}
         </div>
       </div>
@@ -194,12 +235,11 @@ export const InstanceManagement: React.FC<InstanceManagementProps> = ({ onNaviga
       <div className="flex flex-wrap gap-3">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <Icons.Search />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search instances..."
+            placeholder="Search instances by name, label, or linked item..."
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
           />
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
@@ -245,14 +285,26 @@ export const InstanceManagement: React.FC<InstanceManagementProps> = ({ onNaviga
 
       {/* Instance List */}
       {activeLabItemInstances.length === 0 ? (
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-8 text-center">
-          <div className="text-zinc-400 mb-2">
-            <Icons.Container />
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-12 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-700/50 text-zinc-400 mb-4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8">
+              <path d="M8 3v4l-2 9a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4l-2-9V3"/>
+              <line x1="9" y1="3" x2="15" y2="3"/>
+            </svg>
           </div>
-          <p className="text-zinc-400">No tracked instances yet</p>
-          <p className="text-sm text-zinc-500 mt-1">
-            When you receive container or equipment inventory, individual instances will appear here
+          <h3 className="text-lg font-medium text-white mb-2">No tracked instances yet</h3>
+          <p className="text-sm text-zinc-400 max-w-md mx-auto mb-6">
+            When you receive containers or equipment with "container" or "equipment" behavior,
+            individual instances will be created and tracked here. You can then assign them to
+            cultures, grows, and spawn.
           </p>
+          <button
+            onClick={() => onNavigate?.('stock')}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+          >
+            <Icons.Container />
+            Go to Stock Management
+          </button>
         </div>
       ) : filteredInstances.length === 0 ? (
         <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-8 text-center">
@@ -317,6 +369,7 @@ export const InstanceManagement: React.FC<InstanceManagementProps> = ({ onNaviga
                           instance={instance}
                           item={item}
                           onStatusChange={handleStatusChange}
+                          onNavigate={onNavigate}
                           formatCurrency={formatCurrency}
                         />
                       ))}
@@ -336,6 +389,7 @@ export const InstanceManagement: React.FC<InstanceManagementProps> = ({ onNaviga
                     instance={instance}
                     item={item}
                     onStatusChange={handleStatusChange}
+                    onNavigate={onNavigate}
                     formatCurrency={formatCurrency}
                   />
                 );
@@ -353,18 +407,60 @@ interface InstanceRowProps {
   instance: LabItemInstance;
   item: ReturnType<ReturnType<typeof useData>['getInventoryItem']>;
   onStatusChange: (instanceId: string, status: InstanceStatus) => void;
+  onNavigate?: (page: Page, itemId?: string) => void;
   formatCurrency: (value: number) => string;
+  showItemName?: boolean;
 }
 
-const InstanceRow: React.FC<InstanceRowProps> = ({ instance, item, onStatusChange, formatCurrency }) => {
+const InstanceRow: React.FC<InstanceRowProps> = ({ instance, item, onStatusChange, onNavigate, formatCurrency, showItemName }) => {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const statusConfig = STATUS_CONFIG[instance.status];
+
+  // Map entity type to navigation page
+  const getNavigationPage = (entityType: string): Page | null => {
+    switch (entityType) {
+      case 'prepared_spawn': return 'spawn';
+      case 'culture': return 'cultures';
+      case 'grow': return 'grows';
+      default: return null;
+    }
+  };
+
+  const handleLinkClick = () => {
+    if (instance.usageRef && onNavigate) {
+      const page = getNavigationPage(instance.usageRef.entityType);
+      if (page) {
+        onNavigate(page, instance.usageRef.entityId);
+      }
+    }
+  };
+
+  // Quick action buttons based on current status
+  const getQuickActions = () => {
+    switch (instance.status) {
+      case 'dirty':
+        return [
+          { status: 'available' as InstanceStatus, label: 'Mark Clean', icon: Icons.Sparkles },
+          { status: 'sterilized' as InstanceStatus, label: 'Sterilize', icon: Icons.Steam },
+        ];
+      case 'available':
+        return [
+          { status: 'sterilized' as InstanceStatus, label: 'Sterilize', icon: Icons.Steam },
+        ];
+      case 'in_use':
+        return []; // Can't quick-change in_use status (need to release properly)
+      default:
+        return [];
+    }
+  };
+
+  const quickActions = getQuickActions();
 
   return (
     <div className="px-4 py-3 flex items-center justify-between gap-4 hover:bg-zinc-800/30 transition-colors">
       <div className="flex items-center gap-3 flex-1 min-w-0">
         {/* Instance Number */}
-        <div className="w-10 h-10 rounded-lg bg-zinc-700/50 flex items-center justify-center text-zinc-300 font-medium">
+        <div className="w-10 h-10 rounded-lg bg-zinc-700/50 flex items-center justify-center text-zinc-300 font-medium shrink-0">
           #{instance.instanceNumber}
         </div>
 
@@ -373,20 +469,51 @@ const InstanceRow: React.FC<InstanceRowProps> = ({ instance, item, onStatusChang
           <p className="text-white font-medium truncate">
             {instance.label || `${item?.name || 'Instance'} #${instance.instanceNumber}`}
           </p>
-          <div className="flex items-center gap-3 text-sm text-zinc-400">
+          <div className="flex items-center gap-3 text-sm text-zinc-400 flex-wrap">
+            {/* Linked entity - clickable */}
             {instance.usageRef && (
-              <span className="flex items-center gap-1 text-blue-400">
+              <button
+                onClick={handleLinkClick}
+                className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors"
+                title={`Go to ${instance.usageRef.entityType.replace('_', ' ')}`}
+              >
                 <Icons.Link />
-                {instance.usageRef.entityLabel || instance.usageRef.entityType}
+                <span className="truncate max-w-[150px]">
+                  {instance.usageRef.entityLabel || instance.usageRef.entityType.replace('_', ' ')}
+                </span>
+              </button>
+            )}
+            {/* Usage count */}
+            {instance.usageCount > 0 && (
+              <span className="flex items-center gap-1">
+                <Icons.Clock />
+                {instance.usageCount}x used
               </span>
             )}
-            {instance.usageCount > 0 && (
-              <span>Used {instance.usageCount}x</span>
-            )}
-            <span>{formatCurrency(instance.unitCost)}</span>
+            {/* Cost */}
+            <span className="text-zinc-500">{formatCurrency(instance.unitCost)}</span>
           </div>
         </div>
       </div>
+
+      {/* Quick Actions */}
+      {quickActions.length > 0 && (
+        <div className="flex items-center gap-1 hidden md:flex">
+          {quickActions.map(action => (
+            <button
+              key={action.status}
+              onClick={() => onStatusChange(instance.id, action.status)}
+              className={`px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors ${
+                STATUS_CONFIG[action.status].color
+              } hover:bg-zinc-700/50`}
+              title={action.label}
+            >
+              <action.icon />
+              <span className="hidden lg:inline">{action.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Status Badge + Menu */}
       <div className="relative">
@@ -395,7 +522,7 @@ const InstanceRow: React.FC<InstanceRowProps> = ({ instance, item, onStatusChang
           className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 border ${statusConfig.bgColor} ${statusConfig.color}`}
         >
           <statusConfig.icon />
-          {statusConfig.label}
+          <span className="hidden sm:inline">{statusConfig.label}</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 ml-1">
             <polyline points="6 9 12 15 18 9" />
           </svg>
@@ -426,12 +553,14 @@ const InstanceRow: React.FC<InstanceRowProps> = ({ instance, item, onStatusChang
       </div>
 
       {/* Timestamps */}
-      <div className="text-xs text-zinc-500 text-right hidden sm:block">
+      <div className="text-xs text-zinc-500 text-right hidden lg:block w-24 shrink-0">
+        {instance.lastSterilizedAt && (
+          <p className="text-purple-400/80">
+            Sterilized: {format(new Date(instance.lastSterilizedAt), 'MMM d')}
+          </p>
+        )}
         {instance.lastUsedAt && (
           <p>Last used: {format(new Date(instance.lastUsedAt), 'MMM d')}</p>
-        )}
-        {instance.lastSterilizedAt && (
-          <p>Sterilized: {format(new Date(instance.lastSterilizedAt), 'MMM d')}</p>
         )}
       </div>
     </div>
