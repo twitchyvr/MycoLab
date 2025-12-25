@@ -446,6 +446,9 @@ export const transformInventoryItemFromDb = (row: any): InventoryItem => ({
   isActive: row.is_active ?? true,
   // Notification preferences
   notificationsMuted: row.notifications_muted ?? false,
+  // Smart item classification
+  itemBehavior: row.item_behavior,
+  itemProperties: row.item_properties ? (typeof row.item_properties === 'string' ? JSON.parse(row.item_properties) : row.item_properties) : undefined,
 });
 
 export const transformInventoryItemToDb = (item: Partial<InventoryItem>, userId?: string | null) => {
@@ -465,6 +468,9 @@ export const transformInventoryItemToDb = (item: Partial<InventoryItem>, userId?
   if (item.notes !== undefined) result.notes = item.notes;
   if (item.isActive !== undefined) result.is_active = item.isActive;
   if (item.notificationsMuted !== undefined) result.notifications_muted = item.notificationsMuted;
+  // Smart item classification
+  if (item.itemBehavior !== undefined) result.item_behavior = item.itemBehavior;
+  if (item.itemProperties !== undefined) result.item_properties = item.itemProperties;
   if (userId) result.user_id = userId;
   return result;
 };

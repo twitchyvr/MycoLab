@@ -52,6 +52,7 @@ import { RecipeBuilder } from './components/recipes/RecipeBuilder';
 import { SetupWizard } from './components/setup/SetupWizard';
 import { OnboardingWizard } from './components/setup/OnboardingWizard';
 import { StockManagement } from './components/inventory/StockManagement';
+import { InstanceManagement } from './components/inventory/InstanceManagement';
 import { CommandCenter } from './components/command';
 import { GlobalSearch, SearchTrigger } from './components/common/GlobalSearch';
 import { AmbientBackground } from './components/common';
@@ -121,7 +122,7 @@ const initialState: AppState = {
 // NAVIGATION
 // ============================================================================
 
-type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'cultureguide' | 'inventory' | 'stock' | 'cultures' | 'spawn' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'multiplication' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes' | 'settings' | 'profile' | 'devlog' | 'featuretracker';
+type Page = 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest' | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library' | 'cultureguide' | 'inventory' | 'stock' | 'instances' | 'cultures' | 'spawn' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate' | 'pressure' | 'multiplication' | 'contamination' | 'efficiency' | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes' | 'settings' | 'profile' | 'devlog' | 'featuretracker';
 
 // Route configuration: maps Page to URL paths
 // Routes with :id support deep-linking to specific items
@@ -139,6 +140,7 @@ const routeConfig: Record<Page, string> = {
   cultureguide: '/culture-guide',
   inventory: '/inventory',
   stock: '/stock',
+  instances: '/instances',
   cultures: '/cultures',
   spawn: '/spawn',
   lineage: '/lineage',
@@ -243,6 +245,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
       { id: 'stock', label: 'Stock & Orders', icon: Icons.Package },
+      { id: 'instances', label: 'Containers', icon: Icons.Container },
       { id: 'labspaces', label: 'Lab Spaces', icon: Icons.Layers },
       { id: 'labels', label: 'Label Maker', icon: Icons.Tag },
       { id: 'scanner', label: 'QR Scanner', icon: Icons.QRScan },
@@ -1149,6 +1152,7 @@ const AppWithRouter: React.FC = () => {
     cultureguide: { title: 'Culture Guide', subtitle: 'P-values, shelf life, senescence, and best practices' },
     inventory: { title: 'Lab Inventory', subtitle: 'All cultures, spawn, and grows' },
     stock: { title: 'Lab Stock', subtitle: 'Inventory lots, purchases, and tracking' },
+    instances: { title: 'Container Instances', subtitle: 'Track individual jars, bags, and equipment' },
     cultures: { title: 'Culture Library', subtitle: 'Manage your cultures and genetics' },
     spawn: { title: 'Grain Spawn', subtitle: 'Track colonization from inoculation to spawn-to-bulk' },
     lineage: { title: 'Lineage Visualization', subtitle: 'Interactive family tree of your cultures' },
@@ -1242,6 +1246,12 @@ const AppWithRouter: React.FC = () => {
         return (
           <div className="p-6">
             <StockManagement />
+          </div>
+        );
+      case 'instances':
+        return (
+          <div className="p-6">
+            <InstanceManagement onNavigate={setCurrentPage} />
           </div>
         );
       case 'calculator':

@@ -6099,6 +6099,119 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  {
+    id: 'dev-906',
+    status: 'in_progress',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 2 UI Integration',
+    description: 'UI updates for inventory system rebuild: stock management display, item behavior forms, and auto-instance creation.',
+    notes: `Phase 2 of inventory system rebuild - UI integration:
+
+**1. StockManagement UI Updates:**
+- Shows available vs in-use counts for lots
+- Green/blue color coding: "5 available / 3 in use (8 total)"
+- Per-unit cost display below total cost
+- Progress bar still shows overall remaining percentage
+
+**2. InventoryItem Form Enhancements:**
+- New "Item Type" dropdown with behavior options
+- Container/equipment items show instance tracking options
+- Checkboxes for: trackInstances, isSterilizable, holdsContents
+- Auto-sets default properties based on selected behavior
+
+**3. Auto-Instance Creation:**
+- receiveOrder now checks item behavior
+- Containers and equipment automatically get instances created
+- Uses createInstancesFromLot to generate individual tracking records
+- Each instance gets calculated unit cost from lot
+
+**4. Transformation Updates:**
+- InventoryItem FromDb/ToDb handle itemBehavior and itemProperties
+- JSONB parsing for itemProperties with fallback handling
+
+**Files Changed:**
+- src/components/inventory/StockManagement.tsx - available/in-use display
+- src/components/forms/InventoryItemForm.tsx - itemBehavior fields
+- src/store/DataContext.tsx - receiveOrder instance creation
+- src/store/transformations.ts - InventoryItem field mapping`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-907',
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 3 Instance Management UI',
+    description: 'New instance management page to view and manage individual container/equipment instances.',
+    notes: `Phase 3 of inventory system rebuild - Instance Management UI:
+
+**1. New InstanceManagement Component:**
+- Lists all tracked instances grouped by inventory item
+- Expandable sections for each item type
+- Shows instance number, label, status, cost, and usage info
+
+**2. Instance Status Management:**
+- Color-coded status badges (available, in_use, sterilized, dirty, damaged, disposed)
+- Status change dropdown menu
+- Handles releaseInstance for returning to available
+
+**3. Filtering & Search:**
+- Search by item name, instance number, or label
+- Filter by status chips
+- Filter by specific inventory item
+
+**4. Stats Dashboard:**
+- Total instances count
+- Available/in-use/dirty breakdown
+- Color-coded summary badges
+
+**5. Integration:**
+- Added 'Containers' nav item in Resources group
+- New /instances route
+- Container icon added to icon library
+
+**Files Changed:**
+- src/components/inventory/InstanceManagement.tsx - New component
+- src/components/icons/IconLibrary.tsx - Added Container icon
+- src/App.tsx - Added instances page, route, and nav item`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-908',
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 4 PrepareSpawnForm Integration',
+    description: 'Integrated instance tracking into spawn preparation workflow.',
+    notes: `Phase 4 of inventory system rebuild - PrepareSpawnForm instance integration:
+
+**1. Instance Selection:**
+- Added activeLabItemInstances and markInstanceInUse from context
+- Auto-selects available instances based on container count
+- Filters instances by selected lot
+
+**2. Instance Status Updates:**
+- When preparing spawn with tracked containers, marks instances as in_use
+- Links instances to prepared spawn via usageRef
+- Falls back to adjustLotQuantity for non-instance-tracked lots
+
+**3. UI Feedback:**
+- Shows blue info panel when lot has instance tracking
+- Displays selected instance numbers
+- Warns if not enough instances available
+- Shows count of containers that will be marked as in-use
+
+**Files Changed:**
+- src/components/spawn/PrepareSpawnForm.tsx - Instance integration`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
