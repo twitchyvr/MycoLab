@@ -144,9 +144,14 @@ export const InstanceManagement: React.FC<InstanceManagementProps> = ({ onNaviga
   };
 
   const handleStatusChange = async (instanceId: string, newStatus: InstanceStatus) => {
-    if (newStatus === 'available') {
+    const instance = activeLabItemInstances.find(i => i.id === instanceId);
+    if (!instance) return;
+
+    // If changing from in_use to available, use releaseInstance (handles lot updates)
+    if (instance.status === 'in_use' && newStatus === 'available') {
       await releaseInstance(instanceId);
     } else {
+      // For all other status changes, just update the status directly
       await updateLabItemInstance(instanceId, { status: newStatus });
     }
   };
