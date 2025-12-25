@@ -6043,7 +6043,7 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
   // =============================================================================
   {
     id: 'dev-903',
-    status: 'in_progress',
+    status: 'completed',
     priority: 'critical',
     category: 'core',
     title: 'Inventory System Rebuild - Instance Tracking Foundation',
@@ -6102,7 +6102,7 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
 
   {
     id: 'dev-906',
-    status: 'in_progress',
+    status: 'completed',
     priority: 'high',
     category: 'core',
     title: 'Inventory System Rebuild - Phase 2 UI Integration',
@@ -6352,6 +6352,42 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
 
 **Files Changed:**
 - src/components/forms/InventoryItemForm.tsx - Smart behavior inference`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-913',
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 8 Full Integration',
+    description: 'Complete integration of instance tracking across all entity creation flows with auto unit cost calculation.',
+    notes: `Phase 8 of inventory system rebuild - Full Integration:
+
+**1. CultureWizard Instance Integration:**
+- Added containerInventoryLotId and selectedInstanceIds to CultureFormData
+- Step2ContainerLocation now shows container selection from inventory
+- Filters available instances by selected lot
+- Marks instances as in_use when culture is created
+- Links instances to culture via usageRef
+
+**2. StockManagement Manual Lot Auto-Instances:**
+- When adding a lot manually via handleAddLot, auto-creates instances
+- Checks if item has container/equipment behavior or trackInstances property
+- Creates one instance per unit in the lot
+- Maintains consistency between receiveOrder and manual lot addition
+
+**3. Unit Cost Auto-Calculation:**
+- addInventoryLot now auto-calculates unitCost from purchaseCost / originalQuantity
+- If unitCost is not explicitly provided, it's derived automatically
+- Ensures every lot has accurate per-unit pricing
+- Powers cost tracking throughout the system
+
+**Files Changed:**
+- src/components/cultures/CultureWizard.tsx - Full instance integration
+- src/components/inventory/StockManagement.tsx - Manual lot auto-instance creation
+- src/store/DataContext.tsx - Unit cost auto-calculation in addInventoryLot`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },

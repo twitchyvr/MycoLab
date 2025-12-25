@@ -4008,6 +4008,16 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addInventoryLot = useCallback(async (lot: Omit<InventoryLot, 'id' | 'createdAt' | 'updatedAt'>): Promise<InventoryLot> => {
     const now = new Date();
+
+    // Auto-calculate unit cost if purchase cost and quantity are available
+    const calculatedUnitCost = lot.unitCost ??
+      (lot.purchaseCost && lot.originalQuantity ? lot.purchaseCost / lot.originalQuantity : undefined);
+
+    const lotWithUnitCost = {
+      ...lot,
+      unitCost: calculatedUnitCost,
+    };
+
     if (supabase) {
       // Get current user ID - required for RLS policy
       const userId = await getCurrentUserId();
@@ -4015,7 +4025,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         throw new Error('Authentication required. Please sign in to create inventory lots.');
       }
       const insertData = {
-        ...transformInventoryLotToDb(lot),
+        ...transformInventoryLotToDb(lotWithUnitCost),
         user_id: userId,
       };
       const { data, error } = await supabase
@@ -4029,7 +4039,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       return newLot;
     }
     const newLot: InventoryLot = {
-      ...lot,
+      ...lotWithUnitCost,
       id: generateId('lot'),
       createdAt: now,
       updatedAt: now,
