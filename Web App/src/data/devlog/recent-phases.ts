@@ -6212,6 +6212,40 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  {
+    id: 'dev-909',
+    status: 'in_progress',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 5 Instance Lifecycle',
+    description: 'Added instance release when grows complete or entities are contaminated.',
+    notes: `Phase 5 of inventory system rebuild - Instance Lifecycle Management:
+
+**1. Instance Release on Grow Completion:**
+- releaseInstancesForGrow helper finds instances linked via grow → grainSpawn → preparedSpawn chain
+- When grow stage advances to 'completed', instances are released as 'dirty' (needs cleaning)
+- When grow is marked contaminated, instances are released as 'disposed'
+
+**2. Instance Release on Spawn Contamination:**
+- markPreparedSpawnContaminated function releases instances as 'disposed'
+- markPreparedSpawnExpired function releases instances as 'dirty'
+- Both functions update the lot's inUseQuantity
+
+**3. New Context Functions:**
+- markPreparedSpawnContaminated(id, notes?) - Mark spawn contaminated, dispose instances
+- markPreparedSpawnExpired(id) - Mark spawn expired, release instances for cleaning
+
+**Remaining Work:**
+- Update instance usageRef when spawn becomes grow
+- UI for manually releasing instances
+- Full lifecycle testing
+
+**Files Changed:**
+- src/store/DataContext.tsx - Instance release helpers and new functions`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
