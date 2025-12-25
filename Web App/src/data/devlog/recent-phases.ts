@@ -6220,7 +6220,7 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
 
   {
     id: 'dev-1000',
-    status: 'in_progress',
+    status: 'completed',
     priority: 'critical',
     category: 'core',
     title: 'Azure OpenAI Integration - Architecture & Planning',
@@ -6327,87 +6327,96 @@ All tables have:
 
   {
     id: 'dev-1003',
-    status: 'planned',
+    status: 'completed',
     priority: 'critical',
     category: 'core',
     title: 'Azure OpenAI Integration - Supabase Edge Functions',
     description: 'Create Supabase Edge Functions to securely proxy requests to Azure OpenAI.',
-    notes: `To be created in supabase/functions/:
+    notes: `Created in supabase/functions/:
 
-**ai-gateway (main function):**
-- Rate limiting per user tier
+**_shared/:**
+- cors.ts - CORS headers and preflight handling
+- supabase.ts - Supabase client creation with auth
+- azure-openai.ts - Azure OpenAI client wrapper
+
+**ai-gateway:**
+- Rate limiting per user tier (free: 50/day, basic: 100/day, pro: 200/day)
 - Token counting and cost tracking
-- Request validation
-- Context building (RAG)
-- Azure OpenAI API calls
-- Response caching
+- Request validation and authentication
+- Context building (RAG) with user's cultures/grows
+- System prompts for mycology expertise
+- Image analysis with specialized prompts
+- IoT data analysis
+- Knowledge search
 
 **iot-ingest:**
-- Device authentication
+- Device authentication via API key
 - Reading validation and normalization
+- VPD calculation from temp/humidity
 - Threshold checking and alerts
-- Batch insert for efficiency
-
-**knowledge-sync:**
-- Sync documents to Azure AI Search
-- Generate embeddings
-- Update search indexes`,
+- Batch insert support
+- Device registration endpoint`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
 
   {
     id: 'dev-1004',
-    status: 'planned',
+    status: 'completed',
     priority: 'high',
     category: 'core',
     title: 'Azure OpenAI Integration - RAG Context Building',
     description: 'Implement retrieval-augmented generation for grounded AI responses.',
-    notes: `Context builder functionality:
+    notes: `Implemented in ai-gateway Edge Function (buildContext function):
 
 **User Data Retrieval:**
-- Active cultures and their status
-- Current grows with stage and conditions
-- Recent observations and harvests
-- IoT readings for relevant locations
+- Active cultures with label, type, status, health rating
+- Current grows with name, stage, status
+- Strain information via joins
+- Location environmental data for context
+- IoT readings for location-based queries
 
-**Knowledge Retrieval:**
-- Azure AI Search vector queries
-- Species/strain growing parameters
-- Contamination identification guides
-- Equipment and technique references
+**Entity-Specific Context:**
+- Culture detail view: observations, strain, location, transfers
+- Grow detail view: observations, flushes, yields, strain
+- Location: IoT readings (temp, humidity, CO2, VPD)
 
-**Context Construction:**
-- Token budget management
-- Relevance scoring
-- Source attribution for citations`,
+**System Prompts:**
+- Mycology expertise persona
+- Species-specific guidance
+- Image analysis prompts (contamination, health, stage, identification)
+- Grounded in user's actual data`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
 
   {
     id: 'dev-1005',
-    status: 'planned',
+    status: 'in_progress',
     priority: 'high',
     category: 'ui',
     title: 'AI Chat Integration - App Navigation',
     description: 'Add AI chat to main app navigation and entity detail views.',
     notes: `Integration points:
 
-**Global Chat:**
+**Settings (COMPLETED):**
+- AISettingsSection component added to preferences
+- AI enable/disable toggle
+- Image analysis and IoT analysis toggles
+- Data sharing level selector (0-3)
+- Conversation retention settings
+- Response preferences (concise/balanced/detailed)
+- Citations and proactive suggestions toggles
+
+**Global Chat (PLANNED):**
 - Floating chat button in bottom right
 - Full-page AI assistant option
 - Persistent across navigation
 
-**Context-Aware Chat:**
+**Context-Aware Chat (PLANNED):**
 - Culture detail modal → "Ask AI about this culture"
 - Grow detail → "Get AI recommendations"
-- Location → "Analyze environment"
-
-**Settings:**
-- AI preferences section
-- Privacy level selection
-- Usage display and limits`,
+- Location → "Analyze environment"`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
