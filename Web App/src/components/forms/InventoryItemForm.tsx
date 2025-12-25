@@ -2,11 +2,31 @@
 // INVENTORY ITEM FORM - Form for creating/editing inventory items
 // ============================================================================
 
-import React from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useData } from '../../store';
 import { StandardDropdown } from '../common/StandardDropdown';
 import { NumericInput } from '../common/NumericInput';
 import type { ItemBehavior, ItemProperties } from '../../store/types';
+
+// Smart defaults: map category names to suggested item behaviors
+const CATEGORY_BEHAVIOR_MAP: Record<string, ItemBehavior> = {
+  'containers': 'container',
+  'equipment': 'equipment',
+  'grains': 'consumable',
+  'substrates': 'consumable',
+  'chemicals': 'consumable',
+  'media': 'consumable',
+  'cultures': 'consumable',
+  'lab supplies': 'supply',
+};
+
+// Keywords in item names that suggest specific behaviors
+const NAME_BEHAVIOR_KEYWORDS: { pattern: RegExp; behavior: ItemBehavior }[] = [
+  { pattern: /\b(jar|jars|mason|container|bottle|bag|bags|plate|plates|dish|tub|tubs|bucket|vessel)\b/i, behavior: 'container' },
+  { pattern: /\b(scale|scales|incubator|pressure cooker|autoclave|flow hood|laminar|dehydrator|microscope|hepa)\b/i, behavior: 'equipment' },
+  { pattern: /\b(glove|gloves|wipe|wipes|wrap|tape|parafilm|syringe|needle|scalpel|label)\b/i, behavior: 'supply' },
+  { pattern: /\b(sab|still air box|workspace|table|bench|surface)\b/i, behavior: 'surface' },
+];
 
 export interface InventoryItemFormData {
   name: string;
@@ -56,7 +76,66 @@ export const InventoryItemForm: React.FC<InventoryItemFormProps> = ({
   onChange,
   errors = {},
 }) => {
-  const { activeInventoryCategories } = useData();
+  const { activeInventoryCategories, getInventoryCategory } = useData();
+
+  // Infer behavior from item name
+  const inferBehaviorFromName = useCallback((name: string): ItemBehavior | null => {
+    for (const { pattern, behavior } of NAME_BEHAVIOR_KEYWORDS) {
+      if (pattern.test(name)) {
+        return behavior;
+      }
+    }
+    return null;
+  }, []);
+
+  // Infer behavior from category
+  const inferBehaviorFromCategory = useCallback((categoryId: string): ItemBehavior | null => {
+    const category = getInventoryCategory(categoryId);
+    if (!category) return null;
+    const categoryName = category.name.toLowerCase();
+    return CATEGORY_BEHAVIOR_MAP[categoryName] || null;
+  }, [getInventoryCategory]);
+
+  // Build properties for a behavior
+  const buildPropertiesForBehavior = useCallback((behavior: ItemBehavior): ItemProperties => {
+    return {
+      unitType: behavior === 'container' || behavior === 'equipment' || behavior === 'surface' ? 'countable' : 'weight',
+      defaultUnit: behavior === 'container' || behavior === 'equipment' ? 'ea' : 'g',
+      trackInstances: behavior === 'container' || behavior === 'equipment',
+      isReusable: behavior === 'container' || behavior === 'equipment' || behavior === 'surface',
+      isSterilizable: behavior === 'container',
+      holdsContents: behavior === 'container',
+    };
+  }, []);
+
+  // Auto-suggest behavior when category changes (if not already set)
+  useEffect(() => {
+    if (data.categoryId && !data.itemBehavior) {
+      const suggestedBehavior = inferBehaviorFromCategory(data.categoryId);
+      if (suggestedBehavior) {
+        onChange({
+          itemBehavior: suggestedBehavior,
+          itemProperties: buildPropertiesForBehavior(suggestedBehavior),
+          // Also set appropriate unit
+          unit: suggestedBehavior === 'container' || suggestedBehavior === 'equipment' ? 'ea' : data.unit || 'g',
+        });
+      }
+    }
+  }, [data.categoryId, data.itemBehavior, data.unit, inferBehaviorFromCategory, buildPropertiesForBehavior, onChange]);
+
+  // Auto-suggest behavior when name changes (if not already set)
+  useEffect(() => {
+    if (data.name && !data.itemBehavior) {
+      const suggestedBehavior = inferBehaviorFromName(data.name);
+      if (suggestedBehavior) {
+        onChange({
+          itemBehavior: suggestedBehavior,
+          itemProperties: buildPropertiesForBehavior(suggestedBehavior),
+          unit: suggestedBehavior === 'container' || suggestedBehavior === 'equipment' ? 'ea' : data.unit || 'g',
+        });
+      }
+    }
+  }, [data.name, data.itemBehavior, data.unit, inferBehaviorFromName, buildPropertiesForBehavior, onChange]);
 
   return (
     <div className="space-y-4">
@@ -92,7 +171,18 @@ export const InventoryItemForm: React.FC<InventoryItemFormProps> = ({
 
       {/* Item Behavior */}
       <div>
-        <label className="block text-sm text-zinc-400 mb-2">Item Type</label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm text-zinc-400">Item Type</label>
+          {data.itemBehavior && (inferBehaviorFromCategory(data.categoryId || '') === data.itemBehavior ||
+            inferBehaviorFromName(data.name || '') === data.itemBehavior) && (
+            <span className="text-xs text-emerald-500 flex items-center gap-1">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+                <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/>
+              </svg>
+              Auto-detected
+            </span>
+          )}
+        </div>
         <select
           value={data.itemBehavior || ''}
           onChange={e => {

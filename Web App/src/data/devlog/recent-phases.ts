@@ -6315,6 +6315,46 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  {
+    id: 'dev-912',
+    status: 'completed',
+    priority: 'medium',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 7 Smart Defaults',
+    description: 'Added intelligent auto-detection of item behavior based on category and name keywords.',
+    notes: `Phase 7 of inventory system rebuild - Smart Defaults:
+
+**1. Category-Based Inference:**
+- When user selects category, system infers likely item behavior
+- Containers category → container behavior
+- Equipment category → equipment behavior
+- Grains/Substrates/Chemicals/Media → consumable behavior
+- Lab Supplies → supply behavior
+
+**2. Name-Based Inference:**
+- Keywords in item name trigger behavior detection
+- "jar", "bottle", "plate", "bag", "tub" → container
+- "scale", "incubator", "flow hood", "autoclave" → equipment
+- "gloves", "wipes", "parafilm", "tape" → supply
+- "SAB", "workspace", "bench" → surface
+
+**3. Auto-Set Properties:**
+- When behavior is inferred, appropriate properties are set:
+  - unitType (countable vs weight)
+  - defaultUnit (ea vs g)
+  - trackInstances (for containers/equipment)
+  - isReusable, isSterilizable, holdsContents
+
+**4. Visual Indicator:**
+- "Auto-detected" badge with sparkle icon shows when behavior was inferred
+- User can still manually change behavior
+
+**Files Changed:**
+- src/components/forms/InventoryItemForm.tsx - Smart behavior inference`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
