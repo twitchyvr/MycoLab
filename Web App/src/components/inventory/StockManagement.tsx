@@ -128,6 +128,7 @@ export const StockManagement: React.FC = () => {
     receiveOrder,
     generateOrderNumber,
     generateId,
+    createInstancesFromLot,
   } = useData();
   const { guardAction } = useAuthGuard();
 
@@ -245,7 +246,7 @@ export const StockManagement: React.FC = () => {
     if (!guardAction()) return; // Show auth modal if not authenticated
     if (!newLot.inventoryItemId || !newLot.quantity) return;
 
-    await addInventoryLot({
+    const createdLot = await addInventoryLot({
       inventoryItemId: newLot.inventoryItemId,
       quantity: newLot.quantity,
       originalQuantity: newLot.quantity,
@@ -262,6 +263,19 @@ export const StockManagement: React.FC = () => {
       notes: newLot.notes || undefined,
       isActive: true,
     });
+
+    // Auto-create instances for container/equipment items
+    const inventoryItem = getInventoryItem(newLot.inventoryItemId);
+    if (inventoryItem && createdLot) {
+      const shouldTrackInstances =
+        inventoryItem.itemBehavior === 'container' ||
+        inventoryItem.itemBehavior === 'equipment' ||
+        inventoryItem.itemProperties?.trackInstances;
+
+      if (shouldTrackInstances && newLot.quantity > 0) {
+        await createInstancesFromLot(createdLot.id, newLot.quantity);
+      }
+    }
 
     setShowAddLotModal(false);
     setNewLot({

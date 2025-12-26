@@ -236,6 +236,8 @@ interface DataContextValue extends LookupHelpers {
   deletePreparedSpawn: (id: string) => Promise<void>;
   inoculatePreparedSpawn: (preparedSpawnId: string, resultCultureId: string) => Promise<void>;
   getAvailablePreparedSpawn: (type?: PreparedSpawn['type']) => PreparedSpawn[];
+  markPreparedSpawnContaminated: (preparedSpawnId: string, notes?: string) => Promise<void>;
+  markPreparedSpawnExpired: (preparedSpawnId: string) => Promise<void>;
 
   // Grain Spawn CRUD (inoculated grain going through colonization)
   addGrainSpawn: (grainSpawn: Omit<GrainSpawn, 'id' | 'createdAt' | 'updatedAt'>) => Promise<GrainSpawn>;
@@ -2905,6 +2907,65 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const stageOrder: GrowStage[] = ['spawning', 'colonization', 'fruiting', 'harvesting', 'completed'];
 
+  // Helper to release instances when a grow completes or fails
+  const releaseInstancesForGrow = useCallback(async (growId: string, markAsDirty: boolean = true) => {
+    const grow = state.grows.find(g => g.id === growId);
+    if (!grow || !grow.grainSpawnIds || grow.grainSpawnIds.length === 0) return;
+
+    // Find all prepared spawns used in this grow's grain spawns
+    const preparedSpawnIds: string[] = [];
+    for (const gsId of grow.grainSpawnIds) {
+      const grainSpawn = state.grainSpawn.find(gs => gs.id === gsId);
+      if (grainSpawn?.sourcePreparedSpawnId) {
+        preparedSpawnIds.push(grainSpawn.sourcePreparedSpawnId);
+      }
+    }
+
+    // Find all instances linked to these prepared spawns
+    const instancesToRelease = state.labItemInstances.filter(
+      inst => inst.usageRef?.entityType === 'prepared_spawn' &&
+              preparedSpawnIds.includes(inst.usageRef.entityId)
+    );
+
+    // Release each instance (inline to avoid circular dependency)
+    for (const inst of instancesToRelease) {
+      const newStatus = markAsDirty ? 'dirty' : 'disposed';
+
+      if (supabase) {
+        await supabase
+          .from('lab_item_instances')
+          .update({
+            status: newStatus,
+            usage_ref: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', inst.id);
+
+        // Update lot in_use_quantity if dirty (released)
+        if (markAsDirty && inst.inventoryLotId) {
+          const lot = state.inventoryLots.find(l => l.id === inst.inventoryLotId);
+          if (lot && lot.inUseQuantity > 0) {
+            await supabase
+              .from('inventory_lots')
+              .update({ in_use_quantity: lot.inUseQuantity - 1, updated_at: new Date().toISOString() })
+              .eq('id', inst.inventoryLotId);
+          }
+        }
+      }
+
+      // Update local state
+      setState(prev => ({
+        ...prev,
+        labItemInstances: prev.labItemInstances.map(i =>
+          i.id === inst.id ? { ...i, status: newStatus as any, usageRef: undefined, updatedAt: new Date() } : i
+        ),
+        inventoryLots: markAsDirty && inst.inventoryLotId ? prev.inventoryLots.map(l =>
+          l.id === inst.inventoryLotId ? { ...l, inUseQuantity: Math.max(0, l.inUseQuantity - 1), updatedAt: new Date() } : l
+        ) : prev.inventoryLots,
+      }));
+    }
+  }, [state.grows, state.grainSpawn, state.labItemInstances, state.inventoryLots, supabase]);
+
   const advanceGrowStage = useCallback(async (growId: string) => {
     const grow = state.grows.find(g => g.id === growId);
     if (!grow || grow.currentStage === 'completed' || grow.currentStage === 'contaminated' || grow.currentStage === 'aborted') return;
@@ -2920,19 +2981,90 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     if (nextStage === 'completed') {
       updates.completedAt = new Date();
       updates.status = 'completed';
+      // Release container instances back to inventory (marked as dirty for cleaning)
+      await releaseInstancesForGrow(growId, true);
     }
-    
+
     await updateGrow(growId, updates);
-  }, [state.grows, updateGrow]);
+  }, [state.grows, updateGrow, releaseInstancesForGrow]);
 
   const markGrowContaminated = useCallback(async (growId: string, notes?: string) => {
+    // Release container instances as disposed (contaminated - not safe to reuse)
+    await releaseInstancesForGrow(growId, false);
+
     const updates: Partial<Grow> = {
       currentStage: 'contaminated',
       status: 'failed',
       notes: notes,
     };
     await updateGrow(growId, updates);
-  }, [updateGrow]);
+  }, [updateGrow, releaseInstancesForGrow]);
+
+  // Helper to release instances for a prepared spawn
+  const releaseInstancesForPreparedSpawn = useCallback(async (preparedSpawnId: string, isContaminated: boolean) => {
+    const instancesToRelease = state.labItemInstances.filter(
+      inst => inst.usageRef?.entityType === 'prepared_spawn' &&
+              inst.usageRef?.entityId === preparedSpawnId
+    );
+
+    for (const inst of instancesToRelease) {
+      const newStatus = isContaminated ? 'disposed' : 'dirty';
+
+      if (supabase) {
+        await supabase
+          .from('lab_item_instances')
+          .update({
+            status: newStatus,
+            usage_ref: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', inst.id);
+
+        // Update lot in_use_quantity if not contaminated
+        if (!isContaminated && inst.inventoryLotId) {
+          const lot = state.inventoryLots.find(l => l.id === inst.inventoryLotId);
+          if (lot && lot.inUseQuantity > 0) {
+            await supabase
+              .from('inventory_lots')
+              .update({ in_use_quantity: lot.inUseQuantity - 1, updated_at: new Date().toISOString() })
+              .eq('id', inst.inventoryLotId);
+          }
+        }
+      }
+
+      // Update local state
+      setState(prev => ({
+        ...prev,
+        labItemInstances: prev.labItemInstances.map(i =>
+          i.id === inst.id ? { ...i, status: newStatus as any, usageRef: undefined, updatedAt: new Date() } : i
+        ),
+        inventoryLots: !isContaminated && inst.inventoryLotId ? prev.inventoryLots.map(l =>
+          l.id === inst.inventoryLotId ? { ...l, inUseQuantity: Math.max(0, l.inUseQuantity - 1), updatedAt: new Date() } : l
+        ) : prev.inventoryLots,
+      }));
+    }
+  }, [state.labItemInstances, state.inventoryLots, supabase]);
+
+  // Mark prepared spawn as contaminated (releases instances as disposed)
+  const markPreparedSpawnContaminated = useCallback(async (preparedSpawnId: string, notes?: string) => {
+    // Release instances as disposed (contaminated - not safe to reuse)
+    await releaseInstancesForPreparedSpawn(preparedSpawnId, true);
+
+    await updatePreparedSpawn(preparedSpawnId, {
+      status: 'contaminated',
+      notes: notes,
+    });
+  }, [updatePreparedSpawn, releaseInstancesForPreparedSpawn]);
+
+  // Mark prepared spawn as expired (releases instances as dirty for cleaning)
+  const markPreparedSpawnExpired = useCallback(async (preparedSpawnId: string) => {
+    // Release instances as dirty (can be cleaned and reused)
+    await releaseInstancesForPreparedSpawn(preparedSpawnId, false);
+
+    await updatePreparedSpawn(preparedSpawnId, {
+      status: 'expired',
+    });
+  }, [updatePreparedSpawn, releaseInstancesForPreparedSpawn]);
 
   const addGrowObservation = useCallback((growId: string, observation: Omit<GrowObservation, 'id'>) => {
     const newObs: GrowObservation = { ...observation, id: generateId('gobs') };
@@ -3136,6 +3268,20 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       sourceCultureCost = calculateSourceCultureCost(grow.sourceCultureId, estimatedVolumeUsed);
     }
 
+    // Calculate spawn cost from grain spawn → prepared spawn chain
+    let spawnCost = 0;
+    if (grow.grainSpawnIds && grow.grainSpawnIds.length > 0) {
+      for (const gsId of grow.grainSpawnIds) {
+        const grainSpawn = state.grainSpawn.find(gs => gs.id === gsId);
+        if (grainSpawn?.sourcePreparedSpawnId) {
+          const preparedSpawn = state.preparedSpawn.find(ps => ps.id === grainSpawn.sourcePreparedSpawnId);
+          if (preparedSpawn?.productionCost) {
+            spawnCost += preparedSpawn.productionCost;
+          }
+        }
+      }
+    }
+
     // Calculate inventory cost from tracked usages
     const inventoryCost = calculateGrowInventoryCost(growId);
 
@@ -3143,8 +3289,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     const laborCost = grow.laborCost ?? 0;
     const overheadCost = grow.overheadCost ?? 0;
 
-    // Calculate total cost
-    const totalCost = sourceCultureCost + inventoryCost + laborCost + overheadCost;
+    // Calculate total cost (now includes spawn cost)
+    const totalCost = sourceCultureCost + spawnCost + inventoryCost + laborCost + overheadCost;
 
     // Calculate cost per gram if we have yields
     const totalYield = grow.totalYield ?? 0;
@@ -3158,13 +3304,14 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
     await updateGrow(growId, {
       sourceCultureCost,
+      spawnCost,
       inventoryCost,
       totalCost,
       costPerGramWet,
       costPerGramDry,
       profit,
     });
-  }, [state.grows, calculateSourceCultureCost, calculateGrowInventoryCost, updateGrow]);
+  }, [state.grows, state.grainSpawn, state.preparedSpawn, calculateSourceCultureCost, calculateGrowInventoryCost, updateGrow]);
 
   /**
    * Get total lab valuation broken down by asset type
@@ -3864,6 +4011,16 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const addInventoryLot = useCallback(async (lot: Omit<InventoryLot, 'id' | 'createdAt' | 'updatedAt'>): Promise<InventoryLot> => {
     const now = new Date();
+
+    // Auto-calculate unit cost if purchase cost and quantity are available
+    const calculatedUnitCost = lot.unitCost ??
+      (lot.purchaseCost && lot.originalQuantity ? lot.purchaseCost / lot.originalQuantity : undefined);
+
+    const lotWithUnitCost = {
+      ...lot,
+      unitCost: calculatedUnitCost,
+    };
+
     if (supabase) {
       // Get current user ID - required for RLS policy
       const userId = await getCurrentUserId();
@@ -3871,7 +4028,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         throw new Error('Authentication required. Please sign in to create inventory lots.');
       }
       const insertData = {
-        ...transformInventoryLotToDb(lot),
+        ...transformInventoryLotToDb(lotWithUnitCost),
         user_id: userId,
       };
       const { data, error } = await supabase
@@ -3885,7 +4042,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       return newLot;
     }
     const newLot: InventoryLot = {
-      ...lot,
+      ...lotWithUnitCost,
       id: generateId('lot'),
       createdAt: now,
       updatedAt: now,
@@ -4333,7 +4490,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, receiveOrder, generateOrderNumber,
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
     getCultureLineage, generateCultureLabel, amendCulture, archiveCulture,
-    addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn,
+    addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn, markPreparedSpawnContaminated, markPreparedSpawnExpired,
     addGrainSpawn, updateGrainSpawn, deleteGrainSpawn, addGrainSpawnObservation,
     shakeGrainSpawn, updateColonizationProgress, markGrainSpawnFullyColonized, markGrainSpawnContaminated,
     inoculateToGrainSpawn, spawnGrainToBulk,
@@ -4377,7 +4534,7 @@ const loadSettings = async (): Promise<AppSettings> => {
     addPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, receiveOrder, generateOrderNumber,
     addCulture, updateCulture, deleteCulture, addCultureObservation, addCultureTransfer,
     getCultureLineage, generateCultureLabel, amendCulture, archiveCulture,
-    addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn,
+    addPreparedSpawn, updatePreparedSpawn, deletePreparedSpawn, inoculatePreparedSpawn, getAvailablePreparedSpawn, markPreparedSpawnContaminated, markPreparedSpawnExpired,
     addGrainSpawn, updateGrainSpawn, deleteGrainSpawn, addGrainSpawnObservation,
     shakeGrainSpawn, updateColonizationProgress, markGrainSpawnFullyColonized, markGrainSpawnContaminated,
     inoculateToGrainSpawn, spawnGrainToBulk,

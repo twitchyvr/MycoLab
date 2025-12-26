@@ -6043,7 +6043,7 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
   // =============================================================================
   {
     id: 'dev-903',
-    status: 'in_progress',
+    status: 'completed',
     priority: 'critical',
     category: 'core',
     title: 'Inventory System Rebuild - Instance Tracking Foundation',
@@ -6102,7 +6102,7 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
 
   {
     id: 'dev-906',
-    status: 'in_progress',
+    status: 'completed',
     priority: 'high',
     category: 'core',
     title: 'Inventory System Rebuild - Phase 2 UI Integration',
@@ -6212,7 +6212,36 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-909',
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 5 Instance Lifecycle',
+    description: 'Added instance release when grows complete or entities are contaminated.',
+    notes: `Phase 5 of inventory system rebuild - Instance Lifecycle Management:
 
+**1. Instance Release on Grow Completion:**
+- releaseInstancesForGrow helper finds instances linked via grow → grainSpawn → preparedSpawn chain
+- When grow stage advances to 'completed', instances are released as 'dirty' (needs cleaning)
+- When grow is marked contaminated, instances are released as 'disposed'
+
+**2. Instance Release on Spawn Contamination:**
+- markPreparedSpawnContaminated function releases instances as 'disposed'
+- markPreparedSpawnExpired function releases instances as 'dirty'
+- Both functions update the lot's inUseQuantity
+
+**3. New Context Functions:**
+- markPreparedSpawnContaminated(id, notes?) - Mark spawn contaminated, dispose instances
+- markPreparedSpawnExpired(id) - Mark spawn expired, release instances for cleaning
+
+**4. InstanceManagement Fix:**
+- handleStatusChange only uses releaseInstance when transitioning from 'in_use' to 'available'
+- Other status transitions use updateLabItemInstance directly
+
+**Files Changed:**
+- src/store/DataContext.tsx - Instance release helpers and new functions
+- src/components/inventory/InstanceManagement.tsx - Fixed status change handling`,
   // =============================================================================
   // PHASE 42: AZURE OPENAI INTEGRATION
   // AI-powered assistance, knowledge library, IoT analysis
@@ -6245,6 +6274,32 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
   },
 
   {
+    id: 'dev-910',
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 6 Cost Flow',
+    description: 'Added spawn cost flow from PreparedSpawn through to Grow total cost calculation.',
+    notes: `Phase 6 of inventory system rebuild - Cost Flow Integration:
+
+**1. Grow Cost Tracking:**
+- Added spawnCost field to Grow type for tracking spawn-related costs
+- recalculateGrowCosts now calculates spawn cost from grainSpawnIds → preparedSpawn chain
+- Total cost now includes: sourceCultureCost + spawnCost + inventoryCost + laborCost + overheadCost
+
+**2. Database Schema:**
+- Added spawn_cost column to grows table in supabase-schema.sql
+- Updated version history documentation
+
+**3. Transformations:**
+- Added spawn_cost to transformGrowFromDb and transformGrowToDb
+- Added all cost fields (sourceCultureCost, inventoryCost, laborCost, overheadCost, etc.)
+
+**Files Changed:**
+- src/store/types.ts - Added spawnCost to Grow interface
+- src/store/DataContext.tsx - Updated recalculateGrowCosts
+- src/store/transformations.ts - Added cost field transformations
+- supabase-schema.sql - Added spawn_cost column`,
     id: 'dev-1001',
     status: 'completed',
     priority: 'critical',
@@ -6276,11 +6331,45 @@ All tables have:
 - Indexes for query performance
 - Updated_at triggers
 - JSONB columns for flexible metadata`,
+
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
 
   {
+    id: 'dev-911',
+    status: 'completed',
+    priority: 'medium',
+    category: 'ui',
+    title: 'Inventory System Rebuild - Phase 6 UI Polish',
+    description: 'Improved InstanceManagement page with clickable stats, quick actions, and navigation.',
+    notes: `Phase 6 UI improvements for InstanceManagement:
+
+**1. Clickable Stats:**
+- Stats cards now filter instances when clicked
+- Active filter state visually indicated
+- "Total" button clears filters
+
+**2. Quick Actions:**
+- Dirty instances show "Mark Clean" and "Sterilize" buttons
+- Available instances show "Sterilize" button
+- In-use instances can't be quick-changed (require proper release)
+
+**3. Navigation:**
+- Linked entities (prepared_spawn, culture, grow) are now clickable
+- Clicking navigates to the entity's management page
+
+**4. Improved Empty State:**
+- Larger visual with descriptive text
+- Action button to navigate to Stock Management
+
+**5. Responsive Design:**
+- Status labels hidden on mobile
+- Quick actions hidden on smaller screens
+- Timestamp column only on larger screens
+
+**Files Changed:**
+- src/components/inventory/InstanceManagement.tsx - Full UI overhaul`,
     id: 'dev-1002',
     status: 'completed',
     priority: 'high',
@@ -6326,6 +6415,41 @@ All tables have:
   },
 
   {
+    id: 'dev-912',
+    status: 'completed',
+    priority: 'medium',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 7 Smart Defaults',
+    description: 'Added intelligent auto-detection of item behavior based on category and name keywords.',
+    notes: `Phase 7 of inventory system rebuild - Smart Defaults:
+
+**1. Category-Based Inference:**
+- When user selects category, system infers likely item behavior
+- Containers category → container behavior
+- Equipment category → equipment behavior
+- Grains/Substrates/Chemicals/Media → consumable behavior
+- Lab Supplies → supply behavior
+
+**2. Name-Based Inference:**
+- Keywords in item name trigger behavior detection
+- "jar", "bottle", "plate", "bag", "tub" → container
+- "scale", "incubator", "flow hood", "autoclave" → equipment
+- "gloves", "wipes", "parafilm", "tape" → supply
+- "SAB", "workspace", "bench" → surface
+
+**3. Auto-Set Properties:**
+- When behavior is inferred, appropriate properties are set:
+  - unitType (countable vs weight)
+  - defaultUnit (ea vs g)
+  - trackInstances (for containers/equipment)
+  - isReusable, isSterilizable, holdsContents
+
+**4. Visual Indicator:**
+- "Auto-detected" badge with sparkle icon shows when behavior was inferred
+- User can still manually change behavior
+
+**Files Changed:**
+- src/components/forms/InventoryItemForm.tsx - Smart behavior inference`,
     id: 'dev-1003',
     status: 'completed',
     priority: 'critical',
@@ -6361,6 +6485,37 @@ All tables have:
   },
 
   {
+    id: 'dev-913',
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Inventory System Rebuild - Phase 8 Full Integration',
+    description: 'Complete integration of instance tracking across all entity creation flows with auto unit cost calculation.',
+    notes: `Phase 8 of inventory system rebuild - Full Integration:
+
+**1. CultureWizard Instance Integration:**
+- Added containerInventoryLotId and selectedInstanceIds to CultureFormData
+- Step2ContainerLocation now shows container selection from inventory
+- Filters available instances by selected lot
+- Marks instances as in_use when culture is created
+- Links instances to culture via usageRef
+
+**2. StockManagement Manual Lot Auto-Instances:**
+- When adding a lot manually via handleAddLot, auto-creates instances
+- Checks if item has container/equipment behavior or trackInstances property
+- Creates one instance per unit in the lot
+- Maintains consistency between receiveOrder and manual lot addition
+
+**3. Unit Cost Auto-Calculation:**
+- addInventoryLot now auto-calculates unitCost from purchaseCost / originalQuantity
+- If unitCost is not explicitly provided, it's derived automatically
+- Ensures every lot has accurate per-unit pricing
+- Powers cost tracking throughout the system
+
+**Files Changed:**
+- src/components/cultures/CultureWizard.tsx - Full instance integration
+- src/components/inventory/StockManagement.tsx - Manual lot auto-instance creation
+- src/store/DataContext.tsx - Unit cost auto-calculation in addInventoryLot`,
     id: 'dev-1004',
     status: 'completed',
     priority: 'high',

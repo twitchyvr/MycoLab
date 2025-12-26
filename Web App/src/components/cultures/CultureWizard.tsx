@@ -58,6 +58,9 @@ interface CultureFormData {
   locationId: string;
   volumeMl?: number;
   fillVolumeMl?: number;
+  // Instance tracking (optional - links to specific jar/plate from inventory)
+  containerInventoryLotId?: string;
+  selectedInstanceIds?: string[];
 
   // Step 3: Acquisition - adapts based on acquisitionMethod
   acquisitionMethod: AcquisitionMethod;
@@ -131,6 +134,8 @@ const INITIAL_FORM_DATA: CultureFormData = {
   locationId: '',
   volumeMl: undefined,
   fillVolumeMl: undefined,
+  containerInventoryLotId: undefined,
+  selectedInstanceIds: undefined,
   acquisitionMethod: 'made',
   recipeId: '',
   prepDate: new Date().toISOString().split('T')[0],
@@ -284,7 +289,15 @@ const Step1TypeStrain: React.FC<StepProps> = ({ formData, onChange, errors }) =>
 
 // Step 2: Container & Location
 const Step2ContainerLocation: React.FC<StepProps> = ({ formData, onChange, errors }) => {
-  const { activeContainers, activeLocations, getContainer } = useData();
+  const {
+    activeContainers,
+    activeLocations,
+    activeInventoryItems,
+    activeInventoryLots,
+    activeLabItemInstances,
+    getContainer,
+    getInventoryCategory,
+  } = useData();
 
   // Filter containers by culture usage context
   const cultureContainers = useMemo(() =>
@@ -294,6 +307,83 @@ const Step2ContainerLocation: React.FC<StepProps> = ({ formData, onChange, error
 
   // Auto-fill volume from selected container
   const selectedContainer = formData.containerId ? getContainer(formData.containerId) : undefined;
+
+  // Find inventory items that match the selected container type
+  const matchingContainerInventory = useMemo(() => {
+    if (!formData.containerId) return [];
+    const container = getContainer(formData.containerId);
+    if (!container) return [];
+
+    // Find inventory items in Containers category that might match
+    return activeInventoryItems.filter(item => {
+      const category = getInventoryCategory(item.categoryId || '');
+      if (category?.name.toLowerCase() !== 'containers') return false;
+
+      // Match by name similarity
+      const itemName = item.name.toLowerCase();
+      const containerName = container.name.toLowerCase();
+      return itemName.includes(containerName) ||
+             containerName.includes(itemName) ||
+             (container.volumeMl && itemName.includes(`${container.volumeMl}ml`));
+    });
+  }, [formData.containerId, activeInventoryItems, getContainer, getInventoryCategory]);
+
+  // Get available lots for matching inventory items
+  const containerInventoryLots = useMemo(() => {
+    const lots: { id: string; itemName: string; quantity: number; cost: number | null }[] = [];
+    matchingContainerInventory.forEach(item => {
+      activeInventoryLots
+        .filter(lot => lot.inventoryItemId === item.id && lot.quantity > 0 && lot.isActive)
+        .forEach(lot => {
+          lots.push({
+            id: lot.id,
+            itemName: item.name,
+            quantity: lot.quantity,
+            cost: lot.purchaseCost && lot.originalQuantity
+              ? lot.purchaseCost / lot.originalQuantity
+              : null,
+          });
+        });
+    });
+    return lots;
+  }, [matchingContainerInventory, activeInventoryLots]);
+
+  // Get available instances for selected lot
+  const availableInstancesForLot = useMemo(() => {
+    if (!formData.containerInventoryLotId) return [];
+    return activeLabItemInstances.filter(
+      inst => inst.inventoryLotId === formData.containerInventoryLotId && inst.status === 'available'
+    );
+  }, [formData.containerInventoryLotId, activeLabItemInstances]);
+
+  // Check if lot has instances
+  const lotHasInstances = useMemo(() => {
+    if (!formData.containerInventoryLotId) return false;
+    return activeLabItemInstances.some(inst => inst.inventoryLotId === formData.containerInventoryLotId);
+  }, [formData.containerInventoryLotId, activeLabItemInstances]);
+
+  // Auto-select first available instance when lot changes
+  useEffect(() => {
+    if (formData.containerInventoryLotId && lotHasInstances && availableInstancesForLot.length > 0) {
+      // Auto-select first available instance if none selected
+      if (!formData.selectedInstanceIds || formData.selectedInstanceIds.length === 0) {
+        onChange({ selectedInstanceIds: [availableInstancesForLot[0].id] });
+      }
+    } else if (!formData.containerInventoryLotId) {
+      onChange({ selectedInstanceIds: undefined });
+    }
+  }, [formData.containerInventoryLotId, lotHasInstances, availableInstancesForLot, formData.selectedInstanceIds, onChange]);
+
+  // Clear lot selection when container changes
+  useEffect(() => {
+    if (formData.containerInventoryLotId) {
+      // Check if current lot is still valid for this container
+      const isValidLot = containerInventoryLots.some(l => l.id === formData.containerInventoryLotId);
+      if (!isValidLot) {
+        onChange({ containerInventoryLotId: undefined, selectedInstanceIds: undefined });
+      }
+    }
+  }, [formData.containerId, containerInventoryLots, formData.containerInventoryLotId, onChange]);
 
   useEffect(() => {
     if (selectedContainer?.volumeMl && !formData.volumeMl) {
@@ -310,7 +400,7 @@ const Step2ContainerLocation: React.FC<StepProps> = ({ formData, onChange, error
         label="Container"
         required
         value={formData.containerId}
-        onChange={value => onChange({ containerId: value })}
+        onChange={value => onChange({ containerId: value, containerInventoryLotId: undefined, selectedInstanceIds: undefined })}
         options={cultureContainers}
         placeholder="Select container type..."
         entityType="container"
@@ -318,6 +408,76 @@ const Step2ContainerLocation: React.FC<StepProps> = ({ formData, onChange, error
         error={errors.containerId}
         helpText="What type of vessel holds this culture?"
       />
+
+      {/* Container Inventory Selection - shows matching inventory lots */}
+      {formData.containerId && containerInventoryLots.length > 0 && (
+        <div className="p-3 bg-emerald-950/30 border border-emerald-800/50 rounded-lg">
+          <label className="block text-sm font-medium text-emerald-300 mb-2">
+            📦 Use from Inventory (Optional)
+          </label>
+          <select
+            value={formData.containerInventoryLotId || ''}
+            onChange={(e) => onChange({ containerInventoryLotId: e.target.value || undefined, selectedInstanceIds: undefined })}
+            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+          >
+            <option value="">Don't track inventory...</option>
+            {containerInventoryLots.map(lot => (
+              <option key={lot.id} value={lot.id}>
+                {lot.itemName} - {lot.quantity} available
+                {lot.cost ? ` ($${lot.cost.toFixed(2)}/ea)` : ''}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-zinc-500 mt-1">
+            Link this culture to a specific container from your inventory
+          </p>
+
+          {/* Instance Tracking Info */}
+          {lotHasInstances && formData.containerInventoryLotId && (
+            <div className="mt-3 p-3 bg-blue-950/30 border border-blue-800/50 rounded-lg">
+              <p className="text-sm text-blue-400 font-medium mb-2">
+                📦 Container Instance Selected
+              </p>
+              {availableInstancesForLot.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-zinc-400">
+                    {availableInstancesForLot.length} available instance(s). Selected:
+                  </p>
+                  <select
+                    value={formData.selectedInstanceIds?.[0] || ''}
+                    onChange={(e) => onChange({ selectedInstanceIds: e.target.value ? [e.target.value] : undefined })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 text-sm"
+                  >
+                    <option value="">Select container instance...</option>
+                    {availableInstancesForLot.map(inst => (
+                      <option key={inst.id} value={inst.id}>
+                        #{inst.instanceNumber} - ${inst.unitCost.toFixed(2)}
+                        {inst.label ? ` (${inst.label})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {formData.selectedInstanceIds?.[0] && (
+                    <p className="text-xs text-emerald-400">
+                      ✓ This container instance will be marked as in-use when culture is created
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-amber-400">
+                  ⚠️ All instances in this lot are currently in use
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* No matching inventory info */}
+      {formData.containerId && containerInventoryLots.length === 0 && (
+        <div className="p-3 bg-zinc-800/50 border border-zinc-700 border-dashed rounded-lg text-sm text-zinc-500">
+          <p>💡 No matching containers in inventory. Add containers to your inventory to track specific jars/plates.</p>
+        </div>
+      )}
 
       {/* Location Selection */}
       <StandardDropdown
@@ -977,6 +1137,8 @@ export const CultureWizard: React.FC<CultureWizardProps> = ({
     addCulture,
     generateCultureLabel,
     getCulture,
+    markInstanceInUse,
+    adjustLotQuantity,
   } = useData();
 
   const creation = useCreation();
@@ -1081,9 +1243,11 @@ export const CultureWizard: React.FC<CultureWizardProps> = ({
       const parent = formData.parentId ? getCulture(formData.parentId) : undefined;
       const generation = parent ? parent.generation + 1 : 0;
 
+      const cultureLabel = generateCultureLabel(formData.type);
+
       const newCulture = await addCulture({
         type: formData.type,
-        label: generateCultureLabel(formData.type),
+        label: cultureLabel,
         strainId: formData.strainId,
         status: formData.status,
         generation,
@@ -1108,6 +1272,27 @@ export const CultureWizard: React.FC<CultureWizardProps> = ({
         lotNumber: formData.lotNumber || undefined,
       });
 
+      // Mark container instance(s) as in-use if selected
+      if (formData.selectedInstanceIds && formData.selectedInstanceIds.length > 0) {
+        for (const instanceId of formData.selectedInstanceIds) {
+          await markInstanceInUse(instanceId, {
+            entityType: 'culture',
+            entityId: newCulture.id,
+            entityLabel: cultureLabel,
+            usedAt: new Date(),
+          });
+        }
+      } else if (formData.containerInventoryLotId) {
+        // No instances tracked, just decrement lot quantity
+        await adjustLotQuantity(
+          formData.containerInventoryLotId,
+          -1,
+          'culture',
+          newCulture.id,
+          cultureLabel
+        );
+      }
+
       // Clear the draft
       if (draftId) {
         creation.completeCreation(draftId, {
@@ -1125,7 +1310,7 @@ export const CultureWizard: React.FC<CultureWizardProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, draftId, creation, addCulture, generateCultureLabel, getCulture, onSuccess, onClose, validateStep]);
+  }, [formData, draftId, creation, addCulture, generateCultureLabel, getCulture, markInstanceInUse, adjustLotQuantity, onSuccess, onClose, validateStep]);
 
   // Handle close (cancel draft)
   const handleClose = useCallback(() => {

@@ -5842,6 +5842,12 @@ BEGIN
     RAISE NOTICE 'Added source_culture_cost column to grows';
   END IF;
 
+  -- Spawn cost (from prepared spawn/grain spawn containers and production)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'spawn_cost') THEN
+    ALTER TABLE grows ADD COLUMN spawn_cost DECIMAL;
+    RAISE NOTICE 'Added spawn_cost column to grows';
+  END IF;
+
   -- Inventory cost (from inventory items consumed)
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'grows' AND column_name = 'inventory_cost') THEN
     ALTER TABLE grows ADD COLUMN inventory_cost DECIMAL;
@@ -5903,7 +5909,7 @@ END $$;
 --                 include_in_grow_cost for lab valuation vs grow cost separation
 --               - cultures: purchase_cost, production_cost, parent_culture_cost,
 --                 volume_used, cost_per_ml for per-use cost calculation
---               - grows: source_culture_cost, inventory_cost, labor_cost, overhead_cost,
+--               - grows: source_culture_cost, spawn_cost, inventory_cost, labor_cost, overhead_cost,
 --                 total_cost, revenue, profit, cost_per_gram_wet, cost_per_gram_dry
 --               - New outcome codes: aborted_bad_data, aborted_restart for data correction
 --                 (excluded from analytics when filtering)
