@@ -8915,7 +8915,7 @@ CREATE TABLE IF NOT EXISTS ai_usage (
 -- Indexes for ai_usage (important for billing queries)
 CREATE INDEX IF NOT EXISTS idx_ai_usage_user ON ai_usage(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_usage_user_date ON ai_usage(user_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_ai_usage_user_month ON ai_usage(user_id, date_trunc('month', created_at));
+-- Note: Removed date_trunc index (not IMMUTABLE). Use date range queries instead.
 CREATE INDEX IF NOT EXISTS idx_ai_usage_type ON ai_usage(request_type);
 
 -- RLS for ai_usage

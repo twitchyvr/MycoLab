@@ -519,6 +519,32 @@ UPDATE schema_version SET version = 5, updated_at = NOW() WHERE id = 1;
 
 
 -- ============================================================================
+-- SECTION 5: AI & IOT TABLES (No seed data required)
+-- ============================================================================
+-- The following tables are user-generated and don't need seed data:
+--
+-- AI Tables:
+-- - ai_chat_sessions: User chat sessions (created when user starts chat)
+-- - ai_chat_messages: Messages in chat sessions
+-- - ai_usage: Token/cost tracking for billing
+-- - ai_user_settings: User preferences (defaults in app code)
+--
+-- Knowledge Library:
+-- - knowledge_documents: Admin-curated content (add via admin panel)
+-- - knowledge_suggestions: User-submitted suggestions
+--
+-- IoT Tables:
+-- - iot_devices: User-registered sensors
+-- - iot_readings: Sensor data (auto-populated by devices)
+-- - iot_alerts: Alert instances (auto-generated)
+-- - iot_alert_thresholds: User-defined thresholds
+--
+-- NOTE: Knowledge documents should be added by admin through the app
+-- or via a separate knowledge-seed.sql file when content is ready.
+-- ============================================================================
+
+
+-- ============================================================================
 -- SUCCESS MESSAGE
 -- ============================================================================
 -- If you see this, the seed data was applied successfully!
@@ -548,4 +574,9 @@ UPDATE schema_version SET version = 5, updated_at = NOW() WHERE id = 1;
 --   - Auditor View: Full transparency for inspectors (shows all except addresses)
 --   - Minimal View: Maximum privacy (only strain, yield, photos)
 --   - Genetics Focus: For culture sales (emphasizes lineage)
+--
+-- AI & IoT (v22):
+-- - Tables created but no seed data needed
+-- - Knowledge content should be added by admin
+-- - IoT thresholds are user-specific
 -- ============================================================================
