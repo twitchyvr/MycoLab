@@ -8774,6 +8774,641 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 
 -- ============================================================================
+-- AI & KNOWLEDGE LIBRARY TABLES
+-- Azure OpenAI Integration, Knowledge Library, IoT Data
+-- ============================================================================
+
+-- AI Chat Sessions (conversation threads)
+CREATE TABLE IF NOT EXISTS ai_chat_sessions (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  title TEXT DEFAULT 'New Conversation',
+
+  -- Context for grounded responses
+  context_entity_type TEXT CHECK (context_entity_type IN ('culture', 'grow', 'inventory', 'location', 'recipe', 'strain', 'general')),
+  context_entity_id UUID,
+
+  -- Session metadata
+  total_tokens INTEGER DEFAULT 0,
+  total_cost DECIMAL(10, 6) DEFAULT 0,
+  message_count INTEGER DEFAULT 0,
+
+  -- Retention settings (privacy)
+  retain_until TIMESTAMPTZ, -- NULL = don't retain, set based on user preference
+
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for ai_chat_sessions
+CREATE INDEX IF NOT EXISTS idx_ai_chat_sessions_user ON ai_chat_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_chat_sessions_context ON ai_chat_sessions(context_entity_type, context_entity_id);
+CREATE INDEX IF NOT EXISTS idx_ai_chat_sessions_active ON ai_chat_sessions(user_id, is_active) WHERE is_active = true;
+
+-- RLS for ai_chat_sessions
+ALTER TABLE ai_chat_sessions ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_select') THEN
+    CREATE POLICY ai_chat_sessions_select ON ai_chat_sessions FOR SELECT USING (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_insert') THEN
+    CREATE POLICY ai_chat_sessions_insert ON ai_chat_sessions FOR INSERT WITH CHECK (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_update') THEN
+    CREATE POLICY ai_chat_sessions_update ON ai_chat_sessions FOR UPDATE USING (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_delete') THEN
+    CREATE POLICY ai_chat_sessions_delete ON ai_chat_sessions FOR DELETE USING (user_id = auth.uid());
+  END IF;
+  RAISE NOTICE 'AI chat sessions RLS policies created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating ai_chat_sessions RLS policies: %', SQLERRM;
+END $$;
+
+
+-- AI Chat Messages (individual messages in a session)
+CREATE TABLE IF NOT EXISTS ai_chat_messages (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  session_id UUID REFERENCES ai_chat_sessions(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+
+  role TEXT CHECK (role IN ('user', 'assistant', 'system')) NOT NULL,
+  content TEXT NOT NULL,
+
+  -- For messages with images
+  images JSONB, -- [{url, analysis_type, analysis_result}]
+
+  -- Sources used for grounded response
+  sources JSONB, -- [{type, id, title, relevance_score}]
+
+  -- Suggested actions from AI
+  suggested_actions JSONB, -- [{type, label, payload}]
+
+  -- Token/cost tracking per message
+  prompt_tokens INTEGER,
+  completion_tokens INTEGER,
+  total_tokens INTEGER,
+  estimated_cost DECIMAL(10, 6),
+
+  -- Performance
+  processing_time_ms INTEGER,
+  model_used TEXT DEFAULT 'gpt-4o',
+
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for ai_chat_messages
+CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_session ON ai_chat_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_user ON ai_chat_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_created ON ai_chat_messages(session_id, created_at);
+
+-- RLS for ai_chat_messages
+ALTER TABLE ai_chat_messages ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_messages' AND policyname = 'ai_chat_messages_select') THEN
+    CREATE POLICY ai_chat_messages_select ON ai_chat_messages FOR SELECT USING (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_messages' AND policyname = 'ai_chat_messages_insert') THEN
+    CREATE POLICY ai_chat_messages_insert ON ai_chat_messages FOR INSERT WITH CHECK (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_messages' AND policyname = 'ai_chat_messages_delete') THEN
+    CREATE POLICY ai_chat_messages_delete ON ai_chat_messages FOR DELETE USING (user_id = auth.uid());
+  END IF;
+  RAISE NOTICE 'AI chat messages RLS policies created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating ai_chat_messages RLS policies: %', SQLERRM;
+END $$;
+
+
+-- AI Usage Tracking (for billing and rate limiting)
+CREATE TABLE IF NOT EXISTS ai_usage (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+
+  -- Request type
+  request_type TEXT CHECK (request_type IN ('chat', 'image_analysis', 'iot_analysis', 'embedding', 'knowledge_search')) NOT NULL,
+  model TEXT NOT NULL DEFAULT 'gpt-4o',
+
+  -- Token counts
+  prompt_tokens INTEGER DEFAULT 0,
+  completion_tokens INTEGER DEFAULT 0,
+  total_tokens INTEGER DEFAULT 0,
+
+  -- Cost tracking
+  estimated_cost DECIMAL(10, 6) DEFAULT 0,
+
+  -- Caching (to reduce costs)
+  cached BOOLEAN DEFAULT false,
+  cache_hit BOOLEAN DEFAULT false,
+
+  -- Reference to what triggered this usage
+  session_id UUID REFERENCES ai_chat_sessions(id) ON DELETE SET NULL,
+
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for ai_usage (important for billing queries)
+CREATE INDEX IF NOT EXISTS idx_ai_usage_user ON ai_usage(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_user_date ON ai_usage(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_user_month ON ai_usage(user_id, date_trunc('month', created_at));
+CREATE INDEX IF NOT EXISTS idx_ai_usage_type ON ai_usage(request_type);
+
+-- RLS for ai_usage
+ALTER TABLE ai_usage ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_usage' AND policyname = 'ai_usage_select') THEN
+    CREATE POLICY ai_usage_select ON ai_usage FOR SELECT USING (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_usage' AND policyname = 'ai_usage_insert') THEN
+    CREATE POLICY ai_usage_insert ON ai_usage FOR INSERT WITH CHECK (user_id = auth.uid());
+  END IF;
+  RAISE NOTICE 'AI usage RLS policies created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating ai_usage RLS policies: %', SQLERRM;
+END $$;
+
+
+-- AI User Settings (privacy, features, limits)
+CREATE TABLE IF NOT EXISTS ai_user_settings (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE NOT NULL,
+
+  -- Feature toggles
+  ai_enabled BOOLEAN DEFAULT true,
+  image_analysis_enabled BOOLEAN DEFAULT true,
+  iot_analysis_enabled BOOLEAN DEFAULT true,
+
+  -- Privacy levels (0=none, 1=anonymous_aggregate, 2=strain_performance, 3=full_share)
+  data_sharing_level INTEGER DEFAULT 0 CHECK (data_sharing_level >= 0 AND data_sharing_level <= 3),
+  share_yield_data BOOLEAN DEFAULT false,
+  share_environmental_data BOOLEAN DEFAULT false,
+  share_success_patterns BOOLEAN DEFAULT false,
+
+  -- Conversation retention
+  retain_conversations BOOLEAN DEFAULT false,
+  conversation_retention_days INTEGER DEFAULT 30,
+
+  -- Usage limits (NULL = use tier default)
+  daily_token_limit INTEGER,
+  monthly_cost_limit DECIMAL(10, 2),
+
+  -- Preferences
+  preferred_response_length TEXT DEFAULT 'balanced' CHECK (preferred_response_length IN ('concise', 'balanced', 'detailed')),
+  include_citations BOOLEAN DEFAULT true,
+  proactive_suggestions BOOLEAN DEFAULT true,
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS for ai_user_settings
+ALTER TABLE ai_user_settings ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_user_settings' AND policyname = 'ai_user_settings_select') THEN
+    CREATE POLICY ai_user_settings_select ON ai_user_settings FOR SELECT USING (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_user_settings' AND policyname = 'ai_user_settings_insert') THEN
+    CREATE POLICY ai_user_settings_insert ON ai_user_settings FOR INSERT WITH CHECK (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_user_settings' AND policyname = 'ai_user_settings_update') THEN
+    CREATE POLICY ai_user_settings_update ON ai_user_settings FOR UPDATE USING (user_id = auth.uid());
+  END IF;
+  RAISE NOTICE 'AI user settings RLS policies created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating ai_user_settings RLS policies: %', SQLERRM;
+END $$;
+
+
+-- ============================================================================
+-- KNOWLEDGE LIBRARY TABLES
+-- Curated content, community suggestions, admin approval workflow
+-- ============================================================================
+
+-- Knowledge Documents (the actual library content)
+CREATE TABLE IF NOT EXISTS knowledge_documents (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- Content categorization
+  category TEXT CHECK (category IN ('species', 'technique', 'contamination', 'equipment', 'safety', 'research', 'community', 'troubleshooting')) NOT NULL,
+  subcategory TEXT,
+
+  -- Content
+  title TEXT NOT NULL,
+  slug TEXT UNIQUE, -- URL-friendly identifier
+  summary TEXT, -- Short summary for search results
+  content TEXT NOT NULL, -- Main content (markdown supported)
+
+  -- Metadata
+  tags TEXT[],
+  difficulty_level TEXT CHECK (difficulty_level IN ('beginner', 'intermediate', 'advanced', 'expert')),
+
+  -- Related entities
+  species_ids UUID[],
+  strain_ids UUID[],
+
+  -- Versioning
+  version INTEGER DEFAULT 1,
+  previous_version_id UUID REFERENCES knowledge_documents(id),
+
+  -- Authorship
+  author_type TEXT CHECK (author_type IN ('system', 'admin', 'ai_generated', 'community')) DEFAULT 'system',
+  author_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  author_name TEXT,
+
+  -- Quality
+  review_status TEXT CHECK (review_status IN ('draft', 'pending_review', 'approved', 'deprecated')) DEFAULT 'draft',
+  reviewed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  confidence_score DECIMAL(3, 2), -- For AI-generated content
+
+  -- Citations/sources
+  citations JSONB, -- [{title, url, accessed_at}]
+
+  -- Media
+  images JSONB, -- [{id, url, caption, type}]
+  videos JSONB, -- [{id, url, title, duration}]
+
+  -- Search optimization (populated by Azure AI Search sync)
+  keywords TEXT[],
+  embedding_updated_at TIMESTAMPTZ,
+
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for knowledge_documents
+CREATE INDEX IF NOT EXISTS idx_knowledge_documents_category ON knowledge_documents(category);
+CREATE INDEX IF NOT EXISTS idx_knowledge_documents_status ON knowledge_documents(review_status);
+CREATE INDEX IF NOT EXISTS idx_knowledge_documents_tags ON knowledge_documents USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_knowledge_documents_species ON knowledge_documents USING GIN(species_ids);
+CREATE INDEX IF NOT EXISTS idx_knowledge_documents_slug ON knowledge_documents(slug);
+CREATE INDEX IF NOT EXISTS idx_knowledge_documents_search ON knowledge_documents USING GIN(to_tsvector('english', title || ' ' || COALESCE(summary, '') || ' ' || content));
+
+-- RLS for knowledge_documents (public read for approved, admin write)
+ALTER TABLE knowledge_documents ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  -- Anyone can read approved documents
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_documents' AND policyname = 'knowledge_documents_select_public') THEN
+    CREATE POLICY knowledge_documents_select_public ON knowledge_documents FOR SELECT USING (review_status = 'approved' AND is_active = true);
+  END IF;
+  -- Authors can read their own drafts
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_documents' AND policyname = 'knowledge_documents_select_author') THEN
+    CREATE POLICY knowledge_documents_select_author ON knowledge_documents FOR SELECT USING (author_id = auth.uid());
+  END IF;
+  RAISE NOTICE 'Knowledge documents RLS policies created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating knowledge_documents RLS policies: %', SQLERRM;
+END $$;
+
+
+-- Knowledge Suggestions (community submissions)
+CREATE TABLE IF NOT EXISTS knowledge_suggestions (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+
+  -- Who submitted
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+
+  -- What type of suggestion
+  suggestion_type TEXT CHECK (suggestion_type IN ('new_document', 'edit', 'correction', 'addition')) NOT NULL,
+  target_document_id UUID REFERENCES knowledge_documents(id) ON DELETE SET NULL,
+
+  -- For new document suggestions
+  suggested_category TEXT,
+  suggested_title TEXT NOT NULL,
+  suggested_content TEXT NOT NULL,
+
+  -- For edits/corrections
+  section_affected TEXT,
+  original_text TEXT,
+  suggested_text TEXT,
+
+  -- Metadata
+  reason TEXT, -- Why this change should be made
+  sources TEXT, -- Citations or sources
+
+  -- Review workflow
+  status TEXT CHECK (status IN ('pending', 'under_review', 'approved', 'rejected', 'merged')) DEFAULT 'pending',
+  reviewed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  review_notes TEXT,
+
+  -- If approved, which document was created/updated
+  result_document_id UUID REFERENCES knowledge_documents(id) ON DELETE SET NULL,
+
+  -- Community voting (future phase)
+  upvotes INTEGER DEFAULT 0,
+  downvotes INTEGER DEFAULT 0,
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for knowledge_suggestions
+CREATE INDEX IF NOT EXISTS idx_knowledge_suggestions_user ON knowledge_suggestions(user_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_suggestions_status ON knowledge_suggestions(status);
+CREATE INDEX IF NOT EXISTS idx_knowledge_suggestions_pending ON knowledge_suggestions(status) WHERE status = 'pending';
+
+-- RLS for knowledge_suggestions
+ALTER TABLE knowledge_suggestions ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  -- Users can read their own suggestions
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_select') THEN
+    CREATE POLICY knowledge_suggestions_select ON knowledge_suggestions FOR SELECT USING (user_id = auth.uid());
+  END IF;
+  -- Users can create suggestions
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_insert') THEN
+    CREATE POLICY knowledge_suggestions_insert ON knowledge_suggestions FOR INSERT WITH CHECK (user_id = auth.uid());
+  END IF;
+  -- Users can update their pending suggestions
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_update') THEN
+    CREATE POLICY knowledge_suggestions_update ON knowledge_suggestions FOR UPDATE USING (user_id = auth.uid() AND status = 'pending');
+  END IF;
+  -- Users can delete their pending suggestions
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_delete') THEN
+    CREATE POLICY knowledge_suggestions_delete ON knowledge_suggestions FOR DELETE USING (user_id = auth.uid() AND status = 'pending');
+  END IF;
+  RAISE NOTICE 'Knowledge suggestions RLS policies created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating knowledge_suggestions RLS policies: %', SQLERRM;
+END $$;
+
+
+-- ============================================================================
+-- IOT DATA TABLES
+-- Sensor readings, device management, alerts
+-- ============================================================================
+
+-- IoT Devices (registered sensors)
+CREATE TABLE IF NOT EXISTS iot_devices (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+
+  -- Device identification
+  device_id TEXT NOT NULL, -- User-provided or auto-generated device ID
+  name TEXT NOT NULL,
+  device_type TEXT CHECK (device_type IN ('environmental', 'scale', 'camera', 'multi_sensor', 'other')) DEFAULT 'environmental',
+
+  -- Hardware info
+  model TEXT,
+  firmware_version TEXT,
+  mac_address TEXT,
+
+  -- Location binding
+  location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
+
+  -- Capabilities
+  capabilities JSONB, -- {temperature: true, humidity: true, co2: false, ...}
+
+  -- Connection
+  last_seen_at TIMESTAMPTZ,
+  connection_status TEXT CHECK (connection_status IN ('online', 'offline', 'unknown')) DEFAULT 'unknown',
+
+  -- Authentication
+  api_key_hash TEXT, -- For device authentication
+
+  -- Settings
+  reading_interval_seconds INTEGER DEFAULT 300, -- 5 minutes default
+  alert_enabled BOOLEAN DEFAULT true,
+
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  UNIQUE(user_id, device_id)
+);
+
+-- Indexes for iot_devices
+CREATE INDEX IF NOT EXISTS idx_iot_devices_user ON iot_devices(user_id);
+CREATE INDEX IF NOT EXISTS idx_iot_devices_location ON iot_devices(location_id);
+CREATE INDEX IF NOT EXISTS idx_iot_devices_device_id ON iot_devices(device_id);
+
+-- RLS for iot_devices
+ALTER TABLE iot_devices ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_select') THEN
+    CREATE POLICY iot_devices_select ON iot_devices FOR SELECT USING (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_insert') THEN
+    CREATE POLICY iot_devices_insert ON iot_devices FOR INSERT WITH CHECK (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_update') THEN
+    CREATE POLICY iot_devices_update ON iot_devices FOR UPDATE USING (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_delete') THEN
+    CREATE POLICY iot_devices_delete ON iot_devices FOR DELETE USING (user_id = auth.uid());
+  END IF;
+  RAISE NOTICE 'IoT devices RLS policies created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating iot_devices RLS policies: %', SQLERRM;
+END $$;
+
+
+-- IoT Readings (sensor data - high volume table)
+CREATE TABLE IF NOT EXISTS iot_readings (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  device_id UUID REFERENCES iot_devices(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
+
+  -- Timestamp (when reading was taken, not when received)
+  reading_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  -- Environmental readings
+  temperature DECIMAL(5, 2), -- Fahrenheit (converted from Celsius if needed)
+  humidity DECIMAL(5, 2), -- Percentage
+  co2_ppm INTEGER, -- Parts per million
+  light_level INTEGER, -- Lux
+  air_pressure DECIMAL(7, 2), -- hPa
+
+  -- Weight readings (for substrate/yield monitoring)
+  weight_grams DECIMAL(10, 2),
+
+  -- VPD calculation (derived from temp + humidity)
+  vpd DECIMAL(5, 3),
+
+  -- Device metadata
+  battery_level DECIMAL(5, 2), -- Percentage
+  signal_strength INTEGER, -- dBm
+
+  -- Raw data (in case we need original values)
+  raw_data JSONB,
+
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for iot_readings (critical for time-series queries)
+CREATE INDEX IF NOT EXISTS idx_iot_readings_device ON iot_readings(device_id);
+CREATE INDEX IF NOT EXISTS idx_iot_readings_user ON iot_readings(user_id);
+CREATE INDEX IF NOT EXISTS idx_iot_readings_location ON iot_readings(location_id);
+CREATE INDEX IF NOT EXISTS idx_iot_readings_time ON iot_readings(reading_at DESC);
+CREATE INDEX IF NOT EXISTS idx_iot_readings_device_time ON iot_readings(device_id, reading_at DESC);
+CREATE INDEX IF NOT EXISTS idx_iot_readings_location_time ON iot_readings(location_id, reading_at DESC);
+CREATE INDEX IF NOT EXISTS idx_iot_readings_user_time ON iot_readings(user_id, reading_at DESC);
+
+-- RLS for iot_readings
+ALTER TABLE iot_readings ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_readings' AND policyname = 'iot_readings_select') THEN
+    CREATE POLICY iot_readings_select ON iot_readings FOR SELECT USING (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_readings' AND policyname = 'iot_readings_insert') THEN
+    CREATE POLICY iot_readings_insert ON iot_readings FOR INSERT WITH CHECK (user_id = auth.uid());
+  END IF;
+  RAISE NOTICE 'IoT readings RLS policies created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating iot_readings RLS policies: %', SQLERRM;
+END $$;
+
+
+-- IoT Alerts (threshold violations, anomalies)
+CREATE TABLE IF NOT EXISTS iot_alerts (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  device_id UUID REFERENCES iot_devices(id) ON DELETE CASCADE NOT NULL,
+  location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
+
+  -- Alert info
+  alert_type TEXT CHECK (alert_type IN ('threshold', 'anomaly', 'device_offline', 'low_battery')) NOT NULL,
+  parameter TEXT, -- Which reading triggered (temperature, humidity, co2, etc.)
+  severity TEXT CHECK (severity IN ('info', 'warning', 'critical')) DEFAULT 'warning',
+
+  -- Values
+  actual_value DECIMAL(10, 2),
+  threshold_value DECIMAL(10, 2),
+  threshold_direction TEXT CHECK (threshold_direction IN ('above', 'below')),
+
+  -- Message
+  message TEXT NOT NULL,
+
+  -- Status
+  status TEXT CHECK (status IN ('active', 'acknowledged', 'resolved', 'dismissed')) DEFAULT 'active',
+  acknowledged_at TIMESTAMPTZ,
+  resolved_at TIMESTAMPTZ,
+
+  -- Related reading
+  reading_id UUID REFERENCES iot_readings(id) ON DELETE SET NULL,
+
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for iot_alerts
+CREATE INDEX IF NOT EXISTS idx_iot_alerts_user ON iot_alerts(user_id);
+CREATE INDEX IF NOT EXISTS idx_iot_alerts_device ON iot_alerts(device_id);
+CREATE INDEX IF NOT EXISTS idx_iot_alerts_status ON iot_alerts(status);
+CREATE INDEX IF NOT EXISTS idx_iot_alerts_active ON iot_alerts(user_id, status) WHERE status = 'active';
+
+-- RLS for iot_alerts
+ALTER TABLE iot_alerts ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alerts' AND policyname = 'iot_alerts_select') THEN
+    CREATE POLICY iot_alerts_select ON iot_alerts FOR SELECT USING (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alerts' AND policyname = 'iot_alerts_insert') THEN
+    CREATE POLICY iot_alerts_insert ON iot_alerts FOR INSERT WITH CHECK (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alerts' AND policyname = 'iot_alerts_update') THEN
+    CREATE POLICY iot_alerts_update ON iot_alerts FOR UPDATE USING (user_id = auth.uid());
+  END IF;
+  RAISE NOTICE 'IoT alerts RLS policies created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating iot_alerts RLS policies: %', SQLERRM;
+END $$;
+
+
+-- IoT Alert Thresholds (user-defined thresholds per location/device)
+CREATE TABLE IF NOT EXISTS iot_alert_thresholds (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+
+  -- Apply to specific device, location, or globally (NULL = all)
+  device_id UUID REFERENCES iot_devices(id) ON DELETE CASCADE,
+  location_id UUID REFERENCES locations(id) ON DELETE CASCADE,
+
+  -- Parameter being monitored
+  parameter TEXT CHECK (parameter IN ('temperature', 'humidity', 'co2', 'light', 'vpd')) NOT NULL,
+
+  -- Thresholds
+  min_value DECIMAL(10, 2),
+  max_value DECIMAL(10, 2),
+
+  -- Alert settings
+  severity TEXT CHECK (severity IN ('info', 'warning', 'critical')) DEFAULT 'warning',
+  enabled BOOLEAN DEFAULT true,
+
+  -- Context (what stage of growth this applies to)
+  applies_to_stage TEXT CHECK (applies_to_stage IN ('colonization', 'fruiting', 'storage', 'all')) DEFAULT 'all',
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for iot_alert_thresholds
+CREATE INDEX IF NOT EXISTS idx_iot_alert_thresholds_user ON iot_alert_thresholds(user_id);
+CREATE INDEX IF NOT EXISTS idx_iot_alert_thresholds_device ON iot_alert_thresholds(device_id);
+CREATE INDEX IF NOT EXISTS idx_iot_alert_thresholds_location ON iot_alert_thresholds(location_id);
+
+-- RLS for iot_alert_thresholds
+ALTER TABLE iot_alert_thresholds ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alert_thresholds' AND policyname = 'iot_alert_thresholds_all') THEN
+    CREATE POLICY iot_alert_thresholds_all ON iot_alert_thresholds FOR ALL USING (user_id = auth.uid());
+  END IF;
+  RAISE NOTICE 'IoT alert thresholds RLS policies created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating iot_alert_thresholds RLS policies: %', SQLERRM;
+END $$;
+
+
+-- Updated_at triggers for new tables
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'ai_chat_sessions_updated_at') THEN
+    CREATE TRIGGER ai_chat_sessions_updated_at BEFORE UPDATE ON ai_chat_sessions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'ai_user_settings_updated_at') THEN
+    CREATE TRIGGER ai_user_settings_updated_at BEFORE UPDATE ON ai_user_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'knowledge_documents_updated_at') THEN
+    CREATE TRIGGER knowledge_documents_updated_at BEFORE UPDATE ON knowledge_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'knowledge_suggestions_updated_at') THEN
+    CREATE TRIGGER knowledge_suggestions_updated_at BEFORE UPDATE ON knowledge_suggestions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'iot_devices_updated_at') THEN
+    CREATE TRIGGER iot_devices_updated_at BEFORE UPDATE ON iot_devices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'iot_alert_thresholds_updated_at') THEN
+    CREATE TRIGGER iot_alert_thresholds_updated_at BEFORE UPDATE ON iot_alert_thresholds FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+  RAISE NOTICE 'AI/IoT updated_at triggers created!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating AI/IoT triggers: %', SQLERRM;
+END $$;
+
+
+-- ============================================================================
 -- SUCCESS MESSAGE
 -- ============================================================================
 -- If you see this, the schema was applied successfully!

@@ -6212,6 +6212,271 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  // =============================================================================
+  // PHASE 42: AZURE OPENAI INTEGRATION
+  // AI-powered assistance, knowledge library, IoT analysis
+  // =============================================================================
+
+  {
+    id: 'dev-1000',
+    status: 'completed',
+    priority: 'critical',
+    category: 'core',
+    title: 'Azure OpenAI Integration - Architecture & Planning',
+    description: 'Comprehensive architecture for integrating Azure OpenAI into MycoLab for grounded AI responses, image analysis, and IoT data analysis.',
+    notes: `Architecture document created at docs/architecture/AZURE_OPENAI_INTEGRATION.md
+
+**Key Decisions Finalized:**
+1. **Hosting**: Netlify (frontend) + Supabase (DB, Edge Functions) + Azure (AI only)
+2. **Pricing**: Freemium/Hybrid - 50 free queries, 500/Basic, 2000/Pro
+3. **Knowledge Library**: Phased curation - owner core → import + approve → community voting
+4. **IoT**: Custom API for flexibility, open-source friendly
+5. **Privacy**: 4 levels (None, Anonymous Aggregate, Strain Performance, Full Share)
+
+**Implementation Phases:**
+- Phase 1: Foundation (database, edge functions, basic chat)
+- Phase 2: Knowledge Library (AI Search, RAG system)
+- Phase 3: Image Analysis (contamination, health assessment)
+- Phase 4: IoT Integration (sensor data, environmental analysis)
+- Phase 5: Advanced Features (proactive suggestions, community insights)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-1001',
+    status: 'completed',
+    priority: 'critical',
+    category: 'core',
+    title: 'Azure OpenAI Integration - Database Schema',
+    description: 'Created all database tables for AI features including chat sessions, usage tracking, knowledge library, IoT devices and readings.',
+    notes: `Added to supabase-schema.sql:
+
+**AI Chat Tables:**
+- ai_chat_sessions - Conversation threads with context
+- ai_chat_messages - Individual messages with sources, suggested actions
+- ai_usage - Token/cost tracking for billing
+
+**AI Settings:**
+- ai_user_settings - Privacy levels, feature toggles, retention preferences
+
+**Knowledge Library:**
+- knowledge_documents - Curated content with versioning, review workflow
+- knowledge_suggestions - Community submissions with approval workflow
+
+**IoT Tables:**
+- iot_devices - Registered sensors with capabilities
+- iot_readings - Sensor data (temp, humidity, CO2, light, weight, VPD)
+- iot_alerts - Threshold violations, anomaly detection
+- iot_alert_thresholds - User-defined alert rules
+
+All tables have:
+- Proper RLS policies for data isolation
+- Indexes for query performance
+- Updated_at triggers
+- JSONB columns for flexible metadata`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-1002',
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Azure OpenAI Integration - Frontend Service Layer',
+    description: 'Created TypeScript service layer for AI operations including hooks and components.',
+    notes: `Created src/lib/ai/ with:
+
+**Types (types.ts):**
+- ChatMessage, ChatSession, ChatSource, SuggestedAction
+- ImageAnalysisRequest/Result with contamination, health, stage assessment
+- IoTReading, IoTDevice, IoTAnalysisRequest/Result
+- KnowledgeDocument, KnowledgeSuggestion
+- AIUserSettings with privacy levels (0-3)
+- UsageSummary for billing/limits
+
+**Services (services/AIService.ts):**
+- AIService singleton class
+- sendMessage, streamMessage for chat
+- analyzeImage for contamination/health detection
+- analyzeIoTData for environmental analysis
+- searchKnowledge, browseKnowledge for library
+- getUsageSummary for billing tracking
+- Transforms between DB and TypeScript types
+
+**Hooks (hooks/useAI.ts):**
+- useAI() main hook with all operations
+- useCultureAI(cultureId) for culture context
+- useGrowAI(growId) for grow context
+- useLocationAI(locationId) for location/IoT context
+- Manages loading, error, messages state
+
+**Components (components/ai/AIChat.tsx):**
+- Full chat interface with message bubbles
+- Quick actions for common queries
+- Suggested actions from AI responses
+- Source citations display
+- Loading/error states
+- Image upload support (UI ready)
+- Inline, floating, and fullscreen modes`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-1003',
+    status: 'completed',
+    priority: 'critical',
+    category: 'core',
+    title: 'Azure OpenAI Integration - Supabase Edge Functions',
+    description: 'Create Supabase Edge Functions to securely proxy requests to Azure OpenAI.',
+    notes: `Created in supabase/functions/:
+
+**_shared/:**
+- cors.ts - CORS headers and preflight handling
+- supabase.ts - Supabase client creation with auth
+- azure-openai.ts - Azure OpenAI client wrapper
+
+**ai-gateway:**
+- Rate limiting per user tier (free: 50/day, basic: 100/day, pro: 200/day)
+- Token counting and cost tracking
+- Request validation and authentication
+- Context building (RAG) with user's cultures/grows
+- System prompts for mycology expertise
+- Image analysis with specialized prompts
+- IoT data analysis
+- Knowledge search
+
+**iot-ingest:**
+- Device authentication via API key
+- Reading validation and normalization
+- VPD calculation from temp/humidity
+- Threshold checking and alerts
+- Batch insert support
+- Device registration endpoint`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-1004',
+    status: 'completed',
+    priority: 'high',
+    category: 'core',
+    title: 'Azure OpenAI Integration - RAG Context Building',
+    description: 'Implement retrieval-augmented generation for grounded AI responses.',
+    notes: `Implemented in ai-gateway Edge Function (buildContext function):
+
+**User Data Retrieval:**
+- Active cultures with label, type, status, health rating
+- Current grows with name, stage, status
+- Strain information via joins
+- Location environmental data for context
+- IoT readings for location-based queries
+
+**Entity-Specific Context:**
+- Culture detail view: observations, strain, location, transfers
+- Grow detail view: observations, flushes, yields, strain
+- Location: IoT readings (temp, humidity, CO2, VPD)
+
+**System Prompts:**
+- Mycology expertise persona
+- Species-specific guidance
+- Image analysis prompts (contamination, health, stage, identification)
+- Grounded in user's actual data`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-1005',
+    status: 'in_progress',
+    priority: 'high',
+    category: 'ui',
+    title: 'AI Chat Integration - App Navigation',
+    description: 'Add AI chat to main app navigation and entity detail views.',
+    notes: `Integration points:
+
+**Settings (COMPLETED):**
+- AISettingsSection component added to preferences
+- AI enable/disable toggle
+- Image analysis and IoT analysis toggles
+- Data sharing level selector (0-3)
+- Conversation retention settings
+- Response preferences (concise/balanced/detailed)
+- Citations and proactive suggestions toggles
+
+**Global Chat (PLANNED):**
+- Floating chat button in bottom right
+- Full-page AI assistant option
+- Persistent across navigation
+
+**Context-Aware Chat (PLANNED):**
+- Culture detail modal → "Ask AI about this culture"
+- Grow detail → "Get AI recommendations"
+- Location → "Analyze environment"`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-1006',
+    status: 'planned',
+    priority: 'medium',
+    category: 'core',
+    title: 'Knowledge Library - Suggestion Workflow',
+    description: 'Enable community suggestions with admin approval workflow.',
+    notes: `Features:
+
+**User-Facing:**
+- "Suggest Entry" button on library pages
+- Form for new suggestions or corrections
+- View own pending suggestions
+- Track approval status
+
+**Admin-Facing:**
+- Pending suggestions queue
+- Review interface with approve/reject
+- Edit before publishing
+- Merge into existing documents
+
+**Future:**
+- Community voting on suggestions
+- Reputation/trust system
+- Auto-approval for trusted users`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
+    id: 'dev-1007',
+    status: 'planned',
+    priority: 'medium',
+    category: 'core',
+    title: 'IoT Device Management',
+    description: 'UI for registering and managing IoT sensors.',
+    notes: `Features:
+
+**Device Registration:**
+- Add device with name, type, location binding
+- Generate API key for device auth
+- QR code for easy mobile setup
+
+**Device Dashboard:**
+- Connection status (online/offline)
+- Last reading time
+- Battery level for wireless sensors
+- Firmware version
+
+**ESP32 Sample Code:**
+- Arduino sketch template
+- WiFi + HTTP POST configuration
+- Sensor reading examples`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

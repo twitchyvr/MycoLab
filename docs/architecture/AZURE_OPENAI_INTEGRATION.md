@@ -1044,47 +1044,128 @@ VITE_AI_IOT_ANALYSIS_ENABLED=true
 
 ---
 
-## Open Questions for Decision
+## ✅ Finalized Decisions (December 2025)
 
-1. **Hosting Model**:
-   - Azure-only vs hybrid (Supabase + Azure)?
-   - Consider: Supabase Edge Functions can call Azure APIs
+All architectural decisions have been confirmed by the project owner:
 
-2. **Cost Model**:
-   - Include AI in subscription tiers?
-   - Separate AI credits/tokens?
-   - Pay-as-you-go vs bundled?
+### 1. Hosting Architecture ✅
+**Decision**: Hybrid Stack (Netlify + Supabase + Azure)
+- **Netlify** - Frontend hosting (already working)
+- **Supabase** - Database, Auth, Edge Functions (already working)
+- **Azure** - AI services only (new)
 
-3. **Knowledge Library**:
-   - Who curates content? You, community, or both?
-   - Licensing for external content (research papers)?
+*Rationale*: Azure handles AI workload, Supabase Edge Functions act as a secure proxy (API keys never touch frontend), no existing infrastructure migration required.
 
-4. **IoT Platform**:
-   - Build custom or integrate (Home Assistant, etc.)?
-   - Which sensors to officially support?
+### 2. AI Pricing Model ✅
+**Decision**: Freemium/Hybrid Approach
 
-5. **Privacy Levels**:
-   - Anonymous/aggregate community data sharing?
-   - GDPR/data residency requirements?
+| Tier | AI Queries/Month | Overage | Features |
+|------|------------------|---------|----------|
+| Free | 50 | N/A | Basic chat, grounded responses |
+| Basic | 500 | $0.01/query | + Image analysis, IoT analysis |
+| Pro | 2,000 | $0.005/query | + Priority processing, extended retention |
+| Enterprise | Unlimited | Custom | + SLA, dedicated support |
 
-6. **Fine-tuning**:
-   - Train custom models on mycology data?
-   - Requires significant data and cost
+*Rationale*: Users can try AI without fear, provides predictable costs, scales with usage.
+
+### 3. Knowledge Library Curation ✅
+**Decision**: Phased Hybrid Approach
+
+| Phase | Approach | Description |
+|-------|----------|-------------|
+| Phase 1 | Owner-Curated Core | Foundation content (species, basic techniques) curated by owner |
+| Phase 2 | Import + AI-Assisted | Import from trusted sources with AI summarization, owner approves |
+| Phase 3 | Community Suggestions | Users submit tips/notes, admin-only approval required |
+| Phase 4 | Community Voting | Community votes influence library growth |
+
+*Rationale*: Knowledge library is the competitive moat - higher quality = more value = user retention. Never fully automated.
+
+### 4. IoT Strategy ✅
+**Decision**: Custom API + Open-Source Focus
+
+**Primary**: Custom REST API via Supabase Edge Function
+- Any device can POST data
+- Maximum flexibility for DIY users
+- ESP32 + HTTP POST every 5 min (simple path)
+
+**Secondary**: MQTT support (future)
+- Azure IoT Hub or self-hosted option
+- Real-time streaming for professional setups
+
+**Future**: Home Assistant plugin, specific device integrations (AC Infinity, Inkbird)
+
+*Rationale*: Open-source friendly, simple path for DIY users, professional path for serious setups.
+
+### 5. Privacy & Data Sharing ✅
+**Decision**: Privacy-First with 4 Opt-In Levels
+
+| Level | What's Shared | With Whom | User Control |
+|-------|--------------|-----------|--------------|
+| None (Default) | Nothing | Nobody | Default setting |
+| Anonymous Aggregate | Stats only (avg yields, success rates) | Community features | Opt-in |
+| Strain Performance | Strain-specific anonymized data | Other users of same strain | Opt-in |
+| Full Share | All grow data (anonymized) | Research/community | Explicit opt-in |
+
+**Default Settings** (Privacy-First):
+- AI uses ONLY user's own data
+- No data shared with community
+- No data used for model training
+- Conversations not retained (or 30-day retention opt-in)
+
+**Opt-in Features**:
+- "Help improve strain recommendations" - share anonymized yield data
+- "Contribute to community insights" - share anonymized patterns
+- "Keep conversation history" - retain for continuity
+
+*Rationale*: Respects privacy, builds trust, allows willing contributors to participate.
 
 ---
 
-## Next Steps
+## Implementation Status
 
-1. **Review this architecture** and provide feedback
-2. **Azure account setup** with appropriate resource group
-3. **Finalize Phase 1 scope** based on budget/timeline
-4. **Begin implementation** with foundation layer
+### Phase 1: Foundation - **IN PROGRESS**
+- [ ] Azure resource setup (OpenAI, AI Search, Blob Storage)
+- [ ] Supabase Edge Functions for AI gateway
+- [ ] Basic `AzureOpenAIService` client
+- [ ] Simple chat interface component
+- [ ] Basic context retrieval (user's cultures/grows)
+- [ ] User settings for AI features
+- [ ] Usage tracking and cost display
+- [ ] Database tables (ai_chat_sessions, ai_usage, etc.)
+
+### Phase 2: Knowledge Library - **PLANNED**
+- [ ] Azure AI Search index setup
+- [ ] Knowledge document schema and ingestion
+- [ ] Library suggestion/approval workflow
+- [ ] Admin interface for content management
+- [ ] Initial content population
+
+### Phase 3: Image Analysis - **PLANNED**
+- [ ] Azure Blob Storage integration
+- [ ] Image upload and analysis workflow
+- [ ] Contamination detection
+- [ ] Species identification
+
+### Phase 4: IoT Integration - **PLANNED**
+- [ ] IoT data ingestion endpoint
+- [ ] Device registration and management
+- [ ] Environmental analysis
+- [ ] Alert system
+
+### Phase 5: Advanced Features - **FUTURE**
+- [ ] Multi-turn conversation memory
+- [ ] Proactive recommendations
+- [ ] Community insights aggregation
+
+---
+
+## Design Principles
 
 This architecture is designed to be:
 - **Modular**: Each component can be developed independently
 - **Scalable**: From single user to enterprise
-- **Secure**: Data sovereignty maintained
+- **Secure**: Data sovereignty maintained (Azure tenant control)
 - **Cost-conscious**: Caching, rate limiting, tier-based access
 - **Extensible**: Ready for future capabilities
-
-Let me know which aspects you'd like to dive deeper into or modify!
+- **Privacy-first**: Users control their data sharing level
+- **Open-source friendly**: Custom APIs, no vendor lock-in for sensors
