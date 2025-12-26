@@ -17,6 +17,7 @@ import { SpeciesInfoPanel } from '../common/SpeciesInfoPanel';
 import { SpeciesName, SpeciesBadge } from '../common/SpeciesName';
 import { notificationService } from '../../store/NotificationService';
 import type { NotificationCategory } from '../../store/types';
+import { AISettingsSection } from './AISettingsSection';
 
 // ============================================================================
 // TYPES
@@ -2013,6 +2014,9 @@ export const SettingsPage: React.FC = () => {
                 Save Notification Settings
               </button>
             </div>
+
+            {/* AI Assistant Settings */}
+            <AISettingsSection onSave={() => setSuccess('AI settings saved')} />
           </div>
         );
 

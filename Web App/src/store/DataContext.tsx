@@ -1147,7 +1147,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // ============================================================================
 
   const addLocation = useCallback(async (location: Omit<Location, 'id'>): Promise<Location> => {
-    if (supabase) {
+    // Only attempt Supabase operations if both connected AND authenticated
+    // Otherwise fall through to local storage mode
+    if (supabase && isAuthenticated) {
       // Get current user ID to save as personal item
       const userId = await getCurrentUserId();
       const { data, error } = await supabase
@@ -1163,29 +1165,30 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       return newLocation;
     }
 
+    // Local storage fallback (when not authenticated or no Supabase)
     const newLocation = { ...location, id: generateId('loc') } as Location;
     setState(prev => ({ ...prev, locations: [...prev.locations, newLocation] }));
     return newLocation;
-  }, [supabase, generateId]);
+  }, [supabase, isAuthenticated, generateId]);
 
   const updateLocation = useCallback(async (id: string, updates: Partial<Location>) => {
-    if (supabase) {
+    if (supabase && isAuthenticated) {
       const { error } = await supabase
         .from('locations')
         .update(transformLocationToDb(updates))
         .eq('id', id);
-      
+
       if (error) throw error;
     }
-    
+
     setState(prev => ({
       ...prev,
       locations: prev.locations.map(l => l.id === id ? { ...l, ...updates } : l)
     }));
-  }, [supabase]);
+  }, [supabase, isAuthenticated]);
 
   const deleteLocation = useCallback(async (id: string) => {
-    if (supabase) {
+    if (supabase && isAuthenticated) {
       const { error } = await supabase
         .from('locations')
         .update({ is_active: false })
@@ -1198,14 +1201,14 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       ...prev,
       locations: prev.locations.map(l => l.id === id ? { ...l, isActive: false } : l)
     }));
-  }, [supabase]);
+  }, [supabase, isAuthenticated]);
 
   // ============================================================================
   // LOCATION TYPE CRUD
   // ============================================================================
 
   const addLocationType = useCallback(async (locationType: Omit<LocationType, 'id'>): Promise<LocationType> => {
-    if (supabase) {
+    if (supabase && isAuthenticated) {
       const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('location_types')
@@ -1223,10 +1226,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     const newType = { ...locationType, id: generateId('loctype') } as LocationType;
     setState(prev => ({ ...prev, locationTypes: [...prev.locationTypes, newType] }));
     return newType;
-  }, [supabase, generateId]);
+  }, [supabase, isAuthenticated, generateId]);
 
   const updateLocationType = useCallback(async (id: string, updates: Partial<LocationType>) => {
-    if (supabase) {
+    if (supabase && isAuthenticated) {
       const { error } = await supabase
         .from('location_types')
         .update(transformLocationTypeToDb(updates))
@@ -1239,10 +1242,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       ...prev,
       locationTypes: prev.locationTypes.map(lt => lt.id === id ? { ...lt, ...updates } : lt)
     }));
-  }, [supabase]);
+  }, [supabase, isAuthenticated]);
 
   const deleteLocationType = useCallback(async (id: string) => {
-    if (supabase) {
+    if (supabase && isAuthenticated) {
       const { error } = await supabase
         .from('location_types')
         .update({ is_active: false })
@@ -1255,14 +1258,14 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       ...prev,
       locationTypes: prev.locationTypes.map(lt => lt.id === id ? { ...lt, isActive: false } : lt)
     }));
-  }, [supabase]);
+  }, [supabase, isAuthenticated]);
 
   // ============================================================================
   // LOCATION CLASSIFICATION CRUD
   // ============================================================================
 
   const addLocationClassification = useCallback(async (classification: Omit<LocationClassification, 'id'>): Promise<LocationClassification> => {
-    if (supabase) {
+    if (supabase && isAuthenticated) {
       const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('location_classifications')
@@ -1280,10 +1283,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     const newClass = { ...classification, id: generateId('locclass') } as LocationClassification;
     setState(prev => ({ ...prev, locationClassifications: [...prev.locationClassifications, newClass] }));
     return newClass;
-  }, [supabase, generateId]);
+  }, [supabase, isAuthenticated, generateId]);
 
   const updateLocationClassification = useCallback(async (id: string, updates: Partial<LocationClassification>) => {
-    if (supabase) {
+    if (supabase && isAuthenticated) {
       const { error } = await supabase
         .from('location_classifications')
         .update(transformLocationClassificationToDb(updates))
@@ -1296,10 +1299,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       ...prev,
       locationClassifications: prev.locationClassifications.map(lc => lc.id === id ? { ...lc, ...updates } : lc)
     }));
-  }, [supabase]);
+  }, [supabase, isAuthenticated]);
 
   const deleteLocationClassification = useCallback(async (id: string) => {
-    if (supabase) {
+    if (supabase && isAuthenticated) {
       const { error } = await supabase
         .from('location_classifications')
         .update({ is_active: false })
@@ -1312,14 +1315,14 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       ...prev,
       locationClassifications: prev.locationClassifications.map(lc => lc.id === id ? { ...lc, isActive: false } : lc)
     }));
-  }, [supabase]);
+  }, [supabase, isAuthenticated]);
 
   // ============================================================================
   // SUPPLIER CRUD
   // ============================================================================
 
   const addSupplier = useCallback(async (supplier: Omit<Supplier, 'id'>): Promise<Supplier> => {
-    if (supabase) {
+    if (supabase && isAuthenticated) {
       // Get current user ID to save as personal item
       const userId = await getCurrentUserId();
       const { data, error } = await supabase
@@ -1338,39 +1341,39 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     const newSupplier = { ...supplier, id: generateId('supp') } as Supplier;
     setState(prev => ({ ...prev, suppliers: [...prev.suppliers, newSupplier] }));
     return newSupplier;
-  }, [supabase, generateId]);
+  }, [supabase, isAuthenticated, generateId]);
 
   const updateSupplier = useCallback(async (id: string, updates: Partial<Supplier>) => {
-    if (supabase) {
+    if (supabase && isAuthenticated) {
       const { error } = await supabase
         .from('suppliers')
         .update(transformSupplierToDb(updates))
         .eq('id', id);
-      
+
       if (error) throw error;
     }
-    
+
     setState(prev => ({
       ...prev,
       suppliers: prev.suppliers.map(s => s.id === id ? { ...s, ...updates } : s)
     }));
-  }, [supabase]);
+  }, [supabase, isAuthenticated]);
 
   const deleteSupplier = useCallback(async (id: string) => {
-    if (supabase) {
+    if (supabase && isAuthenticated) {
       const { error } = await supabase
         .from('suppliers')
         .update({ is_active: false })
         .eq('id', id);
-      
+
       if (error) throw error;
     }
-    
+
     setState(prev => ({
       ...prev,
       suppliers: prev.suppliers.map(s => s.id === id ? { ...s, isActive: false } : s)
     }));
-  }, [supabase]);
+  }, [supabase, isAuthenticated]);
 
   // ============================================================================
   // CULTURE CRUD
