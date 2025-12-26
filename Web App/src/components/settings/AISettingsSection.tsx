@@ -151,6 +151,10 @@ export const AISettingsSection: React.FC<AISettingsSectionProps> = ({ onSave }) 
   const loadSettings = async () => {
     setLoading(true);
     try {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setLoading(false);
@@ -196,6 +200,10 @@ export const AISettingsSection: React.FC<AISettingsSectionProps> = ({ onSave }) 
     setSuccess(null);
 
     try {
+      if (!supabase) {
+        setError('Database connection not available');
+        return;
+      }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setError('You must be logged in to save settings');

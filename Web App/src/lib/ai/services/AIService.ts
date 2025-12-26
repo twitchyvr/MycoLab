@@ -48,6 +48,16 @@ export class AIService {
     return AIService.instance;
   }
 
+  /**
+   * Ensure supabase is configured before database operations
+   */
+  private ensureSupabase() {
+    if (!supabase) {
+      throw new Error('Database connection not available');
+    }
+    return supabase;
+  }
+
   // ===========================================================================
   // CHAT OPERATIONS
   // ===========================================================================
@@ -135,7 +145,7 @@ export class AIService {
    * Get chat session with messages
    */
   async getSession(sessionId: string): Promise<ChatSession | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.ensureSupabase()
       .from('ai_chat_sessions')
       .select(`
         *,
@@ -155,7 +165,7 @@ export class AIService {
    * Get all chat sessions for current user
    */
   async getSessions(limit = 20): Promise<ChatSession[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.ensureSupabase()
       .from('ai_chat_sessions')
       .select('*')
       .order('updated_at', { ascending: false })
@@ -173,7 +183,7 @@ export class AIService {
    * Delete a chat session
    */
   async deleteSession(sessionId: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await this.ensureSupabase()
       .from('ai_chat_sessions')
       .delete()
       .eq('id', sessionId);
@@ -266,7 +276,7 @@ export class AIService {
    * Get a knowledge document by ID
    */
   async getKnowledgeDocument(id: string): Promise<KnowledgeDocument | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.ensureSupabase()
       .from('knowledge_documents')
       .select('*')
       .eq('id', id)
@@ -296,7 +306,7 @@ export class AIService {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    let query = supabase
+    let query = this.ensureSupabase()
       .from('knowledge_documents')
       .select('*', { count: 'exact' })
       .eq('review_status', 'approved')
@@ -348,7 +358,7 @@ export class AIService {
         break;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await this.ensureSupabase()
       .from('ai_usage')
       .select('*')
       .gte('created_at', startDate.toISOString())
@@ -405,7 +415,7 @@ export class AIService {
    */
   private async callGateway(request: AIGatewayRequest): Promise<AIGatewayResponse> {
     try {
-      const { data, error } = await supabase.functions.invoke('ai-gateway', {
+      const { data, error } = await this.ensureSupabase().functions.invoke('ai-gateway', {
         body: request,
       });
 
@@ -436,7 +446,7 @@ export class AIService {
     contextEntityId?: string
   ): Promise<ChatSession> {
     // Try to get existing session
-    const { data: existing } = await supabase
+    const { data: existing } = await this.ensureSupabase()
       .from('ai_chat_sessions')
       .select('*')
       .eq('id', sessionId)
@@ -447,7 +457,7 @@ export class AIService {
     }
 
     // Create new session
-    const { data: created, error } = await supabase
+    const { data: created, error } = await this.ensureSupabase()
       .from('ai_chat_sessions')
       .insert({
         id: sessionId,
