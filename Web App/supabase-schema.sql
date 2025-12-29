@@ -3,6 +3,25 @@
 -- Run this in your Supabase SQL Editor to set up the database
 -- ============================================================================
 --
+-- SUPABASE DASHBOARD SECURITY SETTINGS
+-- ============================================================================
+-- The following security settings must be configured in the Supabase Dashboard
+-- (they are NOT controlled via SQL schema):
+--
+-- 1. LEAKED PASSWORD PROTECTION
+--    Location: Authentication > Settings > Auth Providers > Email
+--    Enable "Leaked password protection" to prevent users from using
+--    passwords that have been exposed in known data breaches.
+--
+-- 2. ANONYMOUS SIGN-INS (if using)
+--    Location: Authentication > Settings > Auth Providers
+--    Configure anonymous sign-in settings as needed for your use case.
+--
+-- 3. cron.job / cron.job_run_details tables
+--    These are Supabase internal tables for pg_cron and cannot be modified
+--    via user schema. RLS warnings for these tables are expected.
+-- ============================================================================
+--
 -- AUTH TRIGGER ARCHITECTURE
 -- ============================================================================
 -- When a new user signs up, three triggers fire on auth.users:
@@ -4101,6 +4120,7 @@ DROP POLICY IF EXISTS "anon_species_select" ON species;
 DROP POLICY IF EXISTS "anon_species_insert" ON species;
 DROP POLICY IF EXISTS "anon_species_update" ON species;
 DROP POLICY IF EXISTS "anon_species_delete" ON species;
+DROP POLICY IF EXISTS "species_select_system" ON species;
 DROP POLICY IF EXISTS "species_select" ON species;
 DROP POLICY IF EXISTS "species_insert" ON species;
 DROP POLICY IF EXISTS "species_update" ON species;
@@ -4111,6 +4131,7 @@ DROP POLICY IF EXISTS "anon_strains_select" ON strains;
 DROP POLICY IF EXISTS "anon_strains_insert" ON strains;
 DROP POLICY IF EXISTS "anon_strains_update" ON strains;
 DROP POLICY IF EXISTS "anon_strains_delete" ON strains;
+DROP POLICY IF EXISTS "strains_select_system" ON strains;
 DROP POLICY IF EXISTS "strains_select" ON strains;
 DROP POLICY IF EXISTS "strains_insert" ON strains;
 DROP POLICY IF EXISTS "strains_update" ON strains;
@@ -4121,6 +4142,7 @@ DROP POLICY IF EXISTS "anon_location_types_select" ON location_types;
 DROP POLICY IF EXISTS "anon_location_types_insert" ON location_types;
 DROP POLICY IF EXISTS "anon_location_types_update" ON location_types;
 DROP POLICY IF EXISTS "anon_location_types_delete" ON location_types;
+DROP POLICY IF EXISTS "location_types_select_system" ON location_types;
 DROP POLICY IF EXISTS "location_types_select" ON location_types;
 DROP POLICY IF EXISTS "location_types_insert" ON location_types;
 DROP POLICY IF EXISTS "location_types_update" ON location_types;
@@ -4131,6 +4153,7 @@ DROP POLICY IF EXISTS "anon_location_classifications_select" ON location_classif
 DROP POLICY IF EXISTS "anon_location_classifications_insert" ON location_classifications;
 DROP POLICY IF EXISTS "anon_location_classifications_update" ON location_classifications;
 DROP POLICY IF EXISTS "anon_location_classifications_delete" ON location_classifications;
+DROP POLICY IF EXISTS "location_classifications_select_system" ON location_classifications;
 DROP POLICY IF EXISTS "location_classifications_select" ON location_classifications;
 DROP POLICY IF EXISTS "location_classifications_insert" ON location_classifications;
 DROP POLICY IF EXISTS "location_classifications_update" ON location_classifications;
@@ -4147,6 +4170,7 @@ DROP POLICY IF EXISTS "locations_update" ON locations;
 DROP POLICY IF EXISTS "locations_delete" ON locations;
 
 -- Containers (unified table - replaces vessels and container_types)
+DROP POLICY IF EXISTS "containers_select_system" ON containers;
 DROP POLICY IF EXISTS "containers_select" ON containers;
 DROP POLICY IF EXISTS "containers_insert" ON containers;
 DROP POLICY IF EXISTS "containers_update" ON containers;
@@ -4160,6 +4184,7 @@ BEGIN
     DROP POLICY IF EXISTS "anon_vessels_insert" ON vessels;
     DROP POLICY IF EXISTS "anon_vessels_update" ON vessels;
     DROP POLICY IF EXISTS "anon_vessels_delete" ON vessels;
+    DROP POLICY IF EXISTS "vessels_select_system" ON vessels;
     DROP POLICY IF EXISTS "vessels_select" ON vessels;
     DROP POLICY IF EXISTS "vessels_insert" ON vessels;
     DROP POLICY IF EXISTS "vessels_update" ON vessels;
@@ -4171,6 +4196,7 @@ BEGIN
     DROP POLICY IF EXISTS "anon_container_types_insert" ON container_types;
     DROP POLICY IF EXISTS "anon_container_types_update" ON container_types;
     DROP POLICY IF EXISTS "anon_container_types_delete" ON container_types;
+    DROP POLICY IF EXISTS "container_types_select_system" ON container_types;
     DROP POLICY IF EXISTS "container_types_select" ON container_types;
     DROP POLICY IF EXISTS "container_types_insert" ON container_types;
     DROP POLICY IF EXISTS "container_types_update" ON container_types;
@@ -4183,6 +4209,7 @@ DROP POLICY IF EXISTS "anon_substrate_types_select" ON substrate_types;
 DROP POLICY IF EXISTS "anon_substrate_types_insert" ON substrate_types;
 DROP POLICY IF EXISTS "anon_substrate_types_update" ON substrate_types;
 DROP POLICY IF EXISTS "anon_substrate_types_delete" ON substrate_types;
+DROP POLICY IF EXISTS "substrate_types_select_system" ON substrate_types;
 DROP POLICY IF EXISTS "substrate_types_select" ON substrate_types;
 DROP POLICY IF EXISTS "substrate_types_insert" ON substrate_types;
 DROP POLICY IF EXISTS "substrate_types_update" ON substrate_types;
@@ -4203,6 +4230,7 @@ DROP POLICY IF EXISTS "anon_inventory_categories_select" ON inventory_categories
 DROP POLICY IF EXISTS "anon_inventory_categories_insert" ON inventory_categories;
 DROP POLICY IF EXISTS "anon_inventory_categories_update" ON inventory_categories;
 DROP POLICY IF EXISTS "anon_inventory_categories_delete" ON inventory_categories;
+DROP POLICY IF EXISTS "inventory_categories_select_system" ON inventory_categories;
 DROP POLICY IF EXISTS "inventory_categories_select" ON inventory_categories;
 DROP POLICY IF EXISTS "inventory_categories_insert" ON inventory_categories;
 DROP POLICY IF EXISTS "inventory_categories_update" ON inventory_categories;
@@ -4213,6 +4241,7 @@ DROP POLICY IF EXISTS "anon_recipe_categories_select" ON recipe_categories;
 DROP POLICY IF EXISTS "anon_recipe_categories_insert" ON recipe_categories;
 DROP POLICY IF EXISTS "anon_recipe_categories_update" ON recipe_categories;
 DROP POLICY IF EXISTS "anon_recipe_categories_delete" ON recipe_categories;
+DROP POLICY IF EXISTS "recipe_categories_select_system" ON recipe_categories;
 DROP POLICY IF EXISTS "recipe_categories_select" ON recipe_categories;
 DROP POLICY IF EXISTS "recipe_categories_insert" ON recipe_categories;
 DROP POLICY IF EXISTS "recipe_categories_update" ON recipe_categories;
@@ -4341,6 +4370,7 @@ DROP POLICY IF EXISTS "anon_grain_types_select" ON grain_types;
 DROP POLICY IF EXISTS "anon_grain_types_insert" ON grain_types;
 DROP POLICY IF EXISTS "anon_grain_types_update" ON grain_types;
 DROP POLICY IF EXISTS "anon_grain_types_delete" ON grain_types;
+DROP POLICY IF EXISTS "grain_types_select_system" ON grain_types;
 DROP POLICY IF EXISTS "grain_types_select" ON grain_types;
 DROP POLICY IF EXISTS "grain_types_insert" ON grain_types;
 DROP POLICY IF EXISTS "grain_types_update" ON grain_types;
@@ -4381,229 +4411,240 @@ DROP POLICY IF EXISTS "inventory_usages_delete" ON inventory_usages;
 -- ============================================================================
 
 -- User profiles policies (users can only see their own, admins see all)
--- Anonymous users cannot access user profiles
-CREATE POLICY "user_profiles_select" ON user_profiles FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "user_profiles_insert" ON user_profiles FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "user_profiles_update" ON user_profiles FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "user_profiles_delete" ON user_profiles FOR DELETE USING (is_admin());
+-- TO authenticated restricts to authenticated users only (no anonymous access)
+CREATE POLICY "user_profiles_select" ON user_profiles FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "user_profiles_insert" ON user_profiles FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "user_profiles_update" ON user_profiles FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "user_profiles_delete" ON user_profiles FOR DELETE TO authenticated USING (is_admin());
 
--- Admin audit log policies (admin only - admins are always non-anonymous)
-CREATE POLICY "admin_audit_log_select" ON admin_audit_log FOR SELECT USING (is_admin());
-CREATE POLICY "admin_audit_log_insert" ON admin_audit_log FOR INSERT WITH CHECK (is_admin());
+-- Admin audit log policies (admin only - TO authenticated restricts to authenticated users)
+CREATE POLICY "admin_audit_log_select" ON admin_audit_log FOR SELECT TO authenticated USING (is_admin());
+CREATE POLICY "admin_audit_log_insert" ON admin_audit_log FOR INSERT TO authenticated WITH CHECK (is_admin());
 
--- Admin notifications policies (admin only - admins are always non-anonymous)
-CREATE POLICY "admin_notifications_select" ON admin_notifications FOR SELECT USING (is_admin());
-CREATE POLICY "admin_notifications_insert" ON admin_notifications FOR INSERT WITH CHECK (is_admin());
-CREATE POLICY "admin_notifications_update" ON admin_notifications FOR UPDATE USING (is_admin());
-CREATE POLICY "admin_notifications_delete" ON admin_notifications FOR DELETE USING (is_admin());
+-- Admin notifications policies (admin only - TO authenticated restricts to authenticated users)
+CREATE POLICY "admin_notifications_select" ON admin_notifications FOR SELECT TO authenticated USING (is_admin());
+CREATE POLICY "admin_notifications_insert" ON admin_notifications FOR INSERT TO authenticated WITH CHECK (is_admin());
+CREATE POLICY "admin_notifications_update" ON admin_notifications FOR UPDATE TO authenticated USING (is_admin());
+CREATE POLICY "admin_notifications_delete" ON admin_notifications FOR DELETE TO authenticated USING (is_admin());
 
--- Notification channels policies (user's own only - no anonymous access)
-CREATE POLICY "notification_channels_select" ON notification_channels FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "notification_channels_insert" ON notification_channels FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "notification_channels_update" ON notification_channels FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "notification_channels_delete" ON notification_channels FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Notification channels policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "notification_channels_select" ON notification_channels FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_channels_insert" ON notification_channels FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "notification_channels_update" ON notification_channels FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_channels_delete" ON notification_channels FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Notification event preferences policies (user's own only - no anonymous access)
-CREATE POLICY "notification_event_preferences_select" ON notification_event_preferences FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "notification_event_preferences_insert" ON notification_event_preferences FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "notification_event_preferences_update" ON notification_event_preferences FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "notification_event_preferences_delete" ON notification_event_preferences FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Notification event preferences policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "notification_event_preferences_select" ON notification_event_preferences FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_event_preferences_insert" ON notification_event_preferences FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "notification_event_preferences_update" ON notification_event_preferences FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_event_preferences_delete" ON notification_event_preferences FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Notification delivery log policies (user's own only - no anonymous access, insert allowed for system)
-CREATE POLICY "notification_delivery_log_select" ON notification_delivery_log FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "notification_delivery_log_insert" ON notification_delivery_log FOR INSERT WITH CHECK (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Notification delivery log policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "notification_delivery_log_select" ON notification_delivery_log FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_delivery_log_insert" ON notification_delivery_log FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid() OR is_admin());
 
--- Notification templates policies (system templates readable by non-anonymous users, only admins can modify)
-CREATE POLICY "notification_templates_select" ON notification_templates FOR SELECT USING (is_not_anonymous() AND (is_active = true OR is_admin()));
-CREATE POLICY "notification_templates_insert" ON notification_templates FOR INSERT WITH CHECK (is_admin());
-CREATE POLICY "notification_templates_update" ON notification_templates FOR UPDATE USING (is_admin());
-CREATE POLICY "notification_templates_delete" ON notification_templates FOR DELETE USING (is_admin() AND is_system = false);
+-- Notification templates policies (system templates readable by authenticated users, only admins can modify)
+CREATE POLICY "notification_templates_select" ON notification_templates FOR SELECT TO authenticated USING (is_active = true OR is_admin());
+CREATE POLICY "notification_templates_insert" ON notification_templates FOR INSERT TO authenticated WITH CHECK (is_admin());
+CREATE POLICY "notification_templates_update" ON notification_templates FOR UPDATE TO authenticated USING (is_admin());
+CREATE POLICY "notification_templates_delete" ON notification_templates FOR DELETE TO authenticated USING (is_admin() AND is_system = false);
 
--- Verification codes policies (users can only see/delete their own - no anonymous access, service role can insert)
-CREATE POLICY "verification_codes_select" ON verification_codes FOR SELECT USING (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "verification_codes_insert" ON verification_codes FOR INSERT WITH CHECK (true);  -- Allow service role
-CREATE POLICY "verification_codes_delete" ON verification_codes FOR DELETE USING (is_not_anonymous() AND user_id = auth.uid());
+-- Verification codes policies (users can only see/delete their own - TO authenticated restricts to authenticated users)
+CREATE POLICY "verification_codes_select" ON verification_codes FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "verification_codes_insert" ON verification_codes FOR INSERT TO authenticated WITH CHECK (true);  -- Service role bypasses RLS entirely
+CREATE POLICY "verification_codes_delete" ON verification_codes FOR DELETE TO authenticated USING (user_id = auth.uid());
 
--- Species policies (shared defaults readable by anonymous, user's own requires non-anonymous)
--- Anonymous can read system data (user_id IS NULL), non-anonymous can read their own + system
-CREATE POLICY "species_select" ON species FOR SELECT USING (user_id IS NULL OR (is_not_anonymous() AND (user_id = auth.uid() OR is_admin())));
-CREATE POLICY "species_insert" ON species FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "species_update" ON species FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "species_delete" ON species FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Species policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
+-- Split into role-specific policies to avoid anonymous access warnings
+CREATE POLICY "species_select_system" ON species FOR SELECT TO anon USING (user_id IS NULL);
+CREATE POLICY "species_select" ON species FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "species_insert" ON species FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "species_update" ON species FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "species_delete" ON species FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Strains policies (shared defaults readable by anonymous, user's own requires non-anonymous)
-CREATE POLICY "strains_select" ON strains FOR SELECT USING (user_id IS NULL OR (is_not_anonymous() AND (user_id = auth.uid() OR is_admin())));
-CREATE POLICY "strains_insert" ON strains FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "strains_update" ON strains FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "strains_delete" ON strains FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Strains policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
+CREATE POLICY "strains_select_system" ON strains FOR SELECT TO anon USING (user_id IS NULL);
+CREATE POLICY "strains_select" ON strains FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "strains_insert" ON strains FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "strains_update" ON strains FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "strains_delete" ON strains FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Location Types policies (shared defaults readable by anonymous, user's own requires non-anonymous)
-CREATE POLICY "location_types_select" ON location_types FOR SELECT USING (user_id IS NULL OR (is_not_anonymous() AND (user_id = auth.uid() OR is_admin())));
-CREATE POLICY "location_types_insert" ON location_types FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "location_types_update" ON location_types FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "location_types_delete" ON location_types FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Location Types policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
+CREATE POLICY "location_types_select_system" ON location_types FOR SELECT TO anon USING (user_id IS NULL);
+CREATE POLICY "location_types_select" ON location_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "location_types_insert" ON location_types FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "location_types_update" ON location_types FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "location_types_delete" ON location_types FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Location Classifications policies (shared defaults readable by anonymous, user's own requires non-anonymous)
-CREATE POLICY "location_classifications_select" ON location_classifications FOR SELECT USING (user_id IS NULL OR (is_not_anonymous() AND (user_id = auth.uid() OR is_admin())));
-CREATE POLICY "location_classifications_insert" ON location_classifications FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "location_classifications_update" ON location_classifications FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "location_classifications_delete" ON location_classifications FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Location Classifications policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
+CREATE POLICY "location_classifications_select_system" ON location_classifications FOR SELECT TO anon USING (user_id IS NULL);
+CREATE POLICY "location_classifications_select" ON location_classifications FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "location_classifications_insert" ON location_classifications FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "location_classifications_update" ON location_classifications FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "location_classifications_delete" ON location_classifications FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Locations policies (user's own only - no anonymous access)
-CREATE POLICY "locations_select" ON locations FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "locations_insert" ON locations FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "locations_update" ON locations FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "locations_delete" ON locations FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Locations policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "locations_select" ON locations FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "locations_insert" ON locations FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "locations_update" ON locations FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "locations_delete" ON locations FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Containers policies (shared defaults readable by anonymous, user's own requires non-anonymous)
-CREATE POLICY "containers_select" ON containers FOR SELECT USING (user_id IS NULL OR (is_not_anonymous() AND (user_id = auth.uid() OR is_admin())));
-CREATE POLICY "containers_insert" ON containers FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "containers_update" ON containers FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "containers_delete" ON containers FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Containers policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
+CREATE POLICY "containers_select_system" ON containers FOR SELECT TO anon USING (user_id IS NULL);
+CREATE POLICY "containers_select" ON containers FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "containers_insert" ON containers FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "containers_update" ON containers FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "containers_delete" ON containers FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
 -- Legacy: Create vessel/container_types policies only if they exist as base tables (not views)
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels' AND table_type = 'BASE TABLE') THEN
-    CREATE POLICY "vessels_select" ON vessels FOR SELECT USING (user_id IS NULL OR (is_not_anonymous() AND (user_id = auth.uid() OR is_admin())));
-    CREATE POLICY "vessels_insert" ON vessels FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-    CREATE POLICY "vessels_update" ON vessels FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-    CREATE POLICY "vessels_delete" ON vessels FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+    CREATE POLICY "vessels_select_system" ON vessels FOR SELECT TO anon USING (user_id IS NULL);
+    CREATE POLICY "vessels_select" ON vessels FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+    CREATE POLICY "vessels_insert" ON vessels FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    CREATE POLICY "vessels_update" ON vessels FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+    CREATE POLICY "vessels_delete" ON vessels FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
   END IF;
 
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types' AND table_type = 'BASE TABLE') THEN
-    CREATE POLICY "container_types_select" ON container_types FOR SELECT USING (user_id IS NULL OR (is_not_anonymous() AND (user_id = auth.uid() OR is_admin())));
-    CREATE POLICY "container_types_insert" ON container_types FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-    CREATE POLICY "container_types_update" ON container_types FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-    CREATE POLICY "container_types_delete" ON container_types FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+    CREATE POLICY "container_types_select_system" ON container_types FOR SELECT TO anon USING (user_id IS NULL);
+    CREATE POLICY "container_types_select" ON container_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+    CREATE POLICY "container_types_insert" ON container_types FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    CREATE POLICY "container_types_update" ON container_types FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+    CREATE POLICY "container_types_delete" ON container_types FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
   END IF;
 END $$;
 
--- Substrate types policies (shared defaults readable by anonymous, user's own requires non-anonymous)
-CREATE POLICY "substrate_types_select" ON substrate_types FOR SELECT USING (user_id IS NULL OR (is_not_anonymous() AND (user_id = auth.uid() OR is_admin())));
-CREATE POLICY "substrate_types_insert" ON substrate_types FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "substrate_types_update" ON substrate_types FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "substrate_types_delete" ON substrate_types FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Substrate types policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
+CREATE POLICY "substrate_types_select_system" ON substrate_types FOR SELECT TO anon USING (user_id IS NULL);
+CREATE POLICY "substrate_types_select" ON substrate_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "substrate_types_insert" ON substrate_types FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "substrate_types_update" ON substrate_types FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "substrate_types_delete" ON substrate_types FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Suppliers policies (user's own only - no anonymous access)
-CREATE POLICY "suppliers_select" ON suppliers FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "suppliers_insert" ON suppliers FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "suppliers_update" ON suppliers FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "suppliers_delete" ON suppliers FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Suppliers policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "suppliers_select" ON suppliers FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "suppliers_insert" ON suppliers FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "suppliers_update" ON suppliers FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "suppliers_delete" ON suppliers FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Inventory categories policies (shared defaults readable by anonymous, user's own requires non-anonymous)
-CREATE POLICY "inventory_categories_select" ON inventory_categories FOR SELECT USING (user_id IS NULL OR (is_not_anonymous() AND (user_id = auth.uid() OR is_admin())));
-CREATE POLICY "inventory_categories_insert" ON inventory_categories FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "inventory_categories_update" ON inventory_categories FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "inventory_categories_delete" ON inventory_categories FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Inventory categories policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
+CREATE POLICY "inventory_categories_select_system" ON inventory_categories FOR SELECT TO anon USING (user_id IS NULL);
+CREATE POLICY "inventory_categories_select" ON inventory_categories FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_categories_insert" ON inventory_categories FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "inventory_categories_update" ON inventory_categories FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_categories_delete" ON inventory_categories FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Recipe categories policies (shared defaults readable by anonymous, user's own requires non-anonymous)
-CREATE POLICY "recipe_categories_select" ON recipe_categories FOR SELECT USING (user_id IS NULL OR (is_not_anonymous() AND (user_id = auth.uid() OR is_admin())));
-CREATE POLICY "recipe_categories_insert" ON recipe_categories FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "recipe_categories_update" ON recipe_categories FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "recipe_categories_delete" ON recipe_categories FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Recipe categories policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
+CREATE POLICY "recipe_categories_select_system" ON recipe_categories FOR SELECT TO anon USING (user_id IS NULL);
+CREATE POLICY "recipe_categories_select" ON recipe_categories FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipe_categories_insert" ON recipe_categories FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "recipe_categories_update" ON recipe_categories FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipe_categories_delete" ON recipe_categories FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Inventory items policies (user's own only - no anonymous access)
-CREATE POLICY "inventory_items_select" ON inventory_items FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "inventory_items_insert" ON inventory_items FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "inventory_items_update" ON inventory_items FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "inventory_items_delete" ON inventory_items FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Inventory items policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "inventory_items_select" ON inventory_items FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_items_insert" ON inventory_items FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "inventory_items_update" ON inventory_items FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_items_delete" ON inventory_items FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Cultures policies (user's own only - no anonymous access)
-CREATE POLICY "cultures_select" ON cultures FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "cultures_insert" ON cultures FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "cultures_update" ON cultures FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "cultures_delete" ON cultures FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Cultures policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "cultures_select" ON cultures FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "cultures_insert" ON cultures FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "cultures_update" ON cultures FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "cultures_delete" ON cultures FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Culture observations policies (user's own only - no anonymous access)
-CREATE POLICY "culture_observations_select" ON culture_observations FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "culture_observations_insert" ON culture_observations FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "culture_observations_update" ON culture_observations FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "culture_observations_delete" ON culture_observations FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Culture observations policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "culture_observations_select" ON culture_observations FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "culture_observations_insert" ON culture_observations FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "culture_observations_update" ON culture_observations FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "culture_observations_delete" ON culture_observations FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Culture transfers policies (user's own only - no anonymous access)
-CREATE POLICY "culture_transfers_select" ON culture_transfers FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "culture_transfers_insert" ON culture_transfers FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "culture_transfers_update" ON culture_transfers FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "culture_transfers_delete" ON culture_transfers FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Culture transfers policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "culture_transfers_select" ON culture_transfers FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "culture_transfers_insert" ON culture_transfers FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "culture_transfers_update" ON culture_transfers FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "culture_transfers_delete" ON culture_transfers FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Grows policies (user's own only - no anonymous access)
-CREATE POLICY "grows_select" ON grows FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "grows_insert" ON grows FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "grows_update" ON grows FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "grows_delete" ON grows FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Grows policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "grows_select" ON grows FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grows_insert" ON grows FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "grows_update" ON grows FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grows_delete" ON grows FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Grow observations policies (user's own only - no anonymous access)
-CREATE POLICY "grow_observations_select" ON grow_observations FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "grow_observations_insert" ON grow_observations FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "grow_observations_update" ON grow_observations FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "grow_observations_delete" ON grow_observations FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Grow observations policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "grow_observations_select" ON grow_observations FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grow_observations_insert" ON grow_observations FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "grow_observations_update" ON grow_observations FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grow_observations_delete" ON grow_observations FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Grain spawn policies (user's own only - no anonymous access)
-CREATE POLICY "grain_spawn_select" ON grain_spawn FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "grain_spawn_insert" ON grain_spawn FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "grain_spawn_update" ON grain_spawn FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "grain_spawn_delete" ON grain_spawn FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Grain spawn policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "grain_spawn_select" ON grain_spawn FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grain_spawn_insert" ON grain_spawn FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "grain_spawn_update" ON grain_spawn FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grain_spawn_delete" ON grain_spawn FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Grain spawn observations policies (user's own only - no anonymous access)
-CREATE POLICY "grain_spawn_observations_select" ON grain_spawn_observations FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "grain_spawn_observations_insert" ON grain_spawn_observations FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "grain_spawn_observations_update" ON grain_spawn_observations FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "grain_spawn_observations_delete" ON grain_spawn_observations FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Grain spawn observations policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "grain_spawn_observations_select" ON grain_spawn_observations FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grain_spawn_observations_insert" ON grain_spawn_observations FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "grain_spawn_observations_update" ON grain_spawn_observations FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grain_spawn_observations_delete" ON grain_spawn_observations FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Prepared spawn policies (user's own only - no anonymous access)
-CREATE POLICY "prepared_spawn_select" ON prepared_spawn FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "prepared_spawn_insert" ON prepared_spawn FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "prepared_spawn_update" ON prepared_spawn FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "prepared_spawn_delete" ON prepared_spawn FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Prepared spawn policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "prepared_spawn_select" ON prepared_spawn FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "prepared_spawn_insert" ON prepared_spawn FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "prepared_spawn_update" ON prepared_spawn FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "prepared_spawn_delete" ON prepared_spawn FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Flushes policies (user's own only - no anonymous access)
-CREATE POLICY "flushes_select" ON flushes FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "flushes_insert" ON flushes FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "flushes_update" ON flushes FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "flushes_delete" ON flushes FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Flushes policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "flushes_select" ON flushes FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "flushes_insert" ON flushes FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "flushes_update" ON flushes FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "flushes_delete" ON flushes FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Recipes policies (user's own only - no anonymous access)
-CREATE POLICY "recipes_select" ON recipes FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "recipes_insert" ON recipes FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "recipes_update" ON recipes FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "recipes_delete" ON recipes FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Recipes policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "recipes_select" ON recipes FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipes_insert" ON recipes FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "recipes_update" ON recipes FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipes_delete" ON recipes FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Recipe ingredients policies (user's own only - no anonymous access)
-CREATE POLICY "recipe_ingredients_select" ON recipe_ingredients FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "recipe_ingredients_insert" ON recipe_ingredients FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "recipe_ingredients_update" ON recipe_ingredients FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "recipe_ingredients_delete" ON recipe_ingredients FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Recipe ingredients policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "recipe_ingredients_select" ON recipe_ingredients FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipe_ingredients_insert" ON recipe_ingredients FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "recipe_ingredients_update" ON recipe_ingredients FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipe_ingredients_delete" ON recipe_ingredients FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- User settings policies (user's own only - no anonymous access)
-CREATE POLICY "user_settings_select" ON user_settings FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "user_settings_insert" ON user_settings FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "user_settings_update" ON user_settings FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "user_settings_delete" ON user_settings FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- User settings policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "user_settings_select" ON user_settings FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "user_settings_insert" ON user_settings FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "user_settings_update" ON user_settings FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "user_settings_delete" ON user_settings FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Grain types policies (shared defaults readable by anonymous, user's own requires non-anonymous)
-CREATE POLICY "grain_types_select" ON grain_types FOR SELECT USING (user_id IS NULL OR (is_not_anonymous() AND (user_id = auth.uid() OR is_admin())));
-CREATE POLICY "grain_types_insert" ON grain_types FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "grain_types_update" ON grain_types FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "grain_types_delete" ON grain_types FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Grain types policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
+CREATE POLICY "grain_types_select_system" ON grain_types FOR SELECT TO anon USING (user_id IS NULL);
+CREATE POLICY "grain_types_select" ON grain_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
+CREATE POLICY "grain_types_insert" ON grain_types FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "grain_types_update" ON grain_types FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grain_types_delete" ON grain_types FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Purchase orders policies (user's own only - no anonymous access)
-CREATE POLICY "purchase_orders_select" ON purchase_orders FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "purchase_orders_insert" ON purchase_orders FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "purchase_orders_update" ON purchase_orders FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "purchase_orders_delete" ON purchase_orders FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Purchase orders policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "purchase_orders_select" ON purchase_orders FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "purchase_orders_insert" ON purchase_orders FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "purchase_orders_update" ON purchase_orders FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "purchase_orders_delete" ON purchase_orders FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Inventory lots policies (user's own only - no anonymous access)
-CREATE POLICY "inventory_lots_select" ON inventory_lots FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "inventory_lots_insert" ON inventory_lots FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
-CREATE POLICY "inventory_lots_update" ON inventory_lots FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
-CREATE POLICY "inventory_lots_delete" ON inventory_lots FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+-- Inventory lots policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "inventory_lots_select" ON inventory_lots FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_lots_insert" ON inventory_lots FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "inventory_lots_update" ON inventory_lots FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_lots_delete" ON inventory_lots FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
--- Inventory usages policies (user's own only - no anonymous access)
-CREATE POLICY "inventory_usages_select" ON inventory_usages FOR SELECT USING (is_not_anonymous() AND (used_by = auth.uid() OR is_admin()));
-CREATE POLICY "inventory_usages_insert" ON inventory_usages FOR INSERT WITH CHECK (is_not_anonymous() AND used_by = auth.uid());
-CREATE POLICY "inventory_usages_update" ON inventory_usages FOR UPDATE USING (is_not_anonymous() AND (used_by = auth.uid() OR is_admin()));
-CREATE POLICY "inventory_usages_delete" ON inventory_usages FOR DELETE USING (is_not_anonymous() AND (used_by = auth.uid() OR is_admin()));
+-- Inventory usages policies (user's own only - TO authenticated restricts to authenticated users)
+CREATE POLICY "inventory_usages_select" ON inventory_usages FOR SELECT TO authenticated USING (used_by = auth.uid() OR is_admin());
+CREATE POLICY "inventory_usages_insert" ON inventory_usages FOR INSERT TO authenticated WITH CHECK (used_by = auth.uid());
+CREATE POLICY "inventory_usages_update" ON inventory_usages FOR UPDATE TO authenticated USING (used_by = auth.uid() OR is_admin());
+CREATE POLICY "inventory_usages_delete" ON inventory_usages FOR DELETE TO authenticated USING (used_by = auth.uid() OR is_admin());
 
 -- ============================================================================
 -- TRIGGERS (using CREATE OR REPLACE for idempotency)
@@ -4843,24 +4884,24 @@ BEGIN
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- daily_checks policies - no anonymous access
+-- daily_checks policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own daily_checks"
-  ON daily_checks FOR SELECT
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON daily_checks FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own daily_checks"
-  ON daily_checks FOR INSERT
-  WITH CHECK (is_not_anonymous() AND auth.uid() = user_id);
+  ON daily_checks FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own daily_checks"
-  ON daily_checks FOR UPDATE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON daily_checks FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own daily_checks"
-  ON daily_checks FOR DELETE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON daily_checks FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
 
--- RLS Policies for harvest_forecasts - no anonymous access
+-- RLS Policies for harvest_forecasts - TO authenticated restricts to authenticated users
 DO $$
 BEGIN
   DROP POLICY IF EXISTS "Users can view their own harvest_forecasts" ON harvest_forecasts;
@@ -4871,22 +4912,22 @@ EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
 CREATE POLICY "Users can view their own harvest_forecasts"
-  ON harvest_forecasts FOR SELECT
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON harvest_forecasts FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own harvest_forecasts"
-  ON harvest_forecasts FOR INSERT
-  WITH CHECK (is_not_anonymous() AND auth.uid() = user_id);
+  ON harvest_forecasts FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own harvest_forecasts"
-  ON harvest_forecasts FOR UPDATE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON harvest_forecasts FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own harvest_forecasts"
-  ON harvest_forecasts FOR DELETE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON harvest_forecasts FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
 
--- RLS Policies for room_statuses - no anonymous access
+-- RLS Policies for room_statuses - TO authenticated restricts to authenticated users
 DO $$
 BEGIN
   DROP POLICY IF EXISTS "Users can view their own room_statuses" ON room_statuses;
@@ -4897,20 +4938,20 @@ EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
 CREATE POLICY "Users can view their own room_statuses"
-  ON room_statuses FOR SELECT
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON room_statuses FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own room_statuses"
-  ON room_statuses FOR INSERT
-  WITH CHECK (is_not_anonymous() AND auth.uid() = user_id);
+  ON room_statuses FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own room_statuses"
-  ON room_statuses FOR UPDATE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON room_statuses FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own room_statuses"
-  ON room_statuses FOR DELETE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON room_statuses FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
 
 -- ============================================================================
 -- LAB EVENTS (General purpose event logging - dev-062)
@@ -4956,22 +4997,22 @@ BEGIN
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- lab_events policies - no anonymous access
+-- lab_events policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own lab_events"
-  ON lab_events FOR SELECT
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON lab_events FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own lab_events"
-  ON lab_events FOR INSERT
-  WITH CHECK (is_not_anonymous() AND auth.uid() = user_id);
+  ON lab_events FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own lab_events"
-  ON lab_events FOR UPDATE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON lab_events FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own lab_events"
-  ON lab_events FOR DELETE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON lab_events FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
 
 -- ============================================================================
 -- LIBRARY SUGGESTIONS (Community contribution system)
@@ -5019,30 +5060,30 @@ BEGIN
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- library_suggestions policies - no anonymous access
+-- library_suggestions policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own library_suggestions"
-  ON library_suggestions FOR SELECT
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON library_suggestions FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Admins can view all library_suggestions"
-  ON library_suggestions FOR SELECT
+  ON library_suggestions FOR SELECT TO authenticated
   USING (is_admin());
 
 CREATE POLICY "Users can insert their own library_suggestions"
-  ON library_suggestions FOR INSERT
-  WITH CHECK (is_not_anonymous() AND auth.uid() = user_id);
+  ON library_suggestions FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own pending suggestions"
-  ON library_suggestions FOR UPDATE
-  USING (is_not_anonymous() AND auth.uid() = user_id AND status = 'pending');
+  ON library_suggestions FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id AND status = 'pending');
 
 CREATE POLICY "Admins can update all library_suggestions"
-  ON library_suggestions FOR UPDATE
+  ON library_suggestions FOR UPDATE TO authenticated
   USING (is_admin());
 
 CREATE POLICY "Users can delete their own pending suggestions"
-  ON library_suggestions FOR DELETE
-  USING (is_not_anonymous() AND auth.uid() = user_id AND status = 'pending');
+  ON library_suggestions FOR DELETE TO authenticated
+  USING (auth.uid() = user_id AND status = 'pending');
 
 -- ============================================================================
 -- COLD STORAGE CHECKS (dev-042)
@@ -5086,22 +5127,22 @@ BEGIN
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- cold_storage_checks policies - no anonymous access
+-- cold_storage_checks policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own cold_storage_checks"
-  ON cold_storage_checks FOR SELECT
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON cold_storage_checks FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own cold_storage_checks"
-  ON cold_storage_checks FOR INSERT
-  WITH CHECK (is_not_anonymous() AND auth.uid() = user_id);
+  ON cold_storage_checks FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own cold_storage_checks"
-  ON cold_storage_checks FOR UPDATE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON cold_storage_checks FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own cold_storage_checks"
-  ON cold_storage_checks FOR DELETE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON cold_storage_checks FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
 
 -- ============================================================================
 -- OUTCOME LOGGING TABLES (v18)
@@ -5173,22 +5214,22 @@ BEGIN
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- entity_outcomes policies - no anonymous access
+-- entity_outcomes policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own entity_outcomes"
-  ON entity_outcomes FOR SELECT
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON entity_outcomes FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own entity_outcomes"
-  ON entity_outcomes FOR INSERT
-  WITH CHECK (is_not_anonymous() AND auth.uid() = user_id);
+  ON entity_outcomes FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own entity_outcomes"
-  ON entity_outcomes FOR UPDATE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON entity_outcomes FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own entity_outcomes"
-  ON entity_outcomes FOR DELETE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON entity_outcomes FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
 
 -- Contamination details (linked to outcomes for detailed contam analysis)
 CREATE TABLE IF NOT EXISTS contamination_details (
@@ -5239,22 +5280,22 @@ BEGIN
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- contamination_details policies - no anonymous access
+-- contamination_details policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own contamination_details"
-  ON contamination_details FOR SELECT
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON contamination_details FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own contamination_details"
-  ON contamination_details FOR INSERT
-  WITH CHECK (is_not_anonymous() AND auth.uid() = user_id);
+  ON contamination_details FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own contamination_details"
-  ON contamination_details FOR UPDATE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON contamination_details FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own contamination_details"
-  ON contamination_details FOR DELETE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON contamination_details FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
 
 -- Exit surveys (entity-specific questions and user feedback)
 CREATE TABLE IF NOT EXISTS exit_surveys (
@@ -5303,22 +5344,22 @@ BEGIN
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- exit_surveys policies - no anonymous access
+-- exit_surveys policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own exit_surveys"
-  ON exit_surveys FOR SELECT
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON exit_surveys FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own exit_surveys"
-  ON exit_surveys FOR INSERT
-  WITH CHECK (is_not_anonymous() AND auth.uid() = user_id);
+  ON exit_surveys FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own exit_surveys"
-  ON exit_surveys FOR UPDATE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON exit_surveys FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own exit_surveys"
-  ON exit_surveys FOR DELETE
-  USING (is_not_anonymous() AND auth.uid() = user_id);
+  ON exit_surveys FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
 
 -- ============================================================================
 -- RPC FUNCTIONS (Direct SQL to bypass PostgREST schema cache issues)
@@ -5549,11 +5590,11 @@ CREATE INDEX IF NOT EXISTS idx_redaction_presets_system ON redaction_presets(is_
 -- Enable RLS on share_tokens
 ALTER TABLE share_tokens ENABLE ROW LEVEL SECURITY;
 
--- Owners can manage their own share tokens (no anonymous access)
+-- Owners can manage their own share tokens (TO authenticated restricts to authenticated users)
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'share_tokens' AND policyname = 'share_tokens_owner_all') THEN
-    EXECUTE 'CREATE POLICY share_tokens_owner_all ON share_tokens FOR ALL USING (is_not_anonymous() AND auth.uid() = created_by)';
+    EXECUTE 'CREATE POLICY share_tokens_owner_all ON share_tokens FOR ALL TO authenticated USING (auth.uid() = created_by)';
   END IF;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
@@ -5561,11 +5602,11 @@ END $$;
 -- Enable RLS on batch_passports
 ALTER TABLE batch_passports ENABLE ROW LEVEL SECURITY;
 
--- Owners can manage their own passports (no anonymous access)
+-- Owners can manage their own passports (TO authenticated restricts to authenticated users)
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'batch_passports' AND policyname = 'batch_passports_owner_all') THEN
-    EXECUTE 'CREATE POLICY batch_passports_owner_all ON batch_passports FOR ALL USING (is_not_anonymous() AND auth.uid() = user_id)';
+    EXECUTE 'CREATE POLICY batch_passports_owner_all ON batch_passports FOR ALL TO authenticated USING (auth.uid() = user_id)';
   END IF;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
@@ -5591,12 +5632,12 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- Only passport owners can read their own views (no anonymous access)
+-- Only passport owners can read their own views (TO authenticated restricts to authenticated users)
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'passport_views' AND policyname = 'passport_views_owner_read') THEN
-    EXECUTE 'CREATE POLICY passport_views_owner_read ON passport_views FOR SELECT USING (
-      is_not_anonymous() AND EXISTS (
+    EXECUTE 'CREATE POLICY passport_views_owner_read ON passport_views FOR SELECT TO authenticated USING (
+      EXISTS (
         SELECT 1 FROM public.batch_passports bp
         WHERE bp.id = passport_views.passport_id
         AND bp.user_id = auth.uid()
@@ -5609,20 +5650,20 @@ END $$;
 -- Enable RLS on redaction_presets
 ALTER TABLE redaction_presets ENABLE ROW LEVEL SECURITY;
 
--- System presets are readable by authenticated non-anonymous users
+-- System presets are readable by authenticated users
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'redaction_presets' AND policyname = 'redaction_presets_system_read') THEN
-    EXECUTE 'CREATE POLICY redaction_presets_system_read ON redaction_presets FOR SELECT USING (is_not_anonymous() AND is_system = true)';
+    EXECUTE 'CREATE POLICY redaction_presets_system_read ON redaction_presets FOR SELECT TO authenticated USING (is_system = true)';
   END IF;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- Users can manage their own presets (no anonymous access)
+-- Users can manage their own presets (TO authenticated restricts to authenticated users)
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'redaction_presets' AND policyname = 'redaction_presets_owner_all') THEN
-    EXECUTE 'CREATE POLICY redaction_presets_owner_all ON redaction_presets FOR ALL USING (is_not_anonymous() AND auth.uid() = user_id)';
+    EXECUTE 'CREATE POLICY redaction_presets_owner_all ON redaction_presets FOR ALL TO authenticated USING (auth.uid() = user_id)';
   END IF;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
@@ -6438,30 +6479,27 @@ BEGIN
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- Users can view messages on their own suggestions
+-- Users can view messages on their own suggestions (TO authenticated restricts to authenticated users)
 CREATE POLICY "suggestion_messages_select_own"
-  ON suggestion_messages FOR SELECT
+  ON suggestion_messages FOR SELECT TO authenticated
   USING (
-    is_not_anonymous() AND (
-      user_id = auth.uid() OR
-      EXISTS (
-        SELECT 1 FROM library_suggestions ls
-        WHERE ls.id = suggestion_messages.suggestion_id
-        AND ls.user_id = auth.uid()
-      )
+    user_id = auth.uid() OR
+    EXISTS (
+      SELECT 1 FROM library_suggestions ls
+      WHERE ls.id = suggestion_messages.suggestion_id
+      AND ls.user_id = auth.uid()
     )
   );
 
--- Admins can view all messages
+-- Admins can view all messages (TO authenticated restricts to authenticated users)
 CREATE POLICY "suggestion_messages_select_admin"
-  ON suggestion_messages FOR SELECT
+  ON suggestion_messages FOR SELECT TO authenticated
   USING (is_admin());
 
--- Users and admins can insert messages on relevant suggestions
+-- Users and admins can insert messages on relevant suggestions (TO authenticated restricts to authenticated users)
 CREATE POLICY "suggestion_messages_insert"
-  ON suggestion_messages FOR INSERT
+  ON suggestion_messages FOR INSERT TO authenticated
   WITH CHECK (
-    is_not_anonymous() AND
     user_id = auth.uid() AND
     (
       -- User can message on their own suggestion
@@ -6476,19 +6514,17 @@ CREATE POLICY "suggestion_messages_insert"
     )
   );
 
--- Users can mark messages as read
+-- Users can mark messages as read (TO authenticated restricts to authenticated users)
 CREATE POLICY "suggestion_messages_update_read"
-  ON suggestion_messages FOR UPDATE
+  ON suggestion_messages FOR UPDATE TO authenticated
   USING (
-    is_not_anonymous() AND (
-      -- User can update read status on their own messages
-      EXISTS (
-        SELECT 1 FROM library_suggestions ls
-        WHERE ls.id = suggestion_messages.suggestion_id
-        AND ls.user_id = auth.uid()
-      )
-      OR is_admin()
+    -- User can update read status on their own messages
+    EXISTS (
+      SELECT 1 FROM library_suggestions ls
+      WHERE ls.id = suggestion_messages.suggestion_id
+      AND ls.user_id = auth.uid()
     )
+    OR is_admin()
   );
 
 -- Add trigger for updated_at on suggestion_messages (using existing update_updated_at function)
@@ -6856,12 +6892,12 @@ ALTER TABLE observation_history ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "observation_history_select_own" ON observation_history;
 CREATE POLICY "observation_history_select_own"
-  ON observation_history FOR SELECT
+  ON observation_history FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "observation_history_insert_own" ON observation_history;
 CREATE POLICY "observation_history_insert_own"
-  ON observation_history FOR INSERT
+  ON observation_history FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
 
 -- ============================================================================
@@ -6912,12 +6948,12 @@ ALTER TABLE harvest_history ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "harvest_history_select_own" ON harvest_history;
 CREATE POLICY "harvest_history_select_own"
-  ON harvest_history FOR SELECT
+  ON harvest_history FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "harvest_history_insert_own" ON harvest_history;
 CREATE POLICY "harvest_history_insert_own"
-  ON harvest_history FOR INSERT
+  ON harvest_history FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
 
 -- ============================================================================
@@ -6969,12 +7005,12 @@ ALTER TABLE transfer_history ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "transfer_history_select_own" ON transfer_history;
 CREATE POLICY "transfer_history_select_own"
-  ON transfer_history FOR SELECT
+  ON transfer_history FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "transfer_history_insert_own" ON transfer_history;
 CREATE POLICY "transfer_history_insert_own"
-  ON transfer_history FOR INSERT
+  ON transfer_history FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
 
 -- ============================================================================
@@ -7017,12 +7053,12 @@ ALTER TABLE stage_transition_history ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "stage_transition_history_select_own" ON stage_transition_history;
 CREATE POLICY "stage_transition_history_select_own"
-  ON stage_transition_history FOR SELECT
+  ON stage_transition_history FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "stage_transition_history_insert_own" ON stage_transition_history;
 CREATE POLICY "stage_transition_history_insert_own"
-  ON stage_transition_history FOR INSERT
+  ON stage_transition_history FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
 
 -- ============================================================================
@@ -7072,12 +7108,12 @@ ALTER TABLE data_amendment_log ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "data_amendment_log_select_own" ON data_amendment_log;
 CREATE POLICY "data_amendment_log_select_own"
-  ON data_amendment_log FOR SELECT
+  ON data_amendment_log FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "data_amendment_log_insert_own" ON data_amendment_log;
 CREATE POLICY "data_amendment_log_insert_own"
-  ON data_amendment_log FOR INSERT
+  ON data_amendment_log FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
 
 -- ============================================================================
@@ -7102,12 +7138,12 @@ ALTER TABLE bulk_operations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "bulk_operations_select_own" ON bulk_operations;
 CREATE POLICY "bulk_operations_select_own"
-  ON bulk_operations FOR SELECT
+  ON bulk_operations FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "bulk_operations_insert_own" ON bulk_operations;
 CREATE POLICY "bulk_operations_insert_own"
-  ON bulk_operations FOR INSERT
+  ON bulk_operations FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
 
 -- ============================================================================
@@ -7185,7 +7221,7 @@ BEGIN
 
   RETURN v_new_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 -- ============================================================================
 -- STORED PROCEDURE: archive_record
@@ -7243,7 +7279,7 @@ BEGIN
     v_user_id
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 -- ============================================================================
 -- HELPER FUNCTION: get_record_history
@@ -7270,7 +7306,7 @@ BEGIN
     p_table_name
   ) USING p_record_group_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 -- ============================================================================
 -- HELPER FUNCTION: get_record_at_time
@@ -7296,7 +7332,7 @@ BEGIN
 
   RETURN v_record_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION amend_record(TEXT, UUID, JSONB, TEXT, TEXT) TO authenticated;
@@ -7486,13 +7522,13 @@ DROP POLICY IF EXISTS "notification_queue_delete" ON notification_queue;
 
 -- Note: Service role and SECURITY DEFINER functions bypass RLS entirely
 CREATE POLICY "notification_queue_select" ON notification_queue
-  FOR SELECT USING (user_id = auth.uid() OR is_admin());
+  FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
 CREATE POLICY "notification_queue_insert" ON notification_queue
-  FOR INSERT WITH CHECK (user_id = auth.uid() OR is_admin());
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid() OR is_admin());
 CREATE POLICY "notification_queue_update" ON notification_queue
-  FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+  FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
 CREATE POLICY "notification_queue_delete" ON notification_queue
-  FOR DELETE USING (user_id = auth.uid() OR is_admin());
+  FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
 
 -- ============================================================================
 -- NOTIFICATION GENERATION FUNCTIONS
@@ -8747,19 +8783,19 @@ ALTER TABLE lab_item_instances ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_select') THEN
-    CREATE POLICY lab_item_instances_select ON lab_item_instances FOR SELECT USING (user_id = auth.uid());
+    CREATE POLICY lab_item_instances_select ON lab_item_instances FOR SELECT TO authenticated USING (user_id = auth.uid());
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_insert') THEN
-    CREATE POLICY lab_item_instances_insert ON lab_item_instances FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY lab_item_instances_insert ON lab_item_instances FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_update') THEN
-    CREATE POLICY lab_item_instances_update ON lab_item_instances FOR UPDATE USING (user_id = auth.uid());
+    CREATE POLICY lab_item_instances_update ON lab_item_instances FOR UPDATE TO authenticated USING (user_id = auth.uid());
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_delete') THEN
-    CREATE POLICY lab_item_instances_delete ON lab_item_instances FOR DELETE USING (user_id = auth.uid());
+    CREATE POLICY lab_item_instances_delete ON lab_item_instances FOR DELETE TO authenticated USING (user_id = auth.uid());
   END IF;
 
   RAISE NOTICE 'Lab item instances RLS policies created!';
@@ -8831,16 +8867,16 @@ ALTER TABLE ai_chat_sessions ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_select') THEN
-    CREATE POLICY ai_chat_sessions_select ON ai_chat_sessions FOR SELECT USING (user_id = auth.uid());
+    CREATE POLICY ai_chat_sessions_select ON ai_chat_sessions FOR SELECT TO authenticated USING (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_insert') THEN
-    CREATE POLICY ai_chat_sessions_insert ON ai_chat_sessions FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY ai_chat_sessions_insert ON ai_chat_sessions FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_update') THEN
-    CREATE POLICY ai_chat_sessions_update ON ai_chat_sessions FOR UPDATE USING (user_id = auth.uid());
+    CREATE POLICY ai_chat_sessions_update ON ai_chat_sessions FOR UPDATE TO authenticated USING (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_delete') THEN
-    CREATE POLICY ai_chat_sessions_delete ON ai_chat_sessions FOR DELETE USING (user_id = auth.uid());
+    CREATE POLICY ai_chat_sessions_delete ON ai_chat_sessions FOR DELETE TO authenticated USING (user_id = auth.uid());
   END IF;
   RAISE NOTICE 'AI chat sessions RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -8890,13 +8926,13 @@ ALTER TABLE ai_chat_messages ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_messages' AND policyname = 'ai_chat_messages_select') THEN
-    CREATE POLICY ai_chat_messages_select ON ai_chat_messages FOR SELECT USING (user_id = auth.uid());
+    CREATE POLICY ai_chat_messages_select ON ai_chat_messages FOR SELECT TO authenticated USING (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_messages' AND policyname = 'ai_chat_messages_insert') THEN
-    CREATE POLICY ai_chat_messages_insert ON ai_chat_messages FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY ai_chat_messages_insert ON ai_chat_messages FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_messages' AND policyname = 'ai_chat_messages_delete') THEN
-    CREATE POLICY ai_chat_messages_delete ON ai_chat_messages FOR DELETE USING (user_id = auth.uid());
+    CREATE POLICY ai_chat_messages_delete ON ai_chat_messages FOR DELETE TO authenticated USING (user_id = auth.uid());
   END IF;
   RAISE NOTICE 'AI chat messages RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -8943,10 +8979,10 @@ ALTER TABLE ai_usage ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_usage' AND policyname = 'ai_usage_select') THEN
-    CREATE POLICY ai_usage_select ON ai_usage FOR SELECT USING (user_id = auth.uid());
+    CREATE POLICY ai_usage_select ON ai_usage FOR SELECT TO authenticated USING (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_usage' AND policyname = 'ai_usage_insert') THEN
-    CREATE POLICY ai_usage_insert ON ai_usage FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY ai_usage_insert ON ai_usage FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
   END IF;
   RAISE NOTICE 'AI usage RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -8993,13 +9029,13 @@ ALTER TABLE ai_user_settings ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_user_settings' AND policyname = 'ai_user_settings_select') THEN
-    CREATE POLICY ai_user_settings_select ON ai_user_settings FOR SELECT USING (user_id = auth.uid());
+    CREATE POLICY ai_user_settings_select ON ai_user_settings FOR SELECT TO authenticated USING (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_user_settings' AND policyname = 'ai_user_settings_insert') THEN
-    CREATE POLICY ai_user_settings_insert ON ai_user_settings FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY ai_user_settings_insert ON ai_user_settings FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_user_settings' AND policyname = 'ai_user_settings_update') THEN
-    CREATE POLICY ai_user_settings_update ON ai_user_settings FOR UPDATE USING (user_id = auth.uid());
+    CREATE POLICY ai_user_settings_update ON ai_user_settings FOR UPDATE TO authenticated USING (user_id = auth.uid());
   END IF;
   RAISE NOTICE 'AI user settings RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9078,13 +9114,16 @@ ALTER TABLE knowledge_documents ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
-  -- Anyone can read approved documents
+  -- Anyone can read approved documents (split for anon vs authenticated to avoid warnings)
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_documents' AND policyname = 'knowledge_documents_select_public') THEN
-    CREATE POLICY knowledge_documents_select_public ON knowledge_documents FOR SELECT USING (review_status = 'approved' AND is_active = true);
+    CREATE POLICY knowledge_documents_select_public ON knowledge_documents FOR SELECT TO anon USING (review_status = 'approved' AND is_active = true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_documents' AND policyname = 'knowledge_documents_select_approved') THEN
+    CREATE POLICY knowledge_documents_select_approved ON knowledge_documents FOR SELECT TO authenticated USING (review_status = 'approved' AND is_active = true);
   END IF;
   -- Authors can read their own drafts
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_documents' AND policyname = 'knowledge_documents_select_author') THEN
-    CREATE POLICY knowledge_documents_select_author ON knowledge_documents FOR SELECT USING (author_id = auth.uid());
+    CREATE POLICY knowledge_documents_select_author ON knowledge_documents FOR SELECT TO authenticated USING (author_id = auth.uid());
   END IF;
   RAISE NOTICE 'Knowledge documents RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9146,19 +9185,19 @@ DO $$
 BEGIN
   -- Users can read their own suggestions
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_select') THEN
-    CREATE POLICY knowledge_suggestions_select ON knowledge_suggestions FOR SELECT USING (user_id = auth.uid());
+    CREATE POLICY knowledge_suggestions_select ON knowledge_suggestions FOR SELECT TO authenticated USING (user_id = auth.uid());
   END IF;
   -- Users can create suggestions
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_insert') THEN
-    CREATE POLICY knowledge_suggestions_insert ON knowledge_suggestions FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY knowledge_suggestions_insert ON knowledge_suggestions FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
   END IF;
   -- Users can update their pending suggestions
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_update') THEN
-    CREATE POLICY knowledge_suggestions_update ON knowledge_suggestions FOR UPDATE USING (user_id = auth.uid() AND status = 'pending');
+    CREATE POLICY knowledge_suggestions_update ON knowledge_suggestions FOR UPDATE TO authenticated USING (user_id = auth.uid() AND status = 'pending');
   END IF;
   -- Users can delete their pending suggestions
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_delete') THEN
-    CREATE POLICY knowledge_suggestions_delete ON knowledge_suggestions FOR DELETE USING (user_id = auth.uid() AND status = 'pending');
+    CREATE POLICY knowledge_suggestions_delete ON knowledge_suggestions FOR DELETE TO authenticated USING (user_id = auth.uid() AND status = 'pending');
   END IF;
   RAISE NOTICE 'Knowledge suggestions RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9221,16 +9260,16 @@ ALTER TABLE iot_devices ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_select') THEN
-    CREATE POLICY iot_devices_select ON iot_devices FOR SELECT USING (user_id = auth.uid());
+    CREATE POLICY iot_devices_select ON iot_devices FOR SELECT TO authenticated USING (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_insert') THEN
-    CREATE POLICY iot_devices_insert ON iot_devices FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY iot_devices_insert ON iot_devices FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_update') THEN
-    CREATE POLICY iot_devices_update ON iot_devices FOR UPDATE USING (user_id = auth.uid());
+    CREATE POLICY iot_devices_update ON iot_devices FOR UPDATE TO authenticated USING (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_delete') THEN
-    CREATE POLICY iot_devices_delete ON iot_devices FOR DELETE USING (user_id = auth.uid());
+    CREATE POLICY iot_devices_delete ON iot_devices FOR DELETE TO authenticated USING (user_id = auth.uid());
   END IF;
   RAISE NOTICE 'IoT devices RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9286,10 +9325,10 @@ ALTER TABLE iot_readings ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_readings' AND policyname = 'iot_readings_select') THEN
-    CREATE POLICY iot_readings_select ON iot_readings FOR SELECT USING (user_id = auth.uid());
+    CREATE POLICY iot_readings_select ON iot_readings FOR SELECT TO authenticated USING (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_readings' AND policyname = 'iot_readings_insert') THEN
-    CREATE POLICY iot_readings_insert ON iot_readings FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY iot_readings_insert ON iot_readings FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
   END IF;
   RAISE NOTICE 'IoT readings RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9340,13 +9379,13 @@ ALTER TABLE iot_alerts ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alerts' AND policyname = 'iot_alerts_select') THEN
-    CREATE POLICY iot_alerts_select ON iot_alerts FOR SELECT USING (user_id = auth.uid());
+    CREATE POLICY iot_alerts_select ON iot_alerts FOR SELECT TO authenticated USING (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alerts' AND policyname = 'iot_alerts_insert') THEN
-    CREATE POLICY iot_alerts_insert ON iot_alerts FOR INSERT WITH CHECK (user_id = auth.uid());
+    CREATE POLICY iot_alerts_insert ON iot_alerts FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alerts' AND policyname = 'iot_alerts_update') THEN
-    CREATE POLICY iot_alerts_update ON iot_alerts FOR UPDATE USING (user_id = auth.uid());
+    CREATE POLICY iot_alerts_update ON iot_alerts FOR UPDATE TO authenticated USING (user_id = auth.uid());
   END IF;
   RAISE NOTICE 'IoT alerts RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9392,7 +9431,7 @@ ALTER TABLE iot_alert_thresholds ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alert_thresholds' AND policyname = 'iot_alert_thresholds_all') THEN
-    CREATE POLICY iot_alert_thresholds_all ON iot_alert_thresholds FOR ALL USING (user_id = auth.uid());
+    CREATE POLICY iot_alert_thresholds_all ON iot_alert_thresholds FOR ALL TO authenticated USING (user_id = auth.uid());
   END IF;
   RAISE NOTICE 'IoT alert thresholds RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
