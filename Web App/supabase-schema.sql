@@ -4042,7 +4042,7 @@ ALTER TABLE verification_codes ENABLE ROW LEVEL SECURITY;
 -- ============================================================================
 -- ROW LEVEL SECURITY POLICIES
 -- SECURITY MODEL:
--- - Users can only see and modify their own data (user_id = auth.uid())
+-- - Users can only see and modify their own data (user_id = (select auth.uid()))
 -- - Admins can see and modify all data
 -- - Lookup tables (species, strains, etc.) allow shared defaults (user_id IS NULL)
 -- ============================================================================
@@ -4053,7 +4053,7 @@ RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.user_profiles
-    WHERE user_id = auth.uid() AND is_admin = true
+    WHERE user_id = (select auth.uid()) AND is_admin = true
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
@@ -4412,9 +4412,9 @@ DROP POLICY IF EXISTS "inventory_usages_delete" ON inventory_usages;
 
 -- User profiles policies (users can only see their own, admins see all)
 -- TO authenticated restricts to authenticated users only (no anonymous access)
-CREATE POLICY "user_profiles_select" ON user_profiles FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "user_profiles_insert" ON user_profiles FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "user_profiles_update" ON user_profiles FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "user_profiles_select" ON user_profiles FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "user_profiles_insert" ON user_profiles FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "user_profiles_update" ON user_profiles FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 CREATE POLICY "user_profiles_delete" ON user_profiles FOR DELETE TO authenticated USING (is_admin());
 
 -- Admin audit log policies (admin only - TO authenticated restricts to authenticated users)
@@ -4428,223 +4428,223 @@ CREATE POLICY "admin_notifications_update" ON admin_notifications FOR UPDATE TO 
 CREATE POLICY "admin_notifications_delete" ON admin_notifications FOR DELETE TO authenticated USING (is_admin());
 
 -- Notification channels policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "notification_channels_select" ON notification_channels FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "notification_channels_insert" ON notification_channels FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "notification_channels_update" ON notification_channels FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "notification_channels_delete" ON notification_channels FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_channels_select" ON notification_channels FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "notification_channels_insert" ON notification_channels FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "notification_channels_update" ON notification_channels FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "notification_channels_delete" ON notification_channels FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Notification event preferences policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "notification_event_preferences_select" ON notification_event_preferences FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "notification_event_preferences_insert" ON notification_event_preferences FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "notification_event_preferences_update" ON notification_event_preferences FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "notification_event_preferences_delete" ON notification_event_preferences FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_event_preferences_select" ON notification_event_preferences FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "notification_event_preferences_insert" ON notification_event_preferences FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "notification_event_preferences_update" ON notification_event_preferences FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "notification_event_preferences_delete" ON notification_event_preferences FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Notification delivery log policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "notification_delivery_log_select" ON notification_delivery_log FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "notification_delivery_log_insert" ON notification_delivery_log FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid() OR is_admin());
+CREATE POLICY "notification_delivery_log_select" ON notification_delivery_log FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "notification_delivery_log_insert" ON notification_delivery_log FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Notification templates policies (system templates readable by authenticated users, only admins can modify)
-CREATE POLICY "notification_templates_select" ON notification_templates FOR SELECT TO authenticated USING (is_active = true OR is_admin());
+CREATE POLICY "notification_templates_select" ON notification_templates FOR SELECT TO authenticated USING (is_active = true OR (select is_admin()));
 CREATE POLICY "notification_templates_insert" ON notification_templates FOR INSERT TO authenticated WITH CHECK (is_admin());
 CREATE POLICY "notification_templates_update" ON notification_templates FOR UPDATE TO authenticated USING (is_admin());
 CREATE POLICY "notification_templates_delete" ON notification_templates FOR DELETE TO authenticated USING (is_admin() AND is_system = false);
 
 -- Verification codes policies (users can only see/delete their own - TO authenticated restricts to authenticated users)
-CREATE POLICY "verification_codes_select" ON verification_codes FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "verification_codes_select" ON verification_codes FOR SELECT TO authenticated USING (user_id = (select auth.uid()));
 CREATE POLICY "verification_codes_insert" ON verification_codes FOR INSERT TO authenticated WITH CHECK (true);  -- Service role bypasses RLS entirely
-CREATE POLICY "verification_codes_delete" ON verification_codes FOR DELETE TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "verification_codes_delete" ON verification_codes FOR DELETE TO authenticated USING (user_id = (select auth.uid()));
 
 -- Species policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
 -- Split into role-specific policies to avoid anonymous access warnings
 CREATE POLICY "species_select_system" ON species FOR SELECT TO anon USING (user_id IS NULL);
-CREATE POLICY "species_select" ON species FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "species_insert" ON species FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "species_update" ON species FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "species_delete" ON species FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "species_select" ON species FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "species_insert" ON species FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "species_update" ON species FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "species_delete" ON species FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Strains policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
 CREATE POLICY "strains_select_system" ON strains FOR SELECT TO anon USING (user_id IS NULL);
-CREATE POLICY "strains_select" ON strains FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "strains_insert" ON strains FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "strains_update" ON strains FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "strains_delete" ON strains FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "strains_select" ON strains FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "strains_insert" ON strains FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "strains_update" ON strains FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "strains_delete" ON strains FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Location Types policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
 CREATE POLICY "location_types_select_system" ON location_types FOR SELECT TO anon USING (user_id IS NULL);
-CREATE POLICY "location_types_select" ON location_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "location_types_insert" ON location_types FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "location_types_update" ON location_types FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "location_types_delete" ON location_types FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "location_types_select" ON location_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "location_types_insert" ON location_types FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "location_types_update" ON location_types FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "location_types_delete" ON location_types FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Location Classifications policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
 CREATE POLICY "location_classifications_select_system" ON location_classifications FOR SELECT TO anon USING (user_id IS NULL);
-CREATE POLICY "location_classifications_select" ON location_classifications FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "location_classifications_insert" ON location_classifications FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "location_classifications_update" ON location_classifications FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "location_classifications_delete" ON location_classifications FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "location_classifications_select" ON location_classifications FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "location_classifications_insert" ON location_classifications FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "location_classifications_update" ON location_classifications FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "location_classifications_delete" ON location_classifications FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Locations policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "locations_select" ON locations FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "locations_insert" ON locations FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "locations_update" ON locations FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "locations_delete" ON locations FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "locations_select" ON locations FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "locations_insert" ON locations FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "locations_update" ON locations FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "locations_delete" ON locations FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Containers policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
 CREATE POLICY "containers_select_system" ON containers FOR SELECT TO anon USING (user_id IS NULL);
-CREATE POLICY "containers_select" ON containers FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "containers_insert" ON containers FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "containers_update" ON containers FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "containers_delete" ON containers FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "containers_select" ON containers FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "containers_insert" ON containers FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "containers_update" ON containers FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "containers_delete" ON containers FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Legacy: Create vessel/container_types policies only if they exist as base tables (not views)
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vessels' AND table_type = 'BASE TABLE') THEN
     CREATE POLICY "vessels_select_system" ON vessels FOR SELECT TO anon USING (user_id IS NULL);
-    CREATE POLICY "vessels_select" ON vessels FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-    CREATE POLICY "vessels_insert" ON vessels FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-    CREATE POLICY "vessels_update" ON vessels FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-    CREATE POLICY "vessels_delete" ON vessels FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+    CREATE POLICY "vessels_select" ON vessels FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = (select auth.uid()) OR (select is_admin()));
+    CREATE POLICY "vessels_insert" ON vessels FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+    CREATE POLICY "vessels_update" ON vessels FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+    CREATE POLICY "vessels_delete" ON vessels FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
   END IF;
 
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'container_types' AND table_type = 'BASE TABLE') THEN
     CREATE POLICY "container_types_select_system" ON container_types FOR SELECT TO anon USING (user_id IS NULL);
-    CREATE POLICY "container_types_select" ON container_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-    CREATE POLICY "container_types_insert" ON container_types FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-    CREATE POLICY "container_types_update" ON container_types FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-    CREATE POLICY "container_types_delete" ON container_types FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+    CREATE POLICY "container_types_select" ON container_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = (select auth.uid()) OR (select is_admin()));
+    CREATE POLICY "container_types_insert" ON container_types FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+    CREATE POLICY "container_types_update" ON container_types FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+    CREATE POLICY "container_types_delete" ON container_types FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
   END IF;
 END $$;
 
 -- Substrate types policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
 CREATE POLICY "substrate_types_select_system" ON substrate_types FOR SELECT TO anon USING (user_id IS NULL);
-CREATE POLICY "substrate_types_select" ON substrate_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "substrate_types_insert" ON substrate_types FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "substrate_types_update" ON substrate_types FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "substrate_types_delete" ON substrate_types FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "substrate_types_select" ON substrate_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "substrate_types_insert" ON substrate_types FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "substrate_types_update" ON substrate_types FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "substrate_types_delete" ON substrate_types FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Suppliers policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "suppliers_select" ON suppliers FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "suppliers_insert" ON suppliers FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "suppliers_update" ON suppliers FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "suppliers_delete" ON suppliers FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "suppliers_select" ON suppliers FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "suppliers_insert" ON suppliers FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "suppliers_update" ON suppliers FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "suppliers_delete" ON suppliers FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Inventory categories policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
 CREATE POLICY "inventory_categories_select_system" ON inventory_categories FOR SELECT TO anon USING (user_id IS NULL);
-CREATE POLICY "inventory_categories_select" ON inventory_categories FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "inventory_categories_insert" ON inventory_categories FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "inventory_categories_update" ON inventory_categories FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "inventory_categories_delete" ON inventory_categories FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_categories_select" ON inventory_categories FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "inventory_categories_insert" ON inventory_categories FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "inventory_categories_update" ON inventory_categories FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "inventory_categories_delete" ON inventory_categories FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Recipe categories policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
 CREATE POLICY "recipe_categories_select_system" ON recipe_categories FOR SELECT TO anon USING (user_id IS NULL);
-CREATE POLICY "recipe_categories_select" ON recipe_categories FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "recipe_categories_insert" ON recipe_categories FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "recipe_categories_update" ON recipe_categories FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "recipe_categories_delete" ON recipe_categories FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipe_categories_select" ON recipe_categories FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "recipe_categories_insert" ON recipe_categories FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "recipe_categories_update" ON recipe_categories FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "recipe_categories_delete" ON recipe_categories FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Inventory items policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "inventory_items_select" ON inventory_items FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "inventory_items_insert" ON inventory_items FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "inventory_items_update" ON inventory_items FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "inventory_items_delete" ON inventory_items FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_items_select" ON inventory_items FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "inventory_items_insert" ON inventory_items FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "inventory_items_update" ON inventory_items FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "inventory_items_delete" ON inventory_items FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Cultures policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "cultures_select" ON cultures FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "cultures_insert" ON cultures FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "cultures_update" ON cultures FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "cultures_delete" ON cultures FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "cultures_select" ON cultures FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "cultures_insert" ON cultures FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "cultures_update" ON cultures FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "cultures_delete" ON cultures FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Culture observations policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "culture_observations_select" ON culture_observations FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "culture_observations_insert" ON culture_observations FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "culture_observations_update" ON culture_observations FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "culture_observations_delete" ON culture_observations FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "culture_observations_select" ON culture_observations FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "culture_observations_insert" ON culture_observations FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "culture_observations_update" ON culture_observations FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "culture_observations_delete" ON culture_observations FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Culture transfers policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "culture_transfers_select" ON culture_transfers FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "culture_transfers_insert" ON culture_transfers FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "culture_transfers_update" ON culture_transfers FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "culture_transfers_delete" ON culture_transfers FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "culture_transfers_select" ON culture_transfers FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "culture_transfers_insert" ON culture_transfers FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "culture_transfers_update" ON culture_transfers FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "culture_transfers_delete" ON culture_transfers FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Grows policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "grows_select" ON grows FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "grows_insert" ON grows FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "grows_update" ON grows FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "grows_delete" ON grows FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grows_select" ON grows FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "grows_insert" ON grows FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "grows_update" ON grows FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "grows_delete" ON grows FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Grow observations policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "grow_observations_select" ON grow_observations FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "grow_observations_insert" ON grow_observations FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "grow_observations_update" ON grow_observations FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "grow_observations_delete" ON grow_observations FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grow_observations_select" ON grow_observations FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "grow_observations_insert" ON grow_observations FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "grow_observations_update" ON grow_observations FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "grow_observations_delete" ON grow_observations FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Grain spawn policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "grain_spawn_select" ON grain_spawn FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "grain_spawn_insert" ON grain_spawn FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "grain_spawn_update" ON grain_spawn FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "grain_spawn_delete" ON grain_spawn FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grain_spawn_select" ON grain_spawn FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "grain_spawn_insert" ON grain_spawn FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "grain_spawn_update" ON grain_spawn FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "grain_spawn_delete" ON grain_spawn FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Grain spawn observations policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "grain_spawn_observations_select" ON grain_spawn_observations FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "grain_spawn_observations_insert" ON grain_spawn_observations FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "grain_spawn_observations_update" ON grain_spawn_observations FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "grain_spawn_observations_delete" ON grain_spawn_observations FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grain_spawn_observations_select" ON grain_spawn_observations FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "grain_spawn_observations_insert" ON grain_spawn_observations FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "grain_spawn_observations_update" ON grain_spawn_observations FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "grain_spawn_observations_delete" ON grain_spawn_observations FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Prepared spawn policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "prepared_spawn_select" ON prepared_spawn FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "prepared_spawn_insert" ON prepared_spawn FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "prepared_spawn_update" ON prepared_spawn FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "prepared_spawn_delete" ON prepared_spawn FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "prepared_spawn_select" ON prepared_spawn FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "prepared_spawn_insert" ON prepared_spawn FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "prepared_spawn_update" ON prepared_spawn FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "prepared_spawn_delete" ON prepared_spawn FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Flushes policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "flushes_select" ON flushes FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "flushes_insert" ON flushes FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "flushes_update" ON flushes FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "flushes_delete" ON flushes FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "flushes_select" ON flushes FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "flushes_insert" ON flushes FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "flushes_update" ON flushes FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "flushes_delete" ON flushes FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Recipes policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "recipes_select" ON recipes FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "recipes_insert" ON recipes FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "recipes_update" ON recipes FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "recipes_delete" ON recipes FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipes_select" ON recipes FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "recipes_insert" ON recipes FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "recipes_update" ON recipes FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "recipes_delete" ON recipes FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Recipe ingredients policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "recipe_ingredients_select" ON recipe_ingredients FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "recipe_ingredients_insert" ON recipe_ingredients FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "recipe_ingredients_update" ON recipe_ingredients FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "recipe_ingredients_delete" ON recipe_ingredients FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "recipe_ingredients_select" ON recipe_ingredients FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "recipe_ingredients_insert" ON recipe_ingredients FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "recipe_ingredients_update" ON recipe_ingredients FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "recipe_ingredients_delete" ON recipe_ingredients FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- User settings policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "user_settings_select" ON user_settings FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "user_settings_insert" ON user_settings FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "user_settings_update" ON user_settings FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "user_settings_delete" ON user_settings FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "user_settings_select" ON user_settings FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "user_settings_insert" ON user_settings FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "user_settings_update" ON user_settings FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "user_settings_delete" ON user_settings FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Grain types policies: System data (user_id IS NULL) is PUBLIC, user data requires authentication
 CREATE POLICY "grain_types_select_system" ON grain_types FOR SELECT TO anon USING (user_id IS NULL);
-CREATE POLICY "grain_types_select" ON grain_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = auth.uid() OR is_admin());
-CREATE POLICY "grain_types_insert" ON grain_types FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "grain_types_update" ON grain_types FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "grain_types_delete" ON grain_types FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "grain_types_select" ON grain_types FOR SELECT TO authenticated USING (user_id IS NULL OR user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "grain_types_insert" ON grain_types FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "grain_types_update" ON grain_types FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "grain_types_delete" ON grain_types FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Purchase orders policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "purchase_orders_select" ON purchase_orders FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "purchase_orders_insert" ON purchase_orders FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "purchase_orders_update" ON purchase_orders FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "purchase_orders_delete" ON purchase_orders FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "purchase_orders_select" ON purchase_orders FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "purchase_orders_insert" ON purchase_orders FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "purchase_orders_update" ON purchase_orders FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "purchase_orders_delete" ON purchase_orders FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Inventory lots policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "inventory_lots_select" ON inventory_lots FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "inventory_lots_insert" ON inventory_lots FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "inventory_lots_update" ON inventory_lots FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
-CREATE POLICY "inventory_lots_delete" ON inventory_lots FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY "inventory_lots_select" ON inventory_lots FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "inventory_lots_insert" ON inventory_lots FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
+CREATE POLICY "inventory_lots_update" ON inventory_lots FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "inventory_lots_delete" ON inventory_lots FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- Inventory usages policies (user's own only - TO authenticated restricts to authenticated users)
-CREATE POLICY "inventory_usages_select" ON inventory_usages FOR SELECT TO authenticated USING (used_by = auth.uid() OR is_admin());
-CREATE POLICY "inventory_usages_insert" ON inventory_usages FOR INSERT TO authenticated WITH CHECK (used_by = auth.uid());
-CREATE POLICY "inventory_usages_update" ON inventory_usages FOR UPDATE TO authenticated USING (used_by = auth.uid() OR is_admin());
-CREATE POLICY "inventory_usages_delete" ON inventory_usages FOR DELETE TO authenticated USING (used_by = auth.uid() OR is_admin());
+CREATE POLICY "inventory_usages_select" ON inventory_usages FOR SELECT TO authenticated USING (used_by = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "inventory_usages_insert" ON inventory_usages FOR INSERT TO authenticated WITH CHECK (used_by = (select auth.uid()));
+CREATE POLICY "inventory_usages_update" ON inventory_usages FOR UPDATE TO authenticated USING (used_by = (select auth.uid()) OR (select is_admin()));
+CREATE POLICY "inventory_usages_delete" ON inventory_usages FOR DELETE TO authenticated USING (used_by = (select auth.uid()) OR (select is_admin()));
 
 -- ============================================================================
 -- TRIGGERS (using CREATE OR REPLACE for idempotency)
@@ -5051,39 +5051,39 @@ ALTER TABLE library_suggestions ENABLE ROW LEVEL SECURITY;
 -- RLS Policies for library_suggestions
 DO $$
 BEGIN
+  -- Drop old separate policies (legacy)
   DROP POLICY IF EXISTS "Users can view their own library_suggestions" ON library_suggestions;
   DROP POLICY IF EXISTS "Admins can view all library_suggestions" ON library_suggestions;
   DROP POLICY IF EXISTS "Users can insert their own library_suggestions" ON library_suggestions;
   DROP POLICY IF EXISTS "Users can update their own pending suggestions" ON library_suggestions;
   DROP POLICY IF EXISTS "Admins can update all library_suggestions" ON library_suggestions;
   DROP POLICY IF EXISTS "Users can delete their own pending suggestions" ON library_suggestions;
+  -- Drop consolidated policies for idempotency
+  DROP POLICY IF EXISTS "library_suggestions_select" ON library_suggestions;
+  DROP POLICY IF EXISTS "library_suggestions_insert" ON library_suggestions;
+  DROP POLICY IF EXISTS "library_suggestions_update" ON library_suggestions;
+  DROP POLICY IF EXISTS "library_suggestions_delete" ON library_suggestions;
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- library_suggestions policies - TO authenticated restricts to authenticated users
-CREATE POLICY "Users can view their own library_suggestions"
+-- library_suggestions policies - Consolidated to avoid multiple permissive policy warnings
+-- Users can view their own suggestions OR admins can view all
+CREATE POLICY "library_suggestions_select"
   ON library_suggestions FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id OR (select is_admin()));
 
-CREATE POLICY "Admins can view all library_suggestions"
-  ON library_suggestions FOR SELECT TO authenticated
-  USING (is_admin());
-
-CREATE POLICY "Users can insert their own library_suggestions"
+CREATE POLICY "library_suggestions_insert"
   ON library_suggestions FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
-CREATE POLICY "Users can update their own pending suggestions"
+-- Users can update their own pending suggestions OR admins can update all
+CREATE POLICY "library_suggestions_update"
   ON library_suggestions FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id AND status = 'pending');
+  USING (((select auth.uid()) = user_id AND status = 'pending') OR (select is_admin()));
 
-CREATE POLICY "Admins can update all library_suggestions"
-  ON library_suggestions FOR UPDATE TO authenticated
-  USING (is_admin());
-
-CREATE POLICY "Users can delete their own pending suggestions"
+CREATE POLICY "library_suggestions_delete"
   ON library_suggestions FOR DELETE TO authenticated
-  USING (auth.uid() = user_id AND status = 'pending');
+  USING ((select auth.uid()) = user_id AND status = 'pending');
 
 -- ============================================================================
 -- COLD STORAGE CHECKS (dev-042)
@@ -5602,23 +5602,43 @@ END $$;
 -- Enable RLS on batch_passports
 ALTER TABLE batch_passports ENABLE ROW LEVEL SECURITY;
 
--- Owners can manage their own passports (TO authenticated restricts to authenticated users)
+-- Drop and recreate batch_passports policies to fix multiple permissive policy issues
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'batch_passports' AND policyname = 'batch_passports_owner_all') THEN
-    EXECUTE 'CREATE POLICY batch_passports_owner_all ON batch_passports FOR ALL TO authenticated USING (auth.uid() = user_id)';
-  END IF;
-EXCEPTION WHEN duplicate_object THEN NULL;
+  DROP POLICY IF EXISTS batch_passports_owner_all ON batch_passports;
+  DROP POLICY IF EXISTS batch_passports_public_read ON batch_passports;
+  DROP POLICY IF EXISTS batch_passports_select ON batch_passports;
+  DROP POLICY IF EXISTS batch_passports_insert ON batch_passports;
+  DROP POLICY IF EXISTS batch_passports_update ON batch_passports;
+  DROP POLICY IF EXISTS batch_passports_delete ON batch_passports;
+  DROP POLICY IF EXISTS batch_passports_anon_select ON batch_passports;
+EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- Published passports are publicly readable (INTENTIONALLY allows anonymous - for public passport viewing)
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'batch_passports' AND policyname = 'batch_passports_public_read') THEN
-    EXECUTE 'CREATE POLICY batch_passports_public_read ON batch_passports FOR SELECT USING (is_published = true)';
-  END IF;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+-- Anonymous users can only read published passports
+CREATE POLICY batch_passports_anon_select ON batch_passports
+  FOR SELECT TO anon
+  USING (is_published = true);
+
+-- Authenticated users can read their own OR published passports (consolidated)
+CREATE POLICY batch_passports_select ON batch_passports
+  FOR SELECT TO authenticated
+  USING ((select auth.uid()) = user_id OR is_published = true);
+
+-- Authenticated users can insert their own passports
+CREATE POLICY batch_passports_insert ON batch_passports
+  FOR INSERT TO authenticated
+  WITH CHECK ((select auth.uid()) = user_id);
+
+-- Authenticated users can update their own passports
+CREATE POLICY batch_passports_update ON batch_passports
+  FOR UPDATE TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+-- Authenticated users can delete their own passports
+CREATE POLICY batch_passports_delete ON batch_passports
+  FOR DELETE TO authenticated
+  USING ((select auth.uid()) = user_id);
 
 -- Enable RLS on passport_views
 ALTER TABLE passport_views ENABLE ROW LEVEL SECURITY;
@@ -5640,7 +5660,7 @@ BEGIN
       EXISTS (
         SELECT 1 FROM public.batch_passports bp
         WHERE bp.id = passport_views.passport_id
-        AND bp.user_id = auth.uid()
+        AND bp.user_id = (select auth.uid())
       )
     )';
   END IF;
@@ -5650,23 +5670,37 @@ END $$;
 -- Enable RLS on redaction_presets
 ALTER TABLE redaction_presets ENABLE ROW LEVEL SECURITY;
 
--- System presets are readable by authenticated users
+-- Drop and recreate redaction_presets policies to fix multiple permissive policy issues
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'redaction_presets' AND policyname = 'redaction_presets_system_read') THEN
-    EXECUTE 'CREATE POLICY redaction_presets_system_read ON redaction_presets FOR SELECT TO authenticated USING (is_system = true)';
-  END IF;
-EXCEPTION WHEN duplicate_object THEN NULL;
+  DROP POLICY IF EXISTS redaction_presets_system_read ON redaction_presets;
+  DROP POLICY IF EXISTS redaction_presets_owner_all ON redaction_presets;
+  DROP POLICY IF EXISTS redaction_presets_select ON redaction_presets;
+  DROP POLICY IF EXISTS redaction_presets_insert ON redaction_presets;
+  DROP POLICY IF EXISTS redaction_presets_update ON redaction_presets;
+  DROP POLICY IF EXISTS redaction_presets_delete ON redaction_presets;
+EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- Users can manage their own presets (TO authenticated restricts to authenticated users)
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'redaction_presets' AND policyname = 'redaction_presets_owner_all') THEN
-    EXECUTE 'CREATE POLICY redaction_presets_owner_all ON redaction_presets FOR ALL TO authenticated USING (auth.uid() = user_id)';
-  END IF;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+-- Consolidated SELECT: system presets OR user's own presets
+CREATE POLICY redaction_presets_select ON redaction_presets
+  FOR SELECT TO authenticated
+  USING (is_system = true OR (select auth.uid()) = user_id);
+
+-- Users can insert their own presets
+CREATE POLICY redaction_presets_insert ON redaction_presets
+  FOR INSERT TO authenticated
+  WITH CHECK ((select auth.uid()) = user_id);
+
+-- Users can update their own presets (not system presets)
+CREATE POLICY redaction_presets_update ON redaction_presets
+  FOR UPDATE TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+-- Users can delete their own presets (not system presets)
+CREATE POLICY redaction_presets_delete ON redaction_presets
+  FOR DELETE TO authenticated
+  USING ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- HELPER FUNCTIONS FOR PUBLIC SHARING
@@ -6153,7 +6187,7 @@ DECLARE
   v_current_user_id UUID;
 BEGIN
   -- Get the current authenticated user
-  v_current_user_id := auth.uid();
+  v_current_user_id := (select auth.uid());
 
   -- Security check: can only migrate TO your own account
   IF v_current_user_id IS NULL OR v_current_user_id != p_to_user_id THEN
@@ -6472,41 +6506,40 @@ ALTER TABLE suggestion_messages ENABLE ROW LEVEL SECURITY;
 -- RLS Policies for suggestion_messages
 DO $$
 BEGIN
+  -- Drop old separate policies (legacy)
   DROP POLICY IF EXISTS "suggestion_messages_select_own" ON suggestion_messages;
   DROP POLICY IF EXISTS "suggestion_messages_select_admin" ON suggestion_messages;
   DROP POLICY IF EXISTS "suggestion_messages_insert" ON suggestion_messages;
   DROP POLICY IF EXISTS "suggestion_messages_update_read" ON suggestion_messages;
+  -- Drop consolidated policy for idempotency
+  DROP POLICY IF EXISTS "suggestion_messages_select" ON suggestion_messages;
 EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
--- Users can view messages on their own suggestions (TO authenticated restricts to authenticated users)
-CREATE POLICY "suggestion_messages_select_own"
+-- Consolidated SELECT: Users can view their own OR admins can view all
+CREATE POLICY "suggestion_messages_select"
   ON suggestion_messages FOR SELECT TO authenticated
   USING (
-    user_id = auth.uid() OR
+    user_id = (select auth.uid()) OR
     EXISTS (
       SELECT 1 FROM library_suggestions ls
       WHERE ls.id = suggestion_messages.suggestion_id
-      AND ls.user_id = auth.uid()
+      AND ls.user_id = (select auth.uid())
     )
+    OR (select is_admin())
   );
-
--- Admins can view all messages (TO authenticated restricts to authenticated users)
-CREATE POLICY "suggestion_messages_select_admin"
-  ON suggestion_messages FOR SELECT TO authenticated
-  USING (is_admin());
 
 -- Users and admins can insert messages on relevant suggestions (TO authenticated restricts to authenticated users)
 CREATE POLICY "suggestion_messages_insert"
   ON suggestion_messages FOR INSERT TO authenticated
   WITH CHECK (
-    user_id = auth.uid() AND
+    user_id = (select auth.uid()) AND
     (
       -- User can message on their own suggestion
       EXISTS (
         SELECT 1 FROM library_suggestions ls
         WHERE ls.id = suggestion_id
-        AND ls.user_id = auth.uid()
+        AND ls.user_id = (select auth.uid())
       )
       OR
       -- Admin can message on any suggestion
@@ -6522,9 +6555,9 @@ CREATE POLICY "suggestion_messages_update_read"
     EXISTS (
       SELECT 1 FROM library_suggestions ls
       WHERE ls.id = suggestion_messages.suggestion_id
-      AND ls.user_id = auth.uid()
+      AND ls.user_id = (select auth.uid())
     )
-    OR is_admin()
+    OR (select is_admin())
   );
 
 -- Add trigger for updated_at on suggestion_messages (using existing update_updated_at function)
@@ -6893,12 +6926,12 @@ ALTER TABLE observation_history ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "observation_history_select_own" ON observation_history;
 CREATE POLICY "observation_history_select_own"
   ON observation_history FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR user_id IS NULL);
+  USING (user_id = (select auth.uid()) OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "observation_history_insert_own" ON observation_history;
 CREATE POLICY "observation_history_insert_own"
   ON observation_history FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (select auth.uid()));
 
 -- ============================================================================
 -- HARVEST HISTORY (immutable log of all harvests)
@@ -6949,12 +6982,12 @@ ALTER TABLE harvest_history ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "harvest_history_select_own" ON harvest_history;
 CREATE POLICY "harvest_history_select_own"
   ON harvest_history FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR user_id IS NULL);
+  USING (user_id = (select auth.uid()) OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "harvest_history_insert_own" ON harvest_history;
 CREATE POLICY "harvest_history_insert_own"
   ON harvest_history FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (select auth.uid()));
 
 -- ============================================================================
 -- TRANSFER HISTORY (immutable log of all culture transfers)
@@ -7006,12 +7039,12 @@ ALTER TABLE transfer_history ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "transfer_history_select_own" ON transfer_history;
 CREATE POLICY "transfer_history_select_own"
   ON transfer_history FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR user_id IS NULL);
+  USING (user_id = (select auth.uid()) OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "transfer_history_insert_own" ON transfer_history;
 CREATE POLICY "transfer_history_insert_own"
   ON transfer_history FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (select auth.uid()));
 
 -- ============================================================================
 -- STAGE TRANSITION HISTORY (immutable log of stage changes)
@@ -7054,12 +7087,12 @@ ALTER TABLE stage_transition_history ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "stage_transition_history_select_own" ON stage_transition_history;
 CREATE POLICY "stage_transition_history_select_own"
   ON stage_transition_history FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR user_id IS NULL);
+  USING (user_id = (select auth.uid()) OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "stage_transition_history_insert_own" ON stage_transition_history;
 CREATE POLICY "stage_transition_history_insert_own"
   ON stage_transition_history FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (select auth.uid()));
 
 -- ============================================================================
 -- DATA AMENDMENT LOG (tracks all corrections/updates)
@@ -7109,12 +7142,12 @@ ALTER TABLE data_amendment_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "data_amendment_log_select_own" ON data_amendment_log;
 CREATE POLICY "data_amendment_log_select_own"
   ON data_amendment_log FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR user_id IS NULL);
+  USING (user_id = (select auth.uid()) OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "data_amendment_log_insert_own" ON data_amendment_log;
 CREATE POLICY "data_amendment_log_insert_own"
   ON data_amendment_log FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (select auth.uid()));
 
 -- ============================================================================
 -- BULK OPERATIONS TRACKING (for import/migration tracking)
@@ -7139,12 +7172,12 @@ ALTER TABLE bulk_operations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "bulk_operations_select_own" ON bulk_operations;
 CREATE POLICY "bulk_operations_select_own"
   ON bulk_operations FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR user_id IS NULL);
+  USING (user_id = (select auth.uid()) OR user_id IS NULL);
 
 DROP POLICY IF EXISTS "bulk_operations_insert_own" ON bulk_operations;
 CREATE POLICY "bulk_operations_insert_own"
   ON bulk_operations FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (select auth.uid()));
 
 -- ============================================================================
 -- STORED PROCEDURE: amend_record
@@ -7164,7 +7197,7 @@ DECLARE
   v_user_id UUID;
 BEGIN
   -- Get current user
-  v_user_id := auth.uid();
+  v_user_id := (select auth.uid());
 
   -- Get record_group_id and current version from original
   EXECUTE format(
@@ -7236,7 +7269,7 @@ DECLARE
   v_user_id UUID;
   v_record_group_id UUID;
 BEGIN
-  v_user_id := auth.uid();
+  v_user_id := (select auth.uid());
 
   -- Get record_group_id
   EXECUTE format(
@@ -7522,13 +7555,13 @@ DROP POLICY IF EXISTS "notification_queue_delete" ON notification_queue;
 
 -- Note: Service role and SECURITY DEFINER functions bypass RLS entirely
 CREATE POLICY "notification_queue_select" ON notification_queue
-  FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin());
+  FOR SELECT TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 CREATE POLICY "notification_queue_insert" ON notification_queue
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid() OR is_admin());
+  FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()) OR (select is_admin()));
 CREATE POLICY "notification_queue_update" ON notification_queue
-  FOR UPDATE TO authenticated USING (user_id = auth.uid() OR is_admin());
+  FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 CREATE POLICY "notification_queue_delete" ON notification_queue
-  FOR DELETE TO authenticated USING (user_id = auth.uid() OR is_admin());
+  FOR DELETE TO authenticated USING (user_id = (select auth.uid()) OR (select is_admin()));
 
 -- ============================================================================
 -- NOTIFICATION GENERATION FUNCTIONS
@@ -8783,19 +8816,19 @@ ALTER TABLE lab_item_instances ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_select') THEN
-    CREATE POLICY lab_item_instances_select ON lab_item_instances FOR SELECT TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY lab_item_instances_select ON lab_item_instances FOR SELECT TO authenticated USING (user_id = (select auth.uid()));
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_insert') THEN
-    CREATE POLICY lab_item_instances_insert ON lab_item_instances FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    CREATE POLICY lab_item_instances_insert ON lab_item_instances FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_update') THEN
-    CREATE POLICY lab_item_instances_update ON lab_item_instances FOR UPDATE TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY lab_item_instances_update ON lab_item_instances FOR UPDATE TO authenticated USING (user_id = (select auth.uid()));
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'lab_item_instances' AND policyname = 'lab_item_instances_delete') THEN
-    CREATE POLICY lab_item_instances_delete ON lab_item_instances FOR DELETE TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY lab_item_instances_delete ON lab_item_instances FOR DELETE TO authenticated USING (user_id = (select auth.uid()));
   END IF;
 
   RAISE NOTICE 'Lab item instances RLS policies created!';
@@ -8867,16 +8900,16 @@ ALTER TABLE ai_chat_sessions ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_select') THEN
-    CREATE POLICY ai_chat_sessions_select ON ai_chat_sessions FOR SELECT TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY ai_chat_sessions_select ON ai_chat_sessions FOR SELECT TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_insert') THEN
-    CREATE POLICY ai_chat_sessions_insert ON ai_chat_sessions FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    CREATE POLICY ai_chat_sessions_insert ON ai_chat_sessions FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_update') THEN
-    CREATE POLICY ai_chat_sessions_update ON ai_chat_sessions FOR UPDATE TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY ai_chat_sessions_update ON ai_chat_sessions FOR UPDATE TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_sessions' AND policyname = 'ai_chat_sessions_delete') THEN
-    CREATE POLICY ai_chat_sessions_delete ON ai_chat_sessions FOR DELETE TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY ai_chat_sessions_delete ON ai_chat_sessions FOR DELETE TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   RAISE NOTICE 'AI chat sessions RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -8926,13 +8959,13 @@ ALTER TABLE ai_chat_messages ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_messages' AND policyname = 'ai_chat_messages_select') THEN
-    CREATE POLICY ai_chat_messages_select ON ai_chat_messages FOR SELECT TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY ai_chat_messages_select ON ai_chat_messages FOR SELECT TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_messages' AND policyname = 'ai_chat_messages_insert') THEN
-    CREATE POLICY ai_chat_messages_insert ON ai_chat_messages FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    CREATE POLICY ai_chat_messages_insert ON ai_chat_messages FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_chat_messages' AND policyname = 'ai_chat_messages_delete') THEN
-    CREATE POLICY ai_chat_messages_delete ON ai_chat_messages FOR DELETE TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY ai_chat_messages_delete ON ai_chat_messages FOR DELETE TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   RAISE NOTICE 'AI chat messages RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -8979,10 +9012,10 @@ ALTER TABLE ai_usage ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_usage' AND policyname = 'ai_usage_select') THEN
-    CREATE POLICY ai_usage_select ON ai_usage FOR SELECT TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY ai_usage_select ON ai_usage FOR SELECT TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_usage' AND policyname = 'ai_usage_insert') THEN
-    CREATE POLICY ai_usage_insert ON ai_usage FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    CREATE POLICY ai_usage_insert ON ai_usage FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
   END IF;
   RAISE NOTICE 'AI usage RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9029,13 +9062,13 @@ ALTER TABLE ai_user_settings ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_user_settings' AND policyname = 'ai_user_settings_select') THEN
-    CREATE POLICY ai_user_settings_select ON ai_user_settings FOR SELECT TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY ai_user_settings_select ON ai_user_settings FOR SELECT TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_user_settings' AND policyname = 'ai_user_settings_insert') THEN
-    CREATE POLICY ai_user_settings_insert ON ai_user_settings FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    CREATE POLICY ai_user_settings_insert ON ai_user_settings FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ai_user_settings' AND policyname = 'ai_user_settings_update') THEN
-    CREATE POLICY ai_user_settings_update ON ai_user_settings FOR UPDATE TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY ai_user_settings_update ON ai_user_settings FOR UPDATE TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   RAISE NOTICE 'AI user settings RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9112,23 +9145,26 @@ CREATE INDEX IF NOT EXISTS idx_knowledge_documents_search ON knowledge_documents
 -- RLS for knowledge_documents (public read for approved, admin write)
 ALTER TABLE knowledge_documents ENABLE ROW LEVEL SECURITY;
 
+-- Drop and recreate knowledge_documents policies to fix multiple permissive policy issues
 DO $$
 BEGIN
-  -- Anyone can read approved documents (split for anon vs authenticated to avoid warnings)
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_documents' AND policyname = 'knowledge_documents_select_public') THEN
-    CREATE POLICY knowledge_documents_select_public ON knowledge_documents FOR SELECT TO anon USING (review_status = 'approved' AND is_active = true);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_documents' AND policyname = 'knowledge_documents_select_approved') THEN
-    CREATE POLICY knowledge_documents_select_approved ON knowledge_documents FOR SELECT TO authenticated USING (review_status = 'approved' AND is_active = true);
-  END IF;
-  -- Authors can read their own drafts
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_documents' AND policyname = 'knowledge_documents_select_author') THEN
-    CREATE POLICY knowledge_documents_select_author ON knowledge_documents FOR SELECT TO authenticated USING (author_id = auth.uid());
-  END IF;
-  RAISE NOTICE 'Knowledge documents RLS policies created!';
-EXCEPTION WHEN OTHERS THEN
-  RAISE WARNING 'Error creating knowledge_documents RLS policies: %', SQLERRM;
+  DROP POLICY IF EXISTS knowledge_documents_select_public ON knowledge_documents;
+  DROP POLICY IF EXISTS knowledge_documents_select_approved ON knowledge_documents;
+  DROP POLICY IF EXISTS knowledge_documents_select_author ON knowledge_documents;
+  DROP POLICY IF EXISTS knowledge_documents_anon_select ON knowledge_documents;
+  DROP POLICY IF EXISTS knowledge_documents_select ON knowledge_documents;
+EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
+
+-- Anonymous users can only read approved, active documents
+CREATE POLICY knowledge_documents_anon_select ON knowledge_documents
+  FOR SELECT TO anon
+  USING (review_status = 'approved' AND is_active = true);
+
+-- Authenticated users: approved active docs OR their own drafts (consolidated)
+CREATE POLICY knowledge_documents_select ON knowledge_documents
+  FOR SELECT TO authenticated
+  USING ((review_status = 'approved' AND is_active = true) OR author_id = (select auth.uid()));
 
 
 -- Knowledge Suggestions (community submissions)
@@ -9185,19 +9221,19 @@ DO $$
 BEGIN
   -- Users can read their own suggestions
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_select') THEN
-    CREATE POLICY knowledge_suggestions_select ON knowledge_suggestions FOR SELECT TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY knowledge_suggestions_select ON knowledge_suggestions FOR SELECT TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   -- Users can create suggestions
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_insert') THEN
-    CREATE POLICY knowledge_suggestions_insert ON knowledge_suggestions FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    CREATE POLICY knowledge_suggestions_insert ON knowledge_suggestions FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
   END IF;
   -- Users can update their pending suggestions
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_update') THEN
-    CREATE POLICY knowledge_suggestions_update ON knowledge_suggestions FOR UPDATE TO authenticated USING (user_id = auth.uid() AND status = 'pending');
+    CREATE POLICY knowledge_suggestions_update ON knowledge_suggestions FOR UPDATE TO authenticated USING (user_id = (select auth.uid()) AND status = 'pending');
   END IF;
   -- Users can delete their pending suggestions
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'knowledge_suggestions' AND policyname = 'knowledge_suggestions_delete') THEN
-    CREATE POLICY knowledge_suggestions_delete ON knowledge_suggestions FOR DELETE TO authenticated USING (user_id = auth.uid() AND status = 'pending');
+    CREATE POLICY knowledge_suggestions_delete ON knowledge_suggestions FOR DELETE TO authenticated USING (user_id = (select auth.uid()) AND status = 'pending');
   END IF;
   RAISE NOTICE 'Knowledge suggestions RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9260,16 +9296,16 @@ ALTER TABLE iot_devices ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_select') THEN
-    CREATE POLICY iot_devices_select ON iot_devices FOR SELECT TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY iot_devices_select ON iot_devices FOR SELECT TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_insert') THEN
-    CREATE POLICY iot_devices_insert ON iot_devices FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    CREATE POLICY iot_devices_insert ON iot_devices FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_update') THEN
-    CREATE POLICY iot_devices_update ON iot_devices FOR UPDATE TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY iot_devices_update ON iot_devices FOR UPDATE TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_devices' AND policyname = 'iot_devices_delete') THEN
-    CREATE POLICY iot_devices_delete ON iot_devices FOR DELETE TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY iot_devices_delete ON iot_devices FOR DELETE TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   RAISE NOTICE 'IoT devices RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9325,10 +9361,10 @@ ALTER TABLE iot_readings ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_readings' AND policyname = 'iot_readings_select') THEN
-    CREATE POLICY iot_readings_select ON iot_readings FOR SELECT TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY iot_readings_select ON iot_readings FOR SELECT TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_readings' AND policyname = 'iot_readings_insert') THEN
-    CREATE POLICY iot_readings_insert ON iot_readings FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    CREATE POLICY iot_readings_insert ON iot_readings FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
   END IF;
   RAISE NOTICE 'IoT readings RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9379,13 +9415,13 @@ ALTER TABLE iot_alerts ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alerts' AND policyname = 'iot_alerts_select') THEN
-    CREATE POLICY iot_alerts_select ON iot_alerts FOR SELECT TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY iot_alerts_select ON iot_alerts FOR SELECT TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alerts' AND policyname = 'iot_alerts_insert') THEN
-    CREATE POLICY iot_alerts_insert ON iot_alerts FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    CREATE POLICY iot_alerts_insert ON iot_alerts FOR INSERT TO authenticated WITH CHECK (user_id = (select auth.uid()));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alerts' AND policyname = 'iot_alerts_update') THEN
-    CREATE POLICY iot_alerts_update ON iot_alerts FOR UPDATE TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY iot_alerts_update ON iot_alerts FOR UPDATE TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   RAISE NOTICE 'IoT alerts RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
@@ -9431,7 +9467,7 @@ ALTER TABLE iot_alert_thresholds ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'iot_alert_thresholds' AND policyname = 'iot_alert_thresholds_all') THEN
-    CREATE POLICY iot_alert_thresholds_all ON iot_alert_thresholds FOR ALL TO authenticated USING (user_id = auth.uid());
+    CREATE POLICY iot_alert_thresholds_all ON iot_alert_thresholds FOR ALL TO authenticated USING (user_id = (select auth.uid()));
   END IF;
   RAISE NOTICE 'IoT alert thresholds RLS policies created!';
 EXCEPTION WHEN OTHERS THEN
