@@ -4887,19 +4887,19 @@ END $$;
 -- daily_checks policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own daily_checks"
   ON daily_checks FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own daily_checks"
   ON daily_checks FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own daily_checks"
   ON daily_checks FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete their own daily_checks"
   ON daily_checks FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- RLS Policies for harvest_forecasts - TO authenticated restricts to authenticated users
 DO $$
@@ -4913,19 +4913,19 @@ END $$;
 
 CREATE POLICY "Users can view their own harvest_forecasts"
   ON harvest_forecasts FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own harvest_forecasts"
   ON harvest_forecasts FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own harvest_forecasts"
   ON harvest_forecasts FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete their own harvest_forecasts"
   ON harvest_forecasts FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- RLS Policies for room_statuses - TO authenticated restricts to authenticated users
 DO $$
@@ -4939,19 +4939,19 @@ END $$;
 
 CREATE POLICY "Users can view their own room_statuses"
   ON room_statuses FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own room_statuses"
   ON room_statuses FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own room_statuses"
   ON room_statuses FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete their own room_statuses"
   ON room_statuses FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- LAB EVENTS (General purpose event logging - dev-062)
@@ -5000,19 +5000,19 @@ END $$;
 -- lab_events policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own lab_events"
   ON lab_events FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own lab_events"
   ON lab_events FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own lab_events"
   ON lab_events FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete their own lab_events"
   ON lab_events FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- LIBRARY SUGGESTIONS (Community contribution system)
@@ -5130,19 +5130,19 @@ END $$;
 -- cold_storage_checks policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own cold_storage_checks"
   ON cold_storage_checks FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own cold_storage_checks"
   ON cold_storage_checks FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own cold_storage_checks"
   ON cold_storage_checks FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete their own cold_storage_checks"
   ON cold_storage_checks FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- OUTCOME LOGGING TABLES (v18)
@@ -5217,19 +5217,19 @@ END $$;
 -- entity_outcomes policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own entity_outcomes"
   ON entity_outcomes FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own entity_outcomes"
   ON entity_outcomes FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own entity_outcomes"
   ON entity_outcomes FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete their own entity_outcomes"
   ON entity_outcomes FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- Contamination details (linked to outcomes for detailed contam analysis)
 CREATE TABLE IF NOT EXISTS contamination_details (
@@ -5283,19 +5283,19 @@ END $$;
 -- contamination_details policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own contamination_details"
   ON contamination_details FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own contamination_details"
   ON contamination_details FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own contamination_details"
   ON contamination_details FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete their own contamination_details"
   ON contamination_details FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- Exit surveys (entity-specific questions and user feedback)
 CREATE TABLE IF NOT EXISTS exit_surveys (
@@ -5347,19 +5347,19 @@ END $$;
 -- exit_surveys policies - TO authenticated restricts to authenticated users
 CREATE POLICY "Users can view their own exit_surveys"
   ON exit_surveys FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own exit_surveys"
   ON exit_surveys FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own exit_surveys"
   ON exit_surveys FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete their own exit_surveys"
   ON exit_surveys FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- RPC FUNCTIONS (Direct SQL to bypass PostgREST schema cache issues)
@@ -5594,7 +5594,7 @@ ALTER TABLE share_tokens ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'share_tokens' AND policyname = 'share_tokens_owner_all') THEN
-    EXECUTE 'CREATE POLICY share_tokens_owner_all ON share_tokens FOR ALL TO authenticated USING (auth.uid() = created_by)';
+    EXECUTE 'CREATE POLICY share_tokens_owner_all ON share_tokens FOR ALL TO authenticated USING ((select auth.uid()) = created_by)';
   END IF;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
@@ -9499,6 +9499,209 @@ BEGIN
   RAISE NOTICE 'AI/IoT updated_at triggers created!';
 EXCEPTION WHEN OTHERS THEN
   RAISE WARNING 'Error creating AI/IoT triggers: %', SQLERRM;
+END $$;
+
+
+-- ============================================================================
+-- COMPREHENSIVE FOREIGN KEY INDEXES
+-- ============================================================================
+-- These indexes optimize JOIN operations and RLS policy checks on foreign keys.
+-- Added to address Supabase linting warnings about unindexed foreign keys.
+
+DO $$
+BEGIN
+  -- Cultures table indexes (missing FKs)
+  CREATE INDEX IF NOT EXISTS idx_cultures_container_id ON cultures(container_id);
+  CREATE INDEX IF NOT EXISTS idx_cultures_location_id ON cultures(location_id);
+  CREATE INDEX IF NOT EXISTS idx_cultures_superseded_by_id ON cultures(superseded_by_id);
+  CREATE INDEX IF NOT EXISTS idx_cultures_amends_record_id ON cultures(amends_record_id);
+
+  -- Grows table indexes (missing FKs)
+  CREATE INDEX IF NOT EXISTS idx_grows_container_id ON grows(container_id);
+  CREATE INDEX IF NOT EXISTS idx_grows_location_id ON grows(location_id);
+  CREATE INDEX IF NOT EXISTS idx_grows_substrate_type_id ON grows(substrate_type_id);
+  CREATE INDEX IF NOT EXISTS idx_grows_superseded_by_id ON grows(superseded_by_id);
+  CREATE INDEX IF NOT EXISTS idx_grows_amends_record_id ON grows(amends_record_id);
+  CREATE INDEX IF NOT EXISTS idx_grows_source_prepared_spawn_id ON grows(source_prepared_spawn_id);
+  CREATE INDEX IF NOT EXISTS idx_grows_species_id ON grows(species_id);
+
+  -- Grain spawn table indexes
+  CREATE INDEX IF NOT EXISTS idx_grain_spawn_user_id ON grain_spawn(user_id);
+  CREATE INDEX IF NOT EXISTS idx_grain_spawn_strain_id ON grain_spawn(strain_id);
+  CREATE INDEX IF NOT EXISTS idx_grain_spawn_source_prepared_spawn_id ON grain_spawn(source_prepared_spawn_id);
+  CREATE INDEX IF NOT EXISTS idx_grain_spawn_source_culture_id ON grain_spawn(source_culture_id);
+  CREATE INDEX IF NOT EXISTS idx_grain_spawn_container_id ON grain_spawn(container_id);
+  CREATE INDEX IF NOT EXISTS idx_grain_spawn_grain_type_id ON grain_spawn(grain_type_id);
+  CREATE INDEX IF NOT EXISTS idx_grain_spawn_location_id ON grain_spawn(location_id);
+  CREATE INDEX IF NOT EXISTS idx_grain_spawn_superseded_by_id ON grain_spawn(superseded_by_id);
+  CREATE INDEX IF NOT EXISTS idx_grain_spawn_amends_record_id ON grain_spawn(amends_record_id);
+
+  -- Grain spawn observations
+  CREATE INDEX IF NOT EXISTS idx_grain_spawn_observations_grain_spawn_id ON grain_spawn_observations(grain_spawn_id);
+  CREATE INDEX IF NOT EXISTS idx_grain_spawn_observations_user_id ON grain_spawn_observations(user_id);
+
+  -- Prepared spawn table indexes
+  CREATE INDEX IF NOT EXISTS idx_prepared_spawn_user_id ON prepared_spawn(user_id);
+  CREATE INDEX IF NOT EXISTS idx_prepared_spawn_strain_id ON prepared_spawn(strain_id);
+  CREATE INDEX IF NOT EXISTS idx_prepared_spawn_source_culture_id ON prepared_spawn(source_culture_id);
+  CREATE INDEX IF NOT EXISTS idx_prepared_spawn_container_id ON prepared_spawn(container_id);
+  CREATE INDEX IF NOT EXISTS idx_prepared_spawn_substrate_type_id ON prepared_spawn(substrate_type_id);
+  CREATE INDEX IF NOT EXISTS idx_prepared_spawn_location_id ON prepared_spawn(location_id);
+  CREATE INDEX IF NOT EXISTS idx_prepared_spawn_superseded_by_id ON prepared_spawn(superseded_by_id);
+  CREATE INDEX IF NOT EXISTS idx_prepared_spawn_amends_record_id ON prepared_spawn(amends_record_id);
+  CREATE INDEX IF NOT EXISTS idx_prepared_spawn_result_culture_id ON prepared_spawn(result_culture_id);
+  CREATE INDEX IF NOT EXISTS idx_prepared_spawn_recipe_id ON prepared_spawn(recipe_id);
+
+  -- Inventory items indexes (missing FKs)
+  CREATE INDEX IF NOT EXISTS idx_inventory_items_supplier_id ON inventory_items(supplier_id);
+  CREATE INDEX IF NOT EXISTS idx_inventory_items_location_id ON inventory_items(location_id);
+
+  -- Inventory lots indexes (missing FKs)
+  CREATE INDEX IF NOT EXISTS idx_inventory_lots_user_id ON inventory_lots(user_id);
+  CREATE INDEX IF NOT EXISTS idx_inventory_lots_purchase_order_id ON inventory_lots(purchase_order_id);
+  CREATE INDEX IF NOT EXISTS idx_inventory_lots_supplier_id ON inventory_lots(supplier_id);
+  CREATE INDEX IF NOT EXISTS idx_inventory_lots_location_id ON inventory_lots(location_id);
+
+  -- Inventory usages indexes (missing FKs)
+  CREATE INDEX IF NOT EXISTS idx_inventory_usages_user_id ON inventory_usages(used_by);
+  CREATE INDEX IF NOT EXISTS idx_inventory_usages_inventory_item_id ON inventory_usages(inventory_item_id);
+
+  -- Purchase orders indexes
+  CREATE INDEX IF NOT EXISTS idx_purchase_orders_user_id ON purchase_orders(user_id);
+
+  -- Locations table indexes (missing FKs)
+  CREATE INDEX IF NOT EXISTS idx_locations_parent_id ON locations(parent_id);
+  CREATE INDEX IF NOT EXISTS idx_locations_type_id ON locations(type_id);
+  CREATE INDEX IF NOT EXISTS idx_locations_classification_id ON locations(classification_id);
+
+  -- Containers table indexes
+  CREATE INDEX IF NOT EXISTS idx_containers_user_id ON containers(user_id);
+  CREATE INDEX IF NOT EXISTS idx_containers_supplier_id ON containers(supplier_id);
+
+  -- Suppliers table indexes
+  CREATE INDEX IF NOT EXISTS idx_suppliers_user_id ON suppliers(user_id);
+
+  -- Substrate types indexes
+  CREATE INDEX IF NOT EXISTS idx_substrate_types_user_id ON substrate_types(user_id);
+
+  -- Location types and classifications indexes
+  CREATE INDEX IF NOT EXISTS idx_location_types_user_id ON location_types(user_id);
+  CREATE INDEX IF NOT EXISTS idx_location_classifications_user_id ON location_classifications(user_id);
+
+  -- Grain types indexes
+  CREATE INDEX IF NOT EXISTS idx_grain_types_user_id ON grain_types(user_id);
+
+  -- Recipe categories indexes
+  CREATE INDEX IF NOT EXISTS idx_recipe_categories_user_id ON recipe_categories(user_id);
+
+  -- Inventory categories indexes
+  CREATE INDEX IF NOT EXISTS idx_inventory_categories_user_id ON inventory_categories(user_id);
+
+  -- Flushes indexes (missing FK)
+  CREATE INDEX IF NOT EXISTS idx_flushes_user_id ON flushes(user_id);
+
+  -- Grow observations indexes
+  CREATE INDEX IF NOT EXISTS idx_grow_observations_user_id ON grow_observations(user_id);
+
+  -- Culture observations indexes
+  CREATE INDEX IF NOT EXISTS idx_culture_observations_user_id ON culture_observations(user_id);
+
+  -- Culture transfers indexes
+  CREATE INDEX IF NOT EXISTS idx_culture_transfers_user_id ON culture_transfers(user_id);
+  CREATE INDEX IF NOT EXISTS idx_culture_transfers_source_culture_id ON culture_transfers(source_culture_id);
+  CREATE INDEX IF NOT EXISTS idx_culture_transfers_target_culture_id ON culture_transfers(target_culture_id);
+
+  -- Recipe ingredients indexes (missing FK)
+  CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_user_id ON recipe_ingredients(user_id);
+  CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_inventory_item_id ON recipe_ingredients(inventory_item_id);
+
+  -- User settings indexes
+  CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id);
+
+  -- Batch passports indexes (missing FKs)
+  CREATE INDEX IF NOT EXISTS idx_batch_passports_culture_id ON batch_passports(culture_id);
+  CREATE INDEX IF NOT EXISTS idx_batch_passports_grow_id ON batch_passports(grow_id);
+  CREATE INDEX IF NOT EXISTS idx_batch_passports_spawn_id ON batch_passports(spawn_id);
+
+  -- Passport views indexes (missing FK)
+  CREATE INDEX IF NOT EXISTS idx_passport_views_viewer_id ON passport_views(viewer_id);
+
+  -- Share tokens indexes
+  CREATE INDEX IF NOT EXISTS idx_share_tokens_created_by ON share_tokens(created_by);
+
+  -- Entity outcomes indexes
+  CREATE INDEX IF NOT EXISTS idx_entity_outcomes_strain_id ON entity_outcomes(strain_id);
+  CREATE INDEX IF NOT EXISTS idx_entity_outcomes_species_id ON entity_outcomes(species_id);
+  CREATE INDEX IF NOT EXISTS idx_entity_outcomes_location_id ON entity_outcomes(location_id);
+
+  -- Contamination details indexes
+  CREATE INDEX IF NOT EXISTS idx_contamination_details_outcome_id ON contamination_details(outcome_id);
+
+  -- Exit surveys indexes
+  CREATE INDEX IF NOT EXISTS idx_exit_surveys_outcome_id ON exit_surveys(outcome_id);
+
+  -- Cold storage checks indexes (missing FK)
+  CREATE INDEX IF NOT EXISTS idx_cold_storage_checks_location_id ON cold_storage_checks(location_id);
+  CREATE INDEX IF NOT EXISTS idx_cold_storage_checks_item ON cold_storage_checks(item_type, item_id);
+
+  -- Library suggestions indexes
+  CREATE INDEX IF NOT EXISTS idx_library_suggestions_target_species_id ON library_suggestions(target_species_id);
+  CREATE INDEX IF NOT EXISTS idx_library_suggestions_target_strain_id ON library_suggestions(target_strain_id);
+  CREATE INDEX IF NOT EXISTS idx_library_suggestions_reviewed_by ON library_suggestions(reviewed_by);
+
+  -- Lab events indexes (additional)
+  CREATE INDEX IF NOT EXISTS idx_lab_events_entity_id ON lab_events(entity_id);
+
+  -- Harvest forecasts indexes
+  CREATE INDEX IF NOT EXISTS idx_harvest_forecasts_user_id ON harvest_forecasts(user_id);
+
+  -- Room statuses indexes
+  CREATE INDEX IF NOT EXISTS idx_room_statuses_user_id ON room_statuses(user_id);
+
+  -- History tables indexes
+  CREATE INDEX IF NOT EXISTS idx_observation_history_user_id ON observation_history(user_id);
+  CREATE INDEX IF NOT EXISTS idx_observation_history_superseded_by_id ON observation_history(superseded_by_id);
+  CREATE INDEX IF NOT EXISTS idx_harvest_history_user_id ON harvest_history(user_id);
+  CREATE INDEX IF NOT EXISTS idx_harvest_history_superseded_by_id ON harvest_history(superseded_by_id);
+  CREATE INDEX IF NOT EXISTS idx_transfer_history_user_id ON transfer_history(user_id);
+  CREATE INDEX IF NOT EXISTS idx_transfer_history_superseded_by_id ON transfer_history(superseded_by_id);
+
+  -- Versioned records indexes
+  CREATE INDEX IF NOT EXISTS idx_versioned_cultures_user_id ON versioned_cultures(user_id);
+  CREATE INDEX IF NOT EXISTS idx_versioned_grows_user_id ON versioned_grows(user_id);
+  CREATE INDEX IF NOT EXISTS idx_versioned_harvests_user_id ON versioned_harvests(user_id);
+
+  -- Lab item instances indexes
+  CREATE INDEX IF NOT EXISTS idx_lab_item_instances_inventory_item_id ON lab_item_instances(inventory_item_id);
+  CREATE INDEX IF NOT EXISTS idx_lab_item_instances_inventory_lot_id ON lab_item_instances(inventory_lot_id);
+  CREATE INDEX IF NOT EXISTS idx_lab_item_instances_location_id ON lab_item_instances(location_id);
+
+  -- AI chat sessions indexes
+  CREATE INDEX IF NOT EXISTS idx_ai_chat_sessions_context_entity_id ON ai_chat_sessions(context_entity_id);
+
+  -- AI chat messages indexes
+  CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_session_id ON ai_chat_messages(session_id);
+
+  -- AI usage indexes
+  CREATE INDEX IF NOT EXISTS idx_ai_usage_session_id ON ai_usage(session_id);
+
+  -- Knowledge documents indexes
+  CREATE INDEX IF NOT EXISTS idx_knowledge_documents_author_id ON knowledge_documents(author_id);
+  CREATE INDEX IF NOT EXISTS idx_knowledge_documents_previous_version_id ON knowledge_documents(previous_version_id);
+
+  -- Knowledge suggestions indexes
+  CREATE INDEX IF NOT EXISTS idx_knowledge_suggestions_target_document_id ON knowledge_suggestions(target_document_id);
+  CREATE INDEX IF NOT EXISTS idx_knowledge_suggestions_result_document_id ON knowledge_suggestions(result_document_id);
+
+  -- IoT readings indexes
+  CREATE INDEX IF NOT EXISTS idx_iot_readings_location_id ON iot_readings(location_id);
+
+  -- IoT alerts indexes
+  CREATE INDEX IF NOT EXISTS idx_iot_alerts_reading_id ON iot_alerts(reading_id);
+
+  RAISE NOTICE 'All foreign key indexes created successfully!';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error creating some FK indexes: %. Continuing...', SQLERRM;
 END $$;
 
 
