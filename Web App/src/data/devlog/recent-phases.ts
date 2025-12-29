@@ -6242,6 +6242,9 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
 **Files Changed:**
 - src/store/DataContext.tsx - Instance release helpers and new functions
 - src/components/inventory/InstanceManagement.tsx - Fixed status change handling`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
   // =============================================================================
   // PHASE 42: AZURE OPENAI INTEGRATION
   // AI-powered assistance, knowledge library, IoT analysis
@@ -6300,6 +6303,10 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
 - src/store/DataContext.tsx - Updated recalculateGrowCosts
 - src/store/transformations.ts - Added cost field transformations
 - supabase-schema.sql - Added spawn_cost column`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
     id: 'dev-1001',
     status: 'completed',
     priority: 'critical',
@@ -6370,6 +6377,10 @@ All tables have:
 
 **Files Changed:**
 - src/components/inventory/InstanceManagement.tsx - Full UI overhaul`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
     id: 'dev-1002',
     status: 'completed',
     priority: 'high',
@@ -6450,6 +6461,10 @@ All tables have:
 
 **Files Changed:**
 - src/components/forms/InventoryItemForm.tsx - Smart behavior inference`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
     id: 'dev-1003',
     status: 'completed',
     priority: 'critical',
@@ -6516,6 +6531,10 @@ All tables have:
 - src/components/cultures/CultureWizard.tsx - Full instance integration
 - src/components/inventory/StockManagement.tsx - Manual lot auto-instance creation
 - src/store/DataContext.tsx - Unit cost auto-calculation in addInventoryLot`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
     id: 'dev-1004',
     status: 'completed',
     priority: 'high',
