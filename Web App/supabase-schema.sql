@@ -426,8 +426,8 @@ BEGIN
   ) THEN
     -- Drop any existing view first
     DROP VIEW IF EXISTS vessels;
-    -- Create the view
-    EXECUTE 'CREATE VIEW vessels AS
+    -- Create the view with security_invoker to use caller's RLS policies
+    EXECUTE 'CREATE VIEW vessels WITH (security_invoker = true) AS
       SELECT id, name, category as type, volume_ml, is_reusable, notes, is_active, created_at, updated_at, user_id
       FROM containers
       WHERE ''culture'' = ANY(usage_context) OR category IN (''jar'', ''bag'', ''plate'', ''tube'', ''bottle'', ''syringe'')';
@@ -440,8 +440,8 @@ BEGIN
   ) THEN
     -- Drop any existing view first
     DROP VIEW IF EXISTS container_types;
-    -- Create the view
-    EXECUTE 'CREATE VIEW container_types AS
+    -- Create the view with security_invoker to use caller's RLS policies
+    EXECUTE 'CREATE VIEW container_types WITH (security_invoker = true) AS
       SELECT id, name, category, (volume_ml::DECIMAL / 1000) as volume_l, notes, is_active, created_at, updated_at, user_id
       FROM containers
       WHERE ''grow'' = ANY(usage_context) OR category IN (''tub'', ''bucket'', ''bed'', ''bag'', ''jar'')';
@@ -4002,6 +4002,7 @@ ALTER TABLE grow_observations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE flushes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE grain_spawn ENABLE ROW LEVEL SECURITY;
 ALTER TABLE grain_spawn_observations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE prepared_spawn ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_ingredients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
@@ -4289,6 +4290,12 @@ DROP POLICY IF EXISTS "grain_spawn_observations_insert" ON grain_spawn_observati
 DROP POLICY IF EXISTS "grain_spawn_observations_update" ON grain_spawn_observations;
 DROP POLICY IF EXISTS "grain_spawn_observations_delete" ON grain_spawn_observations;
 
+-- Prepared spawn
+DROP POLICY IF EXISTS "prepared_spawn_select" ON prepared_spawn;
+DROP POLICY IF EXISTS "prepared_spawn_insert" ON prepared_spawn;
+DROP POLICY IF EXISTS "prepared_spawn_update" ON prepared_spawn;
+DROP POLICY IF EXISTS "prepared_spawn_delete" ON prepared_spawn;
+
 -- Flushes
 DROP POLICY IF EXISTS "anon_flushes_select" ON flushes;
 DROP POLICY IF EXISTS "anon_flushes_insert" ON flushes;
@@ -4543,6 +4550,12 @@ CREATE POLICY "grain_spawn_observations_select" ON grain_spawn_observations FOR 
 CREATE POLICY "grain_spawn_observations_insert" ON grain_spawn_observations FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
 CREATE POLICY "grain_spawn_observations_update" ON grain_spawn_observations FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
 CREATE POLICY "grain_spawn_observations_delete" ON grain_spawn_observations FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+
+-- Prepared spawn policies (user's own only - no anonymous access)
+CREATE POLICY "prepared_spawn_select" ON prepared_spawn FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+CREATE POLICY "prepared_spawn_insert" ON prepared_spawn FOR INSERT WITH CHECK (is_not_anonymous() AND user_id = auth.uid());
+CREATE POLICY "prepared_spawn_update" ON prepared_spawn FOR UPDATE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
+CREATE POLICY "prepared_spawn_delete" ON prepared_spawn FOR DELETE USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
 
 -- Flushes policies (user's own only - no anonymous access)
 CREATE POLICY "flushes_select" ON flushes FOR SELECT USING (is_not_anonymous() AND (user_id = auth.uid() OR is_admin()));
