@@ -1660,12 +1660,25 @@ CREATE INDEX IF NOT EXISTS idx_verification_codes_user_id ON verification_codes(
 CREATE INDEX IF NOT EXISTS idx_verification_codes_expires_at ON verification_codes(expires_at);
 
 -- Function to automatically create user profile on signup
+-- FIXED: Handle OAuth providers where email is in raw_user_meta_data, not email column
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_email TEXT;
 BEGIN
+  -- Extract email: try direct email first, then OAuth metadata (Google, GitHub, etc.)
+  v_email := COALESCE(
+    NEW.email,
+    NEW.raw_user_meta_data->>'email',
+    NEW.raw_app_meta_data->>'email'
+  );
+
   INSERT INTO public.user_profiles (user_id, email)
-  VALUES (NEW.id, NEW.email)
-  ON CONFLICT (user_id) DO NOTHING;
+  VALUES (NEW.id, v_email)
+  ON CONFLICT (user_id) DO UPDATE SET
+    email = COALESCE(EXCLUDED.email, public.user_profiles.email),
+    updated_at = NOW();
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
@@ -1678,20 +1691,32 @@ CREATE TRIGGER on_auth_user_created
 
 -- Function to update user profile when anonymous user is upgraded to permanent
 -- This handles the case where an anonymous user adds email/password to their account
+-- FIXED: Handle OAuth providers where email is in raw_user_meta_data
 CREATE OR REPLACE FUNCTION handle_user_update()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_email TEXT;
 BEGIN
-  -- Update the user_profiles email when user email changes (anonymous upgrade)
-  IF OLD.email IS DISTINCT FROM NEW.email THEN
+  -- Extract email: try direct email first, then OAuth metadata
+  v_email := COALESCE(
+    NEW.email,
+    NEW.raw_user_meta_data->>'email',
+    NEW.raw_app_meta_data->>'email'
+  );
+
+  -- Update the user_profiles email when user email changes (anonymous upgrade or OAuth)
+  IF OLD.email IS DISTINCT FROM NEW.email OR
+     (OLD.raw_user_meta_data->>'email') IS DISTINCT FROM (NEW.raw_user_meta_data->>'email') THEN
+
     UPDATE public.user_profiles
-    SET email = NEW.email, updated_at = NOW()
+    SET email = v_email, updated_at = NOW()
     WHERE user_id = NEW.id;
 
     -- If no profile exists yet, create one
     IF NOT FOUND THEN
       INSERT INTO public.user_profiles (user_id, email)
-      VALUES (NEW.id, NEW.email)
-      ON CONFLICT (user_id) DO UPDATE SET email = NEW.email, updated_at = NOW();
+      VALUES (NEW.id, v_email)
+      ON CONFLICT (user_id) DO UPDATE SET email = v_email, updated_at = NOW();
     END IF;
   END IF;
   RETURN NEW;
@@ -1723,7 +1748,16 @@ RETURNS TRIGGER
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_email TEXT;
 BEGIN
+  -- Extract email from OAuth metadata or direct email
+  v_email := COALESCE(
+    NEW.email,
+    NEW.raw_user_meta_data->>'email',
+    NEW.raw_app_meta_data->>'email'
+  );
+
   -- Create default user settings
   -- Wrapped in exception block to prevent signup failure
   BEGIN
@@ -1745,6 +1779,37 @@ BEGIN
       ('Main Lab', 'lab', 20, 25, NULL, NULL, 'Clean work area', NEW.id);
   EXCEPTION WHEN OTHERS THEN
     RAISE WARNING '[populate_default_user_data] Failed to create default locations for user %: %', NEW.id, SQLERRM;
+  END;
+
+  -- Create email notification channel if user has an email
+  -- Mark as verified if from OAuth (they've proven email ownership via Google/GitHub)
+  BEGIN
+    IF v_email IS NOT NULL AND v_email != '' THEN
+      INSERT INTO notification_channels (user_id, channel_type, contact_value, is_enabled, is_verified, verified_at)
+      VALUES (NEW.id, 'email', v_email, true, true, NOW())
+      ON CONFLICT (user_id, channel_type) DO UPDATE SET
+        contact_value = EXCLUDED.contact_value,
+        is_verified = true,
+        verified_at = NOW();
+      RAISE NOTICE '[populate_default_user_data] Created email notification channel for user %: %', NEW.id, v_email;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING '[populate_default_user_data] Failed to create notification_channels for user %: %', NEW.id, SQLERRM;
+  END;
+
+  -- Create default notification event preferences (enable important ones by default)
+  BEGIN
+    INSERT INTO notification_event_preferences (user_id, event_category, email_enabled, push_enabled, enabled)
+    VALUES
+      (NEW.id, 'contamination', true, true, true),
+      (NEW.id, 'harvest_ready', true, true, true),
+      (NEW.id, 'culture_expiring', true, true, true),
+      (NEW.id, 'low_inventory', false, true, true),
+      (NEW.id, 'stage_transition', false, true, true),
+      (NEW.id, 'system', true, true, true)
+    ON CONFLICT (user_id, event_category) DO NOTHING;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING '[populate_default_user_data] Failed to create notification_event_preferences for user %: %', NEW.id, SQLERRM;
   END;
 
   -- Always return NEW to allow the trigger to complete
