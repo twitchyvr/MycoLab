@@ -1660,12 +1660,25 @@ CREATE INDEX IF NOT EXISTS idx_verification_codes_user_id ON verification_codes(
 CREATE INDEX IF NOT EXISTS idx_verification_codes_expires_at ON verification_codes(expires_at);
 
 -- Function to automatically create user profile on signup
+-- FIXED: Handle OAuth providers where email is in raw_user_meta_data, not email column
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_email TEXT;
 BEGIN
+  -- Extract email: try direct email first, then OAuth metadata (Google, GitHub, etc.)
+  v_email := COALESCE(
+    NEW.email,
+    NEW.raw_user_meta_data->>'email',
+    NEW.raw_app_meta_data->>'email'
+  );
+
   INSERT INTO public.user_profiles (user_id, email)
-  VALUES (NEW.id, NEW.email)
-  ON CONFLICT (user_id) DO NOTHING;
+  VALUES (NEW.id, v_email)
+  ON CONFLICT (user_id) DO UPDATE SET
+    email = COALESCE(EXCLUDED.email, public.user_profiles.email),
+    updated_at = NOW();
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
@@ -1678,20 +1691,32 @@ CREATE TRIGGER on_auth_user_created
 
 -- Function to update user profile when anonymous user is upgraded to permanent
 -- This handles the case where an anonymous user adds email/password to their account
+-- FIXED: Handle OAuth providers where email is in raw_user_meta_data
 CREATE OR REPLACE FUNCTION handle_user_update()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_email TEXT;
 BEGIN
-  -- Update the user_profiles email when user email changes (anonymous upgrade)
-  IF OLD.email IS DISTINCT FROM NEW.email THEN
+  -- Extract email: try direct email first, then OAuth metadata
+  v_email := COALESCE(
+    NEW.email,
+    NEW.raw_user_meta_data->>'email',
+    NEW.raw_app_meta_data->>'email'
+  );
+
+  -- Update the user_profiles email when user email changes (anonymous upgrade or OAuth)
+  IF OLD.email IS DISTINCT FROM NEW.email OR
+     (OLD.raw_user_meta_data->>'email') IS DISTINCT FROM (NEW.raw_user_meta_data->>'email') THEN
+
     UPDATE public.user_profiles
-    SET email = NEW.email, updated_at = NOW()
+    SET email = v_email, updated_at = NOW()
     WHERE user_id = NEW.id;
 
     -- If no profile exists yet, create one
     IF NOT FOUND THEN
       INSERT INTO public.user_profiles (user_id, email)
-      VALUES (NEW.id, NEW.email)
-      ON CONFLICT (user_id) DO UPDATE SET email = NEW.email, updated_at = NOW();
+      VALUES (NEW.id, v_email)
+      ON CONFLICT (user_id) DO UPDATE SET email = v_email, updated_at = NOW();
     END IF;
   END IF;
   RETURN NEW;
@@ -1723,7 +1748,16 @@ RETURNS TRIGGER
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_email TEXT;
 BEGIN
+  -- Extract email from OAuth metadata or direct email
+  v_email := COALESCE(
+    NEW.email,
+    NEW.raw_user_meta_data->>'email',
+    NEW.raw_app_meta_data->>'email'
+  );
+
   -- Create default user settings
   -- Wrapped in exception block to prevent signup failure
   BEGIN
@@ -1745,6 +1779,37 @@ BEGIN
       ('Main Lab', 'lab', 20, 25, NULL, NULL, 'Clean work area', NEW.id);
   EXCEPTION WHEN OTHERS THEN
     RAISE WARNING '[populate_default_user_data] Failed to create default locations for user %: %', NEW.id, SQLERRM;
+  END;
+
+  -- Create email notification channel if user has an email
+  -- Mark as verified if from OAuth (they've proven email ownership via Google/GitHub)
+  BEGIN
+    IF v_email IS NOT NULL AND v_email != '' THEN
+      INSERT INTO notification_channels (user_id, channel_type, contact_value, is_enabled, is_verified, verified_at)
+      VALUES (NEW.id, 'email', v_email, true, true, NOW())
+      ON CONFLICT (user_id, channel_type) DO UPDATE SET
+        contact_value = EXCLUDED.contact_value,
+        is_verified = true,
+        verified_at = NOW();
+      RAISE NOTICE '[populate_default_user_data] Created email notification channel for user %: %', NEW.id, v_email;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING '[populate_default_user_data] Failed to create notification_channels for user %: %', NEW.id, SQLERRM;
+  END;
+
+  -- Create default notification event preferences (enable important ones by default)
+  BEGIN
+    INSERT INTO notification_event_preferences (user_id, event_category, email_enabled, push_enabled, enabled)
+    VALUES
+      (NEW.id, 'contamination', true, true, true),
+      (NEW.id, 'harvest_ready', true, true, true),
+      (NEW.id, 'culture_expiring', true, true, true),
+      (NEW.id, 'low_inventory', false, true, true),
+      (NEW.id, 'stage_transition', false, true, true),
+      (NEW.id, 'system', true, true, true)
+    ON CONFLICT (user_id, event_category) DO NOTHING;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING '[populate_default_user_data] Failed to create notification_event_preferences for user %: %', NEW.id, SQLERRM;
   END;
 
   -- Always return NEW to allow the trigger to complete
@@ -9951,6 +10016,340 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING 'Error creating some FK indexes: %. Continuing...', SQLERRM;
 END $$;
 
+
+-- ============================================================================
+-- DATA INTEGRITY REPAIR FUNCTIONS
+-- ============================================================================
+-- Functions to repair user data that may be missing or incomplete due to
+-- schema changes or issues during account creation.
+-- ============================================================================
+
+-- Repair data for a single user
+-- This function:
+-- 1. Extracts email from auth.users (including OAuth metadata)
+-- 2. Updates user_profiles.email if missing
+-- 3. Creates notification_channels entry if missing
+-- 4. Creates notification_event_preferences entries if missing
+-- 5. Creates user_settings if missing
+CREATE OR REPLACE FUNCTION repair_user_data(p_user_id UUID)
+RETURNS JSONB
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_auth_user RECORD;
+  v_email TEXT;
+  v_result JSONB := '{"success": true, "repairs": []}'::JSONB;
+  v_repairs JSONB[] := ARRAY[]::JSONB[];
+BEGIN
+  -- Get auth user data
+  SELECT id, email, raw_user_meta_data, raw_app_meta_data
+  INTO v_auth_user
+  FROM auth.users
+  WHERE id = p_user_id;
+
+  IF v_auth_user IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'User not found in auth.users'
+    );
+  END IF;
+
+  -- Extract email from various sources (handle OAuth)
+  v_email := COALESCE(
+    v_auth_user.email,
+    v_auth_user.raw_user_meta_data->>'email',
+    v_auth_user.raw_app_meta_data->>'email'
+  );
+
+  -- 1. Ensure user_profiles exists and has email
+  BEGIN
+    INSERT INTO user_profiles (user_id, email)
+    VALUES (p_user_id, v_email)
+    ON CONFLICT (user_id) DO UPDATE SET
+      email = COALESCE(EXCLUDED.email, user_profiles.email),
+      updated_at = NOW()
+    WHERE user_profiles.email IS NULL OR user_profiles.email = '';
+
+    -- Check if we actually updated the email
+    IF FOUND THEN
+      v_repairs := array_append(v_repairs, jsonb_build_object(
+        'type', 'user_profiles',
+        'action', 'email_updated',
+        'email', v_email
+      ));
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    v_repairs := array_append(v_repairs, jsonb_build_object(
+      'type', 'user_profiles',
+      'action', 'error',
+      'error', SQLERRM
+    ));
+  END;
+
+  -- 2. Ensure notification_channels exists for email
+  IF v_email IS NOT NULL AND v_email != '' THEN
+    BEGIN
+      INSERT INTO notification_channels (user_id, channel_type, contact_value, is_enabled, is_verified, verified_at)
+      VALUES (p_user_id, 'email', v_email, true, true, NOW())
+      ON CONFLICT (user_id, channel_type) DO UPDATE SET
+        contact_value = EXCLUDED.contact_value,
+        is_verified = true,
+        verified_at = COALESCE(notification_channels.verified_at, NOW()),
+        updated_at = NOW()
+      WHERE notification_channels.contact_value IS NULL
+         OR notification_channels.contact_value = ''
+         OR notification_channels.contact_value != EXCLUDED.contact_value;
+
+      IF FOUND THEN
+        v_repairs := array_append(v_repairs, jsonb_build_object(
+          'type', 'notification_channels',
+          'action', 'email_channel_created_or_updated',
+          'email', v_email
+        ));
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
+      v_repairs := array_append(v_repairs, jsonb_build_object(
+        'type', 'notification_channels',
+        'action', 'error',
+        'error', SQLERRM
+      ));
+    END;
+  END IF;
+
+  -- 3. Ensure notification_event_preferences exist
+  BEGIN
+    INSERT INTO notification_event_preferences (user_id, event_category, email_enabled, push_enabled, enabled)
+    VALUES
+      (p_user_id, 'contamination', true, true, true),
+      (p_user_id, 'harvest_ready', true, true, true),
+      (p_user_id, 'culture_expiring', true, true, true),
+      (p_user_id, 'low_inventory', false, true, true),
+      (p_user_id, 'stage_transition', false, true, true),
+      (p_user_id, 'system', true, true, true)
+    ON CONFLICT (user_id, event_category) DO NOTHING;
+
+    IF FOUND THEN
+      v_repairs := array_append(v_repairs, jsonb_build_object(
+        'type', 'notification_event_preferences',
+        'action', 'defaults_created'
+      ));
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    v_repairs := array_append(v_repairs, jsonb_build_object(
+      'type', 'notification_event_preferences',
+      'action', 'error',
+      'error', SQLERRM
+    ));
+  END;
+
+  -- 4. Ensure user_settings exists
+  BEGIN
+    INSERT INTO user_settings (user_id, temperature_unit, volume_unit)
+    VALUES (p_user_id, 'fahrenheit', 'ml')
+    ON CONFLICT (user_id) DO NOTHING;
+
+    IF FOUND THEN
+      v_repairs := array_append(v_repairs, jsonb_build_object(
+        'type', 'user_settings',
+        'action', 'created'
+      ));
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    v_repairs := array_append(v_repairs, jsonb_build_object(
+      'type', 'user_settings',
+      'action', 'error',
+      'error', SQLERRM
+    ));
+  END;
+
+  -- Build result
+  v_result := jsonb_build_object(
+    'success', true,
+    'user_id', p_user_id,
+    'email', v_email,
+    'repairs', to_jsonb(v_repairs),
+    'repaired_at', NOW()
+  );
+
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Repair data for all users (admin function)
+-- Returns summary of repairs made for each user
+CREATE OR REPLACE FUNCTION repair_all_users_data()
+RETURNS TABLE (
+  user_id UUID,
+  email TEXT,
+  success BOOLEAN,
+  repairs_made INTEGER,
+  details JSONB
+)
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user RECORD;
+  v_repair_result JSONB;
+BEGIN
+  FOR v_user IN
+    SELECT au.id
+    FROM auth.users au
+    ORDER BY au.created_at DESC
+  LOOP
+    v_repair_result := repair_user_data(v_user.id);
+
+    user_id := v_user.id;
+    email := v_repair_result->>'email';
+    success := (v_repair_result->>'success')::BOOLEAN;
+    repairs_made := jsonb_array_length(COALESCE(v_repair_result->'repairs', '[]'::JSONB));
+    details := v_repair_result;
+
+    RETURN NEXT;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Check if a user's data is complete and valid
+-- Returns a report of any missing data
+CREATE OR REPLACE FUNCTION check_user_data_integrity(p_user_id UUID)
+RETURNS JSONB
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_issues JSONB[] := ARRAY[]::JSONB[];
+  v_auth_user RECORD;
+  v_profile RECORD;
+  v_channel RECORD;
+  v_pref_count INTEGER;
+  v_settings RECORD;
+  v_expected_prefs TEXT[] := ARRAY['contamination', 'harvest_ready', 'culture_expiring', 'low_inventory', 'stage_transition', 'system'];
+  v_pref TEXT;
+BEGIN
+  -- Check auth.users
+  SELECT id, email, raw_user_meta_data, raw_app_meta_data
+  INTO v_auth_user
+  FROM auth.users
+  WHERE id = p_user_id;
+
+  IF v_auth_user IS NULL THEN
+    RETURN jsonb_build_object(
+      'valid', false,
+      'error', 'User not found in auth.users'
+    );
+  END IF;
+
+  -- Check user_profiles
+  SELECT * INTO v_profile FROM user_profiles WHERE user_id = p_user_id;
+  IF v_profile IS NULL THEN
+    v_issues := array_append(v_issues, jsonb_build_object(
+      'type', 'user_profiles',
+      'issue', 'missing',
+      'severity', 'critical'
+    ));
+  ELSIF v_profile.email IS NULL OR v_profile.email = '' THEN
+    v_issues := array_append(v_issues, jsonb_build_object(
+      'type', 'user_profiles',
+      'issue', 'email_missing',
+      'severity', 'high'
+    ));
+  END IF;
+
+  -- Check notification_channels
+  SELECT * INTO v_channel
+  FROM notification_channels
+  WHERE user_id = p_user_id AND channel_type = 'email';
+
+  IF v_channel IS NULL THEN
+    v_issues := array_append(v_issues, jsonb_build_object(
+      'type', 'notification_channels',
+      'issue', 'email_channel_missing',
+      'severity', 'high'
+    ));
+  ELSIF v_channel.contact_value IS NULL OR v_channel.contact_value = '' THEN
+    v_issues := array_append(v_issues, jsonb_build_object(
+      'type', 'notification_channels',
+      'issue', 'email_channel_empty',
+      'severity', 'high'
+    ));
+  END IF;
+
+  -- Check notification_event_preferences
+  FOREACH v_pref IN ARRAY v_expected_prefs LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM notification_event_preferences
+      WHERE user_id = p_user_id AND event_category = v_pref
+    ) THEN
+      v_issues := array_append(v_issues, jsonb_build_object(
+        'type', 'notification_event_preferences',
+        'issue', 'missing_preference',
+        'category', v_pref,
+        'severity', 'medium'
+      ));
+    END IF;
+  END LOOP;
+
+  -- Check user_settings
+  SELECT * INTO v_settings FROM user_settings WHERE user_id = p_user_id;
+  IF v_settings IS NULL THEN
+    v_issues := array_append(v_issues, jsonb_build_object(
+      'type', 'user_settings',
+      'issue', 'missing',
+      'severity', 'medium'
+    ));
+  END IF;
+
+  RETURN jsonb_build_object(
+    'valid', array_length(v_issues, 1) IS NULL OR array_length(v_issues, 1) = 0,
+    'user_id', p_user_id,
+    'issues_count', COALESCE(array_length(v_issues, 1), 0),
+    'issues', to_jsonb(v_issues),
+    'checked_at', NOW()
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Combined function: Check integrity and repair if needed
+-- This is the main function to call from the app on login
+CREATE OR REPLACE FUNCTION ensure_user_data_integrity(p_user_id UUID)
+RETURNS JSONB
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_check_result JSONB;
+  v_repair_result JSONB;
+BEGIN
+  -- First check integrity
+  v_check_result := check_user_data_integrity(p_user_id);
+
+  -- If issues found, repair
+  IF NOT (v_check_result->>'valid')::BOOLEAN THEN
+    v_repair_result := repair_user_data(p_user_id);
+
+    RETURN jsonb_build_object(
+      'was_valid', false,
+      'repaired', true,
+      'check_result', v_check_result,
+      'repair_result', v_repair_result
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'was_valid', true,
+    'repaired', false,
+    'check_result', v_check_result
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION repair_user_data(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION check_user_data_integrity(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION ensure_user_data_integrity(UUID) TO authenticated;
+-- repair_all_users_data is admin only - uses SECURITY DEFINER
 
 -- ============================================================================
 -- SUCCESS MESSAGE

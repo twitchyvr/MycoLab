@@ -2820,7 +2820,75 @@ Created comprehensive weight utilities (utils/weight.ts):
 - "Setup Cron Jobs" button when pg_cron enabled but jobs not configured
 - "Run Check Now" button to manually trigger notification processing
 - Displays pending notification count and last notification sent time
-- Clear instructions for enabling pg_cron in Supabase Dashboard`,
+- Clear instructions for enabling pg_cron in Supabase Dashboard
+
+**v0.5.1 Fixes (December 2025):**
+- Fixed OAuth email extraction: handle_new_user() now extracts email from raw_user_meta_data for Google/OAuth users
+- Fixed notification channel creation: populate_default_user_data() now creates notification_channels entry on signup
+- Fixed notification preferences creation: populate_default_user_data() now creates notification_event_preferences on signup
+- Added data integrity repair system:
+  - repair_user_data(user_id): Fixes missing data for individual user
+  - repair_all_users_data(): Admin function to repair all users
+  - check_user_data_integrity(user_id): Checks for missing data without modifying
+  - ensure_user_data_integrity(user_id): Check + auto-repair (called on login)
+- App login flow now automatically repairs missing user data on SIGNED_IN event`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-1302',
+    title: 'User Data Integrity Check & Auto-Repair System',
+    description: 'Added automated data integrity checking and repair for user accounts. Fixes issues where OAuth users had missing email in profiles, or signup triggers failed to create notification channels/preferences.',
+    category: 'bug_fix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 4,
+    actualHours: 3,
+    completedAt: timestamp(),
+    notes: `User Data Integrity System:
+
+**Problem:**
+- OAuth users (Google login) had email in auth.users.raw_user_meta_data but NULL in user_profiles.email
+- handle_new_user() trigger only checked NEW.email, not the OAuth metadata
+- Some accounts created before schema updates were missing notification_channels and notification_event_preferences
+- This broke email notifications - no emails would ever be sent
+
+**Root Cause Analysis:**
+1. handle_new_user() used NEW.email directly, but OAuth stores email in raw_user_meta_data->>'email'
+2. populate_default_user_data() wasn't creating notification_channels or notification_event_preferences on signup
+3. Existing accounts created before these fixes had permanently missing data
+
+**SQL Functions Added:**
+- repair_user_data(UUID): Repairs missing data for a single user
+  - Extracts email from auth.users (including OAuth metadata)
+  - Updates user_profiles.email if missing
+  - Creates notification_channels entry if missing
+  - Creates notification_event_preferences entries if missing
+  - Creates user_settings if missing
+  - Returns detailed JSON report of repairs made
+
+- repair_all_users_data(): Admin function to repair all users
+  - Iterates all auth.users and calls repair_user_data for each
+  - Returns table with user_id, email, success, repairs_made, details
+
+- check_user_data_integrity(UUID): Check-only function
+  - Reports missing user_profiles, email, notification_channels, preferences, settings
+  - Returns JSON with valid flag and issues array
+
+- ensure_user_data_integrity(UUID): Combined check + repair
+  - Called automatically on user login
+  - Only repairs if issues found
+  - Returns whether repair was needed and what was fixed
+
+**App Integration:**
+- DataContext.tsx: Added integrity check in onAuthStateChange SIGNED_IN handler
+- Runs ensure_user_data_integrity(user.id) before loading user data
+- Logs repairs in development mode
+- Non-blocking: if check fails, login still proceeds
+
+**Files Updated:**
+- Web App/supabase-schema.sql: Added data integrity repair functions section
+- Web App/src/store/DataContext.tsx: Added integrity check on login`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },

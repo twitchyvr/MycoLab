@@ -794,10 +794,33 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         }
 
         // Reload data when user signs in (with a real account, not anonymous)
-        if (event === 'SIGNED_IN' && isRealUser) {
+        if (event === 'SIGNED_IN' && isRealUser && session?.user) {
           if (process.env.NODE_ENV === 'development') {
-            console.log('[DataContext] Auth state changed to SIGNED_IN, reloading data and settings...');
+            console.log('[DataContext] Auth state changed to SIGNED_IN, checking data integrity...');
           }
+
+          // First, ensure user data integrity (repairs any missing data from schema changes)
+          try {
+            const client = getSupabaseClient();
+            if (client) {
+              const { data: integrityResult, error: integrityError } = await client.rpc(
+                'ensure_user_data_integrity',
+                { p_user_id: session.user.id }
+              );
+
+              if (integrityError) {
+                console.error('[DataContext] Data integrity check failed:', integrityError);
+              } else if (integrityResult?.repaired) {
+                console.log('[DataContext] User data repaired:', integrityResult.repair_result);
+              } else if (process.env.NODE_ENV === 'development') {
+                console.log('[DataContext] User data integrity OK');
+              }
+            }
+          } catch (err) {
+            // Don't block login if integrity check fails
+            console.error('[DataContext] Data integrity check error:', err);
+          }
+
           // Reload settings first (includes hasCompletedSetupWizard)
           const settings = await loadSettings();
           setState(prev => ({ ...prev, settings }));
