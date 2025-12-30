@@ -53,8 +53,8 @@ BEGIN
     SELECT s.id, s.name, s.scientific_name
     FROM species s
     WHERE s.user_id IS NULL
-      AND s.id NOT LIKE '10000000-0000-0000-0007-%'  -- Not our Psilocybe N-Z IDs
-      AND s.id NOT LIKE '10000000-0000-0000-0008-%'  -- Not our Pluteus IDs
+      AND s.id::text NOT LIKE '10000000-0000-0000-0007-%'  -- Not our Psilocybe N-Z IDs
+      AND s.id::text NOT LIKE '10000000-0000-0000-0008-%'  -- Not our Pluteus IDs
       AND (
         s.scientific_name IN (
           'Psilocybe natalensis', 'Psilocybe niveotropicalis', 'Psilocybe ovoideocystidiata',

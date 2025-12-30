@@ -59,8 +59,25 @@ BEGIN
   IF v_dup_count > 0 THEN
     RAISE NOTICE '[Research Species] Found % duplicate scientific_name groups, deduplicating...', v_dup_count;
 
-    -- Keep only the most recently updated row for each scientific_name
-    -- Delete older duplicates to allow unique index creation
+    -- First, delete any strains that reference species we're about to delete
+    -- This handles foreign key constraints properly
+    DELETE FROM strains
+    WHERE species_id IN (
+      SELECT s1.id FROM species s1
+      WHERE s1.user_id IS NULL
+        AND s1.category = 'research'
+        AND s1.scientific_name IS NOT NULL
+        AND EXISTS (
+          SELECT 1 FROM species s2
+          WHERE s2.scientific_name = s1.scientific_name
+            AND s2.user_id IS NULL
+            AND s2.category = 'research'
+            AND (s2.updated_at > s1.updated_at OR (s2.updated_at = s1.updated_at AND s2.id > s1.id))
+        )
+    );
+    RAISE NOTICE '[Research Species] Deleted dependent strains for duplicate species';
+
+    -- Now delete the duplicate species (keeping the most recent)
     DELETE FROM species s1
     WHERE user_id IS NULL
       AND category = 'research'

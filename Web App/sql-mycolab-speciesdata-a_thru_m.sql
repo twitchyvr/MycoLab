@@ -61,7 +61,7 @@ BEGIN
     SELECT s.id, s.name, s.scientific_name
     FROM species s
     WHERE s.user_id IS NULL
-      AND s.id NOT LIKE '10000000-%'  -- Not our IDs
+      AND s.id::text NOT LIKE '10000000-%'  -- Not our IDs
       AND (
         -- Match by scientific_name (preferred match)
         s.scientific_name IN (
