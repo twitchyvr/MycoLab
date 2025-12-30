@@ -5,10 +5,12 @@
 export type Page =
   | 'dashboard' | 'commandcenter' | 'today' | 'dailycheck' | 'harvest'
   | 'forecast' | 'coldstorage' | 'observations' | 'eventlog' | 'library'
-  | 'inventory' | 'stock' | 'cultures' | 'lineage' | 'grows' | 'recipes'
-  | 'labspaces' | 'labmapping' | 'occupancy' | 'labels' | 'scanner'
-  | 'calculator' | 'spawnrate' | 'pressure' | 'contamination' | 'efficiency'
-  | 'analytics' | 'strainanalytics' | 'settings' | 'profile' | 'devlog';
+  | 'cultureguide' | 'inventory' | 'stock' | 'instances' | 'cultures'
+  | 'spawn' | 'lineage' | 'grows' | 'recipes' | 'labspaces' | 'labmapping'
+  | 'occupancy' | 'labels' | 'scanner' | 'calculator' | 'spawnrate'
+  | 'pressure' | 'multiplication' | 'contamination' | 'efficiency'
+  | 'analytics' | 'financial' | 'strainanalytics' | 'outcomes'
+  | 'settings' | 'profile' | 'devlog' | 'featuretracker';
 
 export interface NavNode {
   id: Page;
