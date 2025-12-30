@@ -285,12 +285,31 @@ export const InoculateToGrainModal: React.FC<InoculateToGrainModalProps> = ({
               2. Select Prepared Spawn Container <span className="text-red-400">*</span>
             </label>
             {grainPreparedSpawn.length === 0 ? (
-              <div className="p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg text-center">
-                <p className="text-zinc-400 text-sm">No ready spawn available</p>
-                <p className="text-zinc-500 text-xs mt-1">
-                  Only spawn that has been sterilized and cooled (status: ready) can be inoculated.
-                  Prepare grain jars, sterilize them, then mark them as cooled when ready.
-                </p>
+              <div className="p-4 bg-amber-950/30 border border-amber-800/50 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="text-amber-400">
+                    <Icons.AlertCircle />
+                  </div>
+                  <div>
+                    <p className="text-amber-300 font-medium">No Ready Spawn Available</p>
+                    <p className="text-zinc-400 text-sm mt-1">
+                      Before you can inoculate, you need to prepare grain spawn containers:
+                    </p>
+                    <ol className="text-zinc-500 text-xs mt-2 space-y-1 list-decimal list-inside">
+                      <li><span className="text-amber-400/70">Prepare</span> → Click "Prepare Spawn" to create grain jars/bags</li>
+                      <li><span className="text-red-400/70">Sterilize</span> → Pressure cook your prepared spawn</li>
+                      <li><span className="text-blue-400/70">Cool</span> → Let containers cool to room temperature</li>
+                      <li><span className="text-emerald-400/70">Ready</span> → Mark as ready, then return here to inoculate</li>
+                    </ol>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="mt-3 px-4 py-1.5 text-sm bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
+                    >
+                      ← Go Prepare Spawn First
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">

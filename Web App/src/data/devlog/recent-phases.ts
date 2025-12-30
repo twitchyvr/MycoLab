@@ -6625,6 +6625,45 @@ All tables have:
   },
 
   {
+    id: 'dev-1008',
+    status: 'completed',
+    priority: 'high',
+    category: 'ui',
+    title: 'Grain Spawn Workflow UX Improvements',
+    description: 'Enhanced PrepareSpawnForm with inline entity creation via StandardDropdown and improved InoculateToGrainModal with clear workflow guidance when no prepared spawn is available.',
+    notes: `UX improvements for grain spawn workflow discoverability:
+
+**1. PrepareSpawnForm - Inline Entity Creation:**
+- Container Type: Now uses StandardDropdown with entityType="container"
+  - Users can click "+ Add New Container Type" to create custom containers (e.g., "1 Liter Mason Jar")
+  - Previously was a plain select with no ability to add new types
+  - Added help text: "Don't see your container? Click + to add a custom container type."
+- Grain Type: Now uses StandardDropdown with entityType="grainType"
+  - Can add new grain types inline
+- Location: Now uses StandardDropdown with entityType="location"
+  - Can add new locations inline
+
+**2. InoculateToGrainModal - Workflow Guidance:**
+- Enhanced "No ready spawn available" message with:
+  - Visual workflow steps (Prepare → Sterilize → Cool → Ready)
+  - Color-coded status indicators for each stage
+  - "← Go Prepare Spawn First" button to guide user back
+- Explains the prepare-then-inoculate workflow clearly
+
+**Problem Solved:**
+- Users were confused about why containers from inventory didn't show in grain spawn
+- Container TYPES vs Inventory ITEMS distinction was not clear
+- Workflow (prepare → sterilize → inoculate) was not discoverable
+- Users couldn't add custom container types inline
+
+**Files Changed:**
+- src/components/spawn/PrepareSpawnForm.tsx - StandardDropdown integration
+- src/components/spawn/InoculateToGrainModal.tsx - Workflow guidance UI`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
     id: 'dev-1007',
     status: 'planned',
     priority: 'medium',
