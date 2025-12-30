@@ -340,7 +340,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
   },
   grain_spawn: {
     name: 'grain_spawn',
-    orderBy: { column: 'inoculation_date', ascending: false },
+    orderBy: { column: 'inoculated_at', ascending: false },
     required: false,
     // Exclude archived records from loading
     filter: (query: any) => query.or('is_archived.is.null,is_archived.eq.false'),
