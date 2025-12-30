@@ -2748,18 +2748,24 @@ Created comprehensive weight utilities (utils/weight.ts):
 - process_scheduled_notifications(): Master function running all checks
 
 **Cron Job Configuration:**
-- mycolab-notification-check: Runs every 15 minutes
-- mycolab-queue-cleanup: Daily cleanup at 3 AM
+- mycolab-notification-check: Runs every 15 minutes (queues notifications)
+- mycolab-send-emails: Runs every 5 minutes (sends queued emails via Edge Function)
+- mycolab-queue-cleanup: Daily cleanup at 3 AM (removes old sent/failed notifications)
 
 **Setup Process:**
-1. Enable pg_cron extension in Supabase Dashboard
-2. Run schema migration (creates tables and functions)
-3. Execute: SELECT setup_notification_cron_jobs()
-4. Verify with: SELECT * FROM cron.job
+1. Enable pg_cron extension in Supabase Dashboard → Database → Extensions
+2. Enable pg_net extension in Supabase Dashboard → Database → Extensions (for auto email sending)
+3. Run schema migration (creates tables and functions)
+4. Execute: SELECT setup_notification_cron_jobs()
+5. Verify with: SELECT * FROM cron.job
+6. Configure Supabase URL: ALTER DATABASE postgres SET app.supabase_url = 'https://your-project.supabase.co'
+7. Deploy process-notification-queue Edge Function with email provider keys (RESEND_API_KEY or SENDGRID_API_KEY)
 
 **Helper Functions:**
-- trigger_notification_check(): Manual testing
+- trigger_notification_check(): Manual testing (queue notifications)
+- trigger_email_queue_processor(): Manual email sending (calls Edge Function via pg_net)
 - get_pending_notifications(): View queued notifications
+- get_notification_system_status(): Full system status with queue stats
 - setup_notification_cron_jobs(): Idempotent job setup
 
 **RLS Policies:**
@@ -2778,6 +2784,10 @@ Created comprehensive weight utilities (utils/weight.ts):
 - ✅ Netlify function (pg-cron-status.ts) for checking/managing cron jobs
 - ✅ Column reference bugs fixed in all check functions
 - ✅ User profile filtering (only users with active profiles get notifications)
+- ✅ process-notification-queue Edge Function: Sends queued emails (FIXED - missing piece)
+- ✅ trigger_email_queue_processor() SQL function: Calls Edge Function via pg_net
+- ✅ mycolab-send-emails cron job: Sends queued emails every 5 minutes
+- ✅ Admin UI "Send Emails" button for manual queue processing
 
 **Expanded Notification Categories (17 total):**
 - Culture: culture_expiring, lc_age, transfer_due, culture_ready

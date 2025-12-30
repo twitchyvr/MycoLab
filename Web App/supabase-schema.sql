@@ -8641,6 +8641,230 @@ DO $$ BEGIN
 END $$;
 
 -- ============================================================================
+-- EMAIL QUEUE PROCESSOR - Calls Edge Function via pg_net
+-- This function triggers the process-notification-queue edge function
+-- to actually send pending notifications via email/SMS
+-- ============================================================================
+
+-- Function to call the email queue processor edge function
+CREATE OR REPLACE FUNCTION trigger_email_queue_processor()
+RETURNS JSONB
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_supabase_url TEXT;
+  v_service_key TEXT;
+  v_response_id BIGINT;
+  v_result JSONB := '{"triggered": false}'::JSONB;
+BEGIN
+  -- Get Supabase URL from environment or config table
+  -- Note: These need to be set in the database or vault
+  v_supabase_url := current_setting('app.supabase_url', true);
+  v_service_key := current_setting('app.supabase_service_role_key', true);
+
+  -- If not set in config, try to use defaults (for local dev)
+  IF v_supabase_url IS NULL OR v_supabase_url = '' THEN
+    RAISE NOTICE 'Supabase URL not configured. Set app.supabase_url in postgresql.conf or use ALTER DATABASE ... SET app.supabase_url = ...';
+    RETURN jsonb_build_object(
+      'triggered', false,
+      'error', 'Supabase URL not configured'
+    );
+  END IF;
+
+  -- Check if pg_net extension is available
+  IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_net') THEN
+    RAISE NOTICE 'pg_net extension not enabled. Enable it in Supabase Dashboard > Database > Extensions';
+    RETURN jsonb_build_object(
+      'triggered', false,
+      'error', 'pg_net extension not enabled'
+    );
+  END IF;
+
+  -- Make HTTP request to the edge function
+  BEGIN
+    SELECT net.http_post(
+      url := v_supabase_url || '/functions/v1/process-notification-queue',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || COALESCE(v_service_key, '')
+      ),
+      body := '{}'::jsonb
+    ) INTO v_response_id;
+
+    v_result := jsonb_build_object(
+      'triggered', true,
+      'request_id', v_response_id,
+      'timestamp', NOW()
+    );
+
+    RAISE NOTICE 'Email queue processor triggered, request_id: %', v_response_id;
+
+  EXCEPTION WHEN OTHERS THEN
+    v_result := jsonb_build_object(
+      'triggered', false,
+      'error', SQLERRM
+    );
+    RAISE WARNING 'Failed to trigger email queue processor: %', SQLERRM;
+  END;
+
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Updated cron job setup that includes email queue processing
+CREATE OR REPLACE FUNCTION setup_notification_cron_jobs()
+RETURNS TEXT
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result TEXT := '';
+BEGIN
+  -- Check if pg_cron extension is available
+  IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    RETURN 'pg_cron extension not enabled. Enable it in Supabase Dashboard > Database > Extensions';
+  END IF;
+
+  -- Remove existing jobs (if any) to prevent duplicates
+  BEGIN
+    PERFORM cron.unschedule('mycolab-notification-check');
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+
+  BEGIN
+    PERFORM cron.unschedule('mycolab-queue-cleanup');
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+
+  BEGIN
+    PERFORM cron.unschedule('mycolab-send-emails');
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+
+  -- Schedule notification check every 15 minutes (queues notifications)
+  PERFORM cron.schedule(
+    'mycolab-notification-check',
+    '*/15 * * * *',
+    'SELECT process_scheduled_notifications()'
+  );
+  v_result := v_result || 'Scheduled: notification check every 15 minutes. ';
+
+  -- Schedule email sending every 5 minutes (sends queued notifications)
+  -- This calls the edge function via pg_net
+  PERFORM cron.schedule(
+    'mycolab-send-emails',
+    '*/5 * * * *',
+    'SELECT trigger_email_queue_processor()'
+  );
+  v_result := v_result || 'Scheduled: email queue processor every 5 minutes. ';
+
+  -- Schedule queue cleanup daily at 3 AM
+  PERFORM cron.schedule(
+    'mycolab-queue-cleanup',
+    '0 3 * * *',
+    'DELETE FROM notification_queue WHERE (status = ''sent'' AND sent_at < NOW() - INTERVAL ''7 days'') OR (status = ''cancelled'' AND created_at < NOW() - INTERVAL ''7 days'') OR (status = ''failed'' AND attempts >= 3 AND created_at < NOW() - INTERVAL ''30 days'') OR (expires_at < NOW() AND status = ''pending'')'
+  );
+  v_result := v_result || 'Scheduled: queue cleanup daily at 3 AM. ';
+
+  RETURN v_result || 'Cron jobs configured successfully!';
+
+EXCEPTION WHEN OTHERS THEN
+  RETURN 'Error setting up cron jobs: ' || SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to check the full notification system status
+CREATE OR REPLACE FUNCTION get_notification_system_status()
+RETURNS JSONB
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result JSONB;
+  v_pg_cron_enabled BOOLEAN := FALSE;
+  v_pg_net_enabled BOOLEAN := FALSE;
+  v_jobs JSONB := '[]'::JSONB;
+  v_pending_count INTEGER := 0;
+  v_sent_today INTEGER := 0;
+  v_failed_today INTEGER := 0;
+  v_last_sent TIMESTAMPTZ;
+  v_supabase_configured BOOLEAN := FALSE;
+BEGIN
+  -- Check extensions
+  SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
+  INTO v_pg_cron_enabled;
+
+  SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_net')
+  INTO v_pg_net_enabled;
+
+  -- Check if Supabase URL is configured
+  v_supabase_configured := (current_setting('app.supabase_url', true) IS NOT NULL
+    AND current_setting('app.supabase_url', true) != '');
+
+  -- Get queue statistics
+  SELECT COUNT(*)
+  INTO v_pending_count
+  FROM notification_queue
+  WHERE status = 'pending' AND expires_at > NOW();
+
+  SELECT COUNT(*)
+  INTO v_sent_today
+  FROM notification_queue
+  WHERE status = 'sent' AND sent_at > NOW() - INTERVAL '24 hours';
+
+  SELECT COUNT(*)
+  INTO v_failed_today
+  FROM notification_queue
+  WHERE status = 'failed' AND updated_at > NOW() - INTERVAL '24 hours';
+
+  SELECT MAX(sent_at)
+  INTO v_last_sent
+  FROM notification_queue
+  WHERE status = 'sent';
+
+  -- Get cron jobs if enabled
+  IF v_pg_cron_enabled THEN
+    BEGIN
+      SELECT COALESCE(jsonb_agg(job_info), '[]'::JSONB)
+      INTO v_jobs
+      FROM (
+        SELECT jsonb_build_object(
+          'jobid', jobid,
+          'jobname', jobname,
+          'schedule', schedule,
+          'active', active
+        ) as job_info
+        FROM cron.job
+        WHERE jobname LIKE 'mycolab-%'
+      ) jobs;
+    EXCEPTION WHEN OTHERS THEN
+      v_jobs := '[]'::JSONB;
+    END;
+  END IF;
+
+  v_result := jsonb_build_object(
+    'pgCronEnabled', v_pg_cron_enabled,
+    'pgNetEnabled', v_pg_net_enabled,
+    'supabaseConfigured', v_supabase_configured,
+    'cronJobsConfigured', jsonb_array_length(v_jobs) > 0,
+    'cronJobs', v_jobs,
+    'queue', jsonb_build_object(
+      'pending', v_pending_count,
+      'sentToday', v_sent_today,
+      'failedToday', v_failed_today,
+      'lastSent', v_last_sent
+    )
+  );
+
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
 -- PREPARED SPAWN WORKFLOW FIELDS MIGRATION
 -- Adds preparation workflow status and temperature tracking for grain spawn lifecycle
 -- ============================================================================
