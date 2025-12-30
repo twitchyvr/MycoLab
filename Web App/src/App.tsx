@@ -232,7 +232,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'library', label: 'Species & Strains', icon: Icons.Library, isPublic: true },
       { id: 'cultureguide', label: 'Culture Guide', icon: Icons.Culture, isPublic: true },
-      { id: 'recipes', label: 'Recipe Library', icon: Icons.Recipe, isPublic: true },
+      { id: 'recipes', label: 'Recipe Library', icon: Icons.Recipe }, // Requires auth
     ],
   },
   {
