@@ -6,6 +6,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
 import { StandardDropdown } from '../common/StandardDropdown';
+import { ContainerSetupFlow } from './ContainerSetupFlow';
 import type { PreparedSpawn, IngredientUsage, InventoryLot } from '../../store/types';
 
 interface PrepareSpawnFormProps {
@@ -73,6 +74,9 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Container setup flow
+  const [showContainerSetup, setShowContainerSetup] = useState(false);
 
   // Instance tracking for containers
   const [selectedInstanceIds, setSelectedInstanceIds] = useState<string[]>([]);
@@ -419,38 +423,74 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
           </div>
 
           {/* Container & Count */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <StandardDropdown
-                label="Container Type"
-                value={containerId}
-                onChange={setContainerId}
-                options={activeContainers.map(c => ({
-                  id: c.id,
-                  name: `${c.name}${c.volumeMl ? ` (${c.volumeMl}ml)` : ''}`,
-                }))}
-                placeholder="Select container..."
-                required
-                entityType="container"
-                fieldName="containerId"
-                addLabel="Add New Container Type"
-                helpText="Don't see your container? Click + to add a custom container type."
-              />
+          {activeContainers.length === 0 ? (
+            /* Empty State - No containers configured */
+            <div className="p-4 bg-amber-950/30 border border-amber-800/50 rounded-lg">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">📦</span>
+                <div className="flex-1">
+                  <p className="font-medium text-amber-300">No Container Types Configured</p>
+                  <p className="text-sm text-zinc-400 mt-1">
+                    Before you can prepare spawn, you need to set up at least one container type
+                    (like mason jars, spawn bags, etc.)
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowContainerSetup(true)}
+                    className="mt-3 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Icons.Plus />
+                    Set Up Your First Container
+                  </button>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Number of Containers
-              </label>
-              <input
-                type="number"
-                min="1"
-                max={availableContainerQuantity ?? undefined}
-                value={containerCount}
-                onChange={(e) => setContainerCount(parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
-              />
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-zinc-300">
+                    Container Type <span className="text-red-400">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowContainerSetup(true)}
+                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                  >
+                    <Icons.Plus />
+                    Set Up New
+                  </button>
+                </div>
+                <StandardDropdown
+                  value={containerId}
+                  onChange={setContainerId}
+                  options={activeContainers.map(c => ({
+                    id: c.id,
+                    name: `${c.name}${c.volumeMl ? ` (${c.volumeMl}ml)` : ''}`,
+                  }))}
+                  placeholder="Select container..."
+                  required
+                  entityType="container"
+                  fieldName="containerId"
+                  addLabel="Add New Container Type"
+                  helpText="Don't see your container? Click + to add a custom container type."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  Number of Containers
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={availableContainerQuantity ?? undefined}
+                  value={containerCount}
+                  onChange={(e) => setContainerCount(parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Container Inventory Selection - shows matching inventory lots */}
           {containerId && containerInventoryLots.length > 0 && (
@@ -807,6 +847,17 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Container Setup Flow Modal */}
+      <ContainerSetupFlow
+        isOpen={showContainerSetup}
+        onClose={() => setShowContainerSetup(false)}
+        onComplete={(newContainerId) => {
+          setContainerId(newContainerId);
+          setShowContainerSetup(false);
+        }}
+        usageContext="spawn"
+      />
     </div>
   );
 };

@@ -17,6 +17,7 @@ import { InoculateToGrainModal } from './InoculateToGrainModal';
 import { ShakeModal } from './ShakeModal';
 import { SpawnToBulkModal } from './SpawnToBulkModal';
 import { PrepareSpawnForm } from './PrepareSpawnForm';
+import { ContainerSetupFlow } from './ContainerSetupFlow';
 
 // Prepared spawn status config
 const preparedSpawnStatusConfig: Record<PreparedSpawnStatus, { label: string; color: string; icon: string }> = {
@@ -106,6 +107,7 @@ const WorkflowIndicator: React.FC<{ stage: GrainSpawnWorkflowStage }> = ({ stage
 export const SpawnManagement: React.FC = () => {
   const {
     state,
+    activeContainers,
     getStrain,
     getLocation,
     getGrainType,
@@ -126,12 +128,16 @@ export const SpawnManagement: React.FC = () => {
   // Modal state
   const [showInoculateModal, setShowInoculateModal] = useState(false);
   const [showPrepareModal, setShowPrepareModal] = useState(false);
+  const [showContainerSetup, setShowContainerSetup] = useState(false);
   const [shakeModalSpawn, setShakeModalSpawn] = useState<GrainSpawn | null>(null);
   const [spawnToBulkSpawn, setSpawnToBulkSpawn] = useState<GrainSpawn | null>(null);
   const [selectedPreparedSpawn, setSelectedPreparedSpawn] = useState<PreparedSpawn | null>(null);
 
   // Tab state for prepared vs inoculated
   const [activeTab, setActiveTab] = useState<'prepared' | 'inoculated'>('prepared');
+
+  // Check if user has any containers configured
+  const hasContainers = activeContainers.length > 0;
 
   // Get prepared spawn in workflow
   const preparedSpawnInProgress = useMemo(() => {
@@ -491,17 +497,83 @@ export const SpawnManagement: React.FC = () => {
 
           {/* Prepared Spawn List */}
           {preparedSpawnInProgress.length === 0 ? (
-            <div className="text-center py-12 bg-zinc-900/50 border border-zinc-800 rounded-lg">
-              <div className="text-6xl mb-4">📦</div>
-              <h3 className="text-lg font-medium text-zinc-300 mb-2">No Spawn in Preparation</h3>
-              <p className="text-zinc-500 mb-4">Start by preparing grain jars or bags</p>
-              <button
-                onClick={() => setShowPrepareModal(true)}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
-              >
-                Prepare Spawn
-              </button>
-            </div>
+            !hasContainers ? (
+              /* No containers configured - show guided setup */
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg overflow-hidden">
+                <div className="p-6 text-center border-b border-zinc-800 bg-gradient-to-b from-amber-950/30 to-transparent">
+                  <div className="text-6xl mb-4">🚀</div>
+                  <h3 className="text-xl font-bold text-zinc-100 mb-2">Get Started with Grain Spawn</h3>
+                  <p className="text-zinc-400 max-w-md mx-auto">
+                    Let's set up your first containers so you can start preparing grain spawn.
+                    This only takes a minute!
+                  </p>
+                </div>
+
+                <div className="p-6">
+                  <div className="max-w-lg mx-auto space-y-4">
+                    {/* Step 1 */}
+                    <div className="flex items-start gap-4 p-4 bg-amber-950/30 border border-amber-800/50 rounded-lg">
+                      <div className="flex-shrink-0 w-8 h-8 bg-amber-600 text-white rounded-full flex items-center justify-center font-bold">
+                        1
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-amber-300">Set Up Your Containers</h4>
+                        <p className="text-sm text-zinc-400 mt-1">
+                          Choose from common presets (mason jars, spawn bags) or create custom containers.
+                          You can also track how many you have in stock.
+                        </p>
+                        <button
+                          onClick={() => setShowContainerSetup(true)}
+                          className="mt-3 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors flex items-center gap-2"
+                        >
+                          <Icons.Plus />
+                          Set Up Containers
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Step 2 - Preview */}
+                    <div className="flex items-start gap-4 p-4 bg-zinc-800/30 border border-zinc-700 rounded-lg opacity-60">
+                      <div className="flex-shrink-0 w-8 h-8 bg-zinc-700 text-zinc-400 rounded-full flex items-center justify-center font-bold">
+                        2
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-zinc-400">Prepare Spawn</h4>
+                        <p className="text-sm text-zinc-500 mt-1">
+                          Fill containers with grain, add water, and start preparation.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Step 3 - Preview */}
+                    <div className="flex items-start gap-4 p-4 bg-zinc-800/30 border border-zinc-700 rounded-lg opacity-60">
+                      <div className="flex-shrink-0 w-8 h-8 bg-zinc-700 text-zinc-400 rounded-full flex items-center justify-center font-bold">
+                        3
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-zinc-400">Sterilize & Inoculate</h4>
+                        <p className="text-sm text-zinc-500 mt-1">
+                          Track through sterilization, cooling, and inoculation stages.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Has containers but no prepared spawn */
+              <div className="text-center py-12 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+                <div className="text-6xl mb-4">📦</div>
+                <h3 className="text-lg font-medium text-zinc-300 mb-2">No Spawn in Preparation</h3>
+                <p className="text-zinc-500 mb-4">Start by preparing grain jars or bags</p>
+                <button
+                  onClick={() => setShowPrepareModal(true)}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
+                >
+                  Prepare Spawn
+                </button>
+              </div>
+            )
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {preparedSpawnInProgress.map(ps => {
@@ -821,6 +893,18 @@ export const SpawnManagement: React.FC = () => {
       <PrepareSpawnForm
         isOpen={showPrepareModal}
         onClose={() => setShowPrepareModal(false)}
+      />
+
+      {/* Container Setup Flow */}
+      <ContainerSetupFlow
+        isOpen={showContainerSetup}
+        onClose={() => setShowContainerSetup(false)}
+        onComplete={() => {
+          setShowContainerSetup(false);
+          // Optionally open prepare modal after container setup
+          // setShowPrepareModal(true);
+        }}
+        usageContext="spawn"
       />
     </div>
   );
