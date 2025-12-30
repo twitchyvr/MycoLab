@@ -51,12 +51,35 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 DO $$
 DECLARE
   v_conflict_count INTEGER;
+  v_strain_count INTEGER;
 BEGIN
   RAISE NOTICE '[Species A-M] Starting pre-flight checks...';
 
-  -- Remove any species from OTHER seed files that would conflict with our IDs
-  -- This file uses IDs starting with '10000000-...' to avoid conflicts
-  -- But names might have been inserted by other files with different IDs
+  -- First, delete any strains that reference species we're about to delete
+  -- This handles foreign key constraints properly
+  DELETE FROM strains
+  WHERE species_id IN (
+    SELECT s.id
+    FROM species s
+    WHERE s.user_id IS NULL
+      AND s.id::text NOT LIKE '10000000-%'  -- Not our IDs
+      AND s.scientific_name IN (
+        'Amanita muscaria', 'Amanita pantherina',
+        'Conocybula cyanopus', 'Conocybe siligineoides',
+        'Galerina marginata', 'Galerina autumnalis',
+        'Gymnopilus aeruginosus', 'Gymnopilus luteofolius', 'Gymnopilus junonius', 'Gymnopilus spectabilis',
+        'Inocybe aeruginascens',
+        'Panaeolus cyanescens', 'Panaeolus cinctulus', 'Panaeolus cambodginiensis', 'Panaeolus tropicalis',
+        'Psilocybe allenii', 'Psilocybe azurescens', 'Psilocybe baeocystis', 'Psilocybe caerulescens',
+        'Psilocybe cyanescens', 'Psilocybe mexicana'
+      )
+  );
+  GET DIAGNOSTICS v_strain_count = ROW_COUNT;
+  IF v_strain_count > 0 THEN
+    RAISE NOTICE '[Species A-M] Deleted % dependent strains', v_strain_count;
+  END IF;
+
+  -- Now delete conflicting species (safe since strains are gone)
   WITH conflicts AS (
     SELECT s.id, s.name, s.scientific_name
     FROM species s

@@ -44,11 +44,32 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 DO $$
 DECLARE
   v_conflict_count INTEGER;
+  v_strain_count INTEGER;
 BEGIN
   RAISE NOTICE '[Species N-Z] Starting pre-flight checks...';
 
-  -- Remove any species from OTHER seed files that would conflict with our scientific_name values
-  -- This ensures we can insert our species even if they exist with different IDs
+  -- First, delete any strains that reference species we're about to delete
+  -- This handles foreign key constraints properly
+  DELETE FROM strains
+  WHERE species_id IN (
+    SELECT s.id
+    FROM species s
+    WHERE s.user_id IS NULL
+      AND s.id::text NOT LIKE '10000000-0000-0000-0007-%'  -- Not our Psilocybe N-Z IDs
+      AND s.id::text NOT LIKE '10000000-0000-0000-0008-%'  -- Not our Pluteus IDs
+      AND s.scientific_name IN (
+        'Psilocybe natalensis', 'Psilocybe niveotropicalis', 'Psilocybe ovoideocystidiata',
+        'Psilocybe semilanceata', 'Psilocybe strictipes', 'Psilocybe stuntzii',
+        'Psilocybe subaeruginosa', 'Psilocybe tampanensis', 'Psilocybe weraroa',
+        'Psilocybe zapotecorum', 'Pluteus salicinus'
+      )
+  );
+  GET DIAGNOSTICS v_strain_count = ROW_COUNT;
+  IF v_strain_count > 0 THEN
+    RAISE NOTICE '[Species N-Z] Deleted % dependent strains', v_strain_count;
+  END IF;
+
+  -- Now delete conflicting species (safe since strains are gone)
   WITH conflicts AS (
     SELECT s.id, s.name, s.scientific_name
     FROM species s
