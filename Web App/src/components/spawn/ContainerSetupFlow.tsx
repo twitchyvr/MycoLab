@@ -168,7 +168,7 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
     addContainer,
     addInventoryItem,
     addInventoryLot,
-    createInstancesFromLot,
+    addLabItemInstance,
     generateId,
   } = useData();
 
@@ -366,15 +366,31 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
           unit: 'units',
           status: 'available',
           purchaseCost: totalCost || undefined,
-          unitCost: unitCost || undefined,
+          unitCost: unitCost > 0 ? unitCost : undefined,
           purchaseDate: purchaseDate ? new Date(purchaseDate) : new Date(),
           supplierId: supplierId || undefined,
           isActive: true,
         });
 
         // Create individual instances for tracking
-        if (quantity <= 100) { // Only auto-create instances for reasonable quantities
-          await createInstancesFromLot(lot.id, quantity);
+        // NOTE: We create instances directly here instead of using createInstancesFromLot
+        // because React state won't have the lot yet (async state update timing issue)
+        if (quantity <= 100) {
+          const calculatedUnitCost = unitCost > 0 ? unitCost : 0;
+          const acqDate = purchaseDate ? new Date(purchaseDate) : new Date();
+          for (let i = 0; i < quantity; i++) {
+            await addLabItemInstance({
+              inventoryItemId: inventoryItem.id,
+              inventoryLotId: lot.id,
+              instanceNumber: i + 1,
+              label: `${data.name} #${i + 1}`,
+              status: 'available',
+              unitCost: calculatedUnitCost,
+              acquisitionDate: acqDate,
+              usageCount: 0,
+              isActive: true,
+            });
+          }
         }
       }
 
