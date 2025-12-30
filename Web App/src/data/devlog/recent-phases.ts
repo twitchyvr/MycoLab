@@ -6696,6 +6696,24 @@ All tables have:
    - Inventory Lot (with cost tracking)
    - Lab Item Instances (for individual container tracking)
 
+5. **Smart Duplicate Detection:**
+   - Case-insensitive matching for container types and inventory items
+   - Detects existing container type → reuses instead of creating duplicate
+   - Detects existing inventory item → offers "Add to existing" or "Create new"
+   - Shows current stock count when adding to existing inventory
+
+6. **Acquisition Type Handling:**
+   - "Already Have" - Items you own, no cost tracking needed
+   - "Purchased" - Track cost, supplier, purchase date
+   - "Gift/Free" - Items received at no cost
+   - Cost only recorded for "Purchased" type
+
+**Scenarios Handled:**
+1. New container type + new inventory → creates all
+2. Existing container type + new inventory → reuses container, creates inventory
+3. Existing container type + existing inventory → adds lot to existing (user choice)
+4. Container type only (no inventory tracking) → just creates/uses container type
+
 **Integration Points:**
 - PrepareSpawnForm: "Set Up New" button next to container dropdown
 - SpawnManagement: Guided empty state when no containers configured
@@ -6705,6 +6723,10 @@ All tables have:
 - When no containers exist, shows guided setup with numbered steps
 - Steps 2 & 3 (Prepare, Sterilize) preview what comes next
 - Clear call-to-action to set up first container
+
+**Bug Fix:**
+- Fixed "Lot not found" error by creating instances directly instead of using createInstancesFromLot
+- Avoids React state timing issues with async operations
 
 **Files Created/Changed:**
 - src/components/spawn/ContainerSetupFlow.tsx (NEW)

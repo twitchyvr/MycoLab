@@ -1,7 +1,18 @@
 // ============================================================================
 // CONTAINER SETUP FLOW
-// A smart, unified wizard for setting up containers from scratch.
-// Handles: Container Type + Inventory Item + Stock Lot + Instances
+// A smart, unified wizard for setting up containers.
+//
+// HANDLES ALL SCENARIOS:
+// 1. New container type + new inventory → creates everything
+// 2. Existing container type + new inventory → uses existing container, creates inventory
+// 3. Existing container type + existing inventory → adds lot to existing inventory
+// 4. Container type only (no inventory tracking) → just creates/uses container type
+//
+// ACQUISITION TYPES:
+// - "I already have these" → no cost required
+// - "I purchased these" → cost tracking optional
+// - "Gift/Free" → no cost, no supplier
+//
 // Supports both basic users (quick presets) and advanced users (full customization)
 // ============================================================================
 
@@ -9,7 +20,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../store';
 import { NumericInput } from '../common/NumericInput';
 import { VolumeInput } from '../common/VolumeInput';
-import type { ContainerCategory, ContainerUsageContext } from '../../store/types';
+import type { ContainerCategory, ContainerUsageContext, InventoryItem } from '../../store/types';
 
 interface ContainerSetupFlowProps {
   isOpen: boolean;
@@ -139,6 +150,9 @@ const CONTAINER_CATEGORIES = [
   { value: 'other', label: 'Other', icon: '📍' },
 ];
 
+// How the user acquired these containers
+type AcquisitionType = 'have' | 'purchased' | 'gift';
+
 // Container inventory category ID from seed data
 const CONTAINERS_CATEGORY_ID = '00000000-0000-0000-0005-000000000004';
 
@@ -151,6 +165,7 @@ const Icons = {
   Package: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>,
   Plus: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   ChevronDown: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="6 9 12 15 18 9"/></svg>,
+  Info: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
 };
 
 type Step = 'select' | 'inventory' | 'summary';
@@ -164,6 +179,7 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
   const {
     state,
     activeContainers,
+    activeInventoryItems,
     activeSuppliers,
     addContainer,
     addInventoryItem,
@@ -188,9 +204,13 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
   // Inventory Tracking Data
   const [trackInventory, setTrackInventory] = useState(true);
   const [quantity, setQuantity] = useState<number>(1);
+  const [acquisitionType, setAcquisitionType] = useState<AcquisitionType>('have');
   const [totalCost, setTotalCost] = useState<number | undefined>(undefined);
   const [supplierId, setSupplierId] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // User choice when inventory item already exists
+  const [useExistingInventory, setUseExistingInventory] = useState(true);
 
   // Advanced options
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -236,13 +256,32 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
     return totalCost / quantity;
   }, [totalCost, quantity]);
 
-  // Check if container type already exists
+  // Check if container type already exists (case-insensitive, trimmed)
   const existingContainer = useMemo(() => {
     const data = getContainerData();
+    if (!data.name) return null;
+    const normalizedName = data.name.toLowerCase().trim();
     return activeContainers.find(c =>
-      c.name.toLowerCase() === data.name.toLowerCase()
+      c.name.toLowerCase().trim() === normalizedName
     );
   }, [activeContainers, getContainerData]);
+
+  // Check if inventory item already exists for this container type (case-insensitive, trimmed)
+  const existingInventoryItem = useMemo((): InventoryItem | null => {
+    const data = getContainerData();
+    if (!data.name) return null;
+    const normalizedName = data.name.toLowerCase().trim();
+    return activeInventoryItems.find(item =>
+      item.name.toLowerCase().trim() === normalizedName &&
+      item.categoryId === CONTAINERS_CATEGORY_ID
+    ) || null;
+  }, [activeInventoryItems, getContainerData]);
+
+  // Get current stock count for existing inventory item
+  const existingStockCount = useMemo(() => {
+    if (!existingInventoryItem) return 0;
+    return existingInventoryItem.quantity || 0;
+  }, [existingInventoryItem]);
 
   // Validate current step
   const canProceed = useMemo(() => {
@@ -309,10 +348,15 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
       const data = getContainerData();
       let containerId: string;
 
-      // Step 1: Create or use existing container type
+      // ========================================
+      // STEP 1: Get or Create Container Type
+      // ========================================
       if (existingContainer) {
+        // Use existing container type
         containerId = existingContainer.id;
+        console.log('[ContainerSetup] Using existing container type:', existingContainer.name);
       } else {
+        // Create new container type
         const usageContexts: ContainerUsageContext[] =
           usageContext === 'spawn' || usageContext === 'culture'
             ? ['culture']
@@ -331,56 +375,85 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
           isActive: true,
         });
         containerId = newContainer.id;
+        console.log('[ContainerSetup] Created new container type:', newContainer.name);
       }
 
-      // Step 2: Create inventory item and lot if tracking
+      // ========================================
+      // STEP 2: Handle Inventory (if tracking)
+      // ========================================
       if (trackInventory && quantity > 0) {
-        // Create inventory item
-        const inventoryItem = await addInventoryItem({
-          name: data.name,
-          categoryId: CONTAINERS_CATEGORY_ID,
-          quantity: quantity,
-          unit: 'units',
-          unitCost: unitCost > 0 ? unitCost : 0,
-          reorderPoint: Math.max(1, Math.floor(quantity / 4)), // Suggest reorder at 25%
-          reorderQty: quantity, // Default reorder quantity to original purchase amount
-          supplierId: supplierId || undefined,
-          itemBehavior: 'container',
-          itemProperties: {
-            isReusable: data.isReusable,
-            isSterilizable: data.isSterilizable,
-            trackInstances: true,
-            unitType: 'countable',
-            defaultUnit: 'each',
-          },
-          notes: data.volumeMl ? `${data.volumeMl}ml capacity. Container ID: ${containerId}` : `Container ID: ${containerId}`,
-          isActive: true,
-        });
+        let inventoryItemToUse: InventoryItem;
 
-        // Create inventory lot
+        // Determine whether to use existing inventory item or create new
+        if (existingInventoryItem && useExistingInventory) {
+          // Add lot to existing inventory item
+          inventoryItemToUse = existingInventoryItem;
+          console.log('[ContainerSetup] Adding lot to existing inventory item:', inventoryItemToUse.name);
+        } else {
+          // Create new inventory item
+          inventoryItemToUse = await addInventoryItem({
+            name: data.name,
+            categoryId: CONTAINERS_CATEGORY_ID,
+            quantity: quantity,
+            unit: 'units',
+            unitCost: unitCost > 0 ? unitCost : 0,
+            reorderPoint: Math.max(1, Math.floor(quantity / 4)),
+            reorderQty: quantity,
+            supplierId: supplierId || undefined,
+            itemBehavior: 'container',
+            itemProperties: {
+              isReusable: data.isReusable,
+              isSterilizable: data.isSterilizable,
+              trackInstances: true,
+              unitType: 'countable',
+              defaultUnit: 'each',
+            },
+            notes: data.volumeMl ? `${data.volumeMl}ml capacity. Container ID: ${containerId}` : `Container ID: ${containerId}`,
+            isActive: true,
+          });
+          console.log('[ContainerSetup] Created new inventory item:', inventoryItemToUse.name);
+        }
+
+        // ========================================
+        // STEP 3: Create Inventory Lot
+        // ========================================
+        // Only include cost if user provided it (supports "I already have these" scenario)
+        const lotPurchaseCost = acquisitionType === 'have' || acquisitionType === 'gift'
+          ? undefined  // No cost tracking for items you already own or received as gift
+          : (totalCost || undefined);
+
+        const lotUnitCost = lotPurchaseCost && quantity > 0
+          ? lotPurchaseCost / quantity
+          : undefined;
+
         const lot = await addInventoryLot({
-          inventoryItemId: inventoryItem.id,
+          inventoryItemId: inventoryItemToUse.id,
           quantity: quantity,
           originalQuantity: quantity,
           inUseQuantity: 0,
           unit: 'units',
           status: 'available',
-          purchaseCost: totalCost || undefined,
-          unitCost: unitCost > 0 ? unitCost : undefined,
+          purchaseCost: lotPurchaseCost,
+          unitCost: lotUnitCost,
           purchaseDate: purchaseDate ? new Date(purchaseDate) : new Date(),
-          supplierId: supplierId || undefined,
+          supplierId: acquisitionType === 'purchased' ? (supplierId || undefined) : undefined,
           isActive: true,
         });
+        console.log('[ContainerSetup] Created inventory lot with quantity:', lot.quantity);
 
-        // Create individual instances for tracking
-        // NOTE: We create instances directly here instead of using createInstancesFromLot
-        // because React state won't have the lot yet (async state update timing issue)
-        if (quantity <= 100) {
-          const calculatedUnitCost = unitCost > 0 ? unitCost : 0;
+        // ========================================
+        // STEP 4: Create Lab Item Instances
+        // ========================================
+        // Only create individual instances for reasonable quantities (≤100)
+        // For reusable containers, instances allow tracking individual jar usage
+        if (quantity <= 100 && data.isReusable) {
+          const calculatedUnitCost = lotUnitCost || 0;
           const acqDate = purchaseDate ? new Date(purchaseDate) : new Date();
+
+          console.log('[ContainerSetup] Creating', quantity, 'lab item instances...');
           for (let i = 0; i < quantity; i++) {
             await addLabItemInstance({
-              inventoryItemId: inventoryItem.id,
+              inventoryItemId: inventoryItemToUse.id,
               inventoryLotId: lot.id,
               instanceNumber: i + 1,
               label: `${data.name} #${i + 1}`,
@@ -391,14 +464,18 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
               isActive: true,
             });
           }
+          console.log('[ContainerSetup] Created all instances');
         }
       }
 
-      // Complete - call callback with container ID
+      // ========================================
+      // COMPLETE - Return container ID
+      // ========================================
+      console.log('[ContainerSetup] Setup complete, container ID:', containerId);
       onComplete?.(containerId);
       onClose();
     } catch (err) {
-      console.error('Container setup failed:', err);
+      console.error('[ContainerSetup] Setup failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to set up container');
     } finally {
       setIsSubmitting(false);
@@ -418,9 +495,11 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
     setContainerNotes('');
     setTrackInventory(true);
     setQuantity(1);
+    setAcquisitionType('have');
     setTotalCost(undefined);
     setSupplierId('');
     setShowAdvanced(false);
+    setUseExistingInventory(true);
     setError(null);
     onClose();
   };
@@ -603,13 +682,20 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
                 </div>
               )}
 
-              {/* Existing Container Warning */}
+              {/* Existing Container Info */}
               {existingContainer && containerData.name && (
-                <div className="p-3 bg-amber-950/30 border border-amber-800/50 rounded-lg">
-                  <p className="text-sm text-amber-300">
-                    ⚠️ A container type named "{existingContainer.name}" already exists.
-                    We'll use the existing type and add to your inventory.
-                  </p>
+                <div className="p-3 bg-emerald-950/30 border border-emerald-800/50 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Icons.Info />
+                    <div>
+                      <p className="text-sm text-emerald-300">
+                        "{existingContainer.name}" already exists as a container type.
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        We'll use the existing definition. You can add stock in the next step.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -624,7 +710,7 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
                   <div>
                     <span className="font-medium text-zinc-200">Track Inventory</span>
                     <p className="text-sm text-zinc-500 mt-1">
-                      Track how many you have, cost per unit, and individual container usage
+                      Record how many you have and track usage over time
                     </p>
                   </div>
                   <input
@@ -638,93 +724,190 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
 
               {trackInventory && (
                 <>
-                  {/* Quantity & Cost */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-zinc-400 mb-1">
-                        How many do you have?
-                      </label>
-                      <NumericInput
-                        value={quantity}
-                        onChange={val => setQuantity(val ?? 1)}
-                        min={1}
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-zinc-400 mb-1">
-                        Total Cost (optional)
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
-                        <NumericInput
-                          value={totalCost}
-                          onChange={setTotalCost}
-                          step={0.01}
-                          placeholder="0.00"
-                          className="w-full pl-7 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:border-blue-500"
-                        />
+                  {/* Existing Inventory Item Notice */}
+                  {existingInventoryItem && (
+                    <div className="p-4 bg-blue-950/30 border border-blue-800/50 rounded-lg">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-sm text-blue-300 font-medium">
+                            You already have "{existingInventoryItem.name}" in inventory
+                          </p>
+                          <p className="text-xs text-zinc-400 mt-1">
+                            Current stock: {existingStockCount} {existingInventoryItem.unit}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Unit Cost Display */}
-                  {totalCost && quantity > 0 && (
-                    <div className="p-3 bg-emerald-950/30 border border-emerald-800/50 rounded-lg text-center">
-                      <p className="text-sm text-zinc-400">Cost per container:</p>
-                      <p className="text-2xl font-bold text-emerald-400">${unitCost.toFixed(2)}</p>
+                      <div className="mt-3 space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="inventoryChoice"
+                            checked={useExistingInventory}
+                            onChange={() => setUseExistingInventory(true)}
+                            className="w-4 h-4 border-zinc-600 bg-zinc-800 text-blue-500"
+                          />
+                          <span className="text-sm text-zinc-300">
+                            Add to existing inventory (recommended)
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="inventoryChoice"
+                            checked={!useExistingInventory}
+                            onChange={() => setUseExistingInventory(false)}
+                            className="w-4 h-4 border-zinc-600 bg-zinc-800 text-blue-500"
+                          />
+                          <span className="text-sm text-zinc-300">
+                            Create separate inventory item
+                          </span>
+                        </label>
+                      </div>
                     </div>
                   )}
 
-                  {/* Advanced Options */}
+                  {/* Acquisition Type */}
                   <div>
-                    <button
-                      type="button"
-                      onClick={() => setShowAdvanced(!showAdvanced)}
-                      className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-300"
-                    >
-                      <span className={`transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>
-                        <Icons.ChevronDown />
-                      </span>
-                      Advanced Options
-                    </button>
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
+                      How did you get these?
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAcquisitionType('have')}
+                        className={`p-3 rounded-lg border text-center transition-all ${
+                          acquisitionType === 'have'
+                            ? 'bg-emerald-950/50 border-emerald-500 text-emerald-300'
+                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                        }`}
+                      >
+                        <div className="text-lg mb-1">🏠</div>
+                        <div className="text-sm font-medium">Already Have</div>
+                        <div className="text-xs opacity-70">No cost tracking</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAcquisitionType('purchased')}
+                        className={`p-3 rounded-lg border text-center transition-all ${
+                          acquisitionType === 'purchased'
+                            ? 'bg-blue-950/50 border-blue-500 text-blue-300'
+                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                        }`}
+                      >
+                        <div className="text-lg mb-1">🛒</div>
+                        <div className="text-sm font-medium">Purchased</div>
+                        <div className="text-xs opacity-70">Track cost</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAcquisitionType('gift')}
+                        className={`p-3 rounded-lg border text-center transition-all ${
+                          acquisitionType === 'gift'
+                            ? 'bg-purple-950/50 border-purple-500 text-purple-300'
+                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                        }`}
+                      >
+                        <div className="text-lg mb-1">🎁</div>
+                        <div className="text-sm font-medium">Gift/Free</div>
+                        <div className="text-xs opacity-70">No cost</div>
+                      </button>
+                    </div>
+                  </div>
 
-                    {showAdvanced && (
-                      <div className="mt-3 p-4 bg-zinc-800/30 border border-zinc-700 rounded-lg space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm text-zinc-400 mb-1">Supplier</label>
-                            <select
-                              value={supplierId}
-                              onChange={e => setSupplierId(e.target.value)}
-                              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:border-blue-500"
-                            >
-                              <option value="">Select supplier...</option>
-                              {activeSuppliers.map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm text-zinc-400 mb-1">Purchase Date</label>
-                            <input
-                              type="date"
-                              value={purchaseDate}
-                              onChange={e => setPurchaseDate(e.target.value)}
-                              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 [color-scheme:dark] focus:outline-none focus:border-blue-500"
-                            />
-                          </div>
+                  {/* Quantity */}
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">
+                      How many do you have?
+                    </label>
+                    <NumericInput
+                      value={quantity}
+                      onChange={val => setQuantity(val ?? 1)}
+                      min={1}
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  {/* Cost (only for purchased) */}
+                  {acquisitionType === 'purchased' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-zinc-400 mb-1">
+                          Total Cost (optional)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
+                          <NumericInput
+                            value={totalCost}
+                            onChange={setTotalCost}
+                            step={0.01}
+                            placeholder="0.00"
+                            className="w-full pl-7 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:border-blue-500"
+                          />
                         </div>
                       </div>
-                    )}
-                  </div>
+                      {totalCost && quantity > 0 && (
+                        <div className="flex items-end">
+                          <div className="p-3 bg-emerald-950/30 border border-emerald-800/50 rounded-lg w-full text-center">
+                            <p className="text-xs text-zinc-400">Per unit:</p>
+                            <p className="text-lg font-bold text-emerald-400">${unitCost.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Advanced Options (only for purchased) */}
+                  {acquisitionType === 'purchased' && (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvanced(!showAdvanced)}
+                        className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-300"
+                      >
+                        <span className={`transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>
+                          <Icons.ChevronDown />
+                        </span>
+                        Advanced Options
+                      </button>
+
+                      {showAdvanced && (
+                        <div className="mt-3 p-4 bg-zinc-800/30 border border-zinc-700 rounded-lg space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm text-zinc-400 mb-1">Supplier</label>
+                              <select
+                                value={supplierId}
+                                onChange={e => setSupplierId(e.target.value)}
+                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:border-blue-500"
+                              >
+                                <option value="">Select supplier...</option>
+                                {activeSuppliers.map(s => (
+                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm text-zinc-400 mb-1">Purchase Date</label>
+                              <input
+                                type="date"
+                                value={purchaseDate}
+                                onChange={e => setPurchaseDate(e.target.value)}
+                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 [color-scheme:dark] focus:outline-none focus:border-blue-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
 
               {!trackInventory && (
                 <div className="p-4 bg-zinc-800/30 border border-zinc-700 border-dashed rounded-lg text-center">
                   <p className="text-zinc-500">
-                    You can always add inventory tracking later from the Stock & Orders page.
+                    Container type will be available for selection, but stock won't be tracked.
+                    You can add inventory tracking later from Stock & Orders.
                   </p>
                 </div>
               )}
@@ -753,9 +936,13 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
                         {containerData.isReusable ? 'Reusable' : 'Single-use'}
                         {containerData.isSterilizable && ' • Sterilizable'}
                       </p>
-                      {existingContainer && (
-                        <p className="text-xs text-amber-400 mt-1">
-                          Using existing container type
+                      {existingContainer ? (
+                        <p className="text-xs text-emerald-400 mt-1">
+                          ✓ Using existing container type
+                        </p>
+                      ) : (
+                        <p className="text-xs text-blue-400 mt-1">
+                          + New container type will be created
                         </p>
                       )}
                     </div>
@@ -771,18 +958,28 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
                         <p className="text-sm text-zinc-400">Inventory</p>
                         <p className="font-medium text-zinc-200">
                           {quantity} container{quantity !== 1 ? 's' : ''}
+                          {acquisitionType === 'have' && ' (already owned)'}
+                          {acquisitionType === 'gift' && ' (gift/free)'}
                         </p>
-                        {totalCost && (
+                        {acquisitionType === 'purchased' && totalCost && (
                           <p className="text-sm text-zinc-400">
                             ${totalCost.toFixed(2)} total • ${unitCost.toFixed(2)} each
                           </p>
                         )}
-                        <p className="text-xs text-zinc-500 mt-1">
-                          {quantity <= 100
-                            ? `${quantity} trackable instance${quantity !== 1 ? 's' : ''} will be created`
-                            : 'Quantity tracking only (too many for individual instances)'
-                          }
-                        </p>
+                        {existingInventoryItem && useExistingInventory ? (
+                          <p className="text-xs text-emerald-400 mt-1">
+                            ✓ Adding to existing inventory ({existingStockCount} + {quantity} = {existingStockCount + quantity})
+                          </p>
+                        ) : (
+                          <p className="text-xs text-blue-400 mt-1">
+                            + New inventory item will be created
+                          </p>
+                        )}
+                        {containerData.isReusable && quantity <= 100 && (
+                          <p className="text-xs text-zinc-500 mt-1">
+                            {quantity} trackable instance{quantity !== 1 ? 's' : ''} will be created
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
@@ -793,12 +990,12 @@ export const ContainerSetupFlow: React.FC<ContainerSetupFlowProps> = ({
               <div className="p-4 bg-blue-950/30 border border-blue-800/50 rounded-lg">
                 <h4 className="font-medium text-blue-300 mb-2">What happens next?</h4>
                 <ul className="text-sm text-zinc-400 space-y-1">
-                  <li>• Container type will be available for spawn preparation</li>
+                  <li>• Container type will be available in dropdowns</li>
                   {trackInventory && (
                     <>
-                      <li>• Stock will be tracked in your inventory</li>
-                      <li>• Each container can be tracked individually</li>
-                      <li>• Usage will automatically decrement inventory</li>
+                      <li>• Stock level will be tracked</li>
+                      {containerData.isReusable && <li>• Each container can be tracked individually</li>}
+                      <li>• Usage will automatically update inventory</li>
                     </>
                   )}
                 </ul>
