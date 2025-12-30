@@ -2999,16 +2999,19 @@ Added auth state listener in DataContext that:
   },
   {
     id: 'dev-1210',
-    title: 'Annual Wrapped Feature',
-    description: 'Spotify Wrapped-style year-end summary showing cultivation statistics, top strains, success rates, and fun facts.',
+    title: 'Annual Wrapped Feature (2026)',
+    description: 'Spotify Wrapped-style year-end summary showing cultivation statistics, top strains, success rates, and fun facts. Deferred to end of 2026.',
     category: 'ui',
-    status: 'completed',
+    status: 'planned',
     priority: 'low',
     estimatedHours: 3,
-    completedAt: timestamp(),
-    notes: `Annual Wrapped feature:
+    notes: `Annual Wrapped feature - DEFERRED TO 2026:
 
-**Features:**
+**Status:** Frontend removed Dec 2025 - app launches Jan 2026, so 2025 Wrapped was premature.
+Data infrastructure is in place (cultures, grows, harvests, observations).
+Frontend to be re-added at end of 2026 for "2026 Wrapped".
+
+**Planned Features:**
 - Multi-slide presentation with swipe/keyboard navigation
 - Year overview: total grows, cultures, harvests, yield
 - Top strain with count and yield
@@ -3021,15 +3024,18 @@ Added auth state listener in DataContext that:
 - Fun facts generated from data
 - Share prompt with #MycoLabWrapped
 
-**Components:**
+**Planned Components:**
 - AnnualWrapped: Full-screen slideshow modal
 - WrappedTrigger: Button to open (shows in Dec/Jan)
 - WrappedWidget: Dashboard card with preview stats
 
-**Integration:**
-- Added to Lab Command Center dashboard
-- Shows automatically in December and January
-- Year automatically selected based on current month`,
+**Data Requirements (already in place):**
+- cultures table with createdAt, status, strainId
+- grows table with spawnedAt, completedAt, currentStage, status, totalYield
+- flushes with harvestDate, wetWeight, dryWeight
+- observations with type (misting, fae, etc.)
+- recipes with createdAt
+- strains for name lookups`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
