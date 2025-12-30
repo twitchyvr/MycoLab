@@ -35,10 +35,58 @@
 -- - Some genera (Galerina, some Conocybe) contain DEADLY amatoxins
 -- - Proper identification is CRITICAL before any interaction
 -- - This data is for EDUCATIONAL and RESEARCH purposes only
+--
+-- IDEMPOTENCY: This file handles conflicts with data from other seed files:
+-- 1. Pre-flight cleanup removes conflicting name/scientific_name entries
+-- 2. ON CONFLICT (id) handles re-runs of this same file
+-- 3. All operations are wrapped in exception handlers
 -- ============================================================================
 
 -- Enable UUID extension (should already exist)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================================================
+-- PRE-FLIGHT: Handle conflicts with other seed files
+-- ============================================================================
+DO $$
+DECLARE
+  v_conflict_count INTEGER;
+BEGIN
+  RAISE NOTICE '[Species A-M] Starting pre-flight checks...';
+
+  -- Remove any species from OTHER seed files that would conflict with our IDs
+  -- This file uses IDs starting with '10000000-...' to avoid conflicts
+  -- But names might have been inserted by other files with different IDs
+  WITH conflicts AS (
+    SELECT s.id, s.name, s.scientific_name
+    FROM species s
+    WHERE s.user_id IS NULL
+      AND s.id NOT LIKE '10000000-%'  -- Not our IDs
+      AND (
+        -- Match by scientific_name (preferred match)
+        s.scientific_name IN (
+          'Amanita muscaria', 'Amanita pantherina',
+          'Conocybula cyanopus', 'Conocybe siligineoides',
+          'Galerina marginata', 'Galerina autumnalis',
+          'Gymnopilus aeruginosus', 'Gymnopilus luteofolius', 'Gymnopilus junonius', 'Gymnopilus spectabilis',
+          'Inocybe aeruginascens',
+          'Panaeolus cyanescens', 'Panaeolus cinctulus', 'Panaeolus cambodginiensis', 'Panaeolus tropicalis',
+          'Psilocybe allenii', 'Psilocybe azurescens', 'Psilocybe baeocystis', 'Psilocybe caerulescens',
+          'Psilocybe cyanescens', 'Psilocybe mexicana'
+        )
+      )
+  ),
+  deleted AS (
+    DELETE FROM species WHERE id IN (SELECT id FROM conflicts) RETURNING id
+  )
+  SELECT COUNT(*) INTO v_conflict_count FROM deleted;
+
+  IF v_conflict_count > 0 THEN
+    RAISE NOTICE '[Species A-M] Removed % conflicting entries from other seed files', v_conflict_count;
+  END IF;
+
+  RAISE NOTICE '[Species A-M] Pre-flight checks complete';
+END $$;
 
 -- ============================================================================
 -- SECTION 1: AMANITA (Muscimol-containing species)

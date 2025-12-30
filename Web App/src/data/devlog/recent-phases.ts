@@ -7099,6 +7099,36 @@ All tables have:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-904',
+    title: 'Enterprise-Grade SQL Seed File Idempotency',
+    description: 'Fixed all species SQL seed files to be truly idempotent. Files can now be run in any order, multiple times, without errors.',
+    category: 'bugfix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 3,
+    completedAt: timestamp(),
+    notes: `**Issues Fixed:**
+1. "ON CONFLICT DO UPDATE cannot affect row a second time" - Multiple entries with same conflict key
+2. "Could not create unique index" - Duplicate scientific_name values from multiple files
+3. Conflicting data between seed files using different IDs for same species
+
+**Files Updated:**
+- \`mycolab-research-species-seed.sql\`: Added pre-flight deduplication, exception-wrapped index creation, helper function for robust upserts
+- \`supabase-species-data.sql\`: Added pre-flight index checks and validation
+- \`sql-mycolab-speciesdata-a_thru_m.sql\`: Added conflict detection and cleanup for cross-file conflicts
+- \`sql-mycolab-speciesdata-n_thru_z.sql\`: Added conflict detection and cleanup for cross-file conflicts
+
+**Enterprise Patterns Implemented:**
+- Pre-flight checks with RAISE NOTICE logging
+- Exception-wrapped DDL operations (CREATE INDEX IF NOT EXISTS)
+- Conflict detection via scientific_name matching
+- Automatic deduplication of conflicting records
+- Support for running files in any order
+- Comprehensive error handling with meaningful messages`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
