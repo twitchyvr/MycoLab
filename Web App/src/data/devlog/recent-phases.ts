@@ -7117,7 +7117,12 @@ All tables have:
 - \`mycolab-research-species-seed.sql\`: Added pre-flight deduplication, exception-wrapped index creation, helper function for robust upserts
 - \`supabase-species-data.sql\`: Added pre-flight index checks and validation
 - \`sql-mycolab-speciesdata-a_thru_m.sql\`: Added conflict detection and cleanup for cross-file conflicts
-- \`sql-mycolab-speciesdata-n_thru_z.sql\`: Added conflict detection and cleanup for cross-file conflicts
+- \`sql-mycolab-speciesdata-n_thru_z.sql\`: Fixed ID collision - changed from overlapping 0003/0004-xxx to unique 0007/0008-xxx ranges
+
+**ID Range Assignments (to prevent conflicts):**
+- \`supabase-species-data.sql\`: 00000000-0000-0000-0000-xxx (gourmet/medicinal)
+- \`sql-mycolab-speciesdata-a_thru_m.sql\`: 10000000-0000-0000-0000-xxx through 0006-xxx (research A-M)
+- \`sql-mycolab-speciesdata-n_thru_z.sql\`: 10000000-0000-0000-0007-xxx (Psilocybe N-Z), 0008-xxx (Pluteus)
 
 **Enterprise Patterns Implemented:**
 - Pre-flight checks with RAISE NOTICE logging
@@ -7125,7 +7130,8 @@ All tables have:
 - Conflict detection via scientific_name matching
 - Automatic deduplication of conflicting records
 - Support for running files in any order
-- Comprehensive error handling with meaningful messages`,
+- Comprehensive error handling with meaningful messages
+- Unique ID range assignments to prevent cross-file collisions`,
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
