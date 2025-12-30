@@ -6994,6 +6994,87 @@ All tables have:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  // =============================================================================
+  // COMMUNITY CONTRIBUTION SYSTEM
+  // Reddit-style community features for library entries
+  // =============================================================================
+  {
+    id: 'dev-900',
+    title: 'Community Contribution System',
+    description: 'Full community contribution system for library entries. Users can suggest corrections, additions, upload photos, and share cultivation tips. Reddit-style voting on suggestions.',
+    category: 'feature',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 20,
+    completedAt: timestamp(),
+    notes: `Comprehensive community features:
+
+**Database Schema:**
+- suggestion_votes: Reddit-style upvote/downvote on suggestions
+- community_photos: User-submitted photos with moderation
+- user_photo_quotas: Rate limiting (10/day, 50/week, 150/month, 100MB storage)
+- photo_votes: Voting on photos
+- photo_reports: Flagging inappropriate content
+- entity_ratings: Multi-dimensional ratings (overall, ease, yield, resistance, flavor)
+
+**Components Created:**
+- ContributeButton: Enticing CTA for users to contribute
+- ContributionModal: Multi-step contribution form (corrections, additions, photos, tips, sources)
+- VotingWidget: Reddit-style upvote/downvote with score display
+- InlineVoting: Compact voting for lists
+- CommentThread: Discussion thread with real-time updates
+- SuggestionCard: Display suggestions with votes and status
+- CommunityPhotoGallery: Photo gallery with upload, lightbox, voting
+- RatingWidget: Multi-dimensional star ratings with breakdown
+
+**Integration:**
+- SpeciesLibrary: Added Community tab with photos, ratings, contribute actions
+- Species/Strain detail views: Contribute button, rating widget
+- All library entries: Community engagement features
+
+**Features:**
+- Photo quotas with rolling windows (daily/weekly/monthly resets)
+- Photo moderation workflow (pending → approved/rejected)
+- Official photo designation for library entries
+- Featured photos
+- Report inappropriate content
+- Real-time comment threads with Supabase subscriptions
+
+**Files Changed:**
+- supabase-schema.sql (6 new tables, 4 helper functions)
+- src/store/types.ts (new community types)
+- src/components/community/* (7 new files)
+- src/components/library/SpeciesLibrary.tsx (integrated community features)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-901',
+    title: 'Community Photo Uploads with Quotas',
+    description: 'User-submitted photos for any entity (species, strains, grows, cultures, etc.) with abuse prevention through rate limiting and storage quotas.',
+    category: 'feature',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 8,
+    completedAt: timestamp(),
+    notes: 'Quotas: 10 photos/day, 50/week, 150/month, 100MB total storage. Auto-resets on rolling windows.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+  {
+    id: 'dev-902',
+    title: 'Entity Ratings System',
+    description: 'Multi-dimensional ratings for species, strains, recipes, and suppliers. Rate on overall, ease of cultivation, yield potential, contamination resistance, and flavor quality.',
+    category: 'feature',
+    status: 'completed',
+    priority: 'medium',
+    estimatedHours: 6,
+    completedAt: timestamp(),
+    notes: 'Includes rating breakdown visualization and aggregated summaries.',
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

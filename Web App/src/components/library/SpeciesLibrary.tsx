@@ -5,8 +5,15 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../store';
+import { useAuth } from '../../lib/AuthContext';
 import type { Species, Strain } from '../../store/types';
 import { formatTemperatureRange, type TemperatureUnit } from '../../utils/temperature';
+import {
+  ContributeButton,
+  QuickContributeActions,
+  RatingWidget,
+  CommunityPhotoGallery,
+} from '../community';
 
 // ============================================================================
 // TYPES
@@ -329,7 +336,8 @@ const SpeciesDetailView: React.FC<{
 }> = ({ species, strains, onBack, onSelectStrain }) => {
   const { state } = useData();
   const temperatureUnit: TemperatureUnit = state.settings?.defaultUnits || 'imperial';
-  const [activeTab, setActiveTab] = useState<'overview' | 'growing' | 'culinary' | 'strains'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'growing' | 'culinary' | 'strains' | 'community'>('overview');
+  const { isAuthenticated } = useAuth();
 
   const speciesStrains = strains.filter(s => s.speciesId === species.id);
 
@@ -357,16 +365,31 @@ const SpeciesDetailView: React.FC<{
               Also known as: {species.commonNames.join(', ')}
             </p>
           )}
+          {/* Community Rating */}
+          <div className="mt-3">
+            <RatingWidget
+              entityType="species"
+              entityId={species.id}
+              size="md"
+            />
+          </div>
         </div>
+        {/* Contribute Button */}
+        <ContributeButton
+          entityType="species"
+          entityId={species.id}
+          entityName={species.name}
+          variant="primary"
+        />
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-zinc-800 pb-1">
-        {(['overview', 'growing', 'culinary', 'strains'] as const).map(tab => (
+      <div className="flex gap-1 border-b border-zinc-800 pb-1 overflow-x-auto">
+        {(['overview', 'growing', 'culinary', 'strains', 'community'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
               activeTab === tab
                 ? 'bg-zinc-800 text-white'
                 : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
@@ -554,6 +577,39 @@ const SpeciesDetailView: React.FC<{
             )}
           </div>
         )}
+
+        {activeTab === 'community' && (
+          <div className="space-y-8">
+            {/* Community Photos */}
+            <CommunityPhotoGallery
+              entityType="species"
+              entityId={species.id}
+              showUpload={isAuthenticated}
+              layout="grid"
+            />
+
+            {/* Contribution Call-to-Action */}
+            <QuickContributeActions
+              entityType="species"
+              entityId={species.id}
+              entityName={species.name}
+              onSuggestEdit={() => {/* Opens contribution modal */}}
+              onAddPhoto={() => {/* Opens photo upload */}}
+              onReportIssue={() => {/* Opens report form */}}
+            />
+
+            {/* Detailed Ratings */}
+            <div className="bg-zinc-800/30 rounded-xl p-6">
+              <h4 className="font-medium text-white mb-4">Community Ratings</h4>
+              <RatingWidget
+                entityType="species"
+                entityId={species.id}
+                showBreakdown={true}
+                allowRating={isAuthenticated}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {species.notes && (
@@ -576,6 +632,7 @@ const StrainDetailView: React.FC<{
   onBack: () => void;
 }> = ({ strain, species, onBack }) => {
   const { state } = useData();
+  const { isAuthenticated } = useAuth();
   const temperatureUnit: TemperatureUnit = state.settings?.defaultUnits || 'imperial';
 
   return (
@@ -600,7 +657,22 @@ const StrainDetailView: React.FC<{
           </div>
           <p className="text-lg text-zinc-400 italic mt-1">{strain.species || species?.name}</p>
           {strain.variety && <p className="text-sm text-zinc-500">var. {strain.variety}</p>}
+          {/* Community Rating */}
+          <div className="mt-3">
+            <RatingWidget
+              entityType="strain"
+              entityId={strain.id}
+              size="md"
+            />
+          </div>
         </div>
+        {/* Contribute Button */}
+        <ContributeButton
+          entityType="strain"
+          entityId={strain.id}
+          entityName={strain.name}
+          variant="primary"
+        />
       </div>
 
       {/* Main Content */}
@@ -684,6 +756,27 @@ const StrainDetailView: React.FC<{
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Community Section */}
+      <div className="bg-zinc-900/30 border border-zinc-800 rounded-xl p-6">
+        <h3 className="font-semibold text-white mb-4">Community</h3>
+        <div className="space-y-6">
+          <CommunityPhotoGallery
+            entityType="strain"
+            entityId={strain.id}
+            showUpload={isAuthenticated}
+            layout="grid"
+          />
+          <QuickContributeActions
+            entityType="strain"
+            entityId={strain.id}
+            entityName={strain.name}
+            onSuggestEdit={() => {}}
+            onAddPhoto={() => {}}
+            onReportIssue={() => {}}
+          />
         </div>
       </div>
     </div>
