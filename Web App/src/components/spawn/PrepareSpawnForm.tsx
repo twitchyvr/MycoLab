@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../store';
+import { StandardDropdown } from '../common/StandardDropdown';
 import type { PreparedSpawn, IngredientUsage, InventoryLot } from '../../store/types';
 
 interface PrepareSpawnFormProps {
@@ -420,22 +421,21 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
           {/* Container & Count */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Container Type <span className="text-red-400">*</span>
-              </label>
-              <select
+              <StandardDropdown
+                label="Container Type"
                 value={containerId}
-                onChange={(e) => setContainerId(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
+                onChange={setContainerId}
+                options={activeContainers.map(c => ({
+                  id: c.id,
+                  name: `${c.name}${c.volumeMl ? ` (${c.volumeMl}ml)` : ''}`,
+                }))}
+                placeholder="Select container..."
                 required
-              >
-                <option value="">Select container...</option>
-                {activeContainers.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.volumeMl ? `(${c.volumeMl}ml)` : ''}
-                  </option>
-                ))}
-              </select>
+                entityType="container"
+                fieldName="containerId"
+                addLabel="Add New Container Type"
+                helpText="Don't see your container? Click + to add a custom container type."
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">
@@ -552,19 +552,16 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
           {(spawnType === 'grain_jar' || spawnType === 'spawn_bag') && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Grain Type
-                </label>
-                <select
+                <StandardDropdown
+                  label="Grain Type"
                   value={grainTypeId}
-                  onChange={(e) => setGrainTypeId(e.target.value)}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
-                >
-                  <option value="">Select grain...</option>
-                  {activeGrainTypes.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
+                  onChange={setGrainTypeId}
+                  options={activeGrainTypes}
+                  placeholder="Select grain..."
+                  entityType="grainType"
+                  fieldName="grainTypeId"
+                  addLabel="Add New Grain Type"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
@@ -703,19 +700,16 @@ export const PrepareSpawnForm: React.FC<PrepareSpawnFormProps> = ({
 
           {/* Location */}
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
-              Storage Location
-            </label>
-            <select
+            <StandardDropdown
+              label="Storage Location"
               value={locationId}
-              onChange={(e) => setLocationId(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100"
-            >
-              <option value="">Select location...</option>
-              {activeLocations.map(loc => (
-                <option key={loc.id} value={loc.id}>{loc.name}</option>
-              ))}
-            </select>
+              onChange={setLocationId}
+              options={activeLocations}
+              placeholder="Select location..."
+              entityType="location"
+              fieldName="locationId"
+              addLabel="Add New Location"
+            />
           </div>
 
           {/* Labor Cost */}
