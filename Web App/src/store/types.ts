@@ -1519,6 +1519,199 @@ export interface SuggestionMessage {
   createdAt: Date;
 }
 
+// Vote on a library suggestion (Reddit-style)
+export interface SuggestionVote {
+  id: string;
+  suggestionId: string;
+  userId: string;
+  voteType: 'up' | 'down';
+  createdAt: Date;
+}
+
+// Aggregated vote counts for a suggestion
+export interface SuggestionVoteCounts {
+  upvotes: number;
+  downvotes: number;
+  score: number; // upvotes - downvotes
+  userVote?: 'up' | 'down' | null; // Current user's vote if any
+}
+
+// ============================================================================
+// COMMUNITY PHOTOS SYSTEM
+// User-submitted photos with moderation and quotas
+// ============================================================================
+
+// Entity types that can have community photos
+export type PhotoEntityType =
+  | 'species'
+  | 'strain'
+  | 'grow'
+  | 'culture'
+  | 'container'
+  | 'recipe'
+  | 'inventory_item'
+  | 'location'
+  | 'order'
+  | 'suggestion';
+
+// Photo moderation status
+export type PhotoStatus = 'pending' | 'approved' | 'rejected' | 'flagged';
+
+// Community photo (user-submitted, moderated)
+export interface CommunityPhoto {
+  id: string;
+  // What entity this photo is attached to
+  entityType: PhotoEntityType;
+  entityId: string;
+  // Photo data
+  storagePath: string;
+  storageBucket: string;
+  thumbnailPath?: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  // Metadata
+  caption?: string;
+  altText?: string;
+  tags?: string[];
+  // Moderation
+  status: PhotoStatus;
+  moderatedBy?: string;
+  moderatedAt?: Date;
+  moderationNotes?: string;
+  // Community engagement
+  upvotes: number;
+  downvotes: number;
+  viewCount: number;
+  isFeatured: boolean;
+  isOfficial: boolean; // For species/strain - approved as "official" photo
+  // Ownership
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Photo vote
+export interface PhotoVote {
+  id: string;
+  photoId: string;
+  userId: string;
+  voteType: 'up' | 'down';
+  createdAt: Date;
+}
+
+// Photo report reasons
+export type PhotoReportReason =
+  | 'inappropriate'
+  | 'spam'
+  | 'misleading'
+  | 'copyright'
+  | 'offensive'
+  | 'low_quality'
+  | 'wrong_species'
+  | 'other';
+
+// Photo report (for flagging inappropriate content)
+export interface PhotoReport {
+  id: string;
+  photoId: string;
+  reporterId: string;
+  reason: PhotoReportReason;
+  description?: string;
+  status: 'pending' | 'reviewed' | 'actioned' | 'dismissed';
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  actionTaken?: string;
+  createdAt: Date;
+}
+
+// User photo quota tracking
+export interface UserPhotoQuota {
+  id: string;
+  userId: string;
+  // Rolling window quotas
+  photosToday: number;
+  photosThisWeek: number;
+  photosThisMonth: number;
+  totalPhotos: number;
+  totalStorageBytes: number;
+  // Quota limits
+  dailyLimit: number;
+  weeklyLimit: number;
+  monthlyLimit: number;
+  storageLimitBytes: number;
+  // Reset timestamps
+  dayResetAt: Date;
+  weekResetAt: Date;
+  monthResetAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Quota check result from server
+export interface PhotoQuotaCheck {
+  allowed: boolean;
+  reason?: 'daily_limit_reached' | 'weekly_limit_reached' | 'monthly_limit_reached' | 'storage_limit_reached';
+  limit?: number;
+  current?: number;
+  quotas?: {
+    daily: { used: number; limit: number };
+    weekly: { used: number; limit: number };
+    monthly: { used: number; limit: number };
+    storage: { used: number; limit: number };
+  };
+}
+
+// ============================================================================
+// ENTITY RATINGS (Community ratings for library entries)
+// ============================================================================
+
+// Entity types that can be rated
+export type RateableEntityType = 'species' | 'strain' | 'recipe' | 'supplier';
+
+// Multi-dimensional rating
+export interface EntityRating {
+  id: string;
+  entityType: RateableEntityType;
+  entityId: string;
+  userId: string;
+  // Multi-dimensional ratings (1-5 scale)
+  overallRating?: number;
+  easeOfCultivation?: number;
+  yieldPotential?: number;
+  contaminationResistance?: number;
+  flavorQuality?: number;
+  // Optional review text
+  reviewTitle?: string;
+  reviewText?: string;
+  // Moderation
+  status: 'published' | 'hidden' | 'flagged';
+  // Helpfulness voting
+  helpfulVotes: number;
+  unhelpfulVotes: number;
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Aggregated rating summary for an entity
+export interface EntityRatingSummary {
+  totalRatings: number;
+  averageOverall?: number;
+  averageEase?: number;
+  averageYield?: number;
+  averageResistance?: number;
+  averageFlavor?: number;
+  distribution: {
+    '5': number;
+    '4': number;
+    '3': number;
+    '2': number;
+    '1': number;
+  };
+}
+
 // ============================================================================
 // PUBLIC SHARING SYSTEM TYPES
 // Token-based sharing for public/anonymous access to grows, cultures, batches

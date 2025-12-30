@@ -10352,6 +10352,524 @@ GRANT EXECUTE ON FUNCTION ensure_user_data_integrity(UUID) TO authenticated;
 -- repair_all_users_data is admin only - uses SECURITY DEFINER
 
 -- ============================================================================
+-- COMMUNITY CONTRIBUTION SYSTEM (Community voting, ratings, photos)
+-- ============================================================================
+
+-- Votes on library suggestions (Reddit-style upvoting)
+CREATE TABLE IF NOT EXISTS suggestion_votes (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  suggestion_id UUID NOT NULL REFERENCES library_suggestions(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  vote_type TEXT CHECK (vote_type IN ('up', 'down')) NOT NULL DEFAULT 'up',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  -- One vote per user per suggestion
+  UNIQUE(suggestion_id, user_id)
+);
+
+-- Create indexes for suggestion_votes
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_suggestion_votes_suggestion_id ON suggestion_votes(suggestion_id);
+  CREATE INDEX IF NOT EXISTS idx_suggestion_votes_user_id ON suggestion_votes(user_id);
+END $$;
+
+-- Enable RLS for suggestion_votes
+ALTER TABLE suggestion_votes ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for suggestion_votes
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "suggestion_votes_select" ON suggestion_votes;
+  DROP POLICY IF EXISTS "suggestion_votes_insert" ON suggestion_votes;
+  DROP POLICY IF EXISTS "suggestion_votes_update" ON suggestion_votes;
+  DROP POLICY IF EXISTS "suggestion_votes_delete" ON suggestion_votes;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- Anyone can see vote counts, users can vote
+CREATE POLICY "suggestion_votes_select"
+  ON suggestion_votes FOR SELECT TO authenticated
+  USING (true);
+
+CREATE POLICY "suggestion_votes_insert"
+  ON suggestion_votes FOR INSERT TO authenticated
+  WITH CHECK ((select auth.uid()) = user_id);
+
+CREATE POLICY "suggestion_votes_update"
+  ON suggestion_votes FOR UPDATE TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+CREATE POLICY "suggestion_votes_delete"
+  ON suggestion_votes FOR DELETE TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+-- ============================================================================
+-- COMMUNITY PHOTOS (User-submitted photos with moderation)
+-- ============================================================================
+
+-- Track user photo quotas to prevent abuse
+CREATE TABLE IF NOT EXISTS user_photo_quotas (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  -- Rolling window quotas
+  photos_today INTEGER DEFAULT 0,
+  photos_this_week INTEGER DEFAULT 0,
+  photos_this_month INTEGER DEFAULT 0,
+  total_photos INTEGER DEFAULT 0,
+  total_storage_bytes BIGINT DEFAULT 0,
+  -- Quota limits (can be adjusted per user for power users)
+  daily_limit INTEGER DEFAULT 10,
+  weekly_limit INTEGER DEFAULT 50,
+  monthly_limit INTEGER DEFAULT 150,
+  storage_limit_bytes BIGINT DEFAULT 104857600, -- 100MB default
+  -- Reset timestamps
+  day_reset_at TIMESTAMPTZ DEFAULT NOW(),
+  week_reset_at TIMESTAMPTZ DEFAULT NOW(),
+  month_reset_at TIMESTAMPTZ DEFAULT NOW(),
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for user_photo_quotas
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_user_photo_quotas_user_id ON user_photo_quotas(user_id);
+END $$;
+
+-- Enable RLS for user_photo_quotas
+ALTER TABLE user_photo_quotas ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for user_photo_quotas
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "user_photo_quotas_select" ON user_photo_quotas;
+  DROP POLICY IF EXISTS "user_photo_quotas_insert" ON user_photo_quotas;
+  DROP POLICY IF EXISTS "user_photo_quotas_update" ON user_photo_quotas;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- Users can see their own quotas
+CREATE POLICY "user_photo_quotas_select"
+  ON user_photo_quotas FOR SELECT TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+-- System creates quotas (via trigger)
+CREATE POLICY "user_photo_quotas_insert"
+  ON user_photo_quotas FOR INSERT TO authenticated
+  WITH CHECK ((select auth.uid()) = user_id);
+
+-- Users can't directly modify quotas (done via functions)
+CREATE POLICY "user_photo_quotas_update"
+  ON user_photo_quotas FOR UPDATE TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+-- Community photos (attached to any entity, moderated)
+CREATE TABLE IF NOT EXISTS community_photos (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  -- What entity this photo is attached to
+  entity_type TEXT NOT NULL CHECK (entity_type IN (
+    'species', 'strain', 'grow', 'culture', 'container',
+    'recipe', 'inventory_item', 'location', 'order', 'suggestion'
+  )),
+  entity_id UUID NOT NULL,
+  -- Photo data
+  storage_path TEXT NOT NULL, -- Supabase Storage path
+  storage_bucket TEXT DEFAULT 'community-photos',
+  thumbnail_path TEXT, -- Thumbnail for galleries
+  file_size_bytes INTEGER NOT NULL,
+  mime_type TEXT NOT NULL,
+  width INTEGER,
+  height INTEGER,
+  -- Metadata
+  caption TEXT,
+  alt_text TEXT,
+  tags TEXT[], -- For searchability
+  -- Moderation
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'flagged')),
+  moderated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  moderated_at TIMESTAMPTZ,
+  moderation_notes TEXT,
+  -- Community engagement
+  upvotes INTEGER DEFAULT 0,
+  downvotes INTEGER DEFAULT 0,
+  view_count INTEGER DEFAULT 0,
+  is_featured BOOLEAN DEFAULT false,
+  -- For species/strain library - approved photos become "official"
+  is_official BOOLEAN DEFAULT false,
+  -- Ownership
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for community_photos
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_community_photos_entity ON community_photos(entity_type, entity_id);
+  CREATE INDEX IF NOT EXISTS idx_community_photos_user_id ON community_photos(user_id);
+  CREATE INDEX IF NOT EXISTS idx_community_photos_status ON community_photos(status);
+  CREATE INDEX IF NOT EXISTS idx_community_photos_featured ON community_photos(is_featured) WHERE is_featured = true;
+  CREATE INDEX IF NOT EXISTS idx_community_photos_official ON community_photos(is_official) WHERE is_official = true;
+END $$;
+
+-- Enable RLS for community_photos
+ALTER TABLE community_photos ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for community_photos
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "community_photos_select" ON community_photos;
+  DROP POLICY IF EXISTS "community_photos_insert" ON community_photos;
+  DROP POLICY IF EXISTS "community_photos_update" ON community_photos;
+  DROP POLICY IF EXISTS "community_photos_delete" ON community_photos;
+  DROP POLICY IF EXISTS "community_photos_anon_select" ON community_photos;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- Anonymous users can see approved photos on public entities
+CREATE POLICY "community_photos_anon_select"
+  ON community_photos FOR SELECT TO anon
+  USING (status = 'approved' AND entity_type IN ('species', 'strain'));
+
+-- Authenticated users can see approved photos + their own
+CREATE POLICY "community_photos_select"
+  ON community_photos FOR SELECT TO authenticated
+  USING (
+    status = 'approved'
+    OR (select auth.uid()) = user_id
+    OR (select is_admin())
+  );
+
+-- Users can upload photos
+CREATE POLICY "community_photos_insert"
+  ON community_photos FOR INSERT TO authenticated
+  WITH CHECK ((select auth.uid()) = user_id);
+
+-- Users can update their pending photos, admins can update all
+CREATE POLICY "community_photos_update"
+  ON community_photos FOR UPDATE TO authenticated
+  USING (
+    ((select auth.uid()) = user_id AND status = 'pending')
+    OR (select is_admin())
+  );
+
+-- Users can delete their own photos
+CREATE POLICY "community_photos_delete"
+  ON community_photos FOR DELETE TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+-- Photo votes (separate from suggestion votes)
+CREATE TABLE IF NOT EXISTS photo_votes (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  photo_id UUID NOT NULL REFERENCES community_photos(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  vote_type TEXT CHECK (vote_type IN ('up', 'down')) NOT NULL DEFAULT 'up',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  -- One vote per user per photo
+  UNIQUE(photo_id, user_id)
+);
+
+-- Create indexes for photo_votes
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_photo_votes_photo_id ON photo_votes(photo_id);
+  CREATE INDEX IF NOT EXISTS idx_photo_votes_user_id ON photo_votes(user_id);
+END $$;
+
+-- Enable RLS for photo_votes
+ALTER TABLE photo_votes ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for photo_votes
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "photo_votes_select" ON photo_votes;
+  DROP POLICY IF EXISTS "photo_votes_insert" ON photo_votes;
+  DROP POLICY IF EXISTS "photo_votes_delete" ON photo_votes;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE POLICY "photo_votes_select"
+  ON photo_votes FOR SELECT TO authenticated
+  USING (true);
+
+CREATE POLICY "photo_votes_insert"
+  ON photo_votes FOR INSERT TO authenticated
+  WITH CHECK ((select auth.uid()) = user_id);
+
+CREATE POLICY "photo_votes_delete"
+  ON photo_votes FOR DELETE TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+-- Photo reports (for flagging inappropriate content)
+CREATE TABLE IF NOT EXISTS photo_reports (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  photo_id UUID NOT NULL REFERENCES community_photos(id) ON DELETE CASCADE,
+  reporter_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL CHECK (reason IN (
+    'inappropriate', 'spam', 'misleading', 'copyright',
+    'offensive', 'low_quality', 'wrong_species', 'other'
+  )),
+  description TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'actioned', 'dismissed')),
+  reviewed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  action_taken TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  -- One report per user per photo
+  UNIQUE(photo_id, reporter_id)
+);
+
+-- Create indexes for photo_reports
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_photo_reports_photo_id ON photo_reports(photo_id);
+  CREATE INDEX IF NOT EXISTS idx_photo_reports_status ON photo_reports(status);
+END $$;
+
+-- Enable RLS for photo_reports
+ALTER TABLE photo_reports ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for photo_reports
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "photo_reports_select" ON photo_reports;
+  DROP POLICY IF EXISTS "photo_reports_insert" ON photo_reports;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- Admins can see reports, users can see their own
+CREATE POLICY "photo_reports_select"
+  ON photo_reports FOR SELECT TO authenticated
+  USING ((select auth.uid()) = reporter_id OR (select is_admin()));
+
+CREATE POLICY "photo_reports_insert"
+  ON photo_reports FOR INSERT TO authenticated
+  WITH CHECK ((select auth.uid()) = reporter_id);
+
+-- ============================================================================
+-- ENTITY RATINGS (Community ratings for library entries)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS entity_ratings (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('species', 'strain', 'recipe', 'supplier')),
+  entity_id UUID NOT NULL,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  -- Multi-dimensional ratings (1-5 scale)
+  overall_rating INTEGER CHECK (overall_rating >= 1 AND overall_rating <= 5),
+  ease_of_cultivation INTEGER CHECK (ease_of_cultivation >= 1 AND ease_of_cultivation <= 5),
+  yield_potential INTEGER CHECK (yield_potential >= 1 AND yield_potential <= 5),
+  contamination_resistance INTEGER CHECK (contamination_resistance >= 1 AND contamination_resistance <= 5),
+  flavor_quality INTEGER CHECK (flavor_quality >= 1 AND flavor_quality <= 5),
+  -- Optional review text
+  review_title TEXT,
+  review_text TEXT,
+  -- Moderation
+  status TEXT DEFAULT 'published' CHECK (status IN ('published', 'hidden', 'flagged')),
+  -- Helpfulness voting
+  helpful_votes INTEGER DEFAULT 0,
+  unhelpful_votes INTEGER DEFAULT 0,
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  -- One rating per user per entity
+  UNIQUE(entity_type, entity_id, user_id)
+);
+
+-- Create indexes for entity_ratings
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_entity_ratings_entity ON entity_ratings(entity_type, entity_id);
+  CREATE INDEX IF NOT EXISTS idx_entity_ratings_user_id ON entity_ratings(user_id);
+  CREATE INDEX IF NOT EXISTS idx_entity_ratings_overall ON entity_ratings(entity_type, entity_id, overall_rating);
+END $$;
+
+-- Enable RLS for entity_ratings
+ALTER TABLE entity_ratings ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for entity_ratings
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "entity_ratings_select" ON entity_ratings;
+  DROP POLICY IF EXISTS "entity_ratings_insert" ON entity_ratings;
+  DROP POLICY IF EXISTS "entity_ratings_update" ON entity_ratings;
+  DROP POLICY IF EXISTS "entity_ratings_delete" ON entity_ratings;
+  DROP POLICY IF EXISTS "entity_ratings_anon_select" ON entity_ratings;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- Public can see published ratings
+CREATE POLICY "entity_ratings_anon_select"
+  ON entity_ratings FOR SELECT TO anon
+  USING (status = 'published');
+
+CREATE POLICY "entity_ratings_select"
+  ON entity_ratings FOR SELECT TO authenticated
+  USING (status = 'published' OR (select auth.uid()) = user_id OR (select is_admin()));
+
+CREATE POLICY "entity_ratings_insert"
+  ON entity_ratings FOR INSERT TO authenticated
+  WITH CHECK ((select auth.uid()) = user_id);
+
+CREATE POLICY "entity_ratings_update"
+  ON entity_ratings FOR UPDATE TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+CREATE POLICY "entity_ratings_delete"
+  ON entity_ratings FOR DELETE TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+-- ============================================================================
+-- HELPER FUNCTIONS FOR COMMUNITY FEATURES
+-- ============================================================================
+
+-- Function to get vote count for a suggestion
+CREATE OR REPLACE FUNCTION get_suggestion_vote_counts(p_suggestion_id UUID)
+RETURNS TABLE(upvotes BIGINT, downvotes BIGINT, score BIGINT) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    COUNT(*) FILTER (WHERE vote_type = 'up') as upvotes,
+    COUNT(*) FILTER (WHERE vote_type = 'down') as downvotes,
+    COUNT(*) FILTER (WHERE vote_type = 'up') - COUNT(*) FILTER (WHERE vote_type = 'down') as score
+  FROM suggestion_votes
+  WHERE suggestion_id = p_suggestion_id;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Function to check if user can upload photo (quota check)
+CREATE OR REPLACE FUNCTION can_upload_photo(p_user_id UUID, p_file_size INTEGER)
+RETURNS JSONB AS $$
+DECLARE
+  v_quota user_photo_quotas%ROWTYPE;
+  v_now TIMESTAMPTZ := NOW();
+BEGIN
+  -- Get or create quota record
+  SELECT * INTO v_quota FROM user_photo_quotas WHERE user_id = p_user_id;
+
+  IF NOT FOUND THEN
+    INSERT INTO user_photo_quotas (user_id) VALUES (p_user_id)
+    RETURNING * INTO v_quota;
+  END IF;
+
+  -- Reset counters if needed
+  IF v_quota.day_reset_at < v_now - INTERVAL '1 day' THEN
+    UPDATE user_photo_quotas SET
+      photos_today = 0,
+      day_reset_at = v_now
+    WHERE user_id = p_user_id;
+    v_quota.photos_today := 0;
+  END IF;
+
+  IF v_quota.week_reset_at < v_now - INTERVAL '7 days' THEN
+    UPDATE user_photo_quotas SET
+      photos_this_week = 0,
+      week_reset_at = v_now
+    WHERE user_id = p_user_id;
+    v_quota.photos_this_week := 0;
+  END IF;
+
+  IF v_quota.month_reset_at < v_now - INTERVAL '30 days' THEN
+    UPDATE user_photo_quotas SET
+      photos_this_month = 0,
+      month_reset_at = v_now
+    WHERE user_id = p_user_id;
+    v_quota.photos_this_month := 0;
+  END IF;
+
+  -- Check quotas
+  IF v_quota.photos_today >= v_quota.daily_limit THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'daily_limit_reached',
+      'limit', v_quota.daily_limit, 'current', v_quota.photos_today);
+  END IF;
+
+  IF v_quota.photos_this_week >= v_quota.weekly_limit THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'weekly_limit_reached',
+      'limit', v_quota.weekly_limit, 'current', v_quota.photos_this_week);
+  END IF;
+
+  IF v_quota.photos_this_month >= v_quota.monthly_limit THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'monthly_limit_reached',
+      'limit', v_quota.monthly_limit, 'current', v_quota.photos_this_month);
+  END IF;
+
+  IF v_quota.total_storage_bytes + p_file_size > v_quota.storage_limit_bytes THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'storage_limit_reached',
+      'limit', v_quota.storage_limit_bytes, 'current', v_quota.total_storage_bytes);
+  END IF;
+
+  RETURN jsonb_build_object(
+    'allowed', true,
+    'quotas', jsonb_build_object(
+      'daily', jsonb_build_object('used', v_quota.photos_today, 'limit', v_quota.daily_limit),
+      'weekly', jsonb_build_object('used', v_quota.photos_this_week, 'limit', v_quota.weekly_limit),
+      'monthly', jsonb_build_object('used', v_quota.photos_this_month, 'limit', v_quota.monthly_limit),
+      'storage', jsonb_build_object('used', v_quota.total_storage_bytes, 'limit', v_quota.storage_limit_bytes)
+    )
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to increment photo quota after successful upload
+CREATE OR REPLACE FUNCTION increment_photo_quota(p_user_id UUID, p_file_size INTEGER)
+RETURNS void AS $$
+BEGIN
+  UPDATE user_photo_quotas SET
+    photos_today = photos_today + 1,
+    photos_this_week = photos_this_week + 1,
+    photos_this_month = photos_this_month + 1,
+    total_photos = total_photos + 1,
+    total_storage_bytes = total_storage_bytes + p_file_size,
+    updated_at = NOW()
+  WHERE user_id = p_user_id;
+
+  -- Create quota record if it doesn't exist
+  IF NOT FOUND THEN
+    INSERT INTO user_photo_quotas (user_id, photos_today, photos_this_week, photos_this_month, total_photos, total_storage_bytes)
+    VALUES (p_user_id, 1, 1, 1, 1, p_file_size);
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to get aggregated ratings for an entity
+CREATE OR REPLACE FUNCTION get_entity_rating_summary(p_entity_type TEXT, p_entity_id UUID)
+RETURNS JSONB AS $$
+DECLARE
+  v_result JSONB;
+BEGIN
+  SELECT jsonb_build_object(
+    'totalRatings', COUNT(*),
+    'averageOverall', ROUND(AVG(overall_rating)::numeric, 1),
+    'averageEase', ROUND(AVG(ease_of_cultivation)::numeric, 1),
+    'averageYield', ROUND(AVG(yield_potential)::numeric, 1),
+    'averageResistance', ROUND(AVG(contamination_resistance)::numeric, 1),
+    'averageFlavor', ROUND(AVG(flavor_quality)::numeric, 1),
+    'distribution', jsonb_build_object(
+      '5', COUNT(*) FILTER (WHERE overall_rating = 5),
+      '4', COUNT(*) FILTER (WHERE overall_rating = 4),
+      '3', COUNT(*) FILTER (WHERE overall_rating = 3),
+      '2', COUNT(*) FILTER (WHERE overall_rating = 2),
+      '1', COUNT(*) FILTER (WHERE overall_rating = 1)
+    )
+  ) INTO v_result
+  FROM entity_ratings
+  WHERE entity_type = p_entity_type
+    AND entity_id = p_entity_id
+    AND status = 'published';
+
+  RETURN COALESCE(v_result, jsonb_build_object('totalRatings', 0));
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION get_suggestion_vote_counts(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION can_upload_photo(UUID, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION increment_photo_quota(UUID, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_entity_rating_summary(TEXT, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_entity_rating_summary(TEXT, UUID) TO anon;
+
+-- ============================================================================
 -- SUCCESS MESSAGE
 -- ============================================================================
 -- If you see this, the schema was applied successfully!
