@@ -4,13 +4,14 @@
 
 import React, { useState, createContext, useContext, useEffect, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
-import { DataProvider, useData, CreationProvider, useCreation, NotificationProvider, ThemeProvider } from './store';
+import { DataProvider, useData, CreationProvider, useCreation, NotificationProvider, InfoProvider, ThemeProvider } from './store';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { VersionProvider, VersionUpdateModal } from './lib/VersionContext';
 import { EntityFormModal } from './components/forms';
 import { AuthModal, AccountMenu } from './components/auth';
 import { ToastContainer, NotificationBell } from './components/notifications';
 import { ErrorBoundary, GlobalErrorHandler } from './components/errors';
+import { WarningsEvaluator } from './lib/WarningsEvaluator';
 import DevLogPage from './components/devlog/DevLogPage';
 import { FeatureTrackerPage } from './components/feature-tracker/FeatureTrackerPage';
 import { PrivacyPolicy, TermsOfService } from './components/legal';
@@ -1555,7 +1556,9 @@ const AppWithRouter: React.FC = () => {
           <AuthProvider>
             <DataProvider>
               <NotificationProvider>
+                <InfoProvider>
                 <GlobalErrorHandler />
+                <WarningsEvaluator />
                 <CreationProvider>
                   <AppContext.Provider value={contextValue}>
                     <VersionUpdateModal />
@@ -1577,6 +1580,7 @@ const AppWithRouter: React.FC = () => {
                   />
                   </AppContext.Provider>
                 </CreationProvider>
+                </InfoProvider>
               </NotificationProvider>
             </DataProvider>
           </AuthProvider>

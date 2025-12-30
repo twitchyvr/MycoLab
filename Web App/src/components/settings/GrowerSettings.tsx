@@ -9,13 +9,15 @@ import { useAuth } from '../../lib/AuthContext';
 import { SettingsSection } from './common/SettingsSection';
 import { notificationService } from '../../store/NotificationService';
 import { AltitudeInput } from '../common';
+import { InfoPreferences } from './InfoPreferences';
 import type { AppSettings, ExperienceLevel, NotificationCategory } from '../../store/types';
 
-type GrowerTab = 'profile' | 'preferences' | 'notifications' | 'library' | 'data';
+type GrowerTab = 'profile' | 'preferences' | 'info' | 'notifications' | 'library' | 'data';
 
 const Icons = {
   User: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   Settings: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  Info: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>,
   Bell: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
   Book: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
   Database: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
@@ -30,6 +32,7 @@ const Icons = {
 const tabConfig: { id: GrowerTab; label: string; icon: React.ReactNode }[] = [
   { id: 'profile', label: 'Profile', icon: <Icons.User /> },
   { id: 'preferences', label: 'Preferences', icon: <Icons.Settings /> },
+  { id: 'info', label: 'Help & Info', icon: <Icons.Info /> },
   { id: 'notifications', label: 'Notifications', icon: <Icons.Bell /> },
   { id: 'library', label: 'Library', icon: <Icons.Book /> },
   { id: 'data', label: 'My Data', icon: <Icons.Database /> },
@@ -801,6 +804,7 @@ export const GrowerSettings: React.FC = () => {
     switch (activeTab) {
       case 'profile': return renderProfileTab();
       case 'preferences': return renderPreferencesTab();
+      case 'info': return <InfoPreferences />;
       case 'notifications': return renderNotificationsTab();
       case 'library': return renderLibraryTab();
       case 'data': return renderDataTab();
