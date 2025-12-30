@@ -273,8 +273,29 @@ END $$;
 DO $$
 DECLARE
   v_deleted_count INTEGER;
+  v_strain_count INTEGER;
 BEGIN
-  -- Delete any existing research species that would conflict with our inserts
+  -- First, delete any strains that reference species we're about to delete
+  -- This handles foreign key constraints properly
+  DELETE FROM strains
+  WHERE species_id IN (
+    SELECT id FROM species
+    WHERE scientific_name IN (
+      'Psilocybe cubensis',
+      'Psilocybe cubensis var. Penis Envy',
+      'Psilocybe cubensis var. Albino Penis Envy',
+      'Psilocybe cubensis var. Enigma',
+      'Psilocybe cubensis var. Leucistic Teacher',
+      'Psilocybe ovoideocystidiata'
+    )
+    AND user_id IS NULL
+  );
+  GET DIAGNOSTICS v_strain_count = ROW_COUNT;
+  IF v_strain_count > 0 THEN
+    RAISE NOTICE '[Research Species] Deleted % dependent strains before species cleanup', v_strain_count;
+  END IF;
+
+  -- Now delete any existing research species that would conflict with our inserts
   -- We delete by scientific_name to handle cases where name differs
   WITH deleted AS (
     DELETE FROM species
