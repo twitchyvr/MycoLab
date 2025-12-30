@@ -33,9 +33,12 @@ interface ServiceStatus {
 
 interface CronStatus {
   pgCronEnabled: boolean;
+  pgNetEnabled?: boolean;
   cronJobsConfigured: boolean;
   cronJobs: Array<{ name: string; schedule: string; active: boolean }>;
   pendingNotifications: number;
+  sentToday?: number;
+  failedToday?: number;
   lastNotificationSent: string | null;
   supabaseConfigured: boolean;
   error?: string;
@@ -63,9 +66,12 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
   // pg_cron status
   const [cronStatus, setCronStatus] = useState<CronStatus>({
     pgCronEnabled: false,
+    pgNetEnabled: false,
     cronJobsConfigured: false,
     cronJobs: [],
     pendingNotifications: 0,
+    sentToday: 0,
+    failedToday: 0,
     lastNotificationSent: null,
     supabaseConfigured: false,
   });
@@ -73,6 +79,8 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
   const [settingUpCron, setSettingUpCron] = useState(false);
   const [triggeringCheck, setTriggeringCheck] = useState(false);
   const [triggerResult, setTriggerResult] = useState<string | null>(null);
+  const [sendingEmails, setSendingEmails] = useState(false);
+  const [sendEmailsResult, setSendEmailsResult] = useState<string | null>(null);
 
   // Clear messages after delay
   useEffect(() => {
@@ -206,12 +214,17 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
       if (!response.ok) {
         setCronStatus(prev => ({ ...prev, error: data.error || 'Failed to check status' }));
       } else {
+        // Handle both old format and new format (with queue stats)
+        const queue = data.queue || {};
         setCronStatus({
           pgCronEnabled: data.pgCronEnabled || false,
+          pgNetEnabled: data.pgNetEnabled || false,
           cronJobsConfigured: data.cronJobsConfigured || false,
           cronJobs: data.cronJobs || [],
-          pendingNotifications: data.pendingNotifications || 0,
-          lastNotificationSent: data.lastNotificationSent,
+          pendingNotifications: queue.pending ?? data.pendingNotifications ?? 0,
+          sentToday: queue.sentToday ?? 0,
+          failedToday: queue.failedToday ?? 0,
+          lastNotificationSent: queue.lastSent ?? data.lastNotificationSent,
           supabaseConfigured: data.supabaseConfigured || false,
           error: data.error,
         });
@@ -220,6 +233,52 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
       setCronStatus(prev => ({ ...prev, error: `Failed to check cron status: ${err.message}` }));
     } finally {
       setCheckingCron(false);
+    }
+  };
+
+  // Manually trigger the email queue processor via Edge Function
+  const triggerEmailQueueProcessor = async () => {
+    setSendingEmails(true);
+    setError(null);
+    setSendEmailsResult(null);
+
+    try {
+      // Call the Edge Function directly
+      const supabaseUrl = localStorage.getItem('mycolab-supabase-url');
+      const supabaseKey = localStorage.getItem('mycolab-supabase-key');
+
+      if (!supabaseUrl) {
+        setError('Supabase URL not configured');
+        return;
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/process-notification-queue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({}),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Failed to process queue');
+      } else {
+        setSendEmailsResult(
+          `Processed: ${data.processed || 0}, Sent: ${data.sent || 0}, ` +
+          `Failed: ${data.failed || 0}, Skipped: ${data.skipped || 0} ` +
+          `(${data.duration_ms || 0}ms)`
+        );
+        setSuccess('Email queue processed!');
+        // Refresh status
+        await checkCronStatus();
+      }
+    } catch (err: any) {
+      setError(`Failed to process email queue: ${err.message}`);
+    } finally {
+      setSendingEmails(false);
     }
   };
 
@@ -545,7 +604,7 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
 
         {/* Status Details */}
         <div className="space-y-3 mb-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             <div className="flex items-center gap-2">
               <span className={cronStatus.supabaseConfigured ? 'text-emerald-400' : 'text-zinc-500'}>
                 {cronStatus.supabaseConfigured ? <Icons.Check /> : <Icons.X />}
@@ -559,16 +618,37 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
               <span className="text-zinc-400">pg_cron Extension</span>
             </div>
             <div className="flex items-center gap-2">
+              <span className={cronStatus.pgNetEnabled ? 'text-emerald-400' : 'text-zinc-500'}>
+                {cronStatus.pgNetEnabled ? <Icons.Check /> : <Icons.X />}
+              </span>
+              <span className="text-zinc-400">pg_net Extension</span>
+            </div>
+            <div className="flex items-center gap-2">
               <span className={cronStatus.cronJobsConfigured ? 'text-emerald-400' : 'text-zinc-500'}>
                 {cronStatus.cronJobsConfigured ? <Icons.Check /> : <Icons.X />}
               </span>
               <span className="text-zinc-400">Cron Jobs Active</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-blue-400"><Icons.Bell /></span>
+              <span className="text-yellow-400"><Icons.Bell /></span>
               <span className="text-zinc-400">{cronStatus.pendingNotifications} Pending</span>
             </div>
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-400"><Icons.Check /></span>
+              <span className="text-zinc-400">{cronStatus.sentToday || 0} Sent Today</span>
+            </div>
           </div>
+
+          {/* Queue Statistics */}
+          {(cronStatus.sentToday !== undefined || cronStatus.failedToday !== undefined) && (
+            <div className="flex flex-wrap gap-4 text-xs">
+              {cronStatus.failedToday !== undefined && cronStatus.failedToday > 0 && (
+                <div className="text-red-400">
+                  {cronStatus.failedToday} failed today
+                </div>
+              )}
+            </div>
+          )}
 
           {cronStatus.cronJobs.length > 0 && (
             <div className="bg-zinc-950 rounded-lg p-3 text-xs">
@@ -621,18 +701,33 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
           )}
 
           {cronStatus.cronJobsConfigured && (
-            <button
-              onClick={triggerNotificationCheck}
-              disabled={triggeringCheck}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-2"
-            >
-              {triggeringCheck ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <Icons.Play />
-              )}
-              Run Check Now
-            </button>
+            <>
+              <button
+                onClick={triggerNotificationCheck}
+                disabled={triggeringCheck}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-2"
+              >
+                {triggeringCheck ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <Icons.Play />
+                )}
+                Queue Check
+              </button>
+              <button
+                onClick={triggerEmailQueueProcessor}
+                disabled={sendingEmails || cronStatus.pendingNotifications === 0}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-2"
+                title={cronStatus.pendingNotifications === 0 ? 'No pending notifications to send' : 'Process and send queued emails'}
+              >
+                {sendingEmails ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <Icons.Send />
+                )}
+                Send Emails ({cronStatus.pendingNotifications})
+              </button>
+            </>
           )}
 
           <button
@@ -647,7 +742,13 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
 
         {triggerResult && (
           <div className="mt-3 bg-blue-950/30 border border-blue-800 rounded-lg p-3 text-xs text-blue-300">
-            {triggerResult}
+            <strong>Queue Check:</strong> {triggerResult}
+          </div>
+        )}
+
+        {sendEmailsResult && (
+          <div className="mt-3 bg-emerald-950/30 border border-emerald-800 rounded-lg p-3 text-xs text-emerald-300">
+            <strong>Email Sending:</strong> {sendEmailsResult}
           </div>
         )}
 
@@ -655,8 +756,18 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
           <div className="mt-4 bg-emerald-950/30 border border-emerald-800 rounded-lg p-3">
             <p className="text-sm text-emerald-300 font-medium mb-1">✓ Background Notifications Active</p>
             <p className="text-xs text-zinc-400">
-              The system checks for expiring cultures, grow stage transitions, low inventory, and harvest-ready grows every 15 minutes.
-              Users will receive email notifications based on their preferences.
+              The system checks for expiring cultures, grow stage transitions, low inventory, and harvest-ready grows every 15 minutes,
+              then sends queued emails every 5 minutes. Users receive notifications based on their preferences.
+            </p>
+          </div>
+        )}
+
+        {cronStatus.pgCronEnabled && !cronStatus.pgNetEnabled && (
+          <div className="mt-4 bg-yellow-950/30 border border-yellow-800 rounded-lg p-3">
+            <p className="text-sm text-yellow-300 font-medium mb-1">⚠ pg_net Extension Recommended</p>
+            <p className="text-xs text-zinc-400">
+              Enable the <code className="bg-zinc-800 px-1 rounded">pg_net</code> extension in Supabase Dashboard → Database → Extensions
+              for automatic email sending via cron. Without it, you'll need to use the "Send Emails" button manually or set up an external trigger.
             </p>
           </div>
         )}
