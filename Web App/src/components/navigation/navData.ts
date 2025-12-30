@@ -69,6 +69,14 @@ export const NavIcons = {
   Mushroom: createIcon('<ellipse cx="12" cy="6" rx="8" ry="4"/><path d="M4 6c0 6 3 14 8 14s8-8 8-14"/><line x1="12" y1="10" x2="12" y2="20"/>'),
   Mycelium: createIcon('<circle cx="12" cy="12" r="2"/><path d="M12 14v4"/><path d="M12 4v4"/><path d="M6 12h4"/><path d="M14 12h4"/><path d="M7.76 7.76l2.83 2.83"/><path d="M13.41 13.41l2.83 2.83"/><path d="M7.76 16.24l2.83-2.83"/><path d="M13.41 10.59l2.83-2.83"/>'),
   Spore: createIcon('<circle cx="12" cy="12" r="3"/><circle cx="12" cy="4" r="1"/><circle cx="12" cy="20" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="20" cy="12" r="1"/><circle cx="6.34" cy="6.34" r="1"/><circle cx="17.66" cy="17.66" r="1"/><circle cx="6.34" cy="17.66" r="1"/><circle cx="17.66" cy="6.34" r="1"/>'),
+
+  // Additional icons for missing pages
+  Grain: createIcon('<ellipse cx="12" cy="5" rx="3" ry="2"/><path d="M9 5v12a3 3 0 0 0 6 0V5"/><path d="M12 9h.01"/><path d="M12 13h.01"/>'),
+  Flask: createIcon('<path d="M9 3h6v5l4 9H5l4-9V3z"/><path d="M9 3h6"/><path d="M8.5 14h7"/>'),
+  Container: createIcon('<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18"/><circle cx="8" cy="8" r="1"/><circle cx="16" cy="8" r="1"/>'),
+  DollarSign: createIcon('<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'),
+  Clock: createIcon('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
+  Book: createIcon('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'),
 };
 
 // ============================================================================
@@ -224,6 +232,15 @@ export const navNodes: NavNode[] = [
     description: 'Lab events and notes',
     connections: ['observations'],
   },
+  {
+    id: 'spawn',
+    label: 'Grain Spawn',
+    shortLabel: 'Spawn',
+    icon: NavIcons.Grain,
+    category: 'cultivation',
+    description: 'Track colonization from inoculation to spawn-to-bulk',
+    connections: ['cultures', 'grows'],
+  },
 
   // Knowledge Base
   {
@@ -233,8 +250,17 @@ export const navNodes: NavNode[] = [
     icon: NavIcons.Library,
     category: 'knowledge',
     description: 'Reference guide with growing parameters',
-    connections: ['cultures', 'grows', 'recipes'],
+    connections: ['cultures', 'grows', 'recipes', 'cultureguide'],
     quickAccess: true,
+  },
+  {
+    id: 'cultureguide',
+    label: 'Culture Guide',
+    shortLabel: 'Guide',
+    icon: NavIcons.Book,
+    category: 'knowledge',
+    description: 'P-values, shelf life, senescence, and best practices',
+    connections: ['library', 'cultures'],
   },
   {
     id: 'recipes',
@@ -263,7 +289,16 @@ export const navNodes: NavNode[] = [
     icon: NavIcons.Stock,
     category: 'storage',
     description: 'Inventory lots and purchases',
-    connections: ['inventory'],
+    connections: ['inventory', 'instances'],
+  },
+  {
+    id: 'instances',
+    label: 'Containers',
+    shortLabel: 'Containers',
+    icon: NavIcons.Container,
+    category: 'storage',
+    description: 'Track individual jars, bags, and equipment',
+    connections: ['inventory', 'labspaces'],
   },
   {
     id: 'labspaces',
@@ -301,7 +336,7 @@ export const navNodes: NavNode[] = [
     icon: NavIcons.Chart,
     category: 'analytics',
     description: 'Data visualization dashboard',
-    connections: ['strainanalytics', 'grows', 'efficiency'],
+    connections: ['strainanalytics', 'grows', 'efficiency', 'financial', 'outcomes'],
   },
   {
     id: 'strainanalytics',
@@ -329,6 +364,24 @@ export const navNodes: NavNode[] = [
     category: 'analytics',
     description: 'Biological efficiency metrics',
     connections: ['analytics', 'grows'],
+  },
+  {
+    id: 'financial',
+    label: 'Financial',
+    shortLabel: 'Financial',
+    icon: NavIcons.DollarSign,
+    category: 'analytics',
+    description: 'Lab valuation, costs, and profitability analysis',
+    connections: ['analytics', 'inventory'],
+  },
+  {
+    id: 'outcomes',
+    label: 'Outcomes',
+    shortLabel: 'Outcomes',
+    icon: NavIcons.Clock,
+    category: 'analytics',
+    description: 'Historical tracking of disposed and completed entities',
+    connections: ['analytics', 'grows', 'cultures'],
   },
 
   // Calculators
@@ -359,6 +412,15 @@ export const navNodes: NavNode[] = [
     description: 'Sterilization with altitude adjustment',
     connections: ['recipes'],
   },
+  {
+    id: 'multiplication',
+    label: 'Culture Expansion',
+    shortLabel: 'Expansion',
+    icon: NavIcons.Flask,
+    category: 'tools',
+    description: 'P-value tracking, expansion costs, and senescence risk',
+    connections: ['cultures', 'cultureguide'],
+  },
 
   // Settings
   {
@@ -382,8 +444,17 @@ export const navNodes: NavNode[] = [
     label: 'Roadmap',
     icon: NavIcons.DevLog,
     category: 'settings',
-    description: 'Feature tracker',
-    connections: [],
+    description: 'Feature development roadmap',
+    connections: ['featuretracker'],
+  },
+  {
+    id: 'featuretracker',
+    label: 'Feature Tracker',
+    shortLabel: 'Tracker',
+    icon: NavIcons.DevLog,
+    category: 'settings',
+    description: 'Development roadmap with milestones and changelog',
+    connections: ['devlog'],
   },
 ];
 
@@ -432,9 +503,12 @@ export const routeConfig: Record<Page, string> = {
   observations: '/observations',
   eventlog: '/event-log',
   library: '/library',
+  cultureguide: '/culture-guide',
   inventory: '/inventory',
   stock: '/stock',
+  instances: '/instances',
   cultures: '/cultures',
+  spawn: '/spawn',
   lineage: '/lineage',
   grows: '/grows',
   recipes: '/recipes',
@@ -446,11 +520,15 @@ export const routeConfig: Record<Page, string> = {
   calculator: '/calculator',
   spawnrate: '/spawn-rate',
   pressure: '/pressure-cooking',
+  multiplication: '/culture-multiplication',
   contamination: '/contamination',
   efficiency: '/efficiency',
   analytics: '/analytics',
+  financial: '/financial',
   strainanalytics: '/strain-analytics',
+  outcomes: '/outcomes',
   settings: '/settings',
   profile: '/profile',
   devlog: '/devlog',
+  featuretracker: '/feature-tracker',
 };

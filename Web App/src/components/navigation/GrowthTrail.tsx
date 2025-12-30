@@ -5,7 +5,7 @@
 // ============================================================================
 
 import React, { useMemo } from 'react';
-import type { Page, NavCategory } from './types';
+import type { Page } from './types';
 import { getNodeById, categoryMeta, getConnectedNodes, NavIcons } from './navData';
 
 interface GrowthTrailProps {
@@ -144,10 +144,6 @@ export const GrowthTrail: React.FC<GrowthTrailProps> = ({
   onOpenHub,
   className = '',
 }) => {
-  const currentNode = getNodeById(currentPage);
-  const currentCategory = currentNode?.category;
-  const meta = currentCategory ? categoryMeta[currentCategory] : null;
-
   // Get the trail (limited to last 3-4 items for cleaner UI)
   const trail = useMemo(() => {
     // Start with dashboard if it's not in the trail
@@ -209,29 +205,6 @@ export const GrowthTrail: React.FC<GrowthTrailProps> = ({
         <RelatedPages currentPage={currentPage} onNavigate={onNavigate} />
       </div>
 
-      {/* Right: Category indicator - clickable to open nav hub */}
-      {meta && currentNode && (
-        <button
-          onClick={onOpenHub}
-          title={`Browse ${meta.label} pages`}
-          className={`
-            flex items-center gap-2 px-3 py-1 rounded-full
-            bg-${meta.color}-500/10 border border-${meta.color}-500/30
-            hover:bg-${meta.color}-500/20 hover:border-${meta.color}-500/50
-            transition-colors cursor-pointer
-            flex-shrink-0 ml-4
-          `}
-        >
-          <meta.icon className={`w-3.5 h-3.5 text-${meta.color}-400`} />
-          <span className={`text-xs font-medium text-${meta.color}-400 hidden sm:inline`}>
-            {meta.label}
-          </span>
-          <span
-            className={`w-1.5 h-1.5 rounded-full bg-${meta.color}-400 animate-pulse`}
-            style={{ boxShadow: `0 0 6px ${meta.glowColor}` }}
-          />
-        </button>
-      )}
     </div>
   );
 };
