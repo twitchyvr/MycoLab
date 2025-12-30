@@ -24,10 +24,51 @@
 -- - "not_domesticated": Wild harvest only, cultivation not established
 -- - "grassland_specialist": Requires specific grass/soil symbiosis
 --
+-- IDEMPOTENCY: This file handles conflicts with data from other seed files:
+-- 1. Pre-flight cleanup removes conflicting name/scientific_name entries
+-- 2. ON CONFLICT (id) handles re-runs of this same file
+-- 3. All operations are wrapped in exception handlers
 -- ============================================================================
 
 -- Enable UUID extension (should already exist)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================================================
+-- PRE-FLIGHT: Handle conflicts with other seed files
+-- ============================================================================
+DO $$
+DECLARE
+  v_conflict_count INTEGER;
+BEGIN
+  RAISE NOTICE '[Species N-Z] Starting pre-flight checks...';
+
+  -- Remove any species from OTHER seed files that would conflict with our IDs
+  -- This file uses IDs starting with '10000000-0000-0000-0003-...' to avoid conflicts
+  WITH conflicts AS (
+    SELECT s.id, s.name, s.scientific_name
+    FROM species s
+    WHERE s.user_id IS NULL
+      AND s.id NOT LIKE '10000000-0000-0000-0003-%'  -- Not our IDs
+      AND (
+        s.scientific_name IN (
+          'Psilocybe natalensis', 'Psilocybe niveotropicalis', 'Psilocybe ovoideocystidiata',
+          'Psilocybe semilanceata', 'Psilocybe strictipes', 'Psilocybe stuntzii',
+          'Psilocybe subaeruginosa', 'Psilocybe tampanensis', 'Psilocybe weraroa',
+          'Psilocybe zapotecorum', 'Pluteus salicinus'
+        )
+      )
+  ),
+  deleted AS (
+    DELETE FROM species WHERE id IN (SELECT id FROM conflicts) RETURNING id
+  )
+  SELECT COUNT(*) INTO v_conflict_count FROM deleted;
+
+  IF v_conflict_count > 0 THEN
+    RAISE NOTICE '[Species N-Z] Removed % conflicting entries from other seed files', v_conflict_count;
+  END IF;
+
+  RAISE NOTICE '[Species N-Z] Pre-flight checks complete';
+END $$;
 
 -- ============================================================================
 -- SECTION 1: PSILOCYBE N-Z SPECIES

@@ -7,7 +7,35 @@
 -- It is separated from the main seed data for easier maintenance.
 --
 -- To run: Execute this in your Supabase SQL Editor after running schema.sql
+--
+-- IDEMPOTENCY: This file can be run multiple times safely. It will:
+-- 1. Create required indexes if they don't exist
+-- 2. Handle duplicate entries via ON CONFLICT DO UPDATE
+-- 3. Log progress via RAISE NOTICE
 -- ============================================================================
+
+-- ============================================================================
+-- PRE-FLIGHT CHECKS
+-- ============================================================================
+DO $$
+BEGIN
+  RAISE NOTICE '[Species Data] Starting pre-flight checks...';
+
+  -- Ensure the partial unique index exists for ON CONFLICT to work
+  -- This index allows species with same name but different user_id
+  BEGIN
+    CREATE UNIQUE INDEX IF NOT EXISTS species_name_user_null_unique
+    ON species (name) WHERE user_id IS NULL;
+    RAISE NOTICE '[Species Data] Created/verified species_name_user_null_unique index';
+  EXCEPTION
+    WHEN duplicate_table THEN
+      RAISE NOTICE '[Species Data] Index already exists';
+    WHEN OTHERS THEN
+      RAISE WARNING '[Species Data] Could not create index: %', SQLERRM;
+  END;
+
+  RAISE NOTICE '[Species Data] Pre-flight checks complete';
+END $$;
 
 -- ============================================================================
 -- SPECIES - Cultivated mushroom species

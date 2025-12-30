@@ -34,10 +34,250 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- RESEARCH SPECIES - Psilocybe cubensis and variants
 -- ============================================================================
 
+-- ============================================================================
+-- PRE-FLIGHT: Handle existing data conflicts before index creation
+-- This ensures the file can run regardless of what data already exists
+-- ============================================================================
+DO $$
+DECLARE
+  v_dup_count INTEGER;
+BEGIN
+  RAISE NOTICE '[Research Species] Starting pre-flight checks...';
+
+  -- Check for duplicate scientific_name values that would prevent index creation
+  SELECT COUNT(*) INTO v_dup_count
+  FROM (
+    SELECT scientific_name, COUNT(*) as cnt
+    FROM species
+    WHERE user_id IS NULL
+      AND category = 'research'
+      AND scientific_name IS NOT NULL
+    GROUP BY scientific_name
+    HAVING COUNT(*) > 1
+  ) dups;
+
+  IF v_dup_count > 0 THEN
+    RAISE NOTICE '[Research Species] Found % duplicate scientific_name groups, deduplicating...', v_dup_count;
+
+    -- Keep only the most recently updated row for each scientific_name
+    -- Delete older duplicates to allow unique index creation
+    DELETE FROM species s1
+    WHERE user_id IS NULL
+      AND category = 'research'
+      AND scientific_name IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM species s2
+        WHERE s2.scientific_name = s1.scientific_name
+          AND s2.user_id IS NULL
+          AND s2.category = 'research'
+          AND (s2.updated_at > s1.updated_at OR (s2.updated_at = s1.updated_at AND s2.id > s1.id))
+      );
+
+    RAISE NOTICE '[Research Species] Deduplication complete';
+  END IF;
+
+  RAISE NOTICE '[Research Species] Pre-flight checks complete';
+END $$;
+
 -- Create partial unique index for global research species (user_id IS NULL)
--- This allows ON CONFLICT DO NOTHING to work for seed data
-CREATE UNIQUE INDEX IF NOT EXISTS species_scientific_name_global_unique
-ON species (scientific_name) WHERE user_id IS NULL AND category = 'research';
+-- This allows ON CONFLICT to work for seed data
+-- Wrapped in exception handling for idempotent execution
+DO $$
+BEGIN
+  CREATE UNIQUE INDEX IF NOT EXISTS species_scientific_name_global_unique
+  ON species (scientific_name) WHERE user_id IS NULL AND category = 'research';
+  RAISE NOTICE '[Research Species] Created/verified unique index on scientific_name';
+EXCEPTION
+  WHEN duplicate_table THEN
+    RAISE NOTICE '[Research Species] Index already exists';
+  WHEN OTHERS THEN
+    RAISE WARNING '[Research Species] Could not create scientific_name index: %', SQLERRM;
+END $$;
+
+-- ============================================================================
+-- HELPER FUNCTION: Robust species upsert that handles multiple unique constraints
+-- This ensures idempotent behavior regardless of which constraint would be violated
+-- ============================================================================
+CREATE OR REPLACE FUNCTION upsert_research_species(
+  p_name TEXT,
+  p_scientific_name TEXT,
+  p_common_names TEXT[],
+  p_difficulty TEXT,
+  p_spawn_colonization JSONB,
+  p_bulk_colonization JSONB,
+  p_pinning JSONB,
+  p_maturation JSONB,
+  p_preferred_substrates TEXT[],
+  p_substrate_notes TEXT,
+  p_characteristics TEXT,
+  p_community_tips TEXT,
+  p_important_facts TEXT,
+  p_typical_yield TEXT,
+  p_flush_count TEXT,
+  p_shelf_life_days_min INTEGER,
+  p_shelf_life_days_max INTEGER,
+  p_automation_config JSONB,
+  p_spawn_colonization_notes TEXT,
+  p_bulk_colonization_notes TEXT,
+  p_pinning_notes TEXT,
+  p_maturation_notes TEXT,
+  p_notes TEXT
+) RETURNS UUID AS $$
+DECLARE
+  v_existing_id UUID;
+  v_result_id UUID;
+BEGIN
+  -- First, check if a record exists by scientific_name (primary identifier for research species)
+  SELECT id INTO v_existing_id
+  FROM species
+  WHERE scientific_name = p_scientific_name
+    AND user_id IS NULL
+    AND category = 'research'
+  LIMIT 1;
+
+  -- If not found by scientific_name, check by name
+  IF v_existing_id IS NULL THEN
+    SELECT id INTO v_existing_id
+    FROM species
+    WHERE name = p_name
+      AND user_id IS NULL
+    LIMIT 1;
+  END IF;
+
+  IF v_existing_id IS NOT NULL THEN
+    -- Update existing record
+    UPDATE species SET
+      name = p_name,
+      scientific_name = p_scientific_name,
+      common_names = p_common_names,
+      category = 'research',
+      difficulty = p_difficulty,
+      spawn_colonization = p_spawn_colonization,
+      bulk_colonization = p_bulk_colonization,
+      pinning = p_pinning,
+      maturation = p_maturation,
+      preferred_substrates = p_preferred_substrates,
+      substrate_notes = p_substrate_notes,
+      characteristics = p_characteristics,
+      community_tips = p_community_tips,
+      important_facts = p_important_facts,
+      typical_yield = p_typical_yield,
+      flush_count = p_flush_count,
+      shelf_life_days_min = p_shelf_life_days_min,
+      shelf_life_days_max = p_shelf_life_days_max,
+      automation_config = p_automation_config,
+      spawn_colonization_notes = p_spawn_colonization_notes,
+      bulk_colonization_notes = p_bulk_colonization_notes,
+      pinning_notes = p_pinning_notes,
+      maturation_notes = p_maturation_notes,
+      notes = p_notes,
+      updated_at = NOW()
+    WHERE id = v_existing_id
+    RETURNING id INTO v_result_id;
+
+    RAISE NOTICE '[Research Species] Updated: %', p_name;
+  ELSE
+    -- Insert new record
+    INSERT INTO species (
+      name, scientific_name, common_names, category, difficulty,
+      spawn_colonization, bulk_colonization, pinning, maturation,
+      preferred_substrates, substrate_notes, characteristics,
+      community_tips, important_facts, typical_yield, flush_count,
+      shelf_life_days_min, shelf_life_days_max,
+      automation_config, spawn_colonization_notes, bulk_colonization_notes,
+      pinning_notes, maturation_notes, notes, user_id
+    ) VALUES (
+      p_name, p_scientific_name, p_common_names, 'research', p_difficulty,
+      p_spawn_colonization, p_bulk_colonization, p_pinning, p_maturation,
+      p_preferred_substrates, p_substrate_notes, p_characteristics,
+      p_community_tips, p_important_facts, p_typical_yield, p_flush_count,
+      p_shelf_life_days_min, p_shelf_life_days_max,
+      p_automation_config, p_spawn_colonization_notes, p_bulk_colonization_notes,
+      p_pinning_notes, p_maturation_notes, p_notes, NULL
+    )
+    RETURNING id INTO v_result_id;
+
+    RAISE NOTICE '[Research Species] Inserted: %', p_name;
+  END IF;
+
+  RETURN v_result_id;
+EXCEPTION
+  WHEN unique_violation THEN
+    -- If we still get a unique violation, it's likely a race condition or data inconsistency
+    -- Try to clean up and retry once
+    RAISE NOTICE '[Research Species] Unique violation for %, attempting cleanup...', p_name;
+
+    -- Delete conflicting records (keep the one we're about to insert)
+    DELETE FROM species
+    WHERE (name = p_name OR scientific_name = p_scientific_name)
+      AND user_id IS NULL
+      AND category = 'research';
+
+    -- Insert fresh
+    INSERT INTO species (
+      name, scientific_name, common_names, category, difficulty,
+      spawn_colonization, bulk_colonization, pinning, maturation,
+      preferred_substrates, substrate_notes, characteristics,
+      community_tips, important_facts, typical_yield, flush_count,
+      shelf_life_days_min, shelf_life_days_max,
+      automation_config, spawn_colonization_notes, bulk_colonization_notes,
+      pinning_notes, maturation_notes, notes, user_id
+    ) VALUES (
+      p_name, p_scientific_name, p_common_names, 'research', p_difficulty,
+      p_spawn_colonization, p_bulk_colonization, p_pinning, p_maturation,
+      p_preferred_substrates, p_substrate_notes, p_characteristics,
+      p_community_tips, p_important_facts, p_typical_yield, p_flush_count,
+      p_shelf_life_days_min, p_shelf_life_days_max,
+      p_automation_config, p_spawn_colonization_notes, p_bulk_colonization_notes,
+      p_pinning_notes, p_maturation_notes, p_notes, NULL
+    )
+    RETURNING id INTO v_result_id;
+
+    RAISE NOTICE '[Research Species] Inserted after cleanup: %', p_name;
+    RETURN v_result_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permission
+DO $$
+BEGIN
+  GRANT EXECUTE ON FUNCTION upsert_research_species(TEXT, TEXT, TEXT[], TEXT, JSONB, JSONB, JSONB, JSONB, TEXT[], TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, JSONB, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+  RAISE NOTICE '[Research Species] Helper function created and permissions granted';
+EXCEPTION
+  WHEN undefined_object THEN
+    RAISE NOTICE '[Research Species] Role "authenticated" does not exist (OK for local dev)';
+END $$;
+
+-- ============================================================================
+-- PRE-INSERT CLEANUP: Remove conflicting scientific_names from other sources
+-- This handles the case where supabase-species-data.sql or other files
+-- inserted the same species with a different name
+-- ============================================================================
+DO $$
+DECLARE
+  v_deleted_count INTEGER;
+BEGIN
+  -- Delete any existing research species that would conflict with our inserts
+  -- We delete by scientific_name to handle cases where name differs
+  WITH deleted AS (
+    DELETE FROM species
+    WHERE scientific_name IN (
+      'Psilocybe cubensis',
+      'Psilocybe cubensis var. Penis Envy',
+      'Psilocybe cubensis var. Albino Penis Envy',
+      'Psilocybe cubensis var. Enigma',
+      'Psilocybe cubensis var. Leucistic Teacher',
+      'Psilocybe ovoideocystidiata'
+    )
+    AND user_id IS NULL
+    RETURNING id
+  )
+  SELECT COUNT(*) INTO v_deleted_count FROM deleted;
+
+  IF v_deleted_count > 0 THEN
+    RAISE NOTICE '[Research Species] Cleaned up % conflicting records before insert', v_deleted_count;
+  END IF;
+END $$;
 
 -- ----------------------------------------------------------------------------
 -- P. cubensis (Baseline) - Standard cultivation parameters
