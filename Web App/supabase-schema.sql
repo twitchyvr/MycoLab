@@ -8646,6 +8646,30 @@ END $$;
 -- to actually send pending notifications via email/SMS
 -- ============================================================================
 
+-- System config table for storing Supabase URL and other settings
+-- This avoids the need for ALTER DATABASE which requires superuser
+CREATE TABLE IF NOT EXISTS system_config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS for system_config (admin only)
+ALTER TABLE system_config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "system_config_select" ON system_config;
+DROP POLICY IF EXISTS "system_config_modify" ON system_config;
+
+-- Anyone can read config (needed for functions to work)
+CREATE POLICY "system_config_select" ON system_config
+  FOR SELECT TO authenticated USING (true);
+
+-- Only admins can modify
+CREATE POLICY "system_config_modify" ON system_config
+  FOR ALL TO authenticated USING ((SELECT is_admin()));
+
 -- Function to call the email queue processor edge function
 CREATE OR REPLACE FUNCTION trigger_email_queue_processor()
 RETURNS JSONB
@@ -8658,26 +8682,23 @@ DECLARE
   v_response_id BIGINT;
   v_result JSONB := '{"triggered": false}'::JSONB;
 BEGIN
-  -- Get Supabase URL from environment or config table
-  -- Note: These need to be set in the database or vault
-  v_supabase_url := current_setting('app.supabase_url', true);
-  v_service_key := current_setting('app.supabase_service_role_key', true);
+  -- Get Supabase URL from config table
+  SELECT value INTO v_supabase_url FROM system_config WHERE key = 'supabase_url';
+  SELECT value INTO v_service_key FROM system_config WHERE key = 'supabase_service_role_key';
 
-  -- If not set in config, try to use defaults (for local dev)
+  -- If not set in config table, return helpful error
   IF v_supabase_url IS NULL OR v_supabase_url = '' THEN
-    RAISE NOTICE 'Supabase URL not configured. Set app.supabase_url in postgresql.conf or use ALTER DATABASE ... SET app.supabase_url = ...';
     RETURN jsonb_build_object(
       'triggered', false,
-      'error', 'Supabase URL not configured'
+      'error', 'Supabase URL not configured. Run: INSERT INTO system_config (key, value) VALUES (''supabase_url'', ''https://your-project.supabase.co'');'
     );
   END IF;
 
   -- Check if pg_net extension is available
   IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_net') THEN
-    RAISE NOTICE 'pg_net extension not enabled. Enable it in Supabase Dashboard > Database > Extensions';
     RETURN jsonb_build_object(
       'triggered', false,
-      'error', 'pg_net extension not enabled'
+      'error', 'pg_net extension not enabled. Enable it in Supabase Dashboard > Database > Extensions'
     );
   END IF;
 
@@ -8801,9 +8822,11 @@ BEGIN
   SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_net')
   INTO v_pg_net_enabled;
 
-  -- Check if Supabase URL is configured
-  v_supabase_configured := (current_setting('app.supabase_url', true) IS NOT NULL
-    AND current_setting('app.supabase_url', true) != '');
+  -- Check if Supabase URL is configured (in system_config table)
+  v_supabase_configured := EXISTS (
+    SELECT 1 FROM system_config
+    WHERE key = 'supabase_url' AND value IS NOT NULL AND value != ''
+  );
 
   -- Get queue statistics
   SELECT COUNT(*)
