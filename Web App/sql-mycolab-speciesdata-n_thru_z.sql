@@ -2,7 +2,7 @@
 -- MYCOLAB RESEARCH SPECIES SEED DATA - N through Z (Alphabetical)
 -- ============================================================================
 -- Idempotent - Safe to run multiple times
--- Run this AFTER supabase-schema.sql AND mycolab-research-species-A-M.sql
+-- Can be run BEFORE or AFTER the A-M file (order-independent)
 -- ============================================================================
 --
 -- SCOPE: Research/Psychoactive mushroom species, names beginning N-Z
@@ -12,6 +12,11 @@
 -- - Psilocybe N-Z (P. natalensis, P. ovoideocystidiata, P. semilanceata,
 --                 P. subaeruginosa, P. tampanensis, P. weraroa, etc.)
 -- - Pluteus (P. salicinus - Willow Shield)
+--
+-- ID RANGES USED (to avoid conflicts with other files):
+-- - 10000000-0000-0000-0007-xxx = Psilocybe N-Z species (this file)
+-- - 10000000-0000-0000-0008-xxx = Pluteus species (this file)
+-- - 10000000-0000-0000-0000-xxx through 0006-xxx = Reserved for A-M file
 --
 -- TEMPERATURE UNITS: Celsius (matching scientific literature)
 -- HUMIDITY: Percentage (%)
@@ -25,7 +30,7 @@
 -- - "grassland_specialist": Requires specific grass/soil symbiosis
 --
 -- IDEMPOTENCY: This file handles conflicts with data from other seed files:
--- 1. Pre-flight cleanup removes conflicting name/scientific_name entries
+-- 1. Pre-flight cleanup removes conflicting scientific_name entries
 -- 2. ON CONFLICT (id) handles re-runs of this same file
 -- 3. All operations are wrapped in exception handlers
 -- ============================================================================
@@ -42,13 +47,14 @@ DECLARE
 BEGIN
   RAISE NOTICE '[Species N-Z] Starting pre-flight checks...';
 
-  -- Remove any species from OTHER seed files that would conflict with our IDs
-  -- This file uses IDs starting with '10000000-0000-0000-0003-...' to avoid conflicts
+  -- Remove any species from OTHER seed files that would conflict with our scientific_name values
+  -- This ensures we can insert our species even if they exist with different IDs
   WITH conflicts AS (
     SELECT s.id, s.name, s.scientific_name
     FROM species s
     WHERE s.user_id IS NULL
-      AND s.id NOT LIKE '10000000-0000-0000-0003-%'  -- Not our IDs
+      AND s.id NOT LIKE '10000000-0000-0000-0007-%'  -- Not our Psilocybe N-Z IDs
+      AND s.id NOT LIKE '10000000-0000-0000-0008-%'  -- Not our Pluteus IDs
       AND (
         s.scientific_name IN (
           'Psilocybe natalensis', 'Psilocybe niveotropicalis', 'Psilocybe ovoideocystidiata',
@@ -80,7 +86,7 @@ INSERT INTO species (
 VALUES
   -- Psilocybe natalensis
   (
-    '10000000-0000-0000-0003-000000000001',
+    '10000000-0000-0000-0007-000000000001',
     'Natal Super Strength',
     'Psilocybe natalensis',
     ARRAY['Nats', 'South African Psilocybe', 'P. natalensis'],
@@ -112,7 +118,7 @@ VALUES
 
   -- Psilocybe niveotropicalis
   (
-    '10000000-0000-0000-0003-000000000002',
+    '10000000-0000-0000-0007-000000000002',
     'Snow White Tropical',
     'Psilocybe niveotropicalis',
     ARRAY['Niveotropicalis', 'Florida Wood-lover'],
@@ -133,7 +139,7 @@ VALUES
 
   -- Psilocybe ovoideocystidiata
   (
-    '10000000-0000-0000-0003-000000000003',
+    '10000000-0000-0000-0007-000000000003',
     'Ovoids',
     'Psilocybe ovoideocystidiata',
     ARRAY['Ovoid', 'River Teacher', 'P. ovoid', 'Ovoideocystidiata'],
@@ -175,7 +181,7 @@ VALUES
 
   -- Psilocybe semilanceata
   (
-    '10000000-0000-0000-0003-000000000004',
+    '10000000-0000-0000-0007-000000000004',
     'Liberty Cap',
     'Psilocybe semilanceata',
     ARRAY['Libs', 'Magic Mushroom', 'Pixie Cap', 'Witchs Hat'],
@@ -218,7 +224,7 @@ VALUES
 
   -- Psilocybe subaeruginosa
   (
-    '10000000-0000-0000-0003-000000000005',
+    '10000000-0000-0000-0007-000000000005',
     'Subs',
     'Psilocybe subaeruginosa',
     ARRAY['Golden Tops', 'Australian Psilocybe', 'Subaeruginosa'],
@@ -264,7 +270,7 @@ VALUES
 
   -- Psilocybe tampanensis
   (
-    '10000000-0000-0000-0003-000000000006',
+    '10000000-0000-0000-0007-000000000006',
     'Philosophers Stones',
     'Psilocybe tampanensis',
     ARRAY['Magic Truffles', 'Tampanensis', 'Psilocybe Truffles'],
@@ -312,7 +318,7 @@ VALUES
 
   -- Psilocybe weraroa
   (
-    '10000000-0000-0000-0003-000000000007',
+    '10000000-0000-0000-0007-000000000007',
     'Blue Secotioid',
     'Psilocybe weraroa',
     ARRAY['Weraroa', 'Pouch Fungus', 'NZ Pouch'],
@@ -365,7 +371,8 @@ VALUES
     E'DATA CONFIDENCE: limited_reports (cultivation), community_consensus (wild)',
     NULL
   )
-ON CONFLICT (name) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
   scientific_name = EXCLUDED.scientific_name,
   common_names = EXCLUDED.common_names,
   category = EXCLUDED.category,
@@ -382,7 +389,7 @@ INSERT INTO species (
 VALUES
   -- Pluteus salicinus
   (
-    '10000000-0000-0000-0004-000000000001',
+    '10000000-0000-0000-0008-000000000001',
     'Willow Shield',
     'Pluteus salicinus',
     ARRAY['Pluteus salicinus', 'Gray Dragon Mushroom'],
@@ -430,7 +437,8 @@ VALUES
     E'DATA CONFIDENCE: limited_reports',
     NULL
   )
-ON CONFLICT (name) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
   scientific_name = EXCLUDED.scientific_name,
   common_names = EXCLUDED.common_names,
   category = EXCLUDED.category,
@@ -443,7 +451,7 @@ ON CONFLICT (name) DO UPDATE SET
 --
 -- Species added in this file (N-Z):
 --
--- Psilocybe species:
+-- Psilocybe species (ID range: 10000000-0000-0000-0007-xxx):
 -- 1. P. natalensis - Natal Super Strength (beginner, subtropical dung-lover)
 -- 2. P. niveotropicalis - Snow White Tropical (limited data, FL wood-lover)
 -- 3. P. ovoideocystidiata - Ovoids (intermediate, Eastern US wood-lover)
@@ -452,7 +460,7 @@ ON CONFLICT (name) DO UPDATE SET
 -- 6. P. tampanensis - Philosopher's Stones (intermediate, sclerotia producer)
 -- 7. P. weraroa - Blue Secotioid (expert, NZ endemic pouch fungus)
 --
--- Other genera:
+-- Other genera (ID range: 10000000-0000-0000-0008-xxx):
 -- 8. Pluteus salicinus - Willow Shield (expert, wood-lover, variable potency)
 --
 -- Total: 8 species
