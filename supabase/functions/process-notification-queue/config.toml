@@ -1,0 +1,6 @@
+# Process Notification Queue - Scheduled Edge Function
+# Runs every 5 minutes to send queued email notifications
+
+[schedule]
+enabled = true
+cron = "*/5 * * * *"
