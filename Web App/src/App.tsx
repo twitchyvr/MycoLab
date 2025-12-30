@@ -187,6 +187,8 @@ interface NavItem {
   id: Page;
   label: string;
   icon: React.FC;
+  /** If true, this page is accessible without authentication */
+  isPublic?: boolean;
 }
 
 interface NavGroup {
@@ -195,58 +197,119 @@ interface NavGroup {
   icon: React.FC;
   items: NavItem[];
   defaultOpen?: boolean;
+  /** If true, all items in this group are public (no auth required) */
+  isPublic?: boolean;
+  /** Description shown in collapsed sidebar flyout */
+  description?: string;
 }
 
-// Grouped navigation structure - consolidated for clarity
-// Today, Daily Check, and Harvest are now unified in Command Center
+// ============================================================================
+// NAVIGATION STRUCTURE
+// ============================================================================
+// Organized to reflect the logical workflow of mushroom cultivation:
+// 1. LEARN - Library & reference materials (public, Wikipedia-style)
+// 2. SETUP - Configure lab spaces and preferences
+// 3. GENETICS - Manage cultures and lineage
+// 4. PRODUCTION - Grain spawn, grows, recipes
+// 5. DAILY OPS - Day-to-day lab management
+// 6. INVENTORY - Stock and supplies
+// 7. ANALYTICS - Performance analysis
+// 8. TOOLS - Calculators (public)
+// 9. ACCOUNT - Settings and profile
+
 const navGroups: NavGroup[] = [
+  // ────────────────────────────────────────────────────────────────────────────
+  // PUBLIC SECTION - Accessible without authentication
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'library',
+    label: 'Library',
+    icon: SectionIcons.Library,
+    defaultOpen: true,
+    isPublic: true,
+    description: 'Reference guides & species info',
+    items: [
+      { id: 'library', label: 'Species & Strains', icon: Icons.Library, isPublic: true },
+      { id: 'cultureguide', label: 'Culture Guide', icon: Icons.Culture, isPublic: true },
+      { id: 'recipes', label: 'Recipe Library', icon: Icons.Recipe, isPublic: true },
+    ],
+  },
+  {
+    id: 'tools',
+    label: 'Calculators',
+    icon: SectionIcons.Tools,
+    defaultOpen: false,
+    isPublic: true,
+    description: 'Cultivation calculators',
+    items: [
+      { id: 'calculator', label: 'Substrate Calc', icon: Icons.Calculator, isPublic: true },
+      { id: 'spawnrate', label: 'Spawn Rate', icon: Icons.Layers, isPublic: true },
+      { id: 'pressure', label: 'Pressure Cook', icon: Icons.Thermometer, isPublic: true },
+      { id: 'multiplication', label: 'Culture Expansion', icon: Icons.Flask, isPublic: true },
+      { id: 'efficiency', label: 'BE Calculator', icon: Icons.TrendingUp, isPublic: true },
+    ],
+  },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // AUTHENTICATED SECTION - Requires login
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'labsetup',
+    label: 'Lab Setup',
+    icon: SectionIcons.Settings,
+    defaultOpen: false,
+    description: 'Configure your lab environment',
+    items: [
+      { id: 'labspaces', label: 'Lab Spaces', icon: Icons.Layers },
+      { id: 'instances', label: 'Containers', icon: Icons.Container },
+    ],
+  },
+  {
+    id: 'genetics',
+    label: 'Genetics',
+    icon: SectionIcons.Genetics,
+    defaultOpen: false,
+    description: 'Culture library & lineage',
+    items: [
+      { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
+      { id: 'lineage', label: 'Lineage Tree', icon: Icons.Lineage },
+    ],
+  },
+  {
+    id: 'production',
+    label: 'Production',
+    icon: SectionIcons.Genetics,
+    defaultOpen: false,
+    description: 'Spawn, grows & recipes',
+    items: [
+      { id: 'spawn', label: 'Grain Spawn', icon: Icons.Grain },
+      { id: 'grows', label: 'Grows', icon: Icons.Grow },
+    ],
+  },
   {
     id: 'command',
     label: 'Daily Ops',
     icon: SectionIcons.Command,
-    defaultOpen: true,
+    defaultOpen: false,
+    description: 'Day-to-day lab management',
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
       { id: 'commandcenter', label: 'Command Center', icon: Icons.Target },
+      { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
+      { id: 'eventlog', label: 'Event Log', icon: Icons.Pencil },
       { id: 'forecast', label: 'Harvest Forecast', icon: Icons.TrendingUp },
       { id: 'coldstorage', label: 'Cold Storage', icon: Icons.Snowflake },
     ],
   },
   {
-    id: 'genetics',
-    label: 'Cultivation',
-    icon: SectionIcons.Genetics,
-    defaultOpen: false,
-    items: [
-      { id: 'cultures', label: 'Cultures', icon: Icons.Culture },
-      { id: 'spawn', label: 'Grain Spawn', icon: Icons.Grain },
-      { id: 'grows', label: 'Grows', icon: Icons.Grow },
-      { id: 'lineage', label: 'Lineage Tree', icon: Icons.Lineage },
-      { id: 'observations', label: 'Observations', icon: Icons.Clipboard },
-      { id: 'eventlog', label: 'Event Log', icon: Icons.Pencil },
-    ],
-  },
-  {
-    id: 'library',
-    label: 'Knowledge Base',
-    icon: SectionIcons.Library,
-    defaultOpen: false,
-    items: [
-      { id: 'library', label: 'Species & Strains', icon: Icons.Library },
-      { id: 'cultureguide', label: 'Culture Guide', icon: Icons.Culture },
-      { id: 'recipes', label: 'Recipes', icon: Icons.Recipe },
-    ],
-  },
-  {
     id: 'inventory',
-    label: 'Lab & Storage',
+    label: 'Inventory',
     icon: SectionIcons.Inventory,
     defaultOpen: false,
+    description: 'Stock & supplies tracking',
     items: [
       { id: 'inventory', label: 'Lab Inventory', icon: Icons.Inventory },
       { id: 'stock', label: 'Stock & Orders', icon: Icons.Package },
-      { id: 'instances', label: 'Containers', icon: Icons.Container },
-      { id: 'labspaces', label: 'Lab Spaces', icon: Icons.Layers },
       { id: 'labels', label: 'Label Maker', icon: Icons.Tag },
       { id: 'scanner', label: 'QR Scanner', icon: Icons.QRScan },
     ],
@@ -256,42 +319,103 @@ const navGroups: NavGroup[] = [
     label: 'Analytics',
     icon: SectionIcons.Analytics,
     defaultOpen: false,
+    description: 'Performance & insights',
     items: [
       { id: 'analytics', label: 'Overview', icon: Icons.Chart },
       { id: 'financial', label: 'Financial', icon: Icons.DollarSign },
       { id: 'strainanalytics', label: 'Strain Stats', icon: Icons.Target },
       { id: 'outcomes', label: 'Outcomes', icon: Icons.Clock },
       { id: 'contamination', label: 'Contam Analysis', icon: Icons.AlertTriangle },
-      { id: 'efficiency', label: 'BE Calculator', icon: Icons.TrendingUp },
     ],
   },
   {
-    id: 'tools',
-    label: 'Calculators',
-    icon: SectionIcons.Tools,
-    defaultOpen: false,
-    items: [
-      { id: 'calculator', label: 'Substrate Calc', icon: Icons.Calculator },
-      { id: 'spawnrate', label: 'Spawn Rate', icon: Icons.Layers },
-      { id: 'pressure', label: 'Pressure Cook', icon: Icons.Thermometer },
-      { id: 'multiplication', label: 'Culture Expansion', icon: Icons.Flask },
-    ],
-  },
-  {
-    id: 'settings',
-    label: 'Settings',
+    id: 'account',
+    label: 'Account',
     icon: SectionIcons.Settings,
     defaultOpen: false,
+    description: 'Settings & profile',
     items: [
-      { id: 'settings', label: 'Preferences', icon: Icons.Settings },
+      { id: 'settings', label: 'Preferences', icon: Icons.Settings, isPublic: true },
       { id: 'profile', label: 'Profile', icon: Icons.Dashboard },
-      { id: 'featuretracker', label: 'Feature Tracker', icon: Icons.DevLog },
+      { id: 'featuretracker', label: 'Feature Tracker', icon: Icons.DevLog, isPublic: true },
     ],
   },
 ];
 
 // Flat list for backwards compatibility
 const navItems: NavItem[] = navGroups.flatMap(group => group.items);
+
+// Helper to check if a page is public (no auth required)
+const isPublicPage = (page: Page): boolean => {
+  for (const group of navGroups) {
+    const item = group.items.find(i => i.id === page);
+    if (item) {
+      // Item-level isPublic takes precedence, otherwise use group-level
+      return item.isPublic ?? group.isPublic ?? false;
+    }
+  }
+  return false;
+};
+
+// List of all public pages for quick reference
+const PUBLIC_PAGES: Page[] = navGroups
+  .flatMap(group => group.items
+    .filter(item => item.isPublic || group.isPublic)
+    .map(item => item.id)
+  );
+
+// ============================================================================
+// AUTH REQUIRED PROMPT COMPONENT
+// ============================================================================
+// Shown when unauthenticated users try to access protected pages
+
+interface AuthRequiredPromptProps {
+  pageName: string;
+  onSignIn: () => void;
+  onSignUp: () => void;
+}
+
+const AuthRequiredPrompt: React.FC<AuthRequiredPromptProps> = ({ pageName, onSignIn, onSignUp }) => (
+  <div className="min-h-[60vh] flex items-center justify-center p-6">
+    <div className="max-w-md w-full text-center">
+      <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-8 backdrop-blur-sm">
+        {/* Lock Icon */}
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-8 h-8 text-emerald-400">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+
+        <h2 className="text-xl font-semibold text-white mb-2">
+          Sign in to access {pageName}
+        </h2>
+        <p className="text-zinc-400 mb-6">
+          Create a free account to track your cultures, grows, and lab operations.
+        </p>
+
+        <div className="space-y-3">
+          <button
+            onClick={onSignUp}
+            className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-medium rounded-lg transition-all duration-200 shadow-lg shadow-emerald-500/20"
+          >
+            Create Free Account
+          </button>
+          <button
+            onClick={onSignIn}
+            className="w-full py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-lg transition-colors border border-zinc-700"
+          >
+            Sign In
+          </button>
+        </div>
+
+        <p className="text-xs text-zinc-500 mt-6">
+          Explore our <span className="text-emerald-400">Library</span> and <span className="text-emerald-400">Calculators</span> without an account
+        </p>
+      </div>
+    </div>
+  </div>
+);
 
 // ============================================================================
 // STATUS STYLING
@@ -541,14 +665,37 @@ const Sidebar: React.FC<SidebarProps> = ({
                         <div className="px-4 py-2 text-xs font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800/80 mb-1 bg-gradient-to-r from-zinc-800/50 to-transparent flex items-center gap-2">
                           <GroupIcon />
                           <span>{group.label}</span>
+                          {/* Public/Auth indicator */}
+                          {group.isPublic ? (
+                            <span className="ml-auto text-emerald-400" title="Open to all">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="2" y1="12" x2="22" y2="12"/>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                              </svg>
+                            </span>
+                          ) : (
+                            <span className="ml-auto text-zinc-500" title="Sign in required">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                              </svg>
+                            </span>
+                          )}
                           {isPinned && (
-                            <span className="ml-auto text-emerald-400">
+                            <span className="text-emerald-400">
                               <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
                                 <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/>
                               </svg>
                             </span>
                           )}
                         </div>
+                        {/* Group description */}
+                        {group.description && (
+                          <div className="px-4 py-1 text-xs text-zinc-500 border-b border-zinc-800/50 mb-1">
+                            {group.description}
+                          </div>
+                        )}
                         {/* Items */}
                         <div className="py-1">
                           {group.items.map((item, index) => {
@@ -602,6 +749,23 @@ const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <GroupIcon />
                   <span className="flex-1 text-left">{group.label}</span>
+                  {/* Public/Auth indicator - subtle */}
+                  {group.isPublic ? (
+                    <span className="text-emerald-500/60" title="Open to all">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="2" y1="12" x2="22" y2="12"/>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                      </svg>
+                    </span>
+                  ) : (
+                    <span className="text-zinc-600" title="Sign in required">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                      </svg>
+                    </span>
+                  )}
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -1471,10 +1635,24 @@ const AppContent: React.FC<{
   pageConfig,
 }) => {
   const { state } = useData();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, setShowAuthModal, setAuthModalMode } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [previousPages, setPreviousPages] = useState<Page[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check if current page requires authentication
+  const requiresAuth = !isPublicPage(currentPage);
+
+  // Auth handlers for the AuthRequiredPrompt
+  const handleSignIn = () => {
+    setAuthModalMode('login');
+    setShowAuthModal(true);
+  };
+
+  const handleSignUp = () => {
+    setAuthModalMode('signup');
+    setShowAuthModal(true);
+  };
 
   // Check if user needs onboarding
   useEffect(() => {
@@ -1629,7 +1807,16 @@ const AppContent: React.FC<{
             onOpenHub={() => setSidebarOpen(true)}
           />
           <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-            {renderPage()}
+            {/* Show auth prompt for protected pages when not authenticated */}
+            {requiresAuth && !isAuthenticated ? (
+              <AuthRequiredPrompt
+                pageName={pageConfig[currentPage]?.title || 'this page'}
+                onSignIn={handleSignIn}
+                onSignUp={handleSignUp}
+              />
+            ) : (
+              renderPage()
+            )}
           </div>
         </main>
 
