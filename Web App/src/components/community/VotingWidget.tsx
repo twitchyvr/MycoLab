@@ -84,7 +84,7 @@ export const VotingWidget: React.FC<VotingWidgetProps> = ({
       const upvotes = votes?.filter(v => v.vote_type === 'up').length || 0;
       const downvotes = votes?.filter(v => v.vote_type === 'down').length || 0;
 
-      // Get user's vote if authenticated
+      // Get user's vote if authenticated (use maybeSingle to handle case where user hasn't voted)
       let userVote: 'up' | 'down' | null = null;
       if (user && supabase) {
         const { data: userVoteData } = await supabase
@@ -92,7 +92,7 @@ export const VotingWidget: React.FC<VotingWidgetProps> = ({
           .select('vote_type')
           .eq(idColumn, entityId)
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         userVote = userVoteData?.vote_type as 'up' | 'down' | null;
       }
