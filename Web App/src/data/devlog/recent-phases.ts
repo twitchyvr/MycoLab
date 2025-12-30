@@ -6664,6 +6664,57 @@ All tables have:
   },
 
   {
+    id: 'dev-1009',
+    status: 'completed',
+    priority: 'high',
+    category: 'ui',
+    title: 'Container Setup Flow - Unified Smart Wizard',
+    description: 'Comprehensive wizard that handles creating Container Types, Inventory Items, Stock Lots, and Lab Item Instances in a single intuitive flow. Supports both basic users (quick presets) and advanced users (full customization).',
+    notes: `Smart container setup that handles the complete container→inventory→spawn workflow.
+
+**Features:**
+1. **Quick Presets** - Common containers (Quart Mason Jar, Spawn Bags, Petri Dishes, etc.)
+   - One-click selection for standard containers
+   - Auto-fills volume, category, reusable/sterilizable settings
+   - Filtered by context (spawn, culture, grow)
+
+2. **Custom Container** - Full customization mode
+   - Name, category, volume input
+   - Reusable and sterilizable toggles
+   - Notes field
+
+3. **Inventory Tracking** (Optional)
+   - Quantity owned
+   - Total cost (auto-calculates unit cost)
+   - Supplier selection
+   - Purchase date
+   - Creates inventory item + lot + individual instances
+
+4. **Smart Auto-Creation:**
+   - Container Type (if new)
+   - Inventory Item (with container behavior)
+   - Inventory Lot (with cost tracking)
+   - Lab Item Instances (for individual container tracking)
+
+**Integration Points:**
+- PrepareSpawnForm: "Set Up New" button next to container dropdown
+- SpawnManagement: Guided empty state when no containers configured
+- Three-step workflow visualization for new users
+
+**Empty State Enhancement:**
+- When no containers exist, shows guided setup with numbered steps
+- Steps 2 & 3 (Prepare, Sterilize) preview what comes next
+- Clear call-to-action to set up first container
+
+**Files Created/Changed:**
+- src/components/spawn/ContainerSetupFlow.tsx (NEW)
+- src/components/spawn/PrepareSpawnForm.tsx (updated)
+- src/components/spawn/SpawnManagement.tsx (updated)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
+
+  {
     id: 'dev-1007',
     status: 'planned',
     priority: 'medium',
