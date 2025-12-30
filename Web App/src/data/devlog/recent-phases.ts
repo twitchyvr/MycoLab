@@ -6741,6 +6741,53 @@ All tables have:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  {
+    id: 'dev-1008',
+    status: 'completed',
+    priority: 'high',
+    category: 'ui',
+    title: 'Navigation Restructure & Route Protection',
+    description: 'Reorganized navigation menu to follow logical cultivation workflow. Added authentication requirements for protected pages and created public Wikipedia-style library section.',
+    completedAt: timestamp(),
+    notes: `Major navigation overhaul for better UX:
+
+**New Navigation Order (reflects cultivation workflow):**
+1. Library (PUBLIC) - Species & Strains, Culture Guide, Recipes
+2. Calculators (PUBLIC) - Substrate, Spawn Rate, Pressure Cook, BE
+3. Lab Setup (AUTH) - Lab Spaces, Containers
+4. Genetics (AUTH) - Cultures, Lineage Tree
+5. Production (AUTH) - Grain Spawn, Grows
+6. Daily Ops (AUTH) - Dashboard, Command Center, Observations
+7. Inventory (AUTH) - Lab Inventory, Stock, Labels, QR Scanner
+8. Analytics (AUTH) - Overview, Financial, Strain Stats, Outcomes
+9. Account (MIXED) - Settings (public), Profile (auth)
+
+**Route Protection:**
+- Added isPublic flag to NavItem and NavGroup interfaces
+- Created AuthRequiredPrompt component for protected pages
+- Unauthenticated users see sign-in prompt with signup/login options
+- Public pages work without authentication
+
+**Wikipedia-Style Library:**
+- Library and Calculator sections are publicly accessible
+- Added "Open Reference Library" banner to Species & Culture Guide
+- Green globe icon indicates public sections in sidebar
+- Lock icon indicates auth-required sections
+
+**Visual Indicators:**
+- Globe icon for public groups in sidebar
+- Lock icon for auth-required groups
+- Group descriptions in flyout menus
+- Consistent styling throughout
+
+**Files Changed:**
+- src/App.tsx (navigation structure, route protection)
+- src/components/library/SpeciesLibrary.tsx (public banner)
+- src/components/library/CultureGuide.tsx (public banner)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;
