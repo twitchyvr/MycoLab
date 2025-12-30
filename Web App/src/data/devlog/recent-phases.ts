@@ -6816,6 +6816,106 @@ All tables have:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+
+  // =============================================================================
+  // UNIFIED INFO SYSTEM (December 2025)
+  // Comprehensive informational UI with tooltips, warnings, tips, and suggestions
+  // =============================================================================
+  {
+    id: 'dev-780',
+    title: 'Unified Info System - Comprehensive UI Information Controls',
+    description: 'Added exhaustive informational UI system with tooltips, contextual warnings, proactive tips, and validation feedback throughout the app.',
+    category: 'ux',
+    status: 'completed',
+    priority: 'high',
+    notes: `Implemented a unified, standardized information system for the entire app.
+
+**Core Components Created:**
+
+1. **InfoContext (src/store/InfoContext.tsx)**
+   - Centralized info system with preferences
+   - Help content registry with searchable topics
+   - Warning and tip definitions
+   - User preference management (verbosity, delivery, categories)
+   - Experience level awareness
+
+2. **Enhanced UI Components (src/components/common/InfoComponents.tsx)**
+   - InfoPopover: Detailed information popups with related topics
+   - ContextualWarning: Priority-based warnings (badge, inline, banner variants)
+   - FeatureTip: Proactive suggestions (card, floating, inline variants)
+   - ValidationFeedback: Real-time form validation display
+   - InfoBanner: Dismissible information banners
+   - GuidedStep: Step-by-step guidance indicators
+   - FieldLabel: Form labels with integrated help icons
+   - QuickInfo: Inline info snippets
+
+3. **Warnings Panel (src/components/common/WarningsPanel.tsx)**
+   - WarningsPanel: Displays active warnings with filtering
+   - TipsPanel: Shows proactive tips with snooze/dismiss
+   - QuickHelpSearch: Searchable help content
+
+4. **Warnings Evaluator (src/lib/WarningsEvaluator.tsx)**
+   - Automatic data analysis for potential issues
+   - Detects: old LC cultures, high generation, contamination, slow colonization, low stock, expiring items
+   - Configurable warning conditions
+   - Runs periodically on data changes
+
+5. **Info Preferences Settings (src/components/settings/InfoPreferences.tsx)**
+   - Master toggle for info system
+   - Verbosity levels: minimal, standard, verbose, exhaustive
+   - Feature toggles: tooltips, help icons, tips, guides, validation
+   - Warning threshold configuration
+   - Category filters
+   - Dismissed items management
+   - Reset to defaults
+
+**Help Content Registry:**
+- Culture: types, transfers, health, storage
+- Grow: stages, contamination, harvest, yield
+- Location: hierarchy, environment
+- Inventory: tracking, lots
+- Recipe: scaling, hydration
+- Workflow: sterile technique, documentation
+- Settings: experience level, notifications
+
+**Warning Conditions:**
+- Culture old LC (>90 days)
+- High generation cultures (G5+)
+- Contaminated cultures
+- Slow colonization
+- No pins in fruiting
+- Low inventory stock
+- Expiring items
+- Data sync issues
+
+**User Preferences:**
+- Enable/disable entire system
+- Control verbosity level
+- Toggle individual feature types
+- Set warning threshold
+- Choose delivery methods (toast, inline, popover)
+- Category-specific filtering
+- Dismiss/snooze management
+
+**Integration:**
+- InfoProvider added to App.tsx provider tree
+- WarningsEvaluator runs automatically
+- New "Help & Info" tab in Settings
+- All components exported from common/index.ts
+
+**Files Changed:**
+- src/store/InfoContext.tsx (new)
+- src/store/index.ts (exports)
+- src/components/common/InfoComponents.tsx (new)
+- src/components/common/WarningsPanel.tsx (new)
+- src/components/common/index.ts (exports)
+- src/components/settings/InfoPreferences.tsx (new)
+- src/components/settings/GrowerSettings.tsx (new tab)
+- src/lib/WarningsEvaluator.tsx (new)
+- src/App.tsx (providers)`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

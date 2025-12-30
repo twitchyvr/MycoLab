@@ -31,5 +31,19 @@ export { SpeciesInfoPanel } from './SpeciesInfoPanel';
 export { SpeciesName } from './SpeciesName';
 export { GlobalSearch } from './GlobalSearch';
 
+// Help & Info Components
+export { HelpTooltip, InlineHelp, StepIndicator, WhatsNext } from './HelpTooltip';
+export {
+  InfoPopover,
+  ContextualWarning,
+  FeatureTip,
+  ValidationFeedback,
+  InfoBanner,
+  GuidedStep,
+  FieldLabel,
+  QuickInfo,
+} from './InfoComponents';
+export { WarningsPanel, TipsPanel, QuickHelpSearch } from './WarningsPanel';
+
 // Image Components
 export { ImageUploader } from './images';

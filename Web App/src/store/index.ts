@@ -7,6 +7,7 @@ export * from './types';
 export * from './DataContext';
 export * from './CreationContext';
 export * from './NotificationContext';
+export * from './InfoContext';
 export * from './ThemeContext';
 export * from './NotificationService';
 
