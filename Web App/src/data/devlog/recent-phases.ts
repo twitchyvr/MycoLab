@@ -7075,6 +7075,30 @@ All tables have:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-903',
+    title: 'Fix Community Photo Upload - Storage Bucket',
+    description: 'Fixed "Bucket not found" error when uploading community photos. Added SQL to create the community-photos storage bucket and RLS policies.',
+    category: 'bugfix',
+    status: 'completed',
+    priority: 'critical',
+    estimatedHours: 1,
+    completedAt: timestamp(),
+    notes: `**Issue:**
+- Users got "Bucket not found" error when trying to upload photos to library entries
+- Console showed 400 errors for storage uploads and 406 errors for entity_ratings queries
+
+**Root Causes:**
+1. The 'community-photos' Supabase Storage bucket was never created
+2. RatingWidget and VotingWidget used .single() instead of .maybeSingle() for user queries
+
+**Fixes:**
+- Added storage bucket creation SQL to supabase-schema.sql with proper RLS policies
+- Changed .single() to .maybeSingle() in RatingWidget.tsx and VotingWidget.tsx
+- Storage policies allow: public read, authenticated insert, owner update/delete`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

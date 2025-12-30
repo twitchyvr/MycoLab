@@ -440,7 +440,7 @@ export const RatingWidget: React.FC<RatingWidgetProps> = ({
 
       setSummary(summaryData || { totalRatings: 0, distribution: { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 } });
 
-      // Get user's rating
+      // Get user's rating (use maybeSingle to handle case where user hasn't rated)
       if (user) {
         const { data: userRatingData } = await supabase
           .from('entity_ratings')
@@ -448,7 +448,7 @@ export const RatingWidget: React.FC<RatingWidgetProps> = ({
           .eq('entity_type', entityType)
           .eq('entity_id', entityId)
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (userRatingData) {
           setUserRating({

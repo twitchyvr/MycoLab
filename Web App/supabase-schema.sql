@@ -10870,6 +10870,113 @@ GRANT EXECUTE ON FUNCTION get_entity_rating_summary(TEXT, UUID) TO authenticated
 GRANT EXECUTE ON FUNCTION get_entity_rating_summary(TEXT, UUID) TO anon;
 
 -- ============================================================================
+-- STORAGE BUCKETS
+-- ============================================================================
+-- Create storage buckets for community photos
+-- Note: Storage bucket creation requires the storage schema to be available
+
+DO $$
+BEGIN
+  -- Create community-photos bucket if it doesn't exist
+  INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  VALUES (
+    'community-photos',
+    'community-photos',
+    true,  -- Public bucket so photos can be viewed without auth
+    5242880,  -- 5MB file size limit
+    ARRAY['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    public = EXCLUDED.public,
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+  RAISE NOTICE '[Storage] community-photos bucket created/updated';
+EXCEPTION
+  WHEN undefined_table THEN
+    RAISE WARNING '[Storage] storage.buckets table not found - storage may not be enabled';
+  WHEN insufficient_privilege THEN
+    RAISE WARNING '[Storage] Insufficient privileges to create storage bucket - create manually in Supabase Dashboard';
+END $$;
+
+-- Storage RLS Policies for community-photos bucket
+-- These allow authenticated users to upload and everyone to view
+
+DO $$
+BEGIN
+  -- Drop existing policies first
+  DROP POLICY IF EXISTS "community_photos_public_read" ON storage.objects;
+  DROP POLICY IF EXISTS "community_photos_authenticated_insert" ON storage.objects;
+  DROP POLICY IF EXISTS "community_photos_owner_update" ON storage.objects;
+  DROP POLICY IF EXISTS "community_photos_owner_delete" ON storage.objects;
+EXCEPTION
+  WHEN undefined_table THEN NULL;
+  WHEN undefined_object THEN NULL;
+END $$;
+
+-- Public read access for community photos
+DO $$
+BEGIN
+  CREATE POLICY "community_photos_public_read"
+    ON storage.objects FOR SELECT
+    USING (bucket_id = 'community-photos');
+
+  RAISE NOTICE '[Storage] Created public read policy for community-photos';
+EXCEPTION
+  WHEN undefined_table THEN
+    RAISE WARNING '[Storage] storage.objects table not found';
+  WHEN duplicate_object THEN
+    RAISE NOTICE '[Storage] Public read policy already exists';
+  WHEN insufficient_privilege THEN
+    RAISE WARNING '[Storage] Insufficient privileges for storage policies - configure manually in Supabase Dashboard';
+END $$;
+
+-- Authenticated users can upload to community photos
+DO $$
+BEGIN
+  CREATE POLICY "community_photos_authenticated_insert"
+    ON storage.objects FOR INSERT TO authenticated
+    WITH CHECK (bucket_id = 'community-photos');
+
+  RAISE NOTICE '[Storage] Created authenticated insert policy for community-photos';
+EXCEPTION
+  WHEN undefined_table THEN NULL;
+  WHEN duplicate_object THEN
+    RAISE NOTICE '[Storage] Authenticated insert policy already exists';
+  WHEN insufficient_privilege THEN NULL;
+END $$;
+
+-- Users can update their own photos (owner is stored in metadata or path)
+DO $$
+BEGIN
+  CREATE POLICY "community_photos_owner_update"
+    ON storage.objects FOR UPDATE TO authenticated
+    USING (bucket_id = 'community-photos' AND (select auth.uid())::text = (storage.foldername(name))[2]);
+
+  RAISE NOTICE '[Storage] Created owner update policy for community-photos';
+EXCEPTION
+  WHEN undefined_table THEN NULL;
+  WHEN duplicate_object THEN
+    RAISE NOTICE '[Storage] Owner update policy already exists';
+  WHEN insufficient_privilege THEN NULL;
+END $$;
+
+-- Users can delete their own photos
+DO $$
+BEGIN
+  CREATE POLICY "community_photos_owner_delete"
+    ON storage.objects FOR DELETE TO authenticated
+    USING (bucket_id = 'community-photos' AND (select auth.uid())::text = (storage.foldername(name))[2]);
+
+  RAISE NOTICE '[Storage] Created owner delete policy for community-photos';
+EXCEPTION
+  WHEN undefined_table THEN NULL;
+  WHEN duplicate_object THEN
+    RAISE NOTICE '[Storage] Owner delete policy already exists';
+  WHEN insufficient_privilege THEN NULL;
+END $$;
+
+-- ============================================================================
 -- SUCCESS MESSAGE
 -- ============================================================================
 -- If you see this, the schema was applied successfully!
