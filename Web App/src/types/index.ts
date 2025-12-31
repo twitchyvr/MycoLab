@@ -724,7 +724,7 @@ export interface DevLogFeature extends Timestamped {
   phaseId?: number;
   title: string;
   description?: string;
-  category: 'core' | 'ui' | 'ux' | 'data' | 'integration' | 'optimization' | 'bug_fix' | 'enhancement' | 'security' | 'feature';
+  category: 'core' | 'ui' | 'ux' | 'data' | 'integration' | 'optimization' | 'bug_fix' | 'bugfix' | 'enhancement' | 'security' | 'feature';
   status: FeatureStatus;
   priority: FeaturePriority;
   estimatedHours?: number;
