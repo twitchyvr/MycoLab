@@ -480,86 +480,43 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
           )}
         </div>
 
-        {/* SMS Service */}
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
+        {/* SMS Service - Coming Soon */}
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 opacity-75">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${smsStatus.configured ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
+              <div className="p-2 rounded-lg bg-zinc-800 text-zinc-500">
                 <Icons.Phone />
               </div>
               <div>
-                <h3 className="text-white font-medium">SMS Service</h3>
-                <p className="text-xs text-zinc-500">
-                  {smsStatus.provider || 'Twilio'}
-                </p>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-zinc-400 font-medium">SMS Service</h3>
+                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    Coming Soon
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-500">Twilio</p>
               </div>
             </div>
-            <div className={`px-2 py-1 rounded text-xs font-medium ${
-              smsStatus.configured
-                ? 'bg-emerald-500/20 text-emerald-400'
-                : 'bg-zinc-800 text-zinc-500'
-            }`}>
-              {smsStatus.configured ? 'Configured' : 'Not Configured'}
+            <div className="px-2 py-1 rounded text-xs font-medium bg-zinc-800 text-zinc-500">
+              Unavailable
             </div>
           </div>
 
-          {smsStatus.error && (
-            <p className="text-xs text-red-400 mb-3">{smsStatus.error}</p>
-          )}
-
-          {smsStatus.configured && (
-            <div className="space-y-3">
+          <div className="bg-amber-950/20 border border-amber-800/30 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <span className="text-amber-400 text-lg">📱</span>
               <div>
-                <label className="block text-xs text-zinc-400 mb-1">Send Test SMS</label>
-                <div className="flex gap-2">
-                  <input
-                    type="tel"
-                    value={testPhone}
-                    onChange={e => setTestPhone(e.target.value)}
-                    placeholder="+1 (555) 123-4567"
-                    className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
-                  />
-                  <button
-                    onClick={() => sendTestNotification('sms')}
-                    disabled={sendingTest === 'sms' || !testPhone}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm flex items-center gap-2"
-                  >
-                    {sendingTest === 'sms' ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    ) : (
-                      <Icons.Send />
-                    )}
-                    Send
-                  </button>
-                </div>
+                <p className="text-sm text-amber-300 font-medium">SMS Notifications Coming Soon</p>
+                <p className="text-xs text-zinc-400 mt-1">
+                  We're working with our telephony provider to enable SMS notifications.
+                  This feature will allow urgent alerts (contamination, critical failures) to be sent directly to your phone.
+                </p>
+                <p className="text-xs text-zinc-500 mt-2">
+                  In the meantime, email notifications are fully functional and recommended for all alerts.
+                </p>
               </div>
             </div>
-          )}
-
-          {!smsStatus.configured && (
-            <div className="text-sm text-zinc-400 space-y-2">
-              <p>To enable SMS notifications:</p>
-              <ol className="list-decimal list-inside space-y-1 text-xs">
-                <li>Go to <strong>Netlify Dashboard</strong> → Site Settings → Environment Variables</li>
-                <li>Add these variables:
-                  <ul className="list-disc list-inside ml-4 mt-1">
-                    <li><code className="bg-zinc-800 px-1 rounded">TWILIO_ACCOUNT_SID</code></li>
-                    <li><code className="bg-zinc-800 px-1 rounded">TWILIO_AUTH_TOKEN</code></li>
-                    <li><code className="bg-zinc-800 px-1 rounded">TWILIO_PHONE_NUMBER</code></li>
-                  </ul>
-                </li>
-                <li>Redeploy your site</li>
-              </ol>
-              <a
-                href="https://www.twilio.com/try-twilio"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs mt-2"
-              >
-                Get Twilio Account <Icons.ExternalLink />
-              </a>
-            </div>
-          )}
+          </div>
         </div>
       </div>
 

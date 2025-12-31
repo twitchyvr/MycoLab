@@ -1870,55 +1870,32 @@ export const SettingsPage: React.FC = () => {
                 )}
               </div>
 
-              {/* SMS Notifications */}
+              {/* SMS Notifications - Coming Soon */}
               <div className="space-y-4 mb-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium text-white">SMS Notifications</h4>
-                    <p className="text-xs text-zinc-500">Receive urgent notifications via text message</p>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h4 className="text-sm font-medium text-zinc-400">SMS Notifications</h4>
+                      <p className="text-xs text-zinc-500">Receive urgent notifications via text message</p>
+                    </div>
+                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                      Coming Soon
+                    </span>
                   </div>
                   <button
-                    onClick={() => setLocalSettings(prev => ({ ...prev, smsNotificationsEnabled: !prev.smsNotificationsEnabled }))}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      localSettings.smsNotificationsEnabled ? 'bg-emerald-500' : 'bg-zinc-700'
-                    }`}
+                    disabled
+                    className="relative inline-flex h-6 w-11 items-center rounded-full bg-zinc-800 cursor-not-allowed opacity-50"
+                    title="SMS notifications coming soon"
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      localSettings.smsNotificationsEnabled ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
+                    <span className="inline-block h-4 w-4 transform rounded-full bg-zinc-500 translate-x-1" />
                   </button>
                 </div>
-
-                {localSettings.smsNotificationsEnabled && (
-                  <div className="pl-4 border-l-2 border-zinc-700 space-y-3">
-                    <div>
-                      <label className="block text-sm text-zinc-400 mb-1">Phone Number</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="tel"
-                          value={localSettings.phoneNumber || ''}
-                          onChange={e => setLocalSettings(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                          placeholder="+1 (555) 123-4567"
-                          className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
-                        />
-                        {localSettings.phoneVerified ? (
-                          <span className="flex items-center gap-1 px-3 py-2 text-emerald-400 text-sm">
-                            <Icons.CheckCircle /> Verified
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleStartVerification('sms')}
-                            disabled={!localSettings.phoneNumber}
-                            className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm"
-                          >
-                            Verify
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-xs text-zinc-500 mt-1">SMS is reserved for urgent alerts only (contamination, critical failures)</p>
-                    </div>
-                  </div>
-                )}
+                <div className="bg-zinc-800/30 rounded-lg p-3 border border-zinc-700/50">
+                  <p className="text-xs text-zinc-500">
+                    📱 SMS notifications for urgent alerts (contamination, critical failures) will be available soon.
+                    Email notifications are fully functional and recommended for now.
+                  </p>
+                </div>
               </div>
 
               {/* Quiet Hours */}
