@@ -7135,6 +7135,61 @@ All tables have:
     createdAt: timestamp(),
     updatedAt: timestamp(),
   },
+  {
+    id: 'dev-905',
+    title: 'Image Submission Confirmation & Admin Review System',
+    description: 'Complete email notification system for community contributions with full admin review interface. Users receive confirmation emails on submission and notification emails when their contributions are approved, rejected, or need more info.',
+    category: 'enhancement',
+    status: 'completed',
+    priority: 'high',
+    estimatedHours: 6,
+    completedAt: timestamp(),
+    notes: `**New Email Service (src/lib/emailService.ts):**
+- sendContributionConfirmationEmail() - Sent when user submits contribution
+- sendContributionApprovedEmail() - Sent when admin approves
+- sendContributionRejectedEmail() - Sent when admin rejects (with reason)
+- sendContributionNeedsInfoEmail() - Sent when admin requests more info
+- Uses Netlify function endpoint (/.netlify/functions/send-notification-email)
+- Graceful fallback if email service not configured
+
+**ContributionModal.tsx Updates:**
+- Sends confirmation email after successful submission
+- Shows email confirmation in success UI with user's email
+- Fire-and-forget pattern (doesn't block on email delivery)
+
+**New Admin Component (SuggestionReviewPanel.tsx):**
+- Full-featured suggestion queue with filter (pending/all)
+- Expandable cards showing:
+  - Suggestion details (title, description, type, status)
+  - User email for notifications
+  - Target species/strain name
+  - Proposed changes JSON display
+  - Source URLs and notes
+  - Attached photo gallery with thumbnail previews
+  - Admin notes and rejection reasons
+- Action modal for approve/reject/needs-info with message input
+- Updates both library_suggestions and community_photos status
+- Sends appropriate email on each action
+
+**AdminConsole.tsx Integration:**
+- SuggestionReviewPanel replaces placeholder in suggestions tab
+- Pending count badge updates dynamically
+
+**Email Templates:**
+- Professional formatting with clear next steps
+- Entity name included for context
+- Custom messages from admin included in notifications
+
+**Files Created:**
+- src/lib/emailService.ts
+- src/components/settings/admin/SuggestionReviewPanel.tsx
+
+**Files Changed:**
+- src/components/community/ContributionModal.tsx
+- src/components/settings/admin/AdminConsole.tsx`,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+  },
 ];
 
 export default recentPhases;

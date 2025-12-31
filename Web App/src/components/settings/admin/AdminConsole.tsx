@@ -10,6 +10,7 @@ import { SettingsSection } from '../common/SettingsSection';
 import { AdminMasterData } from '../AdminMasterData';
 import { AdminNotifications } from '../AdminNotifications';
 import { AdminNotificationConfig } from '../AdminNotificationConfig';
+import { SuggestionReviewPanel } from './SuggestionReviewPanel';
 
 type AdminTab = 'dashboard' | 'database' | 'users' | 'library' | 'suggestions' | 'notifications' | 'audit' | 'services';
 
@@ -664,24 +665,10 @@ export const AdminConsole: React.FC = () => {
   );
 
   const renderSuggestions = () => (
-    <div className="space-y-6">
-      <SettingsSection
-        title="Library Suggestions Queue"
-        description="Review and approve user-submitted library entries"
-        icon="📬"
-      >
-        <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700 text-center">
-          <p className="text-zinc-400">Suggestion review interface coming soon</p>
-          <p className="text-xs text-zinc-600 mt-1">
-            Users can suggest new species, strains, and other library entries.
-            You'll review and approve/reject them here.
-          </p>
-          {pendingSuggestions > 0 && (
-            <p className="text-amber-400 mt-3">{pendingSuggestions} pending suggestion(s)</p>
-          )}
-        </div>
-      </SettingsSection>
-    </div>
+    <SuggestionReviewPanel
+      isConnected={isConnected}
+      onCountChange={setPendingSuggestions}
+    />
   );
 
   const renderNotifications = () => (

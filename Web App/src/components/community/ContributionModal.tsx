@@ -8,6 +8,7 @@ import React, { useState, useCallback } from 'react';
 import { useData } from '../../store';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { sendContributionConfirmationEmail } from '../../lib/emailService';
 import type { SuggestionType } from '../../store/types';
 
 // ============================================================================
@@ -206,6 +207,19 @@ export const ContributionModal: React.FC<ContributionModalProps> = ({
         for (const photo of formData.photos) {
           await uploadPhoto(photo, 'suggestion', data.id);
         }
+      }
+
+      // Send confirmation email (fire and forget - don't block on email)
+      if (user.email) {
+        sendContributionConfirmationEmail(
+          user.email,
+          formData.contributionType,
+          entityName,
+          formData.title || `${formData.contributionType} for ${entityName}`
+        ).catch((err) => {
+          // Log but don't fail the submission if email fails
+          console.warn('[Contribution] Failed to send confirmation email:', err);
+        });
       }
 
       setStep('success');
@@ -488,10 +502,19 @@ export const ContributionModal: React.FC<ContributionModalProps> = ({
               <h4 className="text-xl font-semibold text-white mb-2">
                 Contribution Submitted!
               </h4>
-              <p className="text-zinc-400 mb-6">
-                Thank you for helping improve the library. Your contribution will be reviewed by our team
-                and you'll be notified when it's approved.
+              <p className="text-zinc-400 mb-4">
+                Thank you for helping improve the library. Your contribution will be reviewed by our team.
               </p>
+              {user?.email && (
+                <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 mb-6 text-sm">
+                  <p className="text-zinc-300">
+                    A confirmation email has been sent to <span className="text-emerald-400">{user.email}</span>
+                  </p>
+                  <p className="text-zinc-500 text-xs mt-1">
+                    You'll also receive an email when your contribution is reviewed.
+                  </p>
+                </div>
+              )}
               <button
                 onClick={onClose}
                 className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors"
