@@ -426,13 +426,13 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
     setError(null);
 
     try {
+      // First, fetch suggestions with species/strain joins
       let query = supabase
         .from('library_suggestions')
         .select(`
           *,
-          user_profiles!library_suggestions_user_id_fkey(email),
-          species!library_suggestions_target_species_id_fkey(common_name),
-          strains!library_suggestions_target_strain_id_fkey(name)
+          species(common_name),
+          strains(name)
         `)
         .order('created_at', { ascending: false });
 
@@ -461,10 +461,30 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
         return;
       }
 
-      // Transform data with joins
+      // Get unique user IDs to fetch emails from user_profiles
+      const userIds = [...new Set((data || []).map(s => s.user_id).filter(Boolean))];
+      let userEmailMap: Record<string, string> = {};
+
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('user_profiles')
+          .select('user_id, email')
+          .in('user_id', userIds);
+
+        if (profiles) {
+          userEmailMap = profiles.reduce((acc, p) => {
+            if (p.user_id && p.email) {
+              acc[p.user_id] = p.email;
+            }
+            return acc;
+          }, {} as Record<string, string>);
+        }
+      }
+
+      // Transform data with joins and email lookup
       const transformed = (data || []).map(s => ({
         ...s,
-        user_email: s.user_profiles?.email || null,
+        user_email: userEmailMap[s.user_id] || null,
         species_name: s.species?.common_name || null,
         strain_name: s.strains?.name || null,
       }));
