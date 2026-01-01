@@ -458,8 +458,34 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
           ? (simpleData || []).filter(s => ['pending', 'under_review', 'needs_info'].includes(s.status))
           : simpleData || [];
 
-        setSuggestions(filtered);
-        onCountChange?.(filtered.filter(s => ['pending', 'under_review', 'needs_info'].includes(s.status)).length);
+        // Still need to fetch user emails for notifications to work
+        const userIds = [...new Set(filtered.map(s => s.user_id).filter(Boolean))];
+        let userEmailMap: Record<string, string> = {};
+
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('user_profiles')
+            .select('user_id, email')
+            .in('user_id', userIds);
+
+          if (profiles) {
+            userEmailMap = profiles.reduce((acc, p) => {
+              if (p.user_id && p.email) {
+                acc[p.user_id] = p.email;
+              }
+              return acc;
+            }, {} as Record<string, string>);
+          }
+        }
+
+        // Add user emails to suggestions
+        const withEmails = filtered.map(s => ({
+          ...s,
+          user_email: userEmailMap[s.user_id] || null,
+        }));
+
+        setSuggestions(withEmails);
+        onCountChange?.(withEmails.filter(s => ['pending', 'under_review', 'needs_info'].includes(s.status)).length);
         return;
       }
 
@@ -625,12 +651,22 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
       }
 
       // Send email notification to user
-      if (suggestion.user_email) {
-        const entityName = suggestion.species_name || suggestion.strain_name || 'Library Entry';
+      const entityName = suggestion.species_name || suggestion.strain_name || 'Library Entry';
+      console.log('[SuggestionReviewPanel] Attempting to send email notification:', {
+        action,
+        user_email: suggestion.user_email,
+        user_id: suggestion.user_id,
+        entityName,
+        title: suggestion.title,
+      });
 
+      if (!suggestion.user_email) {
+        console.warn('[SuggestionReviewPanel] Cannot send email - user_email is missing for suggestion', suggestion.id);
+      } else {
         try {
+          let emailResult;
           if (action === 'approve') {
-            await sendContributionApprovedEmail(
+            emailResult = await sendContributionApprovedEmail(
               suggestion.user_email,
               suggestion.suggestion_type,
               entityName,
@@ -638,7 +674,7 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
               actionNote || undefined
             );
           } else if (action === 'reject') {
-            await sendContributionRejectedEmail(
+            emailResult = await sendContributionRejectedEmail(
               suggestion.user_email,
               suggestion.suggestion_type,
               entityName,
@@ -646,7 +682,7 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
               actionNote || undefined
             );
           } else if (action === 'needs_info') {
-            await sendContributionNeedsInfoEmail(
+            emailResult = await sendContributionNeedsInfoEmail(
               suggestion.user_email,
               suggestion.suggestion_type,
               entityName,
@@ -654,8 +690,9 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
               actionNote || 'Please provide more details'
             );
           }
+          console.log('[SuggestionReviewPanel] Email send result:', emailResult);
         } catch (emailErr) {
-          console.warn('Failed to send email notification:', emailErr);
+          console.error('[SuggestionReviewPanel] Failed to send email notification:', emailErr);
           // Don't fail the whole operation if email fails
         }
       }
@@ -732,19 +769,23 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
               .eq('entity_id', suggestion.id);
           }
 
-          // Send email (fire and forget for bulk)
-          if (suggestion.user_email) {
-            const entityName = suggestion.species_name || suggestion.strain_name || 'Library Entry';
+          // Send email notification
+          const entityName = suggestion.species_name || suggestion.strain_name || 'Library Entry';
+          if (!suggestion.user_email) {
+            console.warn('[SuggestionReviewPanel] Bulk: No email for suggestion', suggestion.id);
+          } else {
+            console.log('[SuggestionReviewPanel] Bulk: Sending email to', suggestion.user_email, 'for action', action);
             try {
               if (action === 'approve') {
-                sendContributionApprovedEmail(suggestion.user_email, suggestion.suggestion_type, entityName, suggestion.title, actionNote || undefined);
+                await sendContributionApprovedEmail(suggestion.user_email, suggestion.suggestion_type, entityName, suggestion.title, actionNote || undefined);
               } else if (action === 'reject') {
-                sendContributionRejectedEmail(suggestion.user_email, suggestion.suggestion_type, entityName, suggestion.title, actionNote || undefined);
+                await sendContributionRejectedEmail(suggestion.user_email, suggestion.suggestion_type, entityName, suggestion.title, actionNote || undefined);
               } else if (action === 'needs_info') {
-                sendContributionNeedsInfoEmail(suggestion.user_email, suggestion.suggestion_type, entityName, suggestion.title, actionNote || 'Please provide more details');
+                await sendContributionNeedsInfoEmail(suggestion.user_email, suggestion.suggestion_type, entityName, suggestion.title, actionNote || 'Please provide more details');
               }
-            } catch (e) {
-              // Ignore email errors in bulk mode
+            } catch (emailErr) {
+              console.error('[SuggestionReviewPanel] Bulk: Email failed for', suggestion.id, emailErr);
+              // Continue processing other suggestions even if email fails
             }
           }
 
