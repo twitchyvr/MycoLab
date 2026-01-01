@@ -427,12 +427,13 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
 
     try {
       // First, fetch suggestions with species/strain joins
+      // Use explicit FK column names for the joins since columns are named target_species_id/target_strain_id
       let query = supabase
         .from('library_suggestions')
         .select(`
           *,
-          species(common_name),
-          strains(name)
+          species:target_species_id(common_name),
+          strains:target_strain_id(name)
         `)
         .order('created_at', { ascending: false });
 
@@ -443,6 +444,7 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
       const { data, error: fetchError } = await query.limit(50);
 
       if (fetchError) {
+        console.log('[SuggestionReviewPanel] Join query failed, trying simple query:', fetchError.message);
         // Try simpler query without joins if the main one fails
         const { data: simpleData, error: simpleError } = await supabase
           .from('library_suggestions')

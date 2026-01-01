@@ -272,27 +272,54 @@ export const AdminConsole: React.FC = () => {
   // ============================================================================
 
   const fetchAuditLog = async () => {
-    if (!isConnected || !isAdmin) return;
+    console.log('[AdminConsole] fetchAuditLog called', { isConnected, isAdmin });
+    if (!isConnected || !isAdmin) {
+      console.log('[AdminConsole] fetchAuditLog skipped - not connected or not admin');
+      return;
+    }
     setLoadingAuditLog(true);
     try {
       const { supabase } = await import('../../../lib/supabase');
-      if (!supabase) return;
+      if (!supabase) {
+        console.log('[AdminConsole] fetchAuditLog - no supabase client');
+        setLoadingAuditLog(false);
+        return;
+      }
 
+      console.log('[AdminConsole] Querying admin_audit_log table...');
       const { data, error: fetchError } = await supabase
         .from('admin_audit_log')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
 
+      console.log('[AdminConsole] Audit log query result:', { dataLength: data?.length, error: fetchError?.message });
+
       if (fetchError) {
-        if (!fetchError.message.includes('does not exist')) {
-          console.error('Audit log fetch error:', fetchError);
+        // Table might not exist yet - common during initial setup
+        if (fetchError.message.includes('does not exist') ||
+            fetchError.message.includes('relation') ||
+            fetchError.code === '42P01') {
+          console.log('[AdminConsole] Audit log table does not exist yet - showing empty state');
+          setAuditLog([]);
+          setLoadingAuditLog(false);
+          return;
         }
+        // Permission denied - user might not be admin in database
+        if (fetchError.message.includes('permission denied') ||
+            fetchError.code === '42501') {
+          console.log('[AdminConsole] Audit log permission denied - user may not be admin in database');
+          setMessage({ type: 'error', text: 'Permission denied. You may not have admin access in the database.' });
+          setLoadingAuditLog(false);
+          return;
+        }
+        console.error('[AdminConsole] Audit log fetch error:', fetchError);
+        setLoadingAuditLog(false);
         return;
       }
       setAuditLog(data || []);
     } catch (err: any) {
-      console.error('Audit log fetch error:', err);
+      console.error('[AdminConsole] Audit log exception:', err);
     } finally {
       setLoadingAuditLog(false);
     }
