@@ -150,9 +150,11 @@ export const AdminNotifications: React.FC<AdminNotificationsProps> = ({ isConnec
       const { supabase } = await import('../../lib/supabase');
       if (!supabase) {
         console.log('[AdminNotifications] fetchNotifications - no supabase client');
+        setLoading(false);
         return;
       }
 
+      console.log('[AdminNotifications] Querying admin_notifications table...');
       let query = supabase
         .from('admin_notifications')
         .select('*')
@@ -164,19 +166,35 @@ export const AdminNotifications: React.FC<AdminNotificationsProps> = ({ isConnec
       }
 
       const { data, error: fetchError } = await query;
+      console.log('[AdminNotifications] Query result:', { dataLength: data?.length, error: fetchError?.message });
 
       if (fetchError) {
-        // Table might not exist yet
-        if (fetchError.message.includes('does not exist')) {
+        // Table might not exist yet - common during initial setup
+        if (fetchError.message.includes('does not exist') ||
+            fetchError.message.includes('relation') ||
+            fetchError.code === '42P01') {
+          console.log('[AdminNotifications] Table does not exist yet - showing empty state');
           setNotifications([]);
+          setLoading(false);
           return;
         }
+        // Permission denied - user might not be admin in database
+        if (fetchError.message.includes('permission denied') ||
+            fetchError.code === '42501') {
+          console.log('[AdminNotifications] Permission denied - user may not be admin in database');
+          setError('Permission denied. You may not have admin access in the database.');
+          setLoading(false);
+          return;
+        }
+        console.error('[AdminNotifications] Fetch error:', fetchError);
         setError(`Failed to fetch notifications: ${fetchError.message}`);
+        setLoading(false);
         return;
       }
 
       setNotifications(data || []);
     } catch (err: any) {
+      console.error('[AdminNotifications] Exception:', err);
       setError(`Failed to fetch notifications: ${err.message}`);
     } finally {
       setLoading(false);
