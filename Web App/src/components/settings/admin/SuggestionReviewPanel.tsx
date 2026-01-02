@@ -90,7 +90,7 @@ interface CommunityPhoto {
   created_at: string;
 }
 
-type ReviewAction = 'approve' | 'reject' | 'needs_info';
+type ReviewAction = 'approve' | 'reject' | 'needs_info' | 'resend_needs_info';
 
 // ============================================================================
 // ICONS
@@ -165,6 +165,16 @@ const Icons = {
   Template: () => (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+    </svg>
+  ),
+  Edit: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+  ),
+  Send: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
     </svg>
   ),
 };
@@ -578,7 +588,23 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
   // Process the action (single or bulk)
   const processAction = async () => {
     const { suggestion, action, isBulk } = actionModal;
-    if (!action || !supabase || !user) return;
+
+    // Debug logging
+    console.log('[SuggestionReviewPanel] processAction called:', {
+      action,
+      suggestionId: suggestion?.id,
+      suggestionStatus: suggestion?.status,
+      isBulk,
+      hasSupabase: !!supabase,
+      hasUser: !!user,
+      userId: user?.id,
+    });
+
+    if (!action || !supabase || !user) {
+      console.error('[SuggestionReviewPanel] Missing required data:', { action, supabase: !!supabase, user: !!user });
+      setMessage({ type: 'error', text: 'Missing required data. Please refresh and try again.' });
+      return;
+    }
 
     // Handle bulk processing
     if (isBulk && selectedIds.size > 0) {
@@ -586,7 +612,11 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
       return;
     }
 
-    if (!suggestion) return;
+    if (!suggestion) {
+      console.error('[SuggestionReviewPanel] No suggestion selected');
+      setMessage({ type: 'error', text: 'No suggestion selected' });
+      return;
+    }
 
     setProcessing(suggestion.id);
     closeActionModal();
@@ -600,7 +630,10 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
         updated_at: now,
       };
 
-      switch (action) {
+      // Determine the effective action (resend_needs_info behaves like needs_info)
+      const effectiveAction = action === 'resend_needs_info' ? 'needs_info' : action;
+
+      switch (effectiveAction) {
         case 'approve':
           newStatus = 'approved';
           updateData.status = 'approved';
@@ -618,17 +651,30 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
           break;
       }
 
+      console.log('[SuggestionReviewPanel] Updating suggestion:', {
+        id: suggestion.id,
+        updateData,
+        newStatus,
+      });
+
       // Update the suggestion
-      const { error: updateError } = await supabase
+      const { data: updatedData, error: updateError } = await supabase
         .from('library_suggestions')
         .update(updateData)
-        .eq('id', suggestion.id);
+        .eq('id', suggestion.id)
+        .select('id, status, admin_notes, rejection_reason')
+        .single();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('[SuggestionReviewPanel] Database update error:', updateError);
+        throw updateError;
+      }
 
-      // Also update any associated photos if approving
-      if (action === 'approve') {
-        await supabase
+      console.log('[SuggestionReviewPanel] Database update successful:', updatedData);
+
+      // Also update any associated photos if approving or rejecting
+      if (effectiveAction === 'approve') {
+        const { error: photoError } = await supabase
           .from('community_photos')
           .update({
             status: 'approved',
@@ -637,8 +683,12 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
           })
           .eq('entity_type', 'suggestion')
           .eq('entity_id', suggestion.id);
-      } else if (action === 'reject') {
-        await supabase
+
+        if (photoError) {
+          console.warn('[SuggestionReviewPanel] Photo update failed (non-fatal):', photoError);
+        }
+      } else if (effectiveAction === 'reject') {
+        const { error: photoError } = await supabase
           .from('community_photos')
           .update({
             status: 'rejected',
@@ -648,12 +698,17 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
           })
           .eq('entity_type', 'suggestion')
           .eq('entity_id', suggestion.id);
+
+        if (photoError) {
+          console.warn('[SuggestionReviewPanel] Photo update failed (non-fatal):', photoError);
+        }
       }
 
       // Send email notification to user
       const entityName = suggestion.species_name || suggestion.strain_name || 'Library Entry';
       console.log('[SuggestionReviewPanel] Attempting to send email notification:', {
         action,
+        effectiveAction,
         user_email: suggestion.user_email,
         user_id: suggestion.user_id,
         entityName,
@@ -665,7 +720,7 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
       } else {
         try {
           let emailResult;
-          if (action === 'approve') {
+          if (effectiveAction === 'approve') {
             emailResult = await sendContributionApprovedEmail(
               suggestion.user_email,
               suggestion.suggestion_type,
@@ -673,7 +728,7 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
               suggestion.title,
               actionNote || undefined
             );
-          } else if (action === 'reject') {
+          } else if (effectiveAction === 'reject') {
             emailResult = await sendContributionRejectedEmail(
               suggestion.user_email,
               suggestion.suggestion_type,
@@ -681,7 +736,7 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
               suggestion.title,
               actionNote || undefined
             );
-          } else if (action === 'needs_info') {
+          } else if (effectiveAction === 'needs_info') {
             emailResult = await sendContributionNeedsInfoEmail(
               suggestion.user_email,
               suggestion.suggestion_type,
@@ -697,10 +752,24 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
         }
       }
 
+      // Construct appropriate success message
+      let successText = '';
+      if (action === 'approve') {
+        successText = 'Suggestion approved';
+      } else if (action === 'reject') {
+        successText = 'Suggestion rejected';
+      } else if (action === 'resend_needs_info') {
+        successText = 'Additional information request sent';
+      } else {
+        successText = 'Information request sent';
+      }
+
       setMessage({
         type: 'success',
-        text: `Suggestion ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'marked as needs info'}`,
+        text: successText,
       });
+
+      console.log('[SuggestionReviewPanel] Action completed successfully:', { action, suggestionId: suggestion.id });
 
       // Refresh the list
       fetchSuggestions();
@@ -1167,11 +1236,11 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
 
                     {/* Action Buttons */}
                     {['pending', 'under_review', 'needs_info'].includes(suggestion.status) && (
-                      <div className="flex items-center gap-3 pt-2 border-t border-zinc-800">
+                      <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-zinc-800">
                         <button
                           onClick={() => openActionModal(suggestion, 'approve')}
                           disabled={processing === suggestion.id}
-                          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 text-white rounded-lg font-medium text-sm transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-colors"
                         >
                           <Icons.Check />
                           Approve
@@ -1179,19 +1248,34 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
                         <button
                           onClick={() => openActionModal(suggestion, 'reject')}
                           disabled={processing === suggestion.id}
-                          className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-zinc-700 text-white rounded-lg font-medium text-sm transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-colors"
                         >
                           <Icons.X />
                           Reject
                         </button>
-                        <button
-                          onClick={() => openActionModal(suggestion, 'needs_info')}
-                          disabled={processing === suggestion.id}
-                          className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-700 text-white rounded-lg font-medium text-sm transition-colors"
-                        >
-                          <Icons.Info />
-                          Needs Info
-                        </button>
+                        {/* Show different button based on current status */}
+                        {suggestion.status === 'needs_info' ? (
+                          /* Admin override: Allow sending another info request */
+                          <button
+                            onClick={() => openActionModal(suggestion, 'resend_needs_info')}
+                            disabled={processing === suggestion.id}
+                            className="flex items-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 disabled:cursor-not-allowed text-zinc-300 hover:text-white rounded-lg font-medium text-sm transition-colors border border-zinc-600"
+                            title="Send another information request (admin override)"
+                          >
+                            <Icons.Edit />
+                            Edit Request
+                          </button>
+                        ) : (
+                          /* Initial needs info request */
+                          <button
+                            onClick={() => openActionModal(suggestion, 'needs_info')}
+                            disabled={processing === suggestion.id}
+                            className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-colors"
+                          >
+                            <Icons.Info />
+                            Needs Info
+                          </button>
+                        )}
                         {processing === suggestion.id && (
                           <div className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin"></div>
                         )}
@@ -1228,6 +1312,7 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
                     {actionModal.action === 'approve' && 'Approve Suggestion'}
                     {actionModal.action === 'reject' && 'Reject Suggestion'}
                     {actionModal.action === 'needs_info' && 'Request More Information'}
+                    {actionModal.action === 'resend_needs_info' && 'Edit/Resend Information Request'}
                   </>
                 )}
               </h3>
@@ -1240,6 +1325,12 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
                 <p className="text-sm text-zinc-400 mt-1">
                   This action will be applied to all {selectedIds.size} selected suggestions.
                 </p>
+              )}
+              {actionModal.action === 'resend_needs_info' && actionModal.suggestion?.admin_notes && (
+                <div className="mt-3 p-2 bg-zinc-800 rounded-lg">
+                  <p className="text-xs text-zinc-500 mb-1">Previous request:</p>
+                  <p className="text-sm text-zinc-300">{actionModal.suggestion.admin_notes}</p>
+                </div>
               )}
             </div>
             <div className="p-5 space-y-4">
@@ -1273,6 +1364,7 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
                   {actionModal.action === 'approve' && 'Optional message to include in approval email:'}
                   {actionModal.action === 'reject' && 'Reason for rejection (will be sent to user):'}
                   {actionModal.action === 'needs_info' && 'What information is needed:'}
+                  {actionModal.action === 'resend_needs_info' && 'Updated information request (will replace previous):'}
                 </label>
                 <textarea
                   value={actionNote}
@@ -1285,6 +1377,8 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
                       ? 'Great contribution! Thank you...'
                       : actionModal.action === 'reject'
                       ? 'Select a template above or write a custom message...'
+                      : actionModal.action === 'resend_needs_info'
+                      ? 'Enter your updated request...'
                       : 'Please provide more details about...'
                   }
                   rows={4}
@@ -1316,6 +1410,8 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
                     ? 'bg-emerald-500 hover:bg-emerald-600'
                     : actionModal.action === 'reject'
                     ? 'bg-red-500 hover:bg-red-600'
+                    : actionModal.action === 'resend_needs_info'
+                    ? 'bg-blue-500 hover:bg-blue-600'
                     : 'bg-amber-500 hover:bg-amber-600'
                 }`}
               >
@@ -1330,6 +1426,7 @@ export const SuggestionReviewPanel: React.FC<SuggestionReviewPanelProps> = ({
                     {actionModal.action === 'approve' && 'Approve'}
                     {actionModal.action === 'reject' && 'Reject'}
                     {actionModal.action === 'needs_info' && 'Request Info'}
+                    {actionModal.action === 'resend_needs_info' && 'Update & Resend'}
                   </>
                 )}
               </button>
