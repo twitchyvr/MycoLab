@@ -417,7 +417,7 @@ INSERT INTO redaction_presets (name, description, field_visibility, is_system) V
 | PS-015 | View Analytics Dashboard | Track passport views/engagement | PS-002 |
 | PS-016 | Expiration Management | Auto-expire/renew share tokens | PS-001 |
 | PS-017 | Bulk Passport Generation | Create passports for multiple items | PS-007 |
-| PS-018 | Short URL Support | mycolab.link/abc123 style links | PS-005 |
+| PS-018 | Short URL Support | sporely.link/abc123 style links | PS-005 |
 
 ### Phase 4: Advanced Features (Lower Priority)
 

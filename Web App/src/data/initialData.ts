@@ -1,5 +1,5 @@
 // ============================================================================
-// MYCOLAB - Initial Data & Dev Log
+// SPORELY - Initial Data & Dev Log
 // This file has been modularized for easier maintenance.
 //
 // Structure:

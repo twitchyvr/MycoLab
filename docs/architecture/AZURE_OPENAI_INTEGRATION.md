@@ -345,7 +345,7 @@ interface ImageAnalysisResult {
 
 ```
 Azure Blob Storage
-├── mycolab-images/
+├── sporely-images/
 │   ├── users/{user_id}/
 │   │   ├── cultures/{culture_id}/
 │   │   │   ├── observations/
@@ -1020,19 +1020,19 @@ CREATE INDEX idx_ai_usage_user_date ON ai_usage(user_id, created_at);
 
 ```bash
 # Azure OpenAI
-VITE_AZURE_OPENAI_ENDPOINT=https://mycolab-ai.openai.azure.com
+VITE_AZURE_OPENAI_ENDPOINT=https://sporely-ai.openai.azure.com
 VITE_AZURE_OPENAI_DEPLOYMENT=gpt-4o
 VITE_AZURE_OPENAI_API_VERSION=2024-02-15-preview
 # API key stored in Supabase secrets, not client-side
 
 # Azure AI Search
-AZURE_SEARCH_ENDPOINT=https://mycolab-search.search.windows.net
+AZURE_SEARCH_ENDPOINT=https://sporely-search.search.windows.net
 AZURE_SEARCH_INDEX_KNOWLEDGE=knowledge-library
 AZURE_SEARCH_INDEX_USER=user-data
 # API key stored in Supabase secrets
 
 # Azure Blob Storage
-AZURE_STORAGE_ACCOUNT=mycolabstorage
+AZURE_STORAGE_ACCOUNT=sporelystorage
 AZURE_STORAGE_CONTAINER=images
 # SAS tokens generated server-side
 

@@ -280,7 +280,7 @@ Setup:
   {
     id: 'dev-128',
     title: 'Microsoft 365 SMTP Configuration',
-    description: 'Custom SMTP setup using Microsoft 365/Azure tenant for branded email delivery from mycolab@theautomationguru.com.',
+    description: 'Custom SMTP setup using Microsoft 365/Azure tenant for branded email delivery from noreply@sporely.co.',
     category: 'integration',
     status: 'planned',
     priority: 'medium',
@@ -289,7 +289,7 @@ Setup:
     notes: `SMTP Settings for M365:
 - Host: smtp.office365.com
 - Port: 587 (STARTTLS)
-- Username: mycolab@theautomationguru.com
+- Username: noreply@sporely.co
 - Password: App Password (if MFA) or account password (with SMTP AUTH enabled)
 
 Prerequisites:

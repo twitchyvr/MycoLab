@@ -1,5 +1,5 @@
 // ============================================================================
-// MYCOLAB - Icon Library
+// SPORELY - Icon Library
 // Centralized SVG icon components for consistent styling across the app
 // ============================================================================
 

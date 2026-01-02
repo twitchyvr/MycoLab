@@ -929,7 +929,7 @@ Benefits:
 - Updated App component to use BrowserRouter
 - Created AppWithRouter inner component with useNavigate/useLocation
 - onNavigate prop updated across components to support optional itemId
-- Existing mycolab:select-item events work seamlessly with URL navigation
+- Existing sporely:select-item events work seamlessly with URL navigation
 
 **Components Updated:**
 - App.tsx (main routing)
@@ -1124,14 +1124,14 @@ Benefits:
     notes: `Grow edit functionality bug fix:
 
 **Problem:**
-- Edit button in UnifiedItemView (Lab Inventory) dispatched mycolab:edit-item event
+- Edit button in UnifiedItemView (Lab Inventory) dispatched sporely:edit-item event
 - GrowManagement event handler only selected the grow, didn't open edit modal
 - Code comment said "For now, just select it - could open edit modal in future"
 
 **Solution:**
 1. Added showEditModal state and editGrow form state to GrowManagement
 2. Implemented openEditModal() function to populate edit form with grow data
-3. Updated mycolab:edit-item event handler to call openEditModal()
+3. Updated sporely:edit-item event handler to call openEditModal()
 4. Added full edit modal UI with all grow fields editable
 5. Added getDownstreamEffects() to detect linked data (flushes, observations, yield)
 6. Added warning banner when grow has existing data that could be affected
@@ -1636,7 +1636,7 @@ custom IDs like 'outcome-mjbw2cne-h7jx2' which caused Postgres error 22P02.
 
 **Fix #2 - Global Error Handler:**
 - Created GlobalErrorHandler component that:
-  - Listens for 'mycolab:error' custom events
+  - Listens for 'sporely:error' custom events
   - Displays user-friendly toast notifications
   - Logs errors for potential bug reporting
   - Catches unhandled promise rejections
@@ -2748,9 +2748,9 @@ Created comprehensive weight utilities (utils/weight.ts):
 - process_scheduled_notifications(): Master function running all checks
 
 **Cron Job Configuration:**
-- mycolab-notification-check: Runs every 15 minutes (queues notifications)
-- mycolab-send-emails: Runs every 5 minutes (sends queued emails via Edge Function)
-- mycolab-queue-cleanup: Daily cleanup at 3 AM (removes old sent/failed notifications)
+- sporely-notification-check: Runs every 15 minutes (queues notifications)
+- sporely-send-emails: Runs every 5 minutes (sends queued emails via Edge Function)
+- sporely-queue-cleanup: Daily cleanup at 3 AM (removes old sent/failed notifications)
 
 **Setup Process:**
 1. Enable pg_cron extension in Supabase Dashboard → Database → Extensions
@@ -2786,7 +2786,7 @@ Created comprehensive weight utilities (utils/weight.ts):
 - ✅ User profile filtering (only users with active profiles get notifications)
 - ✅ process-notification-queue Edge Function: Sends queued emails (FIXED - missing piece)
 - ✅ trigger_email_queue_processor() SQL function: Calls Edge Function via pg_net
-- ✅ mycolab-send-emails cron job: Sends queued emails every 5 minutes
+- ✅ sporely-send-emails cron job: Sends queued emails every 5 minutes
 - ✅ Admin UI "Send Emails" button for manual queue processing
 
 **Expanded Notification Categories (17 total):**
@@ -4882,7 +4882,7 @@ Complete 8-phase database reset that drops everything in correct dependency orde
 **Bug Fix - Lab Inventory Buttons:**
 - "Add Culture" and "Start Grow" buttons on Lab Inventory page now work
 - Navigate to respective pages and trigger creation modals
-- Uses standardized mycolab:create-new event system
+- Uses standardized sporely:create-new event system
 
 **Files Changed:**
 - src/components/tools/PressureCookingCalculator.tsx - Lab inventory selection, auto-preset
@@ -5060,7 +5060,7 @@ Fix:
 
 Fix:
 - ALWAYS update sessionStorage with current page's script hashes on load
-- Add mycolab-version-detected flag to prevent repeated notifications
+- Add sporely-version-detected flag to prevent repeated notifications
 - Clear flag on page load to allow detecting future updates
 - Check flag before showing modal to prevent loops
 
@@ -7114,15 +7114,15 @@ All tables have:
 3. Conflicting data between seed files using different IDs for same species
 
 **Files Updated:**
-- \`mycolab-research-species-seed.sql\`: Added pre-flight deduplication, exception-wrapped index creation, helper function for robust upserts
+- \`sporely-research-species-seed.sql\`: Added pre-flight deduplication, exception-wrapped index creation, helper function for robust upserts
 - \`supabase-species-data.sql\`: Added pre-flight index checks and validation
-- \`sql-mycolab-speciesdata-a_thru_m.sql\`: Added conflict detection and cleanup for cross-file conflicts
-- \`sql-mycolab-speciesdata-n_thru_z.sql\`: Fixed ID collision - changed from overlapping 0003/0004-xxx to unique 0007/0008-xxx ranges
+- \`sql-sporely-speciesdata-a_thru_m.sql\`: Added conflict detection and cleanup for cross-file conflicts
+- \`sql-sporely-speciesdata-n_thru_z.sql\`: Fixed ID collision - changed from overlapping 0003/0004-xxx to unique 0007/0008-xxx ranges
 
 **ID Range Assignments (to prevent conflicts):**
 - \`supabase-species-data.sql\`: 00000000-0000-0000-0000-xxx (gourmet/medicinal)
-- \`sql-mycolab-speciesdata-a_thru_m.sql\`: 10000000-0000-0000-0000-xxx through 0006-xxx (research A-M)
-- \`sql-mycolab-speciesdata-n_thru_z.sql\`: 10000000-0000-0000-0007-xxx (Psilocybe N-Z), 0008-xxx (Pluteus)
+- \`sql-sporely-speciesdata-a_thru_m.sql\`: 10000000-0000-0000-0000-xxx through 0006-xxx (research A-M)
+- \`sql-sporely-speciesdata-n_thru_z.sql\`: 10000000-0000-0000-0007-xxx (Psilocybe N-Z), 0008-xxx (Pluteus)
 
 **Enterprise Patterns Implemented:**
 - Pre-flight checks with RAISE NOTICE logging
