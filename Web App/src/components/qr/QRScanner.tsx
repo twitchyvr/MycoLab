@@ -274,7 +274,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
     const data = parseQRUrl(decodedText);
 
     if (!data) {
-      toast.warning('Invalid QR Code', 'This QR code is not recognized as a MycoLab label.');
+      toast.warning('Invalid QR Code', 'This QR code is not recognized as a Sporely label.');
       return;
     }
 
@@ -378,7 +378,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
     // Dispatch select-item event after a short delay to allow page to load
     // This uses the existing event format that CultureManagement/GrowManagement already listens for
     setTimeout(() => {
-      const selectEvent = new CustomEvent('mycolab:select-item', {
+      const selectEvent = new CustomEvent('sporely:select-item', {
         detail: {
           type: record.data.type,
           id: record.data.id,

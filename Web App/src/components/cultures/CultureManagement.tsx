@@ -279,8 +279,8 @@ export const CultureManagement: React.FC = () => {
         setShowWizard(true);
       }
     };
-    window.addEventListener('mycolab:create-new', handleCreateNew as EventListener);
-    return () => window.removeEventListener('mycolab:create-new', handleCreateNew as EventListener);
+    window.addEventListener('sporely:create-new', handleCreateNew as EventListener);
+    return () => window.removeEventListener('sporely:create-new', handleCreateNew as EventListener);
   }, [guardAction]);
 
   // Listen for select-item and edit-item events from Lab Inventory
@@ -302,11 +302,11 @@ export const CultureManagement: React.FC = () => {
         }
       }
     };
-    window.addEventListener('mycolab:select-item', handleSelectItem as EventListener);
-    window.addEventListener('mycolab:edit-item', handleEditItem as EventListener);
+    window.addEventListener('sporely:select-item', handleSelectItem as EventListener);
+    window.addEventListener('sporely:edit-item', handleEditItem as EventListener);
     return () => {
-      window.removeEventListener('mycolab:select-item', handleSelectItem as EventListener);
-      window.removeEventListener('mycolab:edit-item', handleEditItem as EventListener);
+      window.removeEventListener('sporely:select-item', handleSelectItem as EventListener);
+      window.removeEventListener('sporely:edit-item', handleEditItem as EventListener);
     };
   }, [cultures]);
 

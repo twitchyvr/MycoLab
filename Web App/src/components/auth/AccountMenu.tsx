@@ -193,12 +193,12 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 const forceLogout = () => {
   try {
     // Clear all storage
-    localStorage.removeItem('mycolab-auth');
-    localStorage.removeItem('mycolab-settings');
-    localStorage.removeItem('mycolab-last-sync');
-    // Clear any other mycolab keys
+    localStorage.removeItem('sporely-auth');
+    localStorage.removeItem('sporely-settings');
+    localStorage.removeItem('sporely-last-sync');
+    // Clear any other sporely keys
     Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('mycolab-')) {
+      if (key.startsWith('sporely-')) {
         localStorage.removeItem(key);
       }
     });
@@ -258,7 +258,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ onNavigate }) => {
         if (escapeTimer) clearTimeout(escapeTimer);
 
         if (escapeCount >= 3) {
-          console.log('[MycoLab] Emergency logout triggered (Escape x3)');
+          console.log('[Sporely] Emergency logout triggered (Escape x3)');
           forceLogout();
         } else {
           escapeTimer = setTimeout(() => {
@@ -287,7 +287,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ onNavigate }) => {
 
     // Hard failsafe - if nothing happens in 8 seconds, force logout
     const failsafeTimer = setTimeout(() => {
-      console.warn('[MycoLab] Sign out failsafe triggered');
+      console.warn('[Sporely] Sign out failsafe triggered');
       forceLogout();
     }, 8000);
 

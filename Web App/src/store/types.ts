@@ -2663,7 +2663,7 @@ export interface LookupHelpers {
 
 /**
  * Items that can have user ownership (userId field)
- * - userId === null: System/global data (provided by MycoLab, not editable)
+ * - userId === null: System/global data (provided by Sporely, not editable)
  * - userId === string: User-created data (editable by that user)
  */
 export interface OwnableItem {

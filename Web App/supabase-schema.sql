@@ -1,5 +1,5 @@
 -- ============================================================================
--- MYCOLAB DATABASE SCHEMA (Idempotent - Safe to run multiple times)
+-- SPORELY DATABASE SCHEMA (Idempotent - Safe to run multiple times)
 -- Run this in your Supabase SQL Editor to set up the database
 -- ============================================================================
 --
@@ -8560,21 +8560,21 @@ BEGIN
 
   -- Remove existing jobs (if any) to prevent duplicates
   BEGIN
-    PERFORM cron.unschedule('mycolab-notification-check');
+    PERFORM cron.unschedule('sporely-notification-check');
   EXCEPTION WHEN OTHERS THEN
     -- Job doesn't exist, that's fine
     NULL;
   END;
 
   BEGIN
-    PERFORM cron.unschedule('mycolab-queue-cleanup');
+    PERFORM cron.unschedule('sporely-queue-cleanup');
   EXCEPTION WHEN OTHERS THEN
     NULL;
   END;
 
   -- Schedule notification check every 15 minutes
   PERFORM cron.schedule(
-    'mycolab-notification-check',
+    'sporely-notification-check',
     '*/15 * * * *',
     'SELECT process_scheduled_notifications()'
   );
@@ -8582,7 +8582,7 @@ BEGIN
 
   -- Schedule queue cleanup daily at 3 AM
   PERFORM cron.schedule(
-    'mycolab-queue-cleanup',
+    'sporely-queue-cleanup',
     '0 3 * * *',
     'DELETE FROM notification_queue WHERE (status = ''sent'' AND sent_at < NOW() - INTERVAL ''7 days'') OR (status = ''cancelled'' AND created_at < NOW() - INTERVAL ''7 days'') OR (status = ''failed'' AND attempts >= 3 AND created_at < NOW() - INTERVAL ''30 days'') OR (expires_at < NOW() AND status = ''pending'')'
   );
@@ -8668,7 +8668,7 @@ BEGIN
   WHERE status = 'sent';
 
   IF v_pg_cron_enabled THEN
-    -- Query cron.job for MycoLab jobs
+    -- Query cron.job for Sporely jobs
     BEGIN
       SELECT COALESCE(jsonb_agg(job_info), '[]'::JSONB)
       INTO v_jobs
@@ -8680,7 +8680,7 @@ BEGIN
           'active', active
         ) as job_info
         FROM cron.job
-        WHERE jobname LIKE 'mycolab-%'
+        WHERE jobname LIKE 'sporely-%'
       ) jobs;
     EXCEPTION WHEN OTHERS THEN
       -- cron schema might not be accessible, that's okay
@@ -8814,26 +8814,26 @@ BEGIN
 
   -- Remove existing jobs (if any) to prevent duplicates
   BEGIN
-    PERFORM cron.unschedule('mycolab-notification-check');
+    PERFORM cron.unschedule('sporely-notification-check');
   EXCEPTION WHEN OTHERS THEN
     NULL;
   END;
 
   BEGIN
-    PERFORM cron.unschedule('mycolab-queue-cleanup');
+    PERFORM cron.unschedule('sporely-queue-cleanup');
   EXCEPTION WHEN OTHERS THEN
     NULL;
   END;
 
   BEGIN
-    PERFORM cron.unschedule('mycolab-send-emails');
+    PERFORM cron.unschedule('sporely-send-emails');
   EXCEPTION WHEN OTHERS THEN
     NULL;
   END;
 
   -- Schedule notification check every 15 minutes (queues notifications)
   PERFORM cron.schedule(
-    'mycolab-notification-check',
+    'sporely-notification-check',
     '*/15 * * * *',
     'SELECT process_scheduled_notifications()'
   );
@@ -8842,7 +8842,7 @@ BEGIN
   -- Schedule email sending every 5 minutes (sends queued notifications)
   -- This calls the edge function via pg_net
   PERFORM cron.schedule(
-    'mycolab-send-emails',
+    'sporely-send-emails',
     '*/5 * * * *',
     'SELECT trigger_email_queue_processor()'
   );
@@ -8850,7 +8850,7 @@ BEGIN
 
   -- Schedule queue cleanup daily at 3 AM
   PERFORM cron.schedule(
-    'mycolab-queue-cleanup',
+    'sporely-queue-cleanup',
     '0 3 * * *',
     'DELETE FROM notification_queue WHERE (status = ''sent'' AND sent_at < NOW() - INTERVAL ''7 days'') OR (status = ''cancelled'' AND created_at < NOW() - INTERVAL ''7 days'') OR (status = ''failed'' AND attempts >= 3 AND created_at < NOW() - INTERVAL ''30 days'') OR (expires_at < NOW() AND status = ''pending'')'
   );
@@ -8927,7 +8927,7 @@ BEGIN
           'active', active
         ) as job_info
         FROM cron.job
-        WHERE jobname LIKE 'mycolab-%'
+        WHERE jobname LIKE 'sporely-%'
       ) jobs;
     EXCEPTION WHEN OTHERS THEN
       v_jobs := '[]'::JSONB;
@@ -10980,4 +10980,4 @@ END $$;
 -- SUCCESS MESSAGE
 -- ============================================================================
 -- If you see this, the schema was applied successfully!
--- You can now connect your MycoLab app to this database.
+-- You can now connect your Sporely app to this database.

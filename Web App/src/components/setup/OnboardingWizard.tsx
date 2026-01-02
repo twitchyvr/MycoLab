@@ -260,9 +260,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
     // CRITICAL: Save to localStorage FIRST before any async operations
     // This ensures the wizard won't show again even if DB save fails
     try {
-      const stored = localStorage.getItem('mycolab-settings');
+      const stored = localStorage.getItem('sporely-settings');
       const current = stored ? JSON.parse(stored) : {};
-      localStorage.setItem('mycolab-settings', JSON.stringify({ ...current, hasCompletedSetupWizard: true }));
+      localStorage.setItem('sporely-settings', JSON.stringify({ ...current, hasCompletedSetupWizard: true }));
     } catch (e) {
       console.warn('[OnboardingWizard] Failed to save to localStorage:', e);
     }
@@ -284,9 +284,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
     // CRITICAL: Save to localStorage FIRST before any async operations
     // This ensures the wizard won't show again even if DB save fails
     try {
-      const stored = localStorage.getItem('mycolab-settings');
+      const stored = localStorage.getItem('sporely-settings');
       const current = stored ? JSON.parse(stored) : {};
-      localStorage.setItem('mycolab-settings', JSON.stringify({ ...current, hasCompletedSetupWizard: true }));
+      localStorage.setItem('sporely-settings', JSON.stringify({ ...current, hasCompletedSetupWizard: true }));
     } catch (e) {
       console.warn('[OnboardingWizard] Failed to save to localStorage:', e);
     }
@@ -322,7 +322,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
             <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
               <Icons.Mushroom />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-3">Welcome to MycoLab!</h2>
+            <h2 className="text-2xl font-bold text-white mb-3">Welcome to Sporely!</h2>
             <p className="text-zinc-400 max-w-md mx-auto mb-6">
               Let's get your lab set up. This wizard will help configure your experience
               based on your needs and equipment.

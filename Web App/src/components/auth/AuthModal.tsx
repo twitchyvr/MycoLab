@@ -443,7 +443,7 @@ export const AuthModal: React.FC = () => {
                   {authModalMode === 'reset' && 'Reset Password'}
                 </h2>
                 <p className="text-sm text-zinc-400">
-                  {authModalMode === 'login' && 'Sign in to your MycoLab account'}
+                  {authModalMode === 'login' && 'Sign in to your Sporely account'}
                   {authModalMode === 'signup' && (isAnonymous ? 'Save your data to the cloud' : 'Start tracking your grows')}
                   {authModalMode === 'reset' && 'We\'ll send you a reset link'}
                 </p>
@@ -507,7 +507,7 @@ export const AuthModal: React.FC = () => {
                 Account Created Successfully!
               </h3>
               <p className="text-zinc-400">
-                Your MycoLab account has been set up for <span className="text-emerald-400 font-medium">{signupComplete.email}</span>
+                Your Sporely account has been set up for <span className="text-emerald-400 font-medium">{signupComplete.email}</span>
               </p>
             </div>
 
@@ -573,7 +573,7 @@ export const AuthModal: React.FC = () => {
                 <li className="flex items-start gap-2">
                   <span className="text-emerald-400 font-medium">2.</span>
                   {signupComplete.needsEmailConfirmation
-                    ? 'Return to MycoLab and sign in with your credentials'
+                    ? 'Return to Sporely and sign in with your credentials'
                     : 'Your account is now active and syncing'}
                 </li>
                 <li className="flex items-start gap-2">
@@ -612,7 +612,7 @@ export const AuthModal: React.FC = () => {
                   onClick={() => setShowAuthModal(false)}
                   className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
                 >
-                  <span>Continue to MycoLab</span>
+                  <span>Continue to Sporely</span>
                   <Icons.ArrowRight />
                 </button>
               )}

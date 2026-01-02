@@ -87,7 +87,7 @@ export async function sendContributionConfirmationEmail(
   return sendEmail({
     to: userEmail,
     subject: `We received your ${typeLabel} for ${entityName}`,
-    body: `Thank you for contributing to the MycoLab community!
+    body: `Thank you for contributing to the Sporely community!
 
 We've received your ${typeLabel}:
 "${title}"
@@ -99,12 +99,12 @@ What happens next:
 • You'll receive an email when it's been reviewed
 • If approved, your contribution will be visible to the community
 
-We typically review submissions within a few days. Thank you for helping make MycoLab better for everyone!
+We typically review submissions within a few days. Thank you for helping make Sporely better for everyone!
 
 If you have any questions, feel free to reach out.
 
 Happy cultivating!
-The MycoLab Team`,
+The Sporely Team`,
     category: 'contribution',
     priority: 'normal',
     entityName,
@@ -139,7 +139,7 @@ export async function sendContributionApprovedEmail(
 
 For: ${entityName}
 
-Your contribution is now visible to the MycoLab community. Thank you for helping improve our library!`;
+Your contribution is now visible to the Sporely community. Thank you for helping improve our library!`;
 
   if (adminMessage) {
     body += `
@@ -153,7 +153,7 @@ ${adminMessage}`;
 Keep contributing - the community appreciates your knowledge!
 
 Happy cultivating!
-The MycoLab Team`;
+The Sporely Team`;
 
   return sendEmail({
     to: userEmail,
@@ -213,7 +213,7 @@ Don't be discouraged! We appreciate your effort to contribute. Feel free to subm
 If you have questions about this decision, please reach out.
 
 Happy cultivating!
-The MycoLab Team`;
+The Sporely Team`;
 
   return sendEmail({
     to: userEmail,
@@ -255,12 +255,12 @@ Your submission:
 What we need:
 ${requestedInfo}
 
-Please log in to MycoLab to respond to this request. You can find your submission in your contribution history.
+Please log in to Sporely to respond to this request. You can find your submission in your contribution history.
 
 Thank you for helping us maintain high-quality information in the library!
 
 Happy cultivating!
-The MycoLab Team`;
+The Sporely Team`;
 
   return sendEmail({
     to: userEmail,

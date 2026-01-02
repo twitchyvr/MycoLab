@@ -1,5 +1,5 @@
 -- ============================================================================
--- MYCOLAB RESEARCH SPECIES SEED DATA (Idempotent - Safe to run multiple times)
+-- SPORELY RESEARCH SPECIES SEED DATA (Idempotent - Safe to run multiple times)
 -- Run this AFTER supabase-schema.sql to populate research species data
 -- ============================================================================
 --

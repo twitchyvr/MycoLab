@@ -50,8 +50,8 @@ export class NotificationService {
   }
 
   private initializeSupabase() {
-    const url = localStorage.getItem('mycolab-supabase-url');
-    const key = localStorage.getItem('mycolab-supabase-key');
+    const url = localStorage.getItem('sporely-supabase-url');
+    const key = localStorage.getItem('sporely-supabase-key');
 
     if (url && key) {
       this.supabase = createClient(url, key);
@@ -197,7 +197,7 @@ export class NotificationService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: phoneNumber,
-          message: `[MycoLab] ${payload.title}: ${payload.message}`,
+          message: `[Sporely] ${payload.title}: ${payload.message}`,
           category: payload.category,
           priority: payload.priority,
           entityType: payload.entityType,

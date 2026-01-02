@@ -1,6 +1,6 @@
 // ============================================================================
 // DATABASE MODULE EXPORTS
-// Optimized database layer for MycoLab
+// Optimized database layer for Sporely
 // ============================================================================
 
 // Types

@@ -49,12 +49,12 @@ export const logError = (entry: Omit<ErrorLogEntry, 'timestamp' | 'url' | 'userA
 
   // Store in localStorage for persistence across page reloads
   try {
-    const existingLog = localStorage.getItem('mycolab-error-log');
+    const existingLog = localStorage.getItem('sporely-error-log');
     const parsed = existingLog ? JSON.parse(existingLog) : [];
     parsed.push(fullEntry);
     // Keep only last 50 errors
     const trimmed = parsed.slice(-MAX_ERROR_LOG_SIZE);
-    localStorage.setItem('mycolab-error-log', JSON.stringify(trimmed));
+    localStorage.setItem('sporely-error-log', JSON.stringify(trimmed));
   } catch (e) {
     // localStorage might be full or unavailable
     console.warn('Could not persist error to localStorage:', e);
@@ -63,7 +63,7 @@ export const logError = (entry: Omit<ErrorLogEntry, 'timestamp' | 'url' | 'userA
 
 export const getErrorLog = (): ErrorLogEntry[] => {
   try {
-    const stored = localStorage.getItem('mycolab-error-log');
+    const stored = localStorage.getItem('sporely-error-log');
     return stored ? JSON.parse(stored) : [];
   } catch {
     return [];
@@ -71,7 +71,7 @@ export const getErrorLog = (): ErrorLogEntry[] => {
 };
 
 export const clearErrorLog = () => {
-  localStorage.removeItem('mycolab-error-log');
+  localStorage.removeItem('sporely-error-log');
   errorLog.length = 0;
 };
 
@@ -159,7 +159,7 @@ export const GlobalErrorHandler: React.FC = () => {
 
   useEffect(() => {
     // Listen for custom app errors
-    window.addEventListener('mycolab:error', handleError as EventListener);
+    window.addEventListener('sporely:error', handleError as EventListener);
 
     // Catch unhandled promise rejections
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
@@ -168,7 +168,7 @@ export const GlobalErrorHandler: React.FC = () => {
     window.addEventListener('error', handleGlobalError);
 
     return () => {
-      window.removeEventListener('mycolab:error', handleError as EventListener);
+      window.removeEventListener('sporely:error', handleError as EventListener);
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.removeEventListener('error', handleGlobalError);
     };

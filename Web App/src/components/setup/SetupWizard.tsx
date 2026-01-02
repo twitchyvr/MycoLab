@@ -31,8 +31,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onSkip }) 
 
   // Check if already configured
   useEffect(() => {
-    const savedUrl = localStorage.getItem('mycolab-supabase-url');
-    const savedKey = localStorage.getItem('mycolab-supabase-key');
+    const savedUrl = localStorage.getItem('sporely-supabase-url');
+    const savedKey = localStorage.getItem('sporely-supabase-key');
     if (savedUrl) setSupabaseUrl(savedUrl);
     if (savedKey) setSupabaseKey(savedKey);
   }, []);
@@ -62,8 +62,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onSkip }) 
       }
 
       // Save credentials
-      localStorage.setItem('mycolab-supabase-url', supabaseUrl);
-      localStorage.setItem('mycolab-supabase-key', supabaseKey);
+      localStorage.setItem('sporely-supabase-url', supabaseUrl);
+      localStorage.setItem('sporely-supabase-key', supabaseKey);
       
       setTestResult('success');
     } catch (err: any) {
@@ -76,7 +76,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onSkip }) 
 
   // Handle completion
   const handleComplete = () => {
-    localStorage.setItem('mycolab-setup-complete', 'true');
+    localStorage.setItem('sporely-setup-complete', 'true');
     // Force page reload to initialize with new config
     window.location.reload();
   };
@@ -91,7 +91,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onSkip }) 
               <span className="text-2xl">🍄</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">MycoLab Setup</h1>
+              <h1 className="text-xl font-bold text-white">Sporely Setup</h1>
               <p className="text-sm text-zinc-400">Configure cloud storage for your data</p>
             </div>
           </div>
@@ -130,9 +130,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onSkip }) 
                 <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
                   <Icons.Cloud />
                 </div>
-                <h2 className="text-lg font-semibold text-white">Welcome to MycoLab!</h2>
+                <h2 className="text-lg font-semibold text-white">Welcome to Sporely!</h2>
                 <p className="text-zinc-400 max-w-md mx-auto">
-                  MycoLab can work offline or sync your data to the cloud using Supabase. 
+                  Sporely can work offline or sync your data to the cloud using Supabase. 
                   Cloud sync lets you access your lab from any device.
                 </p>
               </div>
@@ -263,8 +263,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onSkip }) 
               <h2 className="text-xl font-semibold text-white">You're All Set!</h2>
               <p className="text-zinc-400 max-w-md mx-auto">
                 {testResult === 'success' 
-                  ? 'Your MycoLab is connected to the cloud. Your data will sync automatically across all your devices.'
-                  : 'MycoLab is set up in offline mode. Your data will be stored locally in your browser.'
+                  ? 'Your Sporely is connected to the cloud. Your data will sync automatically across all your devices.'
+                  : 'Sporely is set up in offline mode. Your data will be stored locally in your browser.'
                 }
               </p>
 
@@ -308,7 +308,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onSkip }) 
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    localStorage.setItem('mycolab-setup-complete', 'true');
+                    localStorage.setItem('sporely-setup-complete', 'true');
                     onSkip();
                   }}
                   className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors"

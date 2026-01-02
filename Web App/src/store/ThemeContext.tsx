@@ -1,5 +1,5 @@
 // ============================================================================
-// THEME CONTEXT - MycoLab Theming System
+// THEME CONTEXT - Sporely Theming System
 // Implements 4 thematic variants from the design brief
 // ============================================================================
 
@@ -331,7 +331,7 @@ interface ThemeProviderProps {
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setThemeState] = useState<ThemeVariant>(() => {
     // Load from localStorage or default to mycelium
-    const saved = localStorage.getItem('mycolab-theme');
+    const saved = localStorage.getItem('sporely-theme');
     if (saved && (saved === 'mycelium' || saved === 'fruiting' || saved === 'spore' || saved === 'substrate')) {
       return saved;
     }
@@ -348,7 +348,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   const setTheme = useCallback((newTheme: ThemeVariant) => {
     setThemeState(newTheme);
-    localStorage.setItem('mycolab-theme', newTheme);
+    localStorage.setItem('sporely-theme', newTheme);
   }, []);
 
   return (

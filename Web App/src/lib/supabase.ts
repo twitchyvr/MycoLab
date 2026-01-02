@@ -19,7 +19,7 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 // Debug logging for configuration issues (only in development or when there's a problem)
 if (!isSupabaseConfigured) {
   console.warn(
-    '%c[MycoLab] Supabase not configured',
+    '%c[Sporely] Supabase not configured',
     'color: #f59e0b; font-weight: bold',
     '\n\nAuthentication and cloud sync are disabled.',
     '\n\nTo enable:',
@@ -32,7 +32,7 @@ if (!isSupabaseConfigured) {
   );
 } else {
   console.log(
-    '%c[MycoLab] Supabase configured',
+    '%c[Sporely] Supabase configured',
     'color: #10b981; font-weight: bold',
     '\n  - URL:', supabaseUrl.substring(0, 30) + '...'
   );
@@ -43,7 +43,7 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
-        storageKey: 'mycolab-auth',
+        storageKey: 'sporely-auth',
         autoRefreshToken: true,
         detectSessionInUrl: true, // Required for OAuth redirects to work
       }
@@ -103,7 +103,7 @@ export const ensureSession = async (): Promise<Session | null> => {
       if (signInError.message?.includes('Anonymous sign-ins are disabled') ||
           signInError.status === 422) {
         console.warn(
-          '%c[MycoLab] Anonymous auth not enabled. To persist settings:',
+          '%c[Sporely] Anonymous auth not enabled. To persist settings:',
           'color: #f59e0b',
           '\n1. Go to Supabase Dashboard > Authentication > Providers',
           '\n2. Enable "Anonymous Sign-Ins"',
@@ -114,12 +114,12 @@ export const ensureSession = async (): Promise<Session | null> => {
         // CAPTCHA is enabled which blocks anonymous auth - this is normal/expected
         // Use console.log instead of warn to avoid alarming appearance
         console.log(
-          '%c[MycoLab] Using local storage mode (CAPTCHA protection active)',
+          '%c[Sporely] Using local storage mode (CAPTCHA protection active)',
           'color: #10b981',
           '\nSign in with email/password for cloud sync.'
         );
       } else {
-        console.warn('[MycoLab] Anonymous sign-in unavailable:', signInError.message);
+        console.warn('[Sporely] Anonymous sign-in unavailable:', signInError.message);
       }
       return null;
     }
@@ -191,7 +191,7 @@ export const linkAnonymousUser = async (email: string, password: string) => {
 // For settings persistence when Supabase is offline or anon auth disabled
 // ============================================================================
 
-const SETTINGS_STORAGE_KEY = 'mycolab-settings';
+const SETTINGS_STORAGE_KEY = 'sporely-settings';
 
 export interface LocalSettings {
   defaultUnits: 'metric' | 'imperial';
@@ -262,13 +262,13 @@ export const saveLocalSettings = (settings: Partial<LocalSettings>): void => {
 export const isOfflineMode = () => !isSupabaseConfigured;
 
 /**
- * Clear all local data (localStorage keys used by MycoLab)
+ * Clear all local data (localStorage keys used by Sporely)
  * Call this on logout or account deletion
  */
 export const clearLocalData = (options: { preserveSettings?: boolean } = {}): void => {
   const keysToRemove = [
-    'mycolab-auth',
-    'mycolab-last-sync',
+    'sporely-auth',
+    'sporely-last-sync',
   ];
 
   // Only remove settings if not preserving them
@@ -276,7 +276,7 @@ export const clearLocalData = (options: { preserveSettings?: boolean } = {}): vo
     keysToRemove.push(SETTINGS_STORAGE_KEY);
   }
 
-  // Remove all MycoLab keys
+  // Remove all Sporely keys
   keysToRemove.forEach(key => {
     try {
       localStorage.removeItem(key);
@@ -285,11 +285,11 @@ export const clearLocalData = (options: { preserveSettings?: boolean } = {}): vo
     }
   });
 
-  // Also remove any other mycolab-prefixed keys that might exist
+  // Also remove any other sporely-prefixed keys that might exist
   try {
     const allKeys = Object.keys(localStorage);
     allKeys.forEach(key => {
-      if (key.startsWith('mycolab-') && !keysToRemove.includes(key)) {
+      if (key.startsWith('sporely-') && !keysToRemove.includes(key)) {
         // Skip settings if preserving
         if (options.preserveSettings && key === SETTINGS_STORAGE_KEY) return;
         localStorage.removeItem(key);
@@ -299,7 +299,7 @@ export const clearLocalData = (options: { preserveSettings?: boolean } = {}): vo
     console.error('Error clearing local storage:', err);
   }
 
-  console.log('[MycoLab] Local data cleared');
+  console.log('[Sporely] Local data cleared');
 };
 
 // ============================================================================

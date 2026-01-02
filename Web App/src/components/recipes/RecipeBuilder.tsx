@@ -71,8 +71,8 @@ export const RecipeBuilder: React.FC = () => {
         setShowCreateModal(true);
       }
     };
-    window.addEventListener('mycolab:create-new', handleCreateNew as EventListener);
-    return () => window.removeEventListener('mycolab:create-new', handleCreateNew as EventListener);
+    window.addEventListener('sporely:create-new', handleCreateNew as EventListener);
+    return () => window.removeEventListener('sporely:create-new', handleCreateNew as EventListener);
   }, [guardAction]);
 
   // Filtered recipes

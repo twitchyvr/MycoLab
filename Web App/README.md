@@ -1,4 +1,4 @@
-# MycoLab 🍄
+# Sporely 🍄
 
 A comprehensive mycology laboratory management system for tracking cultures, grows, recipes, and more.
 
@@ -27,7 +27,7 @@ npm run build
 
 ## Cloud Setup (Supabase)
 
-MycoLab can work offline (data stored in browser) or sync to the cloud using Supabase.
+Sporely can work offline (data stored in browser) or sync to the cloud using Supabase.
 
 ### Setting Up Supabase
 
@@ -44,7 +44,7 @@ MycoLab can work offline (data stored in browser) or sync to the cloud using Sup
    - Go to Settings → API in your Supabase dashboard
    - Copy the **Project URL** and **anon public key**
 
-4. **Configure MycoLab**
+4. **Configure Sporely**
    - Option A: Enter credentials in the Setup Wizard on first run
    - Option B: Create `.env.local` file:
      ```

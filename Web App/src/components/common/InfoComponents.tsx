@@ -829,7 +829,7 @@ export const InfoBanner: React.FC<InfoBannerProps> = ({
   const infoContext = useInfoOptional();
   const [isDismissed, setIsDismissed] = useState(() => {
     if (persistKey) {
-      return localStorage.getItem(`mycolab-banner-${persistKey}`) === 'dismissed';
+      return localStorage.getItem(`sporely-banner-${persistKey}`) === 'dismissed';
     }
     return false;
   });
@@ -844,7 +844,7 @@ export const InfoBanner: React.FC<InfoBannerProps> = ({
   const handleDismiss = () => {
     setIsDismissed(true);
     if (persistKey) {
-      localStorage.setItem(`mycolab-banner-${persistKey}`, 'dismissed');
+      localStorage.setItem(`sporely-banner-${persistKey}`, 'dismissed');
     }
     onDismiss?.();
   };

@@ -1,6 +1,6 @@
 # GitHub Issues for Grow Tracking
 
-Copy these to GitHub Issues at: https://github.com/twitchyvr/MycoLab/issues/new
+Copy these to GitHub Issues at: https://github.com/twitchyvr/Sporely/issues/new
 
 ---
 

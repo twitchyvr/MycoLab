@@ -1,6 +1,6 @@
 // ============================================================================
 // useAI HOOK
-// React hook for AI operations in MycoLab
+// React hook for AI operations in Sporely
 // ============================================================================
 
 import { useState, useCallback, useMemo } from 'react';

@@ -1,9 +1,9 @@
-# MycoLab Azure OpenAI Integration Architecture
+# Sporely Azure OpenAI Integration Architecture
 
 ## Executive Summary
 
-This document outlines the architecture for integrating Azure OpenAI into MycoLab to provide:
-- **Grounded AI responses** using MycoLab-specific data (user's grows, cultures, inventory)
+This document outlines the architecture for integrating Azure OpenAI into Sporely to provide:
+- **Grounded AI responses** using Sporely-specific data (user's grows, cultures, inventory)
 - **Knowledge library integration** for mycology-specific guidance
 - **Image analysis** for contamination detection, species identification, and growth monitoring
 - **IoT data analysis** for environmental optimization
@@ -16,7 +16,7 @@ This document outlines the architecture for integrating Azure OpenAI into MycoLa
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              MycoLab Frontend                                    │
+│                              Sporely Frontend                                    │
 │                           (React + TypeScript)                                   │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                  │
@@ -144,7 +144,7 @@ User Query: "Why is my Lion's Mane pinning slow?"
 │  2. PROMPT CONSTRUCTION                                        │
 │                                                                 │
 │  System Prompt:                                                 │
-│  "You are MycoLab AI, a mycology cultivation assistant..."     │
+│  "You are Sporely AI, a mycology cultivation assistant..."     │
 │                                                                 │
 │  Grounded Context:                                              │
 │  - User's current grow: started 14 days ago, 72°F, 85% RH      │
@@ -391,7 +391,7 @@ Azure Blob Storage
 interface IoTReading {
   id: string;
   deviceId: string;
-  locationId: string;           // Maps to MycoLab location
+  locationId: string;           // Maps to Sporely location
   timestamp: Date;
 
   readings: {
@@ -540,7 +540,7 @@ interface IoTAnalysisResult {
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  MycoLab AI Assistant                                    [−][×] │
+│  Sporely AI Assistant                                    [−][×] │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────────┐│

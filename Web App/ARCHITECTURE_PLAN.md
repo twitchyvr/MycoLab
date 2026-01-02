@@ -1,4 +1,4 @@
-# MycoLab Architecture Improvement Plan
+# Sporely Architecture Improvement Plan
 
 ## Overview
 

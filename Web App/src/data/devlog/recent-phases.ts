@@ -2317,7 +2317,7 @@ All are categorized as 'neutral' to not affect failure/success analytics.`,
   {
     id: 'dev-1104',
     title: 'Dual Rating System (AI vs Grower)',
-    description: 'Two-score system like Rotten Tomatoes: MycoLab AI score based on objective metrics (BE%, time, contamination rate) vs Grower score based on subjective experience.',
+    description: 'Two-score system like Rotten Tomatoes: Sporely AI score based on objective metrics (BE%, time, contamination rate) vs Grower score based on subjective experience.',
     category: 'enhancement',
     status: 'planned',
     priority: 'medium',
@@ -3100,7 +3100,7 @@ Frontend to be re-added at end of 2026 for "2026 Wrapped".
 - Records: best yield, fastest grow
 - Financial summary
 - Fun facts generated from data
-- Share prompt with #MycoLabWrapped
+- Share prompt with #SporelyWrapped
 
 **Planned Components:**
 - AnnualWrapped: Full-screen slideshow modal
@@ -6340,7 +6340,7 @@ After: \`const result = {}; if (location.type !== undefined) result.type = locat
     priority: 'critical',
     category: 'core',
     title: 'Azure OpenAI Integration - Architecture & Planning',
-    description: 'Comprehensive architecture for integrating Azure OpenAI into MycoLab for grounded AI responses, image analysis, and IoT data analysis.',
+    description: 'Comprehensive architecture for integrating Azure OpenAI into Sporely for grounded AI responses, image analysis, and IoT data analysis.',
     notes: `Architecture document created at docs/architecture/AZURE_OPENAI_INTEGRATION.md
 
 **Key Decisions Finalized:**

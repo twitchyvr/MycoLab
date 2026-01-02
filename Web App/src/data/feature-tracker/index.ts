@@ -68,7 +68,7 @@ export const APP_VERSION_INFO: AppVersionInfo = {
 const timestamp = () => new Date().toISOString();
 
 /**
- * Milestone definitions for MycoLab
+ * Milestone definitions for Sporely
  * Codenames follow mushroom varieties
  */
 export const MILESTONES: Milestone[] = [
@@ -77,7 +77,7 @@ export const MILESTONES: Milestone[] = [
     version: '0.1.0',
     codename: 'Spore',
     name: 'Foundation Release',
-    description: 'Initial MycoLab release with core culture and grow tracking',
+    description: 'Initial Sporely release with core culture and grow tracking',
     status: 'released',
     releasedAt: '2024-12-01T00:00:00Z',
     mandatoryFeatures: [],

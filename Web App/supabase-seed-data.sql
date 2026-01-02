@@ -1,5 +1,5 @@
 -- ============================================================================
--- MYCOLAB SEED DATA (Idempotent - Safe to run multiple times)
+-- SPORELY SEED DATA (Idempotent - Safe to run multiple times)
 -- Run this AFTER supabase-schema.sql to populate default data
 -- ============================================================================
 --

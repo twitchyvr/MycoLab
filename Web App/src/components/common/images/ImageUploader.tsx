@@ -109,7 +109,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   primaryImage,
   onImagesChange,
   onPrimaryImageChange,
-  bucket = 'mycolab-images',
+  bucket = 'sporely-images',
   folder = 'uploads',
   maxImages = 10,
   maxSizeMb = 5,

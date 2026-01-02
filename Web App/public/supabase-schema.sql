@@ -1,5 +1,5 @@
 -- ============================================================================
--- MYCOLAB DATABASE SCHEMA (Idempotent - Safe to run multiple times)
+-- SPORELY DATABASE SCHEMA (Idempotent - Safe to run multiple times)
 -- Run this in your Supabase SQL Editor to set up the database
 -- ============================================================================
 
@@ -674,7 +674,7 @@ ON CONFLICT (id) DO UPDATE SET version = 1, updated_at = NOW();
 -- SUCCESS MESSAGE
 -- ============================================================================
 -- If you see this, the schema was applied successfully!
--- You can now connect your MycoLab app to this database.
+-- You can now connect your Sporely app to this database.
 
 -- Add missing columns to culture_transfers
 DO $$

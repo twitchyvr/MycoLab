@@ -1,4 +1,4 @@
-# Netlify Configuration for MycoLab (Vite + React + TypeScript)
+# Netlify Configuration for Sporely (Vite + React + TypeScript)
 
 [build]
   # Base directory where the build runs from

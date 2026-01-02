@@ -14,8 +14,8 @@ declare const __APP_VERSION__: string;
 const BUILD_TIME = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : new Date().toISOString();
 const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
 
-const VERSION_STORAGE_KEY = 'mycolab-build-version';
-const DISMISSED_KEY = 'mycolab-version-dismissed';
+const VERSION_STORAGE_KEY = 'sporely-build-version';
+const DISMISSED_KEY = 'sporely-version-dismissed';
 
 // How often to check for new versions (in milliseconds)
 const VERSION_CHECK_INTERVAL = 60 * 1000; // 1 minute (more responsive like Supabase)
@@ -104,14 +104,14 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
 
     // Clear the version-detected flag on page load
     // This allows detecting new versions after user has refreshed
-    sessionStorage.removeItem('mycolab-version-detected');
+    sessionStorage.removeItem('sporely-version-detected');
 
     // ALWAYS update sessionStorage with current page's script hashes
     // This is crucial: after a refresh, we need to store the NEW hashes
     // so we're comparing server scripts against what's actually running NOW
     const initialScriptHashes = getCurrentScriptHashes();
     if (initialScriptHashes) {
-      sessionStorage.setItem('mycolab-script-hashes', initialScriptHashes);
+      sessionStorage.setItem('sporely-script-hashes', initialScriptHashes);
     }
 
     const checkForUpdates = async () => {
@@ -119,7 +119,7 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
 
       // Don't check if we've already detected a new version in this session
       // User must refresh to clear this flag
-      if (sessionStorage.getItem('mycolab-version-detected')) {
+      if (sessionStorage.getItem('sporely-version-detected')) {
         return;
       }
 
@@ -145,15 +145,15 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
           ? scriptMatches.map(m => m.replace(/src="|"/g, '')).sort().join('|')
           : '';
 
-        const storedHashes = sessionStorage.getItem('mycolab-script-hashes');
+        const storedHashes = sessionStorage.getItem('sporely-script-hashes');
 
         if (serverScripts && storedHashes && serverScripts !== storedHashes && isActive) {
-          console.log('[MycoLab] New version detected - script hashes changed');
-          console.log('[MycoLab] Current:', storedHashes.substring(0, 100));
-          console.log('[MycoLab] Server:', serverScripts.substring(0, 100));
+          console.log('[Sporely] New version detected - script hashes changed');
+          console.log('[Sporely] Current:', storedHashes.substring(0, 100));
+          console.log('[Sporely] Server:', serverScripts.substring(0, 100));
 
           // Mark that we've detected a version to prevent repeated notifications
-          sessionStorage.setItem('mycolab-version-detected', 'true');
+          sessionStorage.setItem('sporely-version-detected', 'true');
 
           setVersionInfo(prev => ({
             ...prev,
@@ -169,16 +169,16 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
         const serverTimestamp = serverEtag || lastModified;
 
         if (serverTimestamp && isActive) {
-          const storedTimestamp = sessionStorage.getItem('mycolab-server-timestamp');
+          const storedTimestamp = sessionStorage.getItem('sporely-server-timestamp');
 
           // Always update timestamp on first check after page load
           if (!storedTimestamp) {
-            sessionStorage.setItem('mycolab-server-timestamp', serverTimestamp);
+            sessionStorage.setItem('sporely-server-timestamp', serverTimestamp);
           } else if (storedTimestamp !== serverTimestamp) {
             // Update the stored timestamp so we don't keep showing the modal
-            sessionStorage.setItem('mycolab-server-timestamp', serverTimestamp);
-            sessionStorage.setItem('mycolab-version-detected', 'true');
-            console.log('[MycoLab] New version detected via headers');
+            sessionStorage.setItem('sporely-server-timestamp', serverTimestamp);
+            sessionStorage.setItem('sporely-version-detected', 'true');
+            console.log('[Sporely] New version detected via headers');
             setVersionInfo(prev => ({
               ...prev,
               isNewVersion: true,
@@ -193,7 +193,7 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
       } catch (error) {
         consecutiveFailures++;
         if (consecutiveFailures <= MAX_FAILURES) {
-          console.debug('[MycoLab] Version check failed:', error);
+          console.debug('[Sporely] Version check failed:', error);
         }
         // After too many failures, reduce logging
       }
@@ -216,7 +216,7 @@ export const VersionProvider: React.FC<VersionProviderProps> = ({ children }) =>
 
     // Also check on online event (in case user was offline)
     const handleOnline = () => {
-      console.log('[MycoLab] Network restored, checking for updates...');
+      console.log('[Sporely] Network restored, checking for updates...');
       setTimeout(checkForUpdates, 1000);
     };
     window.addEventListener('online', handleOnline);
@@ -347,7 +347,7 @@ export const VersionUpdateModal: React.FC = () => {
         {/* Content */}
         <div className="px-6 py-5 space-y-4">
           <p className="text-zinc-300">
-            A new version of MycoLab has been deployed. Please refresh your browser to ensure
+            A new version of Sporely has been deployed. Please refresh your browser to ensure
             everything works correctly.
           </p>
 

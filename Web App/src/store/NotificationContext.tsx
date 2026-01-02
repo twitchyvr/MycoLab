@@ -1,6 +1,6 @@
 // ============================================================================
 // NOTIFICATION CONTEXT
-// Smart notification system for MycoLab
+// Smart notification system for Sporely
 // ============================================================================
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
@@ -158,9 +158,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   // Load from localStorage on mount
   useEffect(() => {
-    const savedNotifications = localStorage.getItem('mycolab-notifications');
-    const savedPreferences = localStorage.getItem('mycolab-notification-preferences');
-    const savedRules = localStorage.getItem('mycolab-notification-rules');
+    const savedNotifications = localStorage.getItem('sporely-notifications');
+    const savedPreferences = localStorage.getItem('sporely-notification-preferences');
+    const savedRules = localStorage.getItem('sporely-notification-rules');
 
     if (savedNotifications) {
       try {
@@ -195,15 +195,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   // Save to localStorage on changes
   useEffect(() => {
-    localStorage.setItem('mycolab-notifications', JSON.stringify(notifications));
+    localStorage.setItem('sporely-notifications', JSON.stringify(notifications));
   }, [notifications]);
 
   useEffect(() => {
-    localStorage.setItem('mycolab-notification-preferences', JSON.stringify(preferences));
+    localStorage.setItem('sporely-notification-preferences', JSON.stringify(preferences));
   }, [preferences]);
 
   useEffect(() => {
-    localStorage.setItem('mycolab-notification-rules', JSON.stringify(rules));
+    localStorage.setItem('sporely-notification-rules', JSON.stringify(rules));
   }, [rules]);
 
   // Cleanup toast timeouts on unmount

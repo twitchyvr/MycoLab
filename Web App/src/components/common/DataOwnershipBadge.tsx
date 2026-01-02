@@ -45,7 +45,7 @@ const Icons = {
  * Shows a visual badge indicating whether an item is system data (global/non-editable)
  * or user-created data (personal/editable).
  *
- * System data: Provided by MycoLab, shared with all users, not editable
+ * System data: Provided by Sporely, shared with all users, not editable
  * User data: Created by the user, only visible to them, editable
  */
 export const DataOwnershipBadge: React.FC<DataOwnershipBadgeProps> = ({
@@ -114,7 +114,7 @@ export const SystemBadge: React.FC<{ item: OwnableItem | null | undefined; class
   return (
     <span
       className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-950/50 text-amber-400 border border-amber-700/50 ${className}`}
-      title="System data - provided by MycoLab, not editable"
+      title="System data - provided by Sporely, not editable"
     >
       <Icons.Lock />
       System

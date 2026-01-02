@@ -1,5 +1,5 @@
 -- ============================================================================
--- MycoLab COMPLETE DATABASE RESET SCRIPT
+-- Sporely COMPLETE DATABASE RESET SCRIPT
 -- ============================================================================
 --
 -- PURPOSE: Completely remove ALL database objects so schema can be rebuilt
@@ -61,7 +61,7 @@ DO $$
 BEGIN
   RAISE NOTICE '';
   RAISE NOTICE '╔══════════════════════════════════════════════════════════════════╗';
-  RAISE NOTICE '║           MYCOLAB DATABASE RESET - STARTING                      ║';
+  RAISE NOTICE '║           SPORELY DATABASE RESET - STARTING                      ║';
   RAISE NOTICE '╠══════════════════════════════════════════════════════════════════╣';
   RAISE NOTICE '║  ⚠️  WARNING: All data will be PERMANENTLY DELETED!              ║';
   RAISE NOTICE '║  This operation cannot be undone.                                 ║';

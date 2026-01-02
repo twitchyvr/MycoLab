@@ -615,7 +615,7 @@ interface InfoProviderProps {
 
 export const InfoProvider: React.FC<InfoProviderProps> = ({ children }) => {
   const [preferences, setPreferences] = useState<InfoPreferences>(() => {
-    const saved = localStorage.getItem('mycolab-info-preferences');
+    const saved = localStorage.getItem('sporely-info-preferences');
     if (saved) {
       try {
         return { ...defaultPreferences, ...JSON.parse(saved) };
@@ -640,7 +640,7 @@ export const InfoProvider: React.FC<InfoProviderProps> = ({ children }) => {
 
   // Save preferences to localStorage
   useEffect(() => {
-    localStorage.setItem('mycolab-info-preferences', JSON.stringify(preferences));
+    localStorage.setItem('sporely-info-preferences', JSON.stringify(preferences));
   }, [preferences]);
 
   // Update preferences

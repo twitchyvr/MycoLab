@@ -245,7 +245,7 @@ export class EntityLoader implements IEntityLoader {
 
 // ============================================================================
 // TABLE CONFIGURATIONS
-// Pre-defined configurations for all MycoLab tables
+// Pre-defined configurations for all Sporely tables
 // ============================================================================
 
 export const TABLE_CONFIGS: Record<string, TableConfig> = {

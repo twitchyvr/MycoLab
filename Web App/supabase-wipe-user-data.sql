@@ -1,5 +1,5 @@
 -- ============================================================================
--- MycoLab User Data Wipe Script
+-- Sporely User Data Wipe Script
 -- ============================================================================
 --
 -- PURPOSE: Completely remove all user-created data while preserving:
@@ -20,7 +20,7 @@
 -- CHOOSING THE RIGHT RESET SCRIPT
 -- ============================================================================
 --
--- MycoLab provides TWO reset options depending on your needs:
+-- Sporely provides TWO reset options depending on your needs:
 --
 -- ┌─────────────────────────────────────────────────────────────────────┐
 -- │ supabase-wipe-user-data.sql (THIS FILE)                              │
@@ -53,7 +53,7 @@
 -- SQL SCRIPTS RELATIONSHIP DOCUMENTATION
 -- ============================================================================
 --
--- The MycoLab database uses several SQL scripts that work together:
+-- The Sporely database uses several SQL scripts that work together:
 --
 -- ┌─────────────────────────────────────────────────────────────────────┐
 -- │ supabase-schema.sql                                                  │

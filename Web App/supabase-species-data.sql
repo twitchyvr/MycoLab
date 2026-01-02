@@ -1,5 +1,5 @@
 -- ============================================================================
--- MYCOLAB SPECIES & STRAINS DATA (Idempotent - Safe to run multiple times)
+-- SPORELY SPECIES & STRAINS DATA (Idempotent - Safe to run multiple times)
 -- Run this AFTER supabase-schema.sql to populate species and strain data
 -- ============================================================================
 --

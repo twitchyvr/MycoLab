@@ -22,7 +22,7 @@ import { HarvestEntryForm, getDefaultHarvestEntryData, type HarvestEntryData } f
 import { GrowForm, getDefaultGrowFormData, validateGrowFormData, type GrowFormData } from '../forms/GrowForm';
 
 // Draft key for localStorage
-const GROW_DRAFT_KEY = 'mycolab-grow-draft';
+const GROW_DRAFT_KEY = 'sporely-grow-draft';
 
 // Stage configurations with enhanced styling
 const stageConfig: Record<GrowStage, { label: string; icon: string; color: string; bgColor: string; borderColor: string }> = {
@@ -570,13 +570,13 @@ export const GrowManagement: React.FC = () => {
         }
       }
     };
-    window.addEventListener('mycolab:create-new', handleCreateNew as EventListener);
-    window.addEventListener('mycolab:select-item', handleSelectItem as EventListener);
-    window.addEventListener('mycolab:edit-item', handleEditItem as EventListener);
+    window.addEventListener('sporely:create-new', handleCreateNew as EventListener);
+    window.addEventListener('sporely:select-item', handleSelectItem as EventListener);
+    window.addEventListener('sporely:edit-item', handleEditItem as EventListener);
     return () => {
-      window.removeEventListener('mycolab:create-new', handleCreateNew as EventListener);
-      window.removeEventListener('mycolab:select-item', handleSelectItem as EventListener);
-      window.removeEventListener('mycolab:edit-item', handleEditItem as EventListener);
+      window.removeEventListener('sporely:create-new', handleCreateNew as EventListener);
+      window.removeEventListener('sporely:select-item', handleSelectItem as EventListener);
+      window.removeEventListener('sporely:edit-item', handleEditItem as EventListener);
     };
   }, [grows, guardAction]);
 

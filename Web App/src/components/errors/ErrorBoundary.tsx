@@ -90,7 +90,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     // Store for potential manual retrieval
     try {
-      localStorage.setItem('mycolab-last-error-report', JSON.stringify(report));
+      localStorage.setItem('sporely-last-error-report', JSON.stringify(report));
     } catch (e) {
       // Ignore storage errors
     }

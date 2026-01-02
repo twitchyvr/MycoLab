@@ -667,7 +667,7 @@ export const GrowerSettings: React.FC = () => {
                   </ul>
                   <div className="p-3 bg-amber-950/30 rounded-lg border border-amber-700/50">
                     <p className="text-xs text-amber-400">
-                      Your account will remain active. You can continue using MycoLab with a fresh start.
+                      Your account will remain active. You can continue using Sporely with a fresh start.
                       Data is archived following our non-destructive policy.
                     </p>
                   </div>

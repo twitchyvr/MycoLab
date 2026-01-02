@@ -1,6 +1,6 @@
 // ============================================================================
 // AI GATEWAY EDGE FUNCTION
-// Main entry point for all AI operations in MycoLab
+// Main entry point for all AI operations in Sporely
 // Handles: chat, image analysis, IoT analysis, knowledge search
 // ============================================================================
 
@@ -205,7 +205,7 @@ async function buildContext(
 // SYSTEM PROMPTS
 // =============================================================================
 
-const SYSTEM_PROMPT = `You are MycoLab AI, an expert mycology cultivation assistant integrated into the MycoLab application.
+const SYSTEM_PROMPT = `You are Sporely AI, an expert mycology cultivation assistant integrated into the Sporely application.
 
 Your role is to help mushroom cultivators by:
 - Analyzing their cultures and grows for issues

@@ -59,7 +59,7 @@ const stageConfig: Record<GrowStage, { label: string; icon: string; color: strin
 };
 
 // Local storage key
-const DAILY_CHECK_STORAGE_KEY = 'mycolab-daily-check';
+const DAILY_CHECK_STORAGE_KEY = 'sporely-daily-check';
 
 // ============================================================================
 // COMPONENTS

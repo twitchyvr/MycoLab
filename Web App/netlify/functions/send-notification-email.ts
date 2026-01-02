@@ -22,7 +22,7 @@ async function sendWithResend(
   if (!apiKey) return { success: false, error: "Resend not configured" };
 
   const fromEmail = process.env.FROM_EMAIL || "onboarding@resend.dev";
-  const fromName = process.env.FROM_NAME || "MycoLab";
+  const fromName = process.env.FROM_NAME || "Sporely";
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
@@ -63,8 +63,8 @@ async function sendWithSendGrid(
   const apiKey = process.env.SENDGRID_API_KEY;
   if (!apiKey) return { success: false, error: "SendGrid not configured" };
 
-  const fromEmail = process.env.FROM_EMAIL || "noreply@mycolab.app";
-  const fromName = process.env.FROM_NAME || "MycoLab";
+  const fromEmail = process.env.FROM_EMAIL || "noreply@sporely.co";
+  const fromName = process.env.FROM_NAME || "Sporely";
 
   try {
     const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
@@ -152,7 +152,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const htmlBody = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 12px 12px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">🍄 MycoLab</h1>
+          <h1 style="color: white; margin: 0; font-size: 24px;">🍄 Sporely</h1>
         </div>
         <div style="background: #18181b; padding: 24px; border-radius: 0 0 12px 12px; color: #e4e4e7;">
           <h2 style="color: #10b981; margin-top: 0;">${payload.subject}</h2>
@@ -160,14 +160,14 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           ${payload.entityName ? `<p style="color: #a1a1aa; font-size: 14px; margin-top: 16px;">Related: ${payload.entityName}</p>` : ''}
         </div>
         <p style="color: #71717a; font-size: 12px; text-align: center; margin-top: 16px;">
-          This notification was sent from MycoLab. Manage your notification preferences in Settings.
+          This notification was sent from Sporely. Manage your notification preferences in Settings.
         </p>
       </div>
     `;
 
     const result = await sendEmail(
       payload.to,
-      `[MycoLab] ${payload.subject}`,
+      `[Sporely] ${payload.subject}`,
       payload.body,
       htmlBody
     );

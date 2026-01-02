@@ -419,7 +419,7 @@ export const MyceliumHub: React.FC<MyceliumHubProps> = ({
               <NavIcons.Mushroom className="w-6 h-6 text-white" />
             </div>
             <div className="hidden sm:block">
-              <h2 className="text-lg font-semibold text-white">MycoLab Navigator</h2>
+              <h2 className="text-lg font-semibold text-white">Sporely Navigator</h2>
               <p className="text-xs text-zinc-500">Click a node or search to navigate</p>
             </div>
           </div>

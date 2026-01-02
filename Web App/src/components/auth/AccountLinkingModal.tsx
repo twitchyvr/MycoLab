@@ -285,7 +285,7 @@ export const AccountLinkingModal: React.FC<AccountLinkingModalProps> = ({
               onClick={onClose}
               className="w-full py-3.5 min-h-[48px] px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
             >
-              <span>Continue to MycoLab</span>
+              <span>Continue to Sporely</span>
               <Icons.ArrowRight />
             </button>
           )}

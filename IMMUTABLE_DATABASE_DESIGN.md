@@ -1,8 +1,8 @@
-# MycoLab Immutable Database Design
+# Sporely Immutable Database Design
 
 ## Executive Summary
 
-This document outlines an immutable, append-only database architecture for MycoLab, inspired by iRacing's robust data management approach. The core principle: **original records are never modified or deleted** - instead, we create amendment records that reference and supersede them.
+This document outlines an immutable, append-only database architecture for Sporely, inspired by iRacing's robust data management approach. The core principle: **original records are never modified or deleted** - instead, we create amendment records that reference and supersede them.
 
 ## Why Immutable?
 
@@ -1741,7 +1741,7 @@ POST /api/v1/cultures/:id/archive       → Archive (soft delete)
 
 ---
 
-## MycoLab-Specific Considerations
+## Sporely-Specific Considerations
 
 ### Lineage Tracking with Versions
 
@@ -1823,7 +1823,7 @@ async function getYieldStats(strainId: string): Promise<YieldStats> {
 
 ## Appendix: iRacing Comparison
 
-| iRacing Pattern | MycoLab Equivalent |
+| iRacing Pattern | Sporely Equivalent |
 |-----------------|-------------------|
 | Race results never edited | Harvest records never edited |
 | Incidents can be protested (creates amendment) | Observations can be corrected (creates amendment) |
@@ -1831,4 +1831,4 @@ async function getYieldStats(strainId: string): Promise<YieldStats> {
 | Series/season changes create new records | Stage transitions create history records |
 | Championship points locked at end of season | Grow outcomes locked at completion |
 
-This approach gives MycoLab the same data integrity guarantees that make iRacing's statistics trustworthy and auditable.
+This approach gives Sporely the same data integrity guarantees that make iRacing's statistics trustworthy and auditable.

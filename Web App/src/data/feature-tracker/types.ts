@@ -1,6 +1,6 @@
 // ============================================================================
 // FEATURE TRACKER TYPE DEFINITIONS
-// Comprehensive types for the MycoLab Feature Tracker system
+// Comprehensive types for the Sporely Feature Tracker system
 // ============================================================================
 
 // ----------------------------------------------------------------------------

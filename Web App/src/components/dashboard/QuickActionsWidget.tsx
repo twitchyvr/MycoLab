@@ -128,7 +128,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
   const handleCreateNew = (page: string) => {
     onNavigate(page);
     setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page } }));
+      window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page } }));
     }, 100);
   };
 
@@ -366,7 +366,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onNa
     setIsOpen(false);
     onNavigate(page);
     setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page } }));
+      window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page } }));
     }, 100);
   };
 

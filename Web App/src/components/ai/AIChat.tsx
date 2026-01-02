@@ -1,6 +1,6 @@
 // ============================================================================
 // AI CHAT COMPONENT
-// Main conversational interface for MycoLab AI Assistant
+// Main conversational interface for Sporely AI Assistant
 // ============================================================================
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -126,7 +126,7 @@ const MessageBubble: React.FC<{
       `}>
         {/* Role label */}
         <p className={`text-xs font-medium mb-1 ${isUser ? 'text-emerald-400' : 'text-zinc-400'}`}>
-          {isUser ? 'You' : 'MycoLab AI'}
+          {isUser ? 'You' : 'Sporely AI'}
           {message.processingTimeMs && !isUser && (
             <span className="text-zinc-500 ml-2">
               {(message.processingTimeMs / 1000).toFixed(1)}s
@@ -284,7 +284,7 @@ export const AIChat: React.FC<AIChatProps> = ({
             <Icons.Sparkles />
           </div>
           <div>
-            <h3 className="font-semibold text-white text-sm">MycoLab AI</h3>
+            <h3 className="font-semibold text-white text-sm">Sporely AI</h3>
             {contextEntityLabel && (
               <p className="text-xs text-zinc-500">
                 Context: {contextEntityLabel}
@@ -325,7 +325,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                   <Icons.DNA />
                 </div>
                 <h4 className="text-lg font-semibold text-white mb-2">
-                  Welcome to MycoLab AI
+                  Welcome to Sporely AI
                 </h4>
                 <p className="text-sm text-zinc-400 max-w-sm mx-auto mb-6">
                   {welcomeMessage || 'I can help you analyze your grows, identify contamination, optimize conditions, and answer mycology questions.'}
@@ -362,7 +362,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                   <Icons.Loader />
                 </div>
                 <div className="bg-zinc-800/80 border border-zinc-700/50 rounded-2xl px-4 py-3">
-                  <p className="text-xs text-zinc-400 mb-1">MycoLab AI</p>
+                  <p className="text-xs text-zinc-400 mb-1">Sporely AI</p>
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
                       <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />

@@ -1,8 +1,8 @@
 -- ============================================================================
--- MYCOLAB RESEARCH SPECIES SEED DATA - A through M (Alphabetical)
+-- SPORELY RESEARCH SPECIES SEED DATA - A through M (Alphabetical)
 -- ============================================================================
 -- Idempotent - Safe to run multiple times
--- Run this AFTER supabase-schema.sql AND mycolab-research-species-seed.sql
+-- Run this AFTER supabase-schema.sql AND sporely-research-species-seed.sql
 -- ============================================================================
 --
 -- SCOPE: Research/Psychoactive mushroom species, names beginning A-M

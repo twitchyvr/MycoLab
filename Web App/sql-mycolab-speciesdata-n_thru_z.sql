@@ -1,5 +1,5 @@
 -- ============================================================================
--- MYCOLAB RESEARCH SPECIES SEED DATA - N through Z (Alphabetical)
+-- SPORELY RESEARCH SPECIES SEED DATA - N through Z (Alphabetical)
 -- ============================================================================
 -- Idempotent - Safe to run multiple times
 -- Can be run BEFORE or AFTER the A-M file (order-independent)

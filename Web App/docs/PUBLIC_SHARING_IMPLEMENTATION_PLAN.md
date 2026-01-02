@@ -1,8 +1,8 @@
-# MycoLab Public Sharing & Batch Passport Implementation Plan
+# Sporely Public Sharing & Batch Passport Implementation Plan
 
 ## Executive Summary
 
-This document outlines the implementation plan for adding **public shareable links**, **batch passports**, **role-based access control**, and **enhanced customer transparency features** to MycoLab, following industry best practices for secure, scalable, and user-friendly public-facing applications.
+This document outlines the implementation plan for adding **public shareable links**, **batch passports**, **role-based access control**, and **enhanced customer transparency features** to Sporely, following industry best practices for secure, scalable, and user-friendly public-facing applications.
 
 ---
 
@@ -727,7 +727,7 @@ GET /api/passports/:id/analytics
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  🍄 MycoLab Batch Passport                          │
+│  🍄 Sporely Batch Passport                          │
 │                                                     │
 │  ══════════════════════════════════════════════════ │
 │                                                     │
@@ -769,7 +769,7 @@ GET /api/passports/:id/analytics
 │  ══════════════════════════════════════════════════ │
 │                                                     │
 │  Seller: Mountain Mushroom Co.                      │
-│  Verified by MycoLab                               │
+│  Verified by Sporely                               │
 │                                                     │
 └─────────────────────────────────────────────────────┘
 ```
@@ -874,7 +874,7 @@ Based on research of competitor apps ([MycoFile](https://play.google.com/store/a
 | Feature | UX Value | Priority |
 |---------|----------|----------|
 | **Quick Log Widget** | iOS/Android home screen widget | Medium |
-| **Voice Logging** | "Hey MycoLab, log harvest 450 grams" | Low |
+| **Voice Logging** | "Hey Sporely, log harvest 450 grams" | Low |
 | **Push Notifications** | Stage transition reminders | High (exists) |
 | **Camera Quick Actions** | One-tap photo with auto-timestamp | Medium |
 | **Haptic Feedback** | Satisfying taps for confirmations | Low |

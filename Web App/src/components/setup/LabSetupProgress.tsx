@@ -100,7 +100,7 @@ export const LabSetupProgress: React.FC<LabSetupProgressProps> = ({
       action: () => {
         onNavigate('cultures');
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'cultures' } }));
+          window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page: 'cultures' } }));
         }, 100);
       },
     },
@@ -113,7 +113,7 @@ export const LabSetupProgress: React.FC<LabSetupProgressProps> = ({
       action: () => {
         onNavigate('grows');
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'grows' } }));
+          window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page: 'grows' } }));
         }, 100);
       },
     },

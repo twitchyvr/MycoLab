@@ -83,7 +83,7 @@ const Comment: React.FC<CommentProps> = ({ comment, isCurrentUser }) => {
       <div className={`flex-1 max-w-[80%] ${isCurrentUser ? 'text-right' : ''}`}>
         <div className="flex items-center gap-2 mb-1">
           <span className={`text-xs font-medium ${comment.isAdminMessage ? 'text-amber-400' : 'text-zinc-300'}`}>
-            {comment.isAdminMessage ? 'MycoLab Team' : displayName}
+            {comment.isAdminMessage ? 'Sporely Team' : displayName}
           </span>
           <span className="text-xs text-zinc-500">{timeAgo}</span>
         </div>

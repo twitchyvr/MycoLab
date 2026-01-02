@@ -18,7 +18,7 @@ async function sendWithResend(to: string, subject: string, textBody: string, htm
   if (!apiKey) return { success: false, error: "Resend not configured" };
 
   const fromEmail = process.env.FROM_EMAIL || "onboarding@resend.dev";
-  const fromName = process.env.FROM_NAME || "MycoLab";
+  const fromName = process.env.FROM_NAME || "Sporely";
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
@@ -53,8 +53,8 @@ async function sendWithSendGrid(to: string, subject: string, textBody: string, h
   const apiKey = process.env.SENDGRID_API_KEY;
   if (!apiKey) return { success: false, error: "SendGrid not configured" };
 
-  const fromEmail = process.env.FROM_EMAIL || "noreply@mycolab.app";
-  const fromName = process.env.FROM_NAME || "MycoLab";
+  const fromEmail = process.env.FROM_EMAIL || "noreply@sporely.co";
+  const fromName = process.env.FROM_NAME || "Sporely";
 
   try {
     const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
@@ -185,11 +185,11 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       const htmlBody = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">🍄 MycoLab</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px;">🍄 Sporely</h1>
           </div>
           <div style="background: #18181b; padding: 24px; border-radius: 0 0 12px 12px; color: #e4e4e7; text-align: center;">
             <h2 style="color: #10b981; margin-top: 0;">Verify Your Email</h2>
-            <p style="line-height: 1.6;">Enter this code in MycoLab to verify your email address:</p>
+            <p style="line-height: 1.6;">Enter this code in Sporely to verify your email address:</p>
             <div style="background: #27272a; padding: 16px 24px; border-radius: 8px; margin: 24px 0; display: inline-block;">
               <span style="font-size: 32px; font-family: monospace; letter-spacing: 8px; color: #10b981; font-weight: bold;">${code}</span>
             </div>
@@ -200,8 +200,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
       const result = await sendEmail(
         payload.recipient,
-        "[MycoLab] Your Verification Code",
-        `Your MycoLab verification code is: ${code}\n\nThis code expires in 10 minutes.`,
+        "[Sporely] Your Verification Code",
+        `Your Sporely verification code is: ${code}\n\nThis code expires in 10 minutes.`,
         htmlBody
       );
 
@@ -242,7 +242,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           body: new URLSearchParams({
             To: toNumber,
             From: fromNumber,
-            Body: `Your MycoLab verification code is: ${code}. Expires in 10 minutes.`,
+            Body: `Your Sporely verification code is: ${code}. Expires in 10 minutes.`,
           }),
         }
       );

@@ -66,7 +66,7 @@ async function sendEmail(
   if (resendKey) {
     try {
       const fromEmail = Deno.env.get('FROM_EMAIL') || 'onboarding@resend.dev';
-      const fromName = Deno.env.get('FROM_NAME') || 'MycoLab';
+      const fromName = Deno.env.get('FROM_NAME') || 'Sporely';
 
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -98,8 +98,8 @@ async function sendEmail(
   const sendgridKey = Deno.env.get('SENDGRID_API_KEY');
   if (sendgridKey) {
     try {
-      const fromEmail = Deno.env.get('FROM_EMAIL') || 'noreply@mycolab.app';
-      const fromName = Deno.env.get('FROM_NAME') || 'MycoLab';
+      const fromEmail = Deno.env.get('FROM_EMAIL') || 'noreply@sporely.co';
+      const fromName = Deno.env.get('FROM_NAME') || 'Sporely';
 
       const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
@@ -188,7 +188,7 @@ function buildHtmlEmail(title: string, body: string, metadata: Record<string, un
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 12px 12px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">🍄 MycoLab</h1>
+        <h1 style="color: white; margin: 0; font-size: 24px;">🍄 Sporely</h1>
       </div>
       <div style="background: #18181b; padding: 24px; border-radius: 0 0 12px 12px; color: #e4e4e7;">
         <h2 style="color: #10b981; margin-top: 0;">${title}</h2>
@@ -196,7 +196,7 @@ function buildHtmlEmail(title: string, body: string, metadata: Record<string, un
         ${entityName ? `<p style="color: #a1a1aa; font-size: 14px; margin-top: 16px;">Related: ${entityName}</p>` : ''}
       </div>
       <p style="color: #71717a; font-size: 12px; text-align: center; margin-top: 16px;">
-        This notification was sent from MycoLab. Manage your notification preferences in Settings.
+        This notification was sent from Sporely. Manage your notification preferences in Settings.
       </p>
     </div>
   `;
@@ -338,7 +338,7 @@ async function processQueue(): Promise<ProcessingResult> {
       const htmlBody = buildHtmlEmail(notif.title, notif.body, notif.metadata || {});
       const emailResult = await sendEmail(
         emailChannel.contact_value,
-        `[MycoLab] ${notif.title}`,
+        `[Sporely] ${notif.title}`,
         notif.body,
         htmlBody
       );

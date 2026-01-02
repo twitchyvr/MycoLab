@@ -297,7 +297,7 @@ export const AISettingsSection: React.FC<AISettingsSectionProps> = ({ onSave }) 
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">AI Assistant</h3>
-            <p className="text-sm text-zinc-400">MycoLab AI helps you grow better mushrooms</p>
+            <p className="text-sm text-zinc-400">Sporely AI helps you grow better mushrooms</p>
           </div>
         </div>
 

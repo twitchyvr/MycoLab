@@ -129,7 +129,7 @@ const getPriorityColor = (priority: Task['priority']) => {
   }
 };
 
-const getStorageKey = () => `mycolab-command-${format(new Date(), 'yyyy-MM-dd')}`;
+const getStorageKey = () => `sporely-command-${format(new Date(), 'yyyy-MM-dd')}`;
 
 // ============================================================================
 // MAIN COMPONENT

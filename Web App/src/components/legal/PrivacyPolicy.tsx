@@ -8,10 +8,10 @@ import { Link } from 'react-router-dom';
 
 export const PrivacyPolicy: React.FC = () => {
   const lastUpdated = 'December 16, 2025';
-  const appName = 'MycoLab';
-  const companyName = 'MycoLab';
-  const contactEmail = 'privacy@theautomationguru.com';
-  const websiteUrl = 'https://mycolab.theautomationguru.com';
+  const appName = 'Sporely';
+  const companyName = 'Sporely';
+  const contactEmail = 'privacy@sporely.co';
+  const websiteUrl = 'https://www.sporely.co';
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-300">

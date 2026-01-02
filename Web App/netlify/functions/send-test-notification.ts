@@ -17,7 +17,7 @@ async function sendWithResend(
   if (!apiKey) return { success: false, error: "Resend not configured" };
 
   const fromEmail = process.env.FROM_EMAIL || "onboarding@resend.dev";
-  const fromName = process.env.FROM_NAME || "MycoLab";
+  const fromName = process.env.FROM_NAME || "Sporely";
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
@@ -57,8 +57,8 @@ async function sendWithSendGrid(
   const apiKey = process.env.SENDGRID_API_KEY;
   if (!apiKey) return { success: false, error: "SendGrid not configured" };
 
-  const fromEmail = process.env.FROM_EMAIL || "noreply@mycolab.app";
-  const fromName = process.env.FROM_NAME || "MycoLab";
+  const fromEmail = process.env.FROM_EMAIL || "noreply@sporely.co";
+  const fromName = process.env.FROM_NAME || "Sporely";
 
   try {
     const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
@@ -137,13 +137,13 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       };
     }
 
-    const testMessage = payload.message || `This is a test notification from MycoLab sent at ${new Date().toLocaleString()}`;
+    const testMessage = payload.message || `This is a test notification from Sporely sent at ${new Date().toLocaleString()}`;
 
     if (payload.type === "email") {
       const htmlBody = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">🍄 MycoLab</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px;">🍄 Sporely</h1>
           </div>
           <div style="background: #18181b; padding: 24px; border-radius: 0 0 12px 12px; color: #e4e4e7;">
             <h2 style="color: #10b981; margin-top: 0;">Test Notification</h2>
@@ -155,7 +155,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
       const result = await sendTestEmail(
         payload.recipient,
-        "[MycoLab] Test Notification",
+        "[Sporely] Test Notification",
         testMessage,
         htmlBody
       );
@@ -203,7 +203,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           body: new URLSearchParams({
             To: toNumber,
             From: fromNumber,
-            Body: `[MycoLab Test] ${testMessage}`,
+            Body: `[Sporely Test] ${testMessage}`,
           }),
         }
       );

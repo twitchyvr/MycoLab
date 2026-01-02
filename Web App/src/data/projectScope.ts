@@ -1,10 +1,10 @@
 // ============================================================================
 // PROJECT SCOPE DEFINITIONS
-// In-scope, out-of-scope, and future considerations for MycoLab
+// In-scope, out-of-scope, and future considerations for Sporely
 // ============================================================================
 
 /**
- * Project scope definitions - what MycoLab will and won't do
+ * Project scope definitions - what Sporely will and won't do
  * This helps guide development priorities and user expectations
  */
 export const projectScope = {

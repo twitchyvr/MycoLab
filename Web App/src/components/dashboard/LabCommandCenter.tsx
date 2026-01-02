@@ -447,7 +447,7 @@ const GettingStartedGuide: React.FC<{
       action: () => {
         onNavigate('cultures');
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'cultures' } }));
+          window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page: 'cultures' } }));
         }, 100);
       },
       buttonText: hasCultures ? 'View Cultures' : 'Add Culture',
@@ -462,7 +462,7 @@ const GettingStartedGuide: React.FC<{
       action: () => {
         onNavigate('grows');
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'grows' } }));
+          window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page: 'grows' } }));
         }, 100);
       },
       buttonText: hasGrows ? 'View Grows' : 'Start Grow',
@@ -489,7 +489,7 @@ const GettingStartedGuide: React.FC<{
           🌱
         </div>
         <div className="flex-1">
-          <h2 className="text-xl font-bold text-white mb-1">Welcome to MycoLab!</h2>
+          <h2 className="text-xl font-bold text-white mb-1">Welcome to Sporely!</h2>
           <p className="text-zinc-400 text-sm">
             {purpose && purposeMessages[purpose]
               ? purposeMessages[purpose]
@@ -739,7 +739,7 @@ export const LabCommandCenter: React.FC<LabCommandCenterProps> = ({ onNavigate }
   const triggerCreateNew = (page: Page) => {
     onNavigate(page);
     setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page } }));
+      window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page } }));
     }, 100);
   };
 

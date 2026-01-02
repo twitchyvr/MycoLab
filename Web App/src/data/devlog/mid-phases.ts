@@ -229,7 +229,7 @@ export const midPhases: DevLogFeature[] = [
   {
     id: 'dev-126',
     title: 'Supabase Auth Email Templates',
-    description: 'Custom branded email templates for all Supabase authentication flows. Dark theme matching MycoLab UI with emerald accents.',
+    description: 'Custom branded email templates for all Supabase authentication flows. Dark theme matching Sporely UI with emerald accents.',
     category: 'ui',
     status: 'completed',
     priority: 'medium',
@@ -245,7 +245,7 @@ export const midPhases: DevLogFeature[] = [
 - Reauthentication ({{ .Token }}, {{ .Email }}) - code display style
 - Reset Password ({{ .ConfirmationURL }}, {{ .Email }})
 
-All templates use consistent MycoLab branding:
+All templates use consistent Sporely branding:
 - Dark zinc background (#18181b, #27272a)
 - Emerald green accents (#10b981)
 - Mushroom emoji logo

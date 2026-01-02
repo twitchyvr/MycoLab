@@ -432,7 +432,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose, onN
 
     // Dispatch event to select the item on the target page
     setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('mycolab:select-item', {
+      window.dispatchEvent(new CustomEvent('sporely:select-item', {
         detail: { id: result.id, type: result.type }
       }));
     }, 100);

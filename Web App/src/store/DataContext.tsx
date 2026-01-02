@@ -470,7 +470,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       }));
 
       setIsConnected(true);
-      localStorage.setItem('mycolab-last-sync', new Date().toISOString());
+      localStorage.setItem('sporely-last-sync', new Date().toISOString());
 
       // Log performance metrics (only in development)
       if (result.timing && process.env.NODE_ENV === 'development') {
@@ -745,7 +745,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       }));
       
       setIsConnected(true);
-      localStorage.setItem('mycolab-last-sync', new Date().toISOString());
+      localStorage.setItem('sporely-last-sync', new Date().toISOString());
       
     } catch (err: any) {
       console.error('Failed to load data from Supabase:', err);
@@ -837,7 +837,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
             console.log('[DataContext] Token refreshed, ensuring data is current...');
           }
           // Only reload if we haven't loaded recently (within last 5 seconds)
-          const lastSync = localStorage.getItem('mycolab-last-sync');
+          const lastSync = localStorage.getItem('sporely-last-sync');
           if (lastSync) {
             const lastSyncTime = new Date(lastSync).getTime();
             const now = Date.now();
@@ -2296,7 +2296,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       if (error) {
         console.error('Failed to save entity outcome:', error);
         // Emit error event for user notification (caught by error boundary or global handler)
-        window.dispatchEvent(new CustomEvent('mycolab:error', {
+        window.dispatchEvent(new CustomEvent('sporely:error', {
           detail: {
             type: 'database',
             message: 'Failed to save grow survey data',
@@ -2340,7 +2340,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     if (error) {
       console.error('Failed to save contamination details:', error);
       // Emit error event for user notification
-      window.dispatchEvent(new CustomEvent('mycolab:error', {
+      window.dispatchEvent(new CustomEvent('sporely:error', {
         detail: {
           type: 'database',
           message: 'Failed to save contamination details',
@@ -3962,7 +3962,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         is_active: item.isActive ?? true,
         user_id: userId,
       };
-      console.log('[MycoLab] Inserting inventory item:', insertData);
+      console.log('[Sporely] Inserting inventory item:', insertData);
       const { data, error } = await supabase
         .from('inventory_items')
         .insert(insertData)
@@ -3970,7 +3970,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         .single();
 
       if (error) {
-        console.error('[MycoLab] Inventory insert error:', error);
+        console.error('[Sporely] Inventory insert error:', error);
         throw new Error(`Failed to create inventory item: ${error.message || error.code || 'Unknown error'}`);
       }
 

@@ -315,7 +315,7 @@ export const ENTITY_CONFIGS: Record<CreatableEntityType, EntityTypeConfig> = {
 // LOCAL STORAGE KEYS
 // ============================================================================
 
-const DRAFT_STACK_KEY = 'mycolab-creation-draft-stack';
+const DRAFT_STACK_KEY = 'sporely-creation-draft-stack';
 
 // ============================================================================
 // CONTEXT

@@ -176,7 +176,7 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
         body: JSON.stringify({
           type,
           recipient,
-          message: `This is a test notification from MycoLab sent at ${new Date().toLocaleString()}`,
+          message: `This is a test notification from Sporely sent at ${new Date().toLocaleString()}`,
         }),
       });
 
@@ -244,8 +244,8 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
 
     try {
       // Call the Edge Function directly
-      const supabaseUrl = localStorage.getItem('mycolab-supabase-url');
-      const supabaseKey = localStorage.getItem('mycolab-supabase-key');
+      const supabaseUrl = localStorage.getItem('sporely-supabase-url');
+      const supabaseKey = localStorage.getItem('sporely-supabase-key');
 
       if (!supabaseUrl) {
         setError('Supabase URL not configured');
@@ -758,7 +758,7 @@ export const AdminNotificationConfig: React.FC<AdminNotificationConfigProps> = (
               <div><span className="text-zinc-600"># OR</span></div>
               <div><span className="text-purple-400">SENDGRID_API_KEY</span>=<span className="text-zinc-500">your_sendgrid_api_key</span></div>
               <div className="mt-2"><span className="text-purple-400">FROM_EMAIL</span>=<span className="text-zinc-500">noreply@yourdomain.com</span> <span className="text-zinc-600"># optional</span></div>
-              <div><span className="text-purple-400">FROM_NAME</span>=<span className="text-zinc-500">MycoLab</span> <span className="text-zinc-600"># optional</span></div>
+              <div><span className="text-purple-400">FROM_NAME</span>=<span className="text-zinc-500">Sporely</span> <span className="text-zinc-600"># optional</span></div>
             </div>
           </div>
 

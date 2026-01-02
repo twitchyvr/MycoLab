@@ -71,7 +71,7 @@ export const manualChangelog: ChangelogEntry[] = [
     id: 'log-release-010',
     type: 'release',
     title: 'Version 0.1.0 - Spore Release',
-    description: 'Initial MycoLab release with core culture and grow tracking',
+    description: 'Initial Sporely release with core culture and grow tracking',
     milestoneId: 'v0.1.0',
     timestamp: '2024-12-01T00:00:00Z',
   },

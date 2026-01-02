@@ -256,7 +256,7 @@ export const FinancialDashboard: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `mycolab-financial-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `sporely-financial-export-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } else {
@@ -281,7 +281,7 @@ export const FinancialDashboard: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `mycolab-grows-export-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `sporely-grows-export-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     }

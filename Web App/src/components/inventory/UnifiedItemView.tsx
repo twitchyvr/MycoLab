@@ -93,8 +93,8 @@ export const UnifiedItemView: React.FC<UnifiedItemViewProps> = ({ onNavigate }) 
         setShowCreateModal(true);
       }
     };
-    window.addEventListener('mycolab:create-new', handler as EventListener);
-    return () => window.removeEventListener('mycolab:create-new', handler as EventListener);
+    window.addEventListener('sporely:create-new', handler as EventListener);
+    return () => window.removeEventListener('sporely:create-new', handler as EventListener);
   }, []);
 
   // Transform cultures and grows into unified items
@@ -306,7 +306,7 @@ export const UnifiedItemView: React.FC<UnifiedItemViewProps> = ({ onNavigate }) 
                 if (onNavigate) {
                   onNavigate('cultures');
                   setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'cultures' } }));
+                    window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page: 'cultures' } }));
                   }, 100);
                 }
               }}
@@ -319,7 +319,7 @@ export const UnifiedItemView: React.FC<UnifiedItemViewProps> = ({ onNavigate }) 
                 if (onNavigate) {
                   onNavigate('grows');
                   setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'grows' } }));
+                    window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page: 'grows' } }));
                   }, 100);
                 }
               }}
@@ -482,7 +482,7 @@ export const UnifiedItemView: React.FC<UnifiedItemViewProps> = ({ onNavigate }) 
                       onNavigate(targetPage, itemId);
                       // Dispatch edit event to open edit mode
                       setTimeout(() => {
-                        window.dispatchEvent(new CustomEvent('mycolab:edit-item', {
+                        window.dispatchEvent(new CustomEvent('sporely:edit-item', {
                           detail: { id: itemId, type: selectedItem.isGrow ? 'grow' : 'culture' }
                         }));
                       }, 100);

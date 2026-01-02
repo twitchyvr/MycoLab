@@ -1,5 +1,5 @@
 // ============================================================================
-// MYCOLAB - Comprehensive Mycology Laboratory Management System
+// SPORELY - Comprehensive Mycology Laboratory Management System
 // Type Definitions
 // ============================================================================
 

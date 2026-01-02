@@ -303,7 +303,7 @@ const PValueSection: React.FC = () => (
         Lower P-values mean fresher genetics closer to the original isolate.
       </p>
       <p className="text-zinc-400 text-sm">
-        This is also sometimes called the "generation" number. In MycoLab, we display this as
+        This is also sometimes called the "generation" number. In Sporely, we display this as
         P0, P1, P2, etc. on culture cards.
       </p>
     </div>

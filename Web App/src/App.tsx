@@ -1,5 +1,5 @@
 // ============================================================================
-// MYCOLAB - Main Application Component
+// SPORELY - Main Application Component
 // ============================================================================
 
 import React, { useState, createContext, useContext, useEffect, useMemo } from 'react';
@@ -591,7 +591,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               </button>
               {!isCollapsed && (
                 <div className="transition-opacity duration-300">
-                  <h1 className="text-lg font-semibold text-white tracking-tight">MycoLab</h1>
+                  <h1 className="text-lg font-semibold text-white tracking-tight">Sporely</h1>
                   <p className="text-xs text-zinc-500">Laboratory Manager</p>
                   <p className="text-[10px] text-zinc-600 font-mono">v{__APP_VERSION__}</p>
                 </div>
@@ -944,12 +944,12 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, currentPage, onNavigat
             onClick={() => {
               if (currentPage === newAction.page) {
                 // Already on the page, just dispatch the create event
-                window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: newAction.page } }));
+                window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page: newAction.page } }));
               } else {
                 // Navigate to page first, then dispatch event after a short delay
                 onNavigate(newAction.page);
                 setTimeout(() => {
-                  window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: newAction.page } }));
+                  window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page: newAction.page } }));
                 }, 100);
               }
             }}
@@ -1041,7 +1041,7 @@ const DashboardPage: React.FC<{ onNavigate: (page: Page, itemId?: string) => voi
                   onClick={() => {
                     onNavigate('grows');
                     setTimeout(() => {
-                      window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'grows' } }));
+                      window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page: 'grows' } }));
                     }, 100);
                   }}
                   className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm"
@@ -1142,7 +1142,7 @@ const DashboardPage: React.FC<{ onNavigate: (page: Page, itemId?: string) => voi
             onClick={() => {
               onNavigate('grows');
               setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('mycolab:create-new', { detail: { page: 'grows' } }));
+                window.dispatchEvent(new CustomEvent('sporely:create-new', { detail: { page: 'grows' } }));
               }, 100);
             }}
             className="p-4 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-lg text-center transition-colors"
@@ -1232,13 +1232,13 @@ const AppWithRouter: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Sidebar collapse state - persisted in localStorage
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    const saved = localStorage.getItem('mycolab-sidebar-collapsed');
+    const saved = localStorage.getItem('sporely-sidebar-collapsed');
     return saved === 'true';
   });
 
   // Persist sidebar collapsed state
   useEffect(() => {
-    localStorage.setItem('mycolab-sidebar-collapsed', String(sidebarCollapsed));
+    localStorage.setItem('sporely-sidebar-collapsed', String(sidebarCollapsed));
   }, [sidebarCollapsed]);
   // Never show setup wizard - users don't need to configure database credentials
   // The app works in offline mode by default, cloud sync can be enabled in Settings
@@ -1246,7 +1246,7 @@ const AppWithRouter: React.FC = () => {
 
   // Load state from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('mycolab-state');
+    const saved = localStorage.getItem('sporely-state');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -1259,7 +1259,7 @@ const AppWithRouter: React.FC = () => {
 
   // Save state to localStorage on changes
   useEffect(() => {
-    localStorage.setItem('mycolab-state', JSON.stringify(state));
+    localStorage.setItem('sporely-state', JSON.stringify(state));
   }, [state]);
 
   const updateDevLog = (features: DevLogFeature[]) => {
@@ -1473,7 +1473,7 @@ const AppWithRouter: React.FC = () => {
             <LabSpaces onNavigate={(page, itemId) => {
               setCurrentPage(page as Page);
               if (itemId) {
-                window.dispatchEvent(new CustomEvent('mycolab:select-item', { detail: { type: page, id: itemId } }));
+                window.dispatchEvent(new CustomEvent('sporely:select-item', { detail: { type: page, id: itemId } }));
               }
             }} />
           </div>
@@ -1668,13 +1668,13 @@ const AppContent: React.FC<{
     // This handles race conditions where state.settings hasn't loaded yet
     let localStorageComplete = false;
     try {
-      const storedSettings = localStorage.getItem('mycolab-settings');
+      const storedSettings = localStorage.getItem('sporely-settings');
       if (storedSettings) {
         const parsed = JSON.parse(storedSettings);
         localStorageComplete = parsed.hasCompletedSetupWizard === true;
       }
       // Also check the legacy key from SetupWizard
-      if (!localStorageComplete && localStorage.getItem('mycolab-setup-complete') === 'true') {
+      if (!localStorageComplete && localStorage.getItem('sporely-setup-complete') === 'true') {
         localStorageComplete = true;
       }
     } catch (e) {
@@ -1727,7 +1727,7 @@ const AppContent: React.FC<{
         // Small delay to ensure the page component has mounted
         const timer = setTimeout(() => {
           window.dispatchEvent(
-            new CustomEvent('mycolab:select-item', {
+            new CustomEvent('sporely:select-item', {
               detail: { id: selectedItemId, type: itemType },
             })
           );
@@ -1762,7 +1762,7 @@ const AppContent: React.FC<{
         <SetupWizard
           onComplete={() => setShowSetup(false)}
           onSkip={() => {
-            localStorage.setItem('mycolab-setup-complete', 'true');
+            localStorage.setItem('sporely-setup-complete', 'true');
             setShowSetup(false);
           }}
         />

@@ -1,8 +1,8 @@
-# CLAUDE.md - MycoLab AI Assistant Guide
+# CLAUDE.md - Sporely AI Assistant Guide
 
 ## Project Overview
 
-**MycoLab** is a comprehensive mycology laboratory management system built as a React/TypeScript single-page web application. It helps cultivators track cultures, grows, recipes, inventory, and analyze performance data for mushroom cultivation operations.
+**Sporely** is a comprehensive mycology laboratory management system built as a React/TypeScript single-page web application. It helps cultivators track cultures, grows, recipes, inventory, and analyze performance data for mushroom cultivation operations.
 
 ### Key Features
 - **Culture Library** - Track spore syringes, liquid cultures, agar plates, and slants with full lineage tracking
@@ -29,7 +29,7 @@
 ## Project Structure
 
 ```
-MycoLab/
+Sporely/
 ├── CLAUDE.md              # This file
 ├── .gitignore
 ├── Web App/               # Main application directory
@@ -773,8 +773,8 @@ const {
 1. **Offline-First**: App works without Supabase using localStorage
 2. **Cloud Sync**: When Supabase is configured, data syncs to PostgreSQL
 3. **Credentials**: Stored in `localStorage` keys:
-   - `mycolab-supabase-url`
-   - `mycolab-supabase-key`
+   - `sporely-supabase-url`
+   - `sporely-supabase-key`
 
 ### Data Architecture Tiers
 
